@@ -36,7 +36,7 @@ export const useOnboardingStatus = () => {
           .from('profiles')
           .select('onboarding_complete')
           .eq('user_id', user.id)
-          .single(),
+          .maybeSingle(),
         createTimeoutPromise(5000) // 5 second timeout
       ]);
 

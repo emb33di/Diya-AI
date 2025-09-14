@@ -76,9 +76,6 @@ export const useAuth = () => {
     // Fetch user profile from database with timeout and parallel requests
     const fetchUserProfile = async (user: User) => {
       try {
-        // Create timeout promise for the entire operation
-        const timeoutPromise = createTimeoutPromise(8000); // 8 second timeout
-
         // Make both database calls in parallel for better performance
         const [basicProfileResult, detailedProfileResult] = await Promise.allSettled([
           Promise.race([
@@ -86,7 +83,7 @@ export const useAuth = () => {
               .from('profiles')
               .select('id, full_name, onboarding_complete')
               .eq('user_id', user.id)
-              .single(),
+              .maybeSingle(),
             createTimeoutPromise(5000) // 5 second timeout per request
           ]),
           Promise.race([
@@ -94,7 +91,7 @@ export const useAuth = () => {
               .from('user_profiles')
               .select('preferred_name, email_address')
               .eq('user_id', user.id)
-              .single(),
+              .maybeSingle(),
             createTimeoutPromise(5000) // 5 second timeout per request
           ])
         ]);
@@ -104,9 +101,13 @@ export const useAuth = () => {
         if (basicProfileResult.status === 'fulfilled') {
           const { data, error } = basicProfileResult.value;
           if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-            throw error;
+            console.warn('Error fetching basic profile:', error);
+            // Don't throw error, just log it and continue
+          } else {
+            basicProfile = data;
           }
-          basicProfile = data;
+        } else {
+          console.warn('Basic profile request failed:', basicProfileResult.reason);
         }
 
         // If no basic profile exists, create one
@@ -139,6 +140,8 @@ export const useAuth = () => {
           } else {
             detailedProfile = data;
           }
+        } else {
+          console.warn('Detailed profile request failed:', detailedProfileResult.reason);
         }
 
         // Combine the data from both tables with proper fallback logic

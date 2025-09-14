@@ -94,7 +94,7 @@ export const fetchUserProfileWithTimeout = async (userId: string) => {
       .from('user_profiles')
       .select('*')
       .eq('user_id', userId)
-      .single(),
+      .maybeSingle(),
     5000,
     'Failed to load user profile'
   );
@@ -109,7 +109,7 @@ export const fetchBasicProfileWithTimeout = async (userId: string) => {
       .from('profiles')
       .select('full_name, onboarding_complete')
       .eq('user_id', userId)
-      .single(),
+      .maybeSingle(),
     5000,
     'Failed to load basic profile'
   );

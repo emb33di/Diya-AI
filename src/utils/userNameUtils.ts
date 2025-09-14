@@ -77,7 +77,7 @@ export const fetchUserProfileData = async (userId: string): Promise<UserProfile 
             .from('profiles')
             .select('full_name')
             .eq('user_id', userId)
-            .single()
+            .maybeSingle()
         ),
         createTimeoutPromise(5000)
       ]),
@@ -87,7 +87,7 @@ export const fetchUserProfileData = async (userId: string): Promise<UserProfile 
             .from('user_profiles')
             .select('full_name, preferred_name')
             .eq('user_id', userId)
-            .single()
+            .maybeSingle()
         ),
         createTimeoutPromise(5000)
       ])

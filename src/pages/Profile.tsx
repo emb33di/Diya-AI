@@ -18,6 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import OnboardingGuard from "@/components/OnboardingGuard";
+import { debugSupabase406, testCreateUserProfile } from "@/utils/debugSupabase";
 
 const profileSchema = z.object({
   // Personal Information
@@ -45,6 +46,11 @@ const profileSchema = z.object({
   class_12_half_yearly_score: z.number().min(0).max(100).optional(),
   undergraduate_cgpa: z.number().min(0).max(10).optional(),
   intended_majors: z.string().min(1, "Intended major is required"),
+  college_name: z.string().optional(),
+  college_graduation_year: z.number().min(1900).max(2030).optional(),
+  college_gpa: z.number().optional(),
+  test_type: z.enum(["GRE", "GMAT", "LSAT", "Not yet taken"]).optional(),
+  test_score: z.number().min(0).max(340).optional(),
   
   // College Preferences
   ideal_college_size: z.enum(["Small (< 2,000 students)", "Medium (2,000 - 15,000 students)", "Large (> 15,000 students)"]).optional(),
@@ -287,18 +293,79 @@ export default function Profile() {
   const [isOnboardingCompletionFlow, setIsOnboardingCompletionFlow] = useState(false);
   const [majorSearchQuery, setMajorSearchQuery] = useState("");
   const [showOtherMajorInput, setShowOtherMajorInput] = useState(false);
+  const [isCreatingProfile, setIsCreatingProfile] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // Note: We intentionally don't use local storage for auto-saving
+  // Users must manually save their changes to persist them
 
   const form = useForm<ProfileFormData>({
     // Remove zodResolver to prevent automatic validation
     // resolver: zodResolver(profileSchema),
     defaultValues: {
+      // Personal Information
+      full_name: "",
+      preferred_name: "",
+      email_address: "",
       country_code: "+91",
-      scholarship_interests: [],
+      phone_number: "",
+      applying_to: "Undergraduate Colleges" as const,
+      masters_field_of_focus: "",
+      
+      // Academic Profile
+      high_school_name: "",
+      high_school_graduation_year: undefined,
+      school_board: undefined,
+      year_of_study: undefined,
+      class_10_score: undefined,
+      class_11_score: undefined,
+      class_12_half_yearly_score: undefined,
       undergraduate_cgpa: undefined,
-      applying_to: undefined,
-      masters_field_of_focus: undefined,
+      intended_majors: "",
+      college_name: "",
+      college_graduation_year: undefined,
+      college_gpa: undefined,
+      test_type: "Not yet taken" as const,
+      test_score: undefined,
+      
+      // College Preferences
+      ideal_college_size: undefined,
+      ideal_college_setting: undefined,
+      geographic_preference: undefined,
+      must_haves: "",
+      deal_breakers: "",
+      
+      // Financial Information
+      college_budget: undefined,
+      financial_aid_importance: undefined,
+      scholarship_interests: [],
     },
   });
+
+  // Clear test score when "Not yet taken" is selected
+  useEffect(() => {
+    const testType = form.watch("test_type");
+    if (testType === "Not yet taken") {
+      form.setValue("test_score", undefined);
+    }
+  }, [form.watch("test_type")]);
+
+  // Watch for form changes to track unsaved changes
+  useEffect(() => {
+    const subscription = form.watch((data) => {
+      // Only mark as having changes if we have meaningful data (not just default values)
+      const hasData = Object.values(data).some(value => 
+        value !== undefined && value !== "" && value !== null && 
+        (Array.isArray(value) ? value.length > 0 : true)
+      );
+      
+      if (hasData) {
+        setHasUnsavedChanges(true);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [form]);
 
   // Function to clear error for a specific field when user starts typing
   const clearFieldError = (fieldName: keyof ProfileFormData) => {
@@ -334,35 +401,122 @@ export default function Profile() {
       localStorage.removeItem('onboarding_completion_flow');
     }
     
+    // Debug Supabase 406 errors (temporarily disabled)
+    // debugSupabase406().then(result => {
+    //   console.log('🔍 Supabase debug result:', result);
+    // });
+    
     loadProfile();
     loadSATScores();
     loadACTScores();
   }, []);
 
+  // Note: We intentionally don't load from local storage on mount
+  // Users must manually save their changes to persist them
+
+  // Warn user before leaving page with unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved changes. Click "Save Profile" to save your data before leaving.';
+        return 'You have unsaved changes. Click "Save Profile" to save your data before leaving.';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
   const loadProfile = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) {
+        console.error('❌ Auth error in loadProfile:', userError);
+        return;
+      }
+      if (!user) {
+        console.warn('⚠️ No user found in loadProfile - user might not be authenticated');
+        // Redirect to auth page if not authenticated
+        navigate('/auth');
+        return;
+      }
+      console.log('✅ User found in loadProfile:', user.id);
 
       // Load detailed profile from user_profiles table
-      const { data: detailedProfile, error: detailedError } = await supabase
+      let { data: detailedProfile, error: detailedError } = await supabase
         .from("user_profiles")
         .select("*")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
 
       // Load basic profile from profiles table
       const { data: basicProfile, error: basicError } = await supabase
         .from("profiles")
         .select("full_name, onboarding_complete")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
 
       if (detailedError && detailedError.code !== "PGRST116") {
-        console.error("Error loading detailed profile:", detailedError);
+        console.warn("Error loading detailed profile:", detailedError);
+        // Don't throw error, just log it and continue
       }
       if (basicError && basicError.code !== "PGRST116") {
-        console.error("Error loading basic profile:", basicError);
+        console.warn("Error loading basic profile:", basicError);
+        // Don't throw error, just log it and continue
+      }
+
+      // If no user_profiles record exists but we have basic profile data, create a minimal user_profiles record
+      // Multiple safeguards against duplicates:
+      // 1. Check if record already exists (!detailedProfile)
+      // 2. Check if we're already creating one (!isCreatingProfile)
+      // 3. Use upsert with onConflict to handle race conditions
+      // 4. Database has UNIQUE(user_id) constraint as final safeguard
+      if (!detailedProfile && basicProfile && !isCreatingProfile) {
+        console.log("Creating initial user_profiles record...");
+        setIsCreatingProfile(true);
+        
+        // Use upsert to prevent duplicates and handle race conditions
+        const { data: upsertedProfile, error: createError } = await supabase
+          .from("user_profiles")
+          .upsert({
+            user_id: user.id,
+            full_name: basicProfile.full_name || user.user_metadata?.full_name || "",
+            email_address: user.email || "",
+          }, {
+            onConflict: 'user_id'
+          })
+          .select()
+          .single();
+
+        if (createError) {
+          console.warn("Error creating initial user_profiles record:", createError);
+          // If it's a duplicate key error, that's actually fine - just reload the existing record
+          if (createError.code === '23505') { // Unique violation
+            console.log("Record already exists, reloading...");
+            const { data: existingProfile } = await supabase
+              .from("user_profiles")
+              .select("*")
+              .eq("user_id", user.id)
+              .maybeSingle();
+            
+            if (existingProfile) {
+              detailedProfile = existingProfile;
+            }
+          }
+        } else {
+          console.log("Initial user_profiles record created successfully:", upsertedProfile);
+          detailedProfile = upsertedProfile;
+          
+          // Show a subtle notification that the profile was initialized
+          toast({
+            title: "Profile initialized",
+            description: "Your profile has been set up. You can now fill out the details below.",
+            variant: "default",
+          });
+        }
+        
+        setIsCreatingProfile(false);
       }
 
       // Combine data from both tables, prioritizing user_profiles data
@@ -423,7 +577,49 @@ export default function Profile() {
           setShowOtherMajorInput(true);
         }
 
-        form.reset(formData);
+        // Sanitize form data to prevent controlled/uncontrolled input warnings
+        const sanitizedFormData = {
+          ...formData,
+          // Personal Information
+          full_name: formData.full_name ?? "",
+          preferred_name: formData.preferred_name ?? "",
+          email_address: formData.email_address ?? "",
+          phone_number: formData.phone_number ?? "",
+          country_code: formData.country_code ?? "+91",
+          applying_to: formData.applying_to ?? "Undergraduate Colleges",
+          masters_field_of_focus: formData.masters_field_of_focus ?? "",
+          
+          // Academic Profile
+          high_school_name: formData.high_school_name ?? "",
+          high_school_graduation_year: formData.high_school_graduation_year ?? undefined,
+          school_board: formData.school_board ?? undefined,
+          year_of_study: formData.year_of_study ?? undefined,
+          class_10_score: formData.class_10_score ?? undefined,
+          class_11_score: formData.class_11_score ?? undefined,
+          class_12_half_yearly_score: formData.class_12_half_yearly_score ?? undefined,
+          undergraduate_cgpa: formData.undergraduate_cgpa ?? undefined,
+          intended_majors: formData.intended_majors ?? "",
+          college_name: formData.college_name ?? "",
+          college_graduation_year: formData.college_graduation_year ?? undefined,
+          college_gpa: formData.college_gpa ?? undefined,
+          test_type: formData.test_type ?? "Not yet taken",
+          test_score: formData.test_score ?? undefined,
+          
+          // College Preferences
+          ideal_college_size: formData.ideal_college_size ?? undefined,
+          ideal_college_setting: formData.ideal_college_setting ?? undefined,
+          geographic_preference: formData.geographic_preference ?? undefined,
+          must_haves: formData.must_haves ?? "",
+          deal_breakers: formData.deal_breakers ?? "",
+          
+          // Financial Information
+          college_budget: formData.college_budget ?? undefined,
+          financial_aid_importance: formData.financial_aid_importance ?? undefined,
+          scholarship_interests: Array.isArray(formData.scholarship_interests) ? formData.scholarship_interests : [],
+        };
+
+        // Load server data directly (no local storage merging)
+        form.reset(sanitizedFormData);
       }
     } catch (error) {
       console.error("Error loading profile:", error);
@@ -433,15 +629,30 @@ export default function Profile() {
 
 
   const onSubmit = async (data: ProfileFormData) => {
+    console.log("onSubmit called with data:", data);
+    console.log("Supabase URL:", import.meta.env.VITE_SUPABASE_URL);
+    console.log("Supabase Key:", import.meta.env.VITE_SUPABASE_ANON_KEY ? "Present" : "Missing");
     try {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      console.log("User:", user);
+      if (!user) {
+        console.log("No user found, returning");
+        return;
+      }
 
-      // Custom validation based on year_of_study
+      console.log("Starting validation...");
       const errors: Record<string, string> = {};
       
       // Always required fields
+      console.log("Validating required fields:", {
+        full_name: data.full_name,
+        email_address: data.email_address,
+        country_code: data.country_code,
+        phone_number: data.phone_number,
+        applying_to: data.applying_to
+      });
+
       if (!data.full_name) errors.full_name = "Full name is required";
       if (!data.email_address) {
         errors.email_address = "Email address is required";
@@ -451,15 +662,43 @@ export default function Profile() {
       if (!data.country_code) errors.country_code = "Country code is required";
       if (!data.phone_number) errors.phone_number = "Phone number is required";
       if (!data.applying_to) errors.applying_to = "Please select what you're applying to";
-      if (!data.high_school_name) errors.high_school_name = "High school name is required";
-      if (!data.school_board) errors.school_board = "School board is required";
-      if (!data.year_of_study) errors.year_of_study = "Year of study is required";
+
+      // High school fields only required for Undergraduate applications
+      if (data.applying_to === "Undergraduate Colleges") {
+        if (!data.high_school_name) errors.high_school_name = "High school name is required";
+        if (!data.school_board) errors.school_board = "School board is required";
+        if (!data.year_of_study) errors.year_of_study = "Year of study is required";
+      }
       
       // Conditional validation based on applying_to
       if (data.applying_to === "Undergraduate Colleges") {
         if (!data.intended_majors) errors.intended_majors = "Intended major is required";
       } else if (data.applying_to === "Masters") {
         if (!data.masters_field_of_focus) errors.masters_field_of_focus = "Field of focus is required";
+        if (!data.college_name) errors.college_name = "College name is required";
+        if (!data.college_graduation_year) errors.college_graduation_year = "College graduation year is required";
+        if (!data.college_gpa) errors.college_gpa = "College GPA is required";
+        if (!data.test_type) errors.test_type = "Test type is required";
+        if (data.test_type && data.test_type !== "Not yet taken" && !data.test_score) {
+          errors.test_score = "Test score is required";
+        }
+      } else if (data.applying_to === "PhD") {
+        if (!data.masters_field_of_focus) errors.masters_field_of_focus = "Field of focus is required";
+        if (!data.college_name) errors.college_name = "College name is required";
+        if (!data.college_graduation_year) errors.college_graduation_year = "College graduation year is required";
+        if (!data.college_gpa) errors.college_gpa = "College GPA is required";
+        if (!data.test_type) errors.test_type = "Test type is required";
+        if (data.test_type && data.test_type !== "Not yet taken" && !data.test_score) {
+          errors.test_score = "Test score is required";
+        }
+      } else if (data.applying_to === "MBA" || data.applying_to === "LLM") {
+        if (!data.college_name) errors.college_name = "College name is required";
+        if (!data.college_graduation_year) errors.college_graduation_year = "College graduation year is required";
+        if (!data.college_gpa) errors.college_gpa = "College GPA is required";
+        if (!data.test_type) errors.test_type = "Test type is required";
+        if (data.test_type && data.test_type !== "Not yet taken" && !data.test_score) {
+          errors.test_score = "Test score is required";
+        }
       }
 
       // Conditional validation based on year_of_study
@@ -489,6 +728,7 @@ export default function Profile() {
 
       // If there are validation errors, set them and return
       if (Object.keys(errors).length > 0) {
+        console.log("Validation errors found:", errors);
         Object.keys(errors).forEach(field => {
           form.setError(field as keyof ProfileFormData, {
             type: "manual",
@@ -498,6 +738,7 @@ export default function Profile() {
         setLoading(false);
         return;
       }
+      console.log("Validation passed successfully");
 
       // Combine country code and phone number into a single field
       const combinedPhoneNumber = data.country_code && data.phone_number 
@@ -511,14 +752,50 @@ export default function Profile() {
         user_id: user.id,
       };
 
-      // Save detailed profile to user_profiles table
-      const { error: userProfileError } = await supabase
+      // Check if user_profiles record exists
+      console.log("Checking for existing profile...");
+      const { data: existingProfile, error: checkError } = await supabase
         .from("user_profiles")
-        .upsert(profileData);
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
 
-      if (userProfileError) {
-        throw userProfileError;
+      if (checkError) {
+        console.warn("Error checking existing profile:", checkError);
+        console.error("Check error details:", JSON.stringify(checkError, null, 2));
       }
+
+      console.log("Existing profile check result:", { existingProfile, checkError });
+
+      // Save detailed profile to user_profiles table
+      console.log("Attempting to save profile data:", JSON.stringify(profileData, null, 2));
+      let savedProfile;
+      try {
+        const { data, error: userProfileError } = await supabase
+          .from("user_profiles")
+          .upsert(profileData, {
+            onConflict: 'user_id'
+          })
+          .select();
+        
+        console.log("Upsert response:", { data, userProfileError });
+        savedProfile = data;
+
+        if (userProfileError) {
+          console.error("Detailed error from upsert:", {
+            code: userProfileError.code,
+            message: userProfileError.message,
+            details: userProfileError.details,
+            hint: userProfileError.hint
+          });
+          throw userProfileError;
+        }
+      } catch (error) {
+        console.error("Exception during upsert:", error);
+        throw error;
+      }
+
+      console.log("Profile saved successfully:", savedProfile);
 
       // Also update the basic profile table with full_name if it exists
       if (data.full_name) {
@@ -538,9 +815,14 @@ export default function Profile() {
       // Clear any existing form errors
       form.clearErrors();
 
+      // Clear unsaved changes flag after successful save
+      setHasUnsavedChanges(false);
+
       toast({
-        title: "Profile updated",
-        description: "Your profile has been saved successfully.",
+        title: existingProfile ? "Profile updated" : "Profile created",
+        description: existingProfile 
+          ? "Your profile has been updated successfully." 
+          : "Your profile has been created and saved successfully.",
       });
 
       // Trigger a profile completion refresh to update navbar state
@@ -566,6 +848,7 @@ export default function Profile() {
       }
     } catch (error) {
       console.error("Error saving profile:", error);
+      console.error("Error details:", JSON.stringify(error, null, 2));
       toast({
         title: "Error",
         description: "Failed to save profile. Please try again.",
@@ -758,7 +1041,7 @@ export default function Profile() {
         <p className="text-muted-foreground">
           {isOnboardingCompletionFlow 
             ? "Please review and confirm your profile information from your onboarding call. You can make any necessary changes before proceeding to your dashboard. Fields marked with * are required."
-            : "Complete your profile to get personalized college recommendations. Fields marked with * are required."
+            : "Complete your profile to start using Diya."
           }
         </p>
       </div>
@@ -904,8 +1187,8 @@ export default function Profile() {
                   )}
                 />
 
-                {/* Conditional Field: Masters Field of Focus */}
-                {form.watch("applying_to") === "Masters" && (
+                {/* Conditional Field: Field of Focus for Masters and PhD */}
+                {(form.watch("applying_to") === "Masters" || form.watch("applying_to") === "PhD") && (
                   <FormField
                     control={form.control}
                     name="masters_field_of_focus"
@@ -1065,293 +1348,424 @@ export default function Profile() {
               <CardDescription>Your academic background and achievements</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="high_school_name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>High School Name <span className="text-red-500">*</span></FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="high_school_graduation_year"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>High School Graduation Year</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="number" 
-                          {...field}
-                          onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+              {/* Conditional Academic Fields based on Applying To */}
+              {form.watch("applying_to") === "Undergraduate Colleges" ? (
+                <>
+                  {/* Undergraduate Fields */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="high_school_name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>High School Name <span className="text-red-500">*</span></FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="high_school_graduation_year"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>High School Graduation Year</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              {...field}
+                              onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="school_board"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>School Board <span className="text-red-500">*</span></FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select your school board" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="ICSE">ICSE</SelectItem>
-                          <SelectItem value="CBSE">CBSE</SelectItem>
-                          <SelectItem value="IB">IB</SelectItem>
-                          <SelectItem value="NIOS">NIOS</SelectItem>
-                          <SelectItem value="CISCE">CISCE</SelectItem>
-                          <SelectItem value="Other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="year_of_study"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Year of Study <span className="text-red-500">*</span></FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select your year of study" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="11th">11th</SelectItem>
-                          <SelectItem value="12th">12th</SelectItem>
-                          <SelectItem value="Graduate">Graduate</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="school_board"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>School Board <span className="text-red-500">*</span></FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select your school board" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="ICSE">ICSE</SelectItem>
+                              <SelectItem value="CBSE">CBSE</SelectItem>
+                              <SelectItem value="IB">IB</SelectItem>
+                              <SelectItem value="NIOS">NIOS</SelectItem>
+                              <SelectItem value="CISCE">CISCE</SelectItem>
+                              <SelectItem value="Other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="year_of_study"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Year of Study <span className="text-red-500">*</span></FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select your year of study" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="11th">11th</SelectItem>
+                              <SelectItem value="12th">12th</SelectItem>
+                              <SelectItem value="Graduate">Graduate</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
+                  {/* Conditional Academic Fields based on Year of Study */}
+                  {form.watch("year_of_study") === "Graduate" ? (
+                    <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="undergraduate_cgpa"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Undergraduate CGPA <span className="text-red-500">*</span></FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                step="0.01"
+                                min="0"
+                                max="10"
+                                {...field}
+                                onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                                placeholder="e.g., 8.5"
+                                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="class_10_score"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Class 10 Grade <span className="text-red-500">*</span></FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                step="0.01"
+                                min="0"
+                                max="100"
+                                {...field}
+                                onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                                placeholder="e.g., 85.5%"
+                                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="class_11_score"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Class 11 Grade <span className="text-red-500">*</span></FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                step="0.01"
+                                min="0"
+                                max="100"
+                                {...field}
+                                onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                                placeholder="e.g., 87.2%"
+                                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="class_12_half_yearly_score"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Class 12 Half-Yearly Grade <span className="text-red-500">*</span></FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                step="0.01"
+                                min="0"
+                                max="100"
+                                {...field}
+                                onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                                placeholder="e.g., 89.1%"
+                                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  )}
 
-              {/* Conditional Academic Fields based on Year of Study */}
-              {form.watch("year_of_study") === "Graduate" ? (
-                <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="undergraduate_cgpa"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Undergraduate CGPA <span className="text-red-500">*</span></FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            step="0.01"
-                            min="0"
-                            max="10"
-                            {...field}
-                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                            placeholder="e.g., 8.5"
-                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  {/* SAT Scores Section */}
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="text-lg font-semibold mb-2">SAT Scores</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-4">
+                        <div className="space-y-1">
+                          <label className="text-sm font-medium text-gray-700">SAT Score</label>
+                          <Input
+                            type="number"
+                            placeholder="Enter your SAT score"
+                            min="400"
+                            max="1600"
+                            value={newSatScore.score || ""}
+                            onChange={(e) => setNewSatScore({ ...newSatScore, score: parseInt(e.target.value) || 0 })}
                           />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-sm font-medium text-gray-700">Year Taken</label>
+                          <Input
+                            type="number"
+                            placeholder="Year you took the test"
+                            value={newSatScore.year_taken}
+                            onChange={(e) => setNewSatScore({ ...newSatScore, year_taken: parseInt(e.target.value) || new Date().getFullYear() })}
+                          />
+                        </div>
+                        <div className="flex items-end">
+                          <Button type="button" onClick={addSATScore} size="sm" className="w-full">
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add SAT Score
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {satScores.length > 0 && (
+                      <div className="space-y-2">
+                        {satScores.map((score) => (
+                          <div key={score.id} className="flex items-center justify-between p-3 bg-muted rounded-md">
+                            <span>SAT Score: {score.score} ({score.year_taken})</span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => score.id && deleteSATScore(score.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
                     )}
-                  />
-                </div>
+                  </div>
+
+                  {/* ACT Scores Section */}
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="text-lg font-semibold mb-2">ACT Scores</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-4">
+                        <div className="space-y-1">
+                          <label className="text-sm font-medium text-gray-700">ACT Score</label>
+                          <Input
+                            type="number"
+                            placeholder="Enter your ACT score"
+                            min="1"
+                            max="36"
+                            value={newActScore.score || ""}
+                            onChange={(e) => setNewActScore({ ...newActScore, score: parseInt(e.target.value) || 0 })}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-sm font-medium text-gray-700">Year Taken</label>
+                          <Input
+                            type="number"
+                            placeholder="Year you took the test"
+                            value={newActScore.year_taken}
+                            onChange={(e) => setNewActScore({ ...newActScore, year_taken: parseInt(e.target.value) || new Date().getFullYear() })}
+                          />
+                        </div>
+                        <div className="flex items-end">
+                          <Button type="button" onClick={addACTScore} size="sm" className="w-full">
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add ACT Score
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {actScores.length > 0 && (
+                      <div className="space-y-2">
+                        {actScores.map((score) => (
+                          <div key={score.id} className="flex items-center justify-between p-3 bg-muted rounded-md">
+                            <span>ACT Score: {score.score} ({score.year_taken})</span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => score.id && deleteACTScore(score.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="class_10_score"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Class 10 Grade <span className="text-red-500">*</span></FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            step="0.01"
-                            min="0"
-                            max="100"
-                            {...field}
-                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                            placeholder="e.g., 85.5%"
-                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="class_11_score"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Class 11 Grade <span className="text-red-500">*</span></FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            step="0.01"
-                            min="0"
-                            max="100"
-                            {...field}
-                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                            placeholder="e.g., 87.2%"
-                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="class_12_half_yearly_score"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Class 12 Half-Yearly Grade <span className="text-red-500">*</span></FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            step="0.01"
-                            min="0"
-                            max="100"
-                            {...field}
-                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                            placeholder="e.g., 89.1%"
-                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                <>
+                  {/* Graduate School Fields (MBA, LLM, PhD, Masters) */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="college_name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>College Name <span className="text-red-500">*</span></FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field} 
+                              placeholder="e.g., University of Delhi"
+                              onChange={(e) => {
+                                field.onChange(e);
+                                clearFieldError('college_name');
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="college_graduation_year"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>College Graduation Year <span className="text-red-500">*</span></FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              {...field}
+                              placeholder="e.g., 2023"
+                              onChange={(e) => {
+                                field.onChange(e.target.value ? parseInt(e.target.value) : undefined);
+                                clearFieldError('college_graduation_year');
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="college_gpa"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>College GPA <span className="text-red-500">*</span></FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              step="0.01"
+                              {...field}
+                              placeholder="e.g., 8.5"
+                              onChange={(e) => {
+                                field.onChange(e.target.value ? parseFloat(e.target.value) : undefined);
+                                clearFieldError('college_gpa');
+                              }}
+                              className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="test_type"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Test Type <span className="text-red-500">*</span></FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select test type" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="GRE">GRE</SelectItem>
+                              <SelectItem value="GMAT">GMAT</SelectItem>
+                              <SelectItem value="LSAT">LSAT</SelectItem>
+                              <SelectItem value="Not yet taken">Not yet taken</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="test_score"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>
+                            Test Score 
+                            {form.watch("test_type") !== "Not yet taken" && <span className="text-red-500">*</span>}
+                          </FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              {...field}
+                              placeholder={form.watch("test_type") === "Not yet taken" ? "Test not taken yet" : "Enter your test score"}
+                              disabled={form.watch("test_type") === "Not yet taken"}
+                              className={form.watch("test_type") === "Not yet taken" ? "bg-gray-100 text-gray-500" : ""}
+                              onChange={(e) => {
+                                if (form.watch("test_type") !== "Not yet taken") {
+                                  field.onChange(e.target.value ? parseInt(e.target.value) : undefined);
+                                  clearFieldError('test_score');
+                                }
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </>
               )}
-
-              {/* SAT Scores Section */}
-              <div className="space-y-4">
-                <div>
-                  <h4 className="text-lg font-semibold mb-2">SAT Scores</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-4">
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium text-gray-700">SAT Score</label>
-                      <Input
-                        type="number"
-                        placeholder="Enter your SAT score"
-                        min="400"
-                        max="1600"
-                        value={newSatScore.score || ""}
-                        onChange={(e) => setNewSatScore({ ...newSatScore, score: parseInt(e.target.value) || 0 })}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium text-gray-700">Year Taken</label>
-                      <Input
-                        type="number"
-                        placeholder="Year you took the test"
-                        value={newSatScore.year_taken}
-                        onChange={(e) => setNewSatScore({ ...newSatScore, year_taken: parseInt(e.target.value) || new Date().getFullYear() })}
-                      />
-                    </div>
-                    <div className="flex items-end">
-                      <Button type="button" onClick={addSATScore} size="sm" className="w-full">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add SAT Score
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-                
-                {satScores.length > 0 && (
-                  <div className="space-y-2">
-                    {satScores.map((score) => (
-                      <div key={score.id} className="flex items-center justify-between p-3 bg-muted rounded-md">
-                        <span>SAT Score: {score.score} ({score.year_taken})</span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => score.id && deleteSATScore(score.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* ACT Scores Section */}
-              <div className="space-y-4">
-                <div>
-                  <h4 className="text-lg font-semibold mb-2">ACT Scores</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-4">
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium text-gray-700">ACT Score</label>
-                      <Input
-                        type="number"
-                        placeholder="Enter your ACT score"
-                        min="1"
-                        max="36"
-                        value={newActScore.score || ""}
-                        onChange={(e) => setNewActScore({ ...newActScore, score: parseInt(e.target.value) || 0 })}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium text-gray-700">Year Taken</label>
-                      <Input
-                        type="number"
-                        placeholder="Year you took the test"
-                        value={newActScore.year_taken}
-                        onChange={(e) => setNewActScore({ ...newActScore, year_taken: parseInt(e.target.value) || new Date().getFullYear() })}
-                      />
-                    </div>
-                    <div className="flex items-end">
-                      <Button type="button" onClick={addACTScore} size="sm" className="w-full">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add ACT Score
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-                
-                {actScores.length > 0 && (
-                  <div className="space-y-2">
-                    {actScores.map((score) => (
-                      <div key={score.id} className="flex items-center justify-between p-3 bg-muted rounded-md">
-                        <span>ACT Score: {score.score} ({score.year_taken})</span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => score.id && deleteACTScore(score.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
             </CardContent>
           </Card>
 
@@ -1574,7 +1988,11 @@ export default function Profile() {
           </Card>
 
           <div className="flex justify-end">
-            <Button type="submit" disabled={loading}>
+            <Button 
+              type="submit" 
+              disabled={loading}
+              onClick={() => console.log("Save Profile button clicked")}
+            >
               {loading 
                 ? "Saving..." 
                 : isOnboardingCompletionFlow 

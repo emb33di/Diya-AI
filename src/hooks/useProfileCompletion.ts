@@ -19,7 +19,7 @@ const PROFILE_FIELDS = [
   { key: 'applying_to', category: 'Personal Information', weight: 1 },
   { key: 'masters_field_of_focus', category: 'Personal Information', weight: 1 },
   
-  // Academic Profile (7 fields)
+  // Academic Profile (12 fields)
   { key: 'high_school_name', category: 'Academic Profile', weight: 1 },
   { key: 'high_school_graduation_year', category: 'Academic Profile', weight: 1 },
   { key: 'school_board', category: 'Academic Profile', weight: 1 },
@@ -28,6 +28,11 @@ const PROFILE_FIELDS = [
   { key: 'class_12_half_yearly_score', category: 'Academic Profile', weight: 1 },
   { key: 'undergraduate_cgpa', category: 'Academic Profile', weight: 1 },
   { key: 'intended_majors', category: 'Personal Information', weight: 1 },
+  { key: 'college_name', category: 'Academic Profile', weight: 1 },
+  { key: 'college_graduation_year', category: 'Academic Profile', weight: 1 },
+  { key: 'college_gpa', category: 'Academic Profile', weight: 1 },
+  { key: 'test_type', category: 'Academic Profile', weight: 1 },
+  { key: 'test_score', category: 'Academic Profile', weight: 1 },
   
   // College Preferences (5 fields)
   { key: 'ideal_college_size', category: 'College Preferences', weight: 1 },
@@ -87,7 +92,7 @@ export const useProfileCompletion = () => {
             .from('user_profiles')
             .select('*')
             .eq('user_id', user.id)
-            .single(),
+            .maybeSingle(),
           createTimeoutPromise(5000)
         ]),
         Promise.race([
