@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useOnboardingStatus } from "@/hooks/useOnboardingStatus";
+import { useProfileCompletion } from "@/hooks/useProfileCompletion";
 import { getUserFirstName, fetchUserProfileData } from "@/utils/userNameUtils";
 import {
   DropdownMenu,
@@ -11,6 +12,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { LogOut } from "lucide-react";
 
 const Header = () => {
@@ -20,6 +27,25 @@ const Header = () => {
   const [loading, setLoading] = useState(true);
   const [userFirstName, setUserFirstName] = useState<string>('');
   const { onboardingCompleted, loading: onboardingLoading } = useOnboardingStatus();
+  const { completionPercentage, missingFields, loading: profileLoading } = useProfileCompletion();
+  
+  // Protected pages that require profile completion
+  const protectedPages = ['/dashboard', '/schools', '/resume', '/essays', '/deadlines'];
+  
+  // Function to handle navigation with profile completion check
+  const handleNavigation = (path: string, e: React.MouseEvent) => {
+    // If onboarding is not completed, let normal navigation happen (OnboardingGuard will handle it)
+    if (!onboardingCompleted) {
+      return;
+    }
+    
+    // If it's a protected page and profile is not complete, prevent navigation
+    if (protectedPages.includes(path) && completionPercentage < 100) {
+      e.preventDefault();
+      // Navigate to profile page instead
+      navigate('/profile');
+    }
+  };
   
   const fetchUserProfile = async (userId: string) => {
     try {
@@ -145,46 +171,121 @@ const Header = () => {
                 Onboarding
               </Link>
             )}
-            <Link 
-              to="/dashboard" 
-              className={`text-sm font-medium transition-colors hover:text-primary ${
-                isActive('/dashboard') ? 'text-primary' : 'text-muted-foreground'
-              }`}
-            >
-              Dashboard
-            </Link>
-            <Link 
-              to="/schools" 
-              className={`text-sm font-medium transition-colors hover:text-primary ${
-                isActive('/schools') ? 'text-primary' : 'text-muted-foreground'
-              }`}
-            >
-              Schools
-            </Link>
-            <Link 
-              to="/resume" 
-              className={`text-sm font-medium transition-colors hover:text-primary ${
-                isActive('/resume') ? 'text-primary' : 'text-muted-foreground'
-              }`}
-            >
-              Resume
-            </Link>
-            <Link 
-              to="/essays" 
-              className={`text-sm font-medium transition-colors hover:text-primary ${
-                isActive('/essays') ? 'text-primary' : 'text-muted-foreground'
-              }`}
-            >
-              Essays
-            </Link>
-            <Link 
-              to="/deadlines" 
-              className={`text-sm font-medium transition-colors hover:text-primary ${
-                isActive('/deadlines') ? 'text-primary' : 'text-muted-foreground'
-              }`}
-            >
-              Progress
-            </Link>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link 
+                    to="/dashboard" 
+                    onClick={(e) => handleNavigation('/dashboard', e)}
+                    className={`text-sm font-medium transition-colors hover:text-primary ${
+                      isActive('/dashboard') ? 'text-primary' : 'text-muted-foreground'
+                    } ${
+                      onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/dashboard')
+                        ? 'opacity-60 cursor-not-allowed' : ''
+                    }`}
+                  >
+                    Dashboard
+                  </Link>
+                </TooltipTrigger>
+                {onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/dashboard') && (
+                  <TooltipContent>
+                    <p>Please complete your Profile.</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link 
+                    to="/schools" 
+                    onClick={(e) => handleNavigation('/schools', e)}
+                    className={`text-sm font-medium transition-colors hover:text-primary ${
+                      isActive('/schools') ? 'text-primary' : 'text-muted-foreground'
+                    } ${
+                      onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/schools')
+                        ? 'opacity-60 cursor-not-allowed' : ''
+                    }`}
+                  >
+                    Schools
+                  </Link>
+                </TooltipTrigger>
+                {onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/schools') && (
+                  <TooltipContent>
+                    <p>Please complete your Profile.</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link 
+                    to="/resume" 
+                    onClick={(e) => handleNavigation('/resume', e)}
+                    className={`text-sm font-medium transition-colors hover:text-primary ${
+                      isActive('/resume') ? 'text-primary' : 'text-muted-foreground'
+                    } ${
+                      onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/resume')
+                        ? 'opacity-60 cursor-not-allowed' : ''
+                    }`}
+                  >
+                    Resume
+                  </Link>
+                </TooltipTrigger>
+                {onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/resume') && (
+                  <TooltipContent>
+                    <p>Please complete your Profile.</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link 
+                    to="/essays" 
+                    onClick={(e) => handleNavigation('/essays', e)}
+                    className={`text-sm font-medium transition-colors hover:text-primary ${
+                      isActive('/essays') ? 'text-primary' : 'text-muted-foreground'
+                    } ${
+                      onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/essays')
+                        ? 'opacity-60 cursor-not-allowed' : ''
+                    }`}
+                  >
+                    Essays
+                  </Link>
+                </TooltipTrigger>
+                {onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/essays') && (
+                  <TooltipContent>
+                    <p>Please complete your Profile.</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link 
+                    to="/deadlines" 
+                    onClick={(e) => handleNavigation('/deadlines', e)}
+                    className={`text-sm font-medium transition-colors hover:text-primary ${
+                      isActive('/deadlines') ? 'text-primary' : 'text-muted-foreground'
+                    } ${
+                      onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/deadlines')
+                        ? 'opacity-60 cursor-not-allowed' : ''
+                    }`}
+                  >
+                    Progress
+                  </Link>
+                </TooltipTrigger>
+                {onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/deadlines') && (
+                  <TooltipContent>
+                    <p>Please complete your Profile.</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
 
           </nav>
         )}

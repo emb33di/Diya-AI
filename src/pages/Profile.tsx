@@ -24,6 +24,7 @@ const profileSchema = z.object({
   full_name: z.string().min(1, "Full name is required"),
   preferred_name: z.string().optional(),
   email_address: z.string().email("Valid email address is required").min(1, "Email address is required"),
+  country_code: z.string().min(1, "Country code is required"),
   phone_number: z.string().min(1, "Phone number is required"),
   
   // Academic Profile
@@ -75,6 +76,97 @@ const scholarshipOptions = [
   "Ethnicity"
 ];
 
+const countryCodes = [
+  { code: "+91", country: "India", flag: "🇮🇳" },
+  { code: "+1", country: "United States/Canada", flag: "🇺🇸" },
+  { code: "+44", country: "United Kingdom", flag: "🇬🇧" },
+  { code: "+61", country: "Australia", flag: "🇦🇺" },
+  { code: "+49", country: "Germany", flag: "🇩🇪" },
+  { code: "+33", country: "France", flag: "🇫🇷" },
+  { code: "+81", country: "Japan", flag: "🇯🇵" },
+  { code: "+86", country: "China", flag: "🇨🇳" },
+  { code: "+82", country: "South Korea", flag: "🇰🇷" },
+  { code: "+65", country: "Singapore", flag: "🇸🇬" },
+  { code: "+971", country: "UAE", flag: "🇦🇪" },
+  { code: "+966", country: "Saudi Arabia", flag: "🇸🇦" },
+  { code: "+974", country: "Qatar", flag: "🇶🇦" },
+  { code: "+973", country: "Bahrain", flag: "🇧🇭" },
+  { code: "+965", country: "Kuwait", flag: "🇰🇼" },
+  { code: "+968", country: "Oman", flag: "🇴🇲" },
+  { code: "+60", country: "Malaysia", flag: "🇲🇾" },
+  { code: "+66", country: "Thailand", flag: "🇹🇭" },
+  { code: "+63", country: "Philippines", flag: "🇵🇭" },
+  { code: "+62", country: "Indonesia", flag: "🇮🇩" },
+  { code: "+84", country: "Vietnam", flag: "🇻🇳" },
+  { code: "+880", country: "Bangladesh", flag: "🇧🇩" },
+  { code: "+92", country: "Pakistan", flag: "🇵🇰" },
+  { code: "+94", country: "Sri Lanka", flag: "🇱🇰" },
+  { code: "+977", country: "Nepal", flag: "🇳🇵" },
+  { code: "+975", country: "Bhutan", flag: "🇧🇹" },
+  { code: "+93", country: "Afghanistan", flag: "🇦🇫" },
+  { code: "+98", country: "Iran", flag: "🇮🇷" },
+  { code: "+90", country: "Turkey", flag: "🇹🇷" },
+  { code: "+7", country: "Russia", flag: "🇷🇺" },
+  { code: "+380", country: "Ukraine", flag: "🇺🇦" },
+  { code: "+48", country: "Poland", flag: "🇵🇱" },
+  { code: "+39", country: "Italy", flag: "🇮🇹" },
+  { code: "+34", country: "Spain", flag: "🇪🇸" },
+  { code: "+31", country: "Netherlands", flag: "🇳🇱" },
+  { code: "+32", country: "Belgium", flag: "🇧🇪" },
+  { code: "+41", country: "Switzerland", flag: "🇨🇭" },
+  { code: "+43", country: "Austria", flag: "🇦🇹" },
+  { code: "+45", country: "Denmark", flag: "🇩🇰" },
+  { code: "+46", country: "Sweden", flag: "🇸🇪" },
+  { code: "+47", country: "Norway", flag: "🇳🇴" },
+  { code: "+358", country: "Finland", flag: "🇫🇮" },
+  { code: "+353", country: "Ireland", flag: "🇮🇪" },
+  { code: "+351", country: "Portugal", flag: "🇵🇹" },
+  { code: "+30", country: "Greece", flag: "🇬🇷" },
+  { code: "+359", country: "Bulgaria", flag: "🇧🇬" },
+  { code: "+40", country: "Romania", flag: "🇷🇴" },
+  { code: "+36", country: "Hungary", flag: "🇭🇺" },
+  { code: "+420", country: "Czech Republic", flag: "🇨🇿" },
+  { code: "+421", country: "Slovakia", flag: "🇸🇰" },
+  { code: "+385", country: "Croatia", flag: "🇭🇷" },
+  { code: "+386", country: "Slovenia", flag: "🇸🇮" },
+  { code: "+372", country: "Estonia", flag: "🇪🇪" },
+  { code: "+371", country: "Latvia", flag: "🇱🇻" },
+  { code: "+370", country: "Lithuania", flag: "🇱🇹" },
+  { code: "+55", country: "Brazil", flag: "🇧🇷" },
+  { code: "+54", country: "Argentina", flag: "🇦🇷" },
+  { code: "+56", country: "Chile", flag: "🇨🇱" },
+  { code: "+57", country: "Colombia", flag: "🇨🇴" },
+  { code: "+51", country: "Peru", flag: "🇵🇪" },
+  { code: "+58", country: "Venezuela", flag: "🇻🇪" },
+  { code: "+52", country: "Mexico", flag: "🇲🇽" },
+  { code: "+27", country: "South Africa", flag: "🇿🇦" },
+  { code: "+234", country: "Nigeria", flag: "🇳🇬" },
+  { code: "+254", country: "Kenya", flag: "🇰🇪" },
+  { code: "+20", country: "Egypt", flag: "🇪🇬" },
+  { code: "+212", country: "Morocco", flag: "🇲🇦" },
+  { code: "+213", country: "Algeria", flag: "🇩🇿" },
+  { code: "+216", country: "Tunisia", flag: "🇹🇳" },
+  { code: "+218", country: "Libya", flag: "🇱🇾" },
+  { code: "+249", country: "Sudan", flag: "🇸🇩" },
+  { code: "+251", country: "Ethiopia", flag: "🇪🇹" },
+  { code: "+255", country: "Tanzania", flag: "🇹🇿" },
+  { code: "+256", country: "Uganda", flag: "🇺🇬" },
+  { code: "+250", country: "Rwanda", flag: "🇷🇼" },
+  { code: "+257", country: "Burundi", flag: "🇧🇮" },
+  { code: "+258", country: "Mozambique", flag: "🇲🇿" },
+  { code: "+260", country: "Zambia", flag: "🇿🇲" },
+  { code: "+263", country: "Zimbabwe", flag: "🇿🇼" },
+  { code: "+264", country: "Namibia", flag: "🇳🇦" },
+  { code: "+267", country: "Botswana", flag: "🇧🇼" },
+  { code: "+268", country: "Swaziland", flag: "🇸🇿" },
+  { code: "+269", country: "Comoros", flag: "🇰🇲" },
+  { code: "+290", country: "Saint Helena", flag: "🇸🇭" },
+  { code: "+291", country: "Eritrea", flag: "🇪🇷" },
+  { code: "+297", country: "Aruba", flag: "🇦🇼" },
+  { code: "+298", country: "Faroe Islands", flag: "🇫🇴" },
+  { code: "+299", country: "Greenland", flag: "🇬🇱" },
+];
+
 export default function Profile() {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -89,6 +181,7 @@ export default function Profile() {
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
+      country_code: "+91",
       scholarship_interests: [],
     },
   });
@@ -157,6 +250,31 @@ export default function Profile() {
           formData.class_12_half_yearly_score = Number(combinedProfile.class_12_half_yearly_score);
         }
         
+        // Parse combined phone number back into country code and phone number
+        if (combinedProfile.phone_number) {
+          const phoneNumber = combinedProfile.phone_number;
+          // Check if phone number starts with a country code (starts with +)
+          if (phoneNumber.startsWith('+')) {
+            // Find the country code by matching against our country codes list
+            const matchingCountry = countryCodes.find(country => 
+              phoneNumber.startsWith(country.code)
+            );
+            
+            if (matchingCountry) {
+              formData.country_code = matchingCountry.code;
+              formData.phone_number = phoneNumber.substring(matchingCountry.code.length);
+            } else {
+              // If no matching country code found, default to +91 and treat entire number as phone
+              formData.country_code = "+91";
+              formData.phone_number = phoneNumber.substring(1); // Remove the + if present
+            }
+          } else {
+            // If no + prefix, assume it's just the phone number and default to +91
+            formData.country_code = "+91";
+            formData.phone_number = phoneNumber;
+          }
+        }
+        
         form.reset(formData);
       }
     } catch (error) {
@@ -172,9 +290,15 @@ export default function Profile() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Combine country code and phone number into a single field
+      const combinedPhoneNumber = data.country_code && data.phone_number 
+        ? `${data.country_code}${data.phone_number}` 
+        : data.phone_number;
+
       // Convert Date to string for database
       const profileData = {
         ...data,
+        phone_number: combinedPhoneNumber,
         user_id: user.id,
       };
 
@@ -476,19 +600,45 @@ export default function Profile() {
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="phone_number"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone Number <span className="text-red-500">*</span></FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="country_code"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Country Code <span className="text-red-500">*</span></FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select country code" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="max-h-60">
+                            {countryCodes.map((country) => (
+                              <SelectItem key={country.code} value={country.code}>
+                                {country.code}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="phone_number"
+                    render={({ field }) => (
+                      <FormItem className="md:col-span-2">
+                        <FormLabel>Phone Number <span className="text-red-500">*</span></FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Enter phone number" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </div>
 
             </CardContent>

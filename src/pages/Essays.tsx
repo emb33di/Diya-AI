@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/components/ui/use-toast";
 import BrainstormChat from "@/components/BrainstormChat";
 import OnboardingGuard from "@/components/OnboardingGuard";
+import ProfileCompletionGuard from "@/components/ProfileCompletionGuard";
 import { EssayPromptService, EssayPrompt, EssayPromptSelection } from "@/services/essayPromptService";
 import { supabase } from "@/integrations/supabase/client";
 import { getUserDisplayName, fetchUserProfileData } from "@/utils/userNameUtils";
@@ -729,6 +730,7 @@ const Essays = () => {
   };
   if (loading) {
     return <OnboardingGuard pageName="Essays">
+      <ProfileCompletionGuard pageName="Essays">
         <div className="min-h-screen bg-background">
           <main className="container mx-auto px-6 py-8">
             <div className="flex items-center justify-center h-64">
@@ -739,12 +741,14 @@ const Essays = () => {
             </div>
           </main>
         </div>
+      </ProfileCompletionGuard>
       </OnboardingGuard>;
   }
   // Mobile UI Render
   if (isMobile) {
     return <OnboardingGuard pageName="Essays">
-      <div className="min-h-screen bg-background">
+      <ProfileCompletionGuard pageName="Essays">
+        <div className="min-h-screen bg-background">
         <div className="bg-gradient-to-br from-background via-primary/5 to-secondary/10 min-h-screen">
           
           {/* Mobile Step 1: School Selection */}
@@ -999,11 +1003,13 @@ const Essays = () => {
           )}
         </div>
       </div>
+      </ProfileCompletionGuard>
     </OnboardingGuard>;
   }
 
   // Desktop UI (unchanged)
   return <OnboardingGuard pageName="Essays">
+    <ProfileCompletionGuard pageName="Essays">
       <div className="min-h-screen bg-background">
         <div className="bg-gradient-to-br from-background via-primary/5 to-secondary/10 p-4 min-h-screen">
         {/* Header */}
@@ -1358,6 +1364,7 @@ const Essays = () => {
         essayTitle={essayToDelete?.title || ''}
         isDeleting={deletingEssay}
       />
+    </ProfileCompletionGuard>
     </OnboardingGuard>;
 };
 export default Essays;

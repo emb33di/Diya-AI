@@ -10,10 +10,11 @@ interface ProfileCompletionData {
 
 // Define all the fields that should be completed for a full profile
 const PROFILE_FIELDS = [
-  // Personal Information (4 fields)
+  // Personal Information (5 fields)
   { key: 'full_name', category: 'Personal Information', weight: 1 },
   { key: 'preferred_name', category: 'Personal Information', weight: 1 },
   { key: 'email_address', category: 'Personal Information', weight: 1 },
+  { key: 'country_code', category: 'Personal Information', weight: 1 },
   { key: 'phone_number', category: 'Personal Information', weight: 1 },
   
   // Academic Profile (8 fields)

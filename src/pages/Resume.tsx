@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import OnboardingGuard from "@/components/OnboardingGuard";
+import ProfileCompletionGuard from "@/components/ProfileCompletionGuard";
 import { 
   Upload, 
   FileText, 
@@ -251,7 +252,8 @@ const Resume = () => {
 
   return (
     <OnboardingGuard pageName="Resume">
-      <div className="min-h-screen bg-background">
+      <ProfileCompletionGuard pageName="Resume">
+        <div className="min-h-screen bg-background">
         <div className="bg-gradient-to-br from-background via-primary/5 to-secondary/10 p-4 min-h-screen">
           <main className="container mx-auto px-6 py-8">
             {/* Header */}
@@ -573,6 +575,7 @@ const Resume = () => {
           </div>
         </DialogContent>
       </Dialog>
+      </ProfileCompletionGuard>
     </OnboardingGuard>
   );
 };

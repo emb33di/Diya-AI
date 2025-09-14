@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 import { Calendar, Clock, CheckCircle2, AlertCircle, Star, Target, Shield, Filter, RefreshCw, Loader2 } from "lucide-react";
 import OnboardingGuard from "@/components/OnboardingGuard";
+import ProfileCompletionGuard from "@/components/ProfileCompletionGuard";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   DeadlineService,
@@ -213,19 +214,22 @@ const Deadlines = () => {
   if (loading) {
     return (
       <OnboardingGuard pageName="Deadlines">
-        <div className="min-h-screen bg-background flex items-center justify-center">
+        <ProfileCompletionGuard pageName="Deadlines">
+          <div className="min-h-screen bg-background flex items-center justify-center">
           <div className="text-center">
             <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
             <p className="text-muted-foreground">Loading deadlines...</p>
           </div>
         </div>
+        </ProfileCompletionGuard>
       </OnboardingGuard>
     );
   }
 
   return (
     <OnboardingGuard pageName="Deadlines">
-      <div className="min-h-screen bg-background">
+      <ProfileCompletionGuard pageName="Deadlines">
+        <div className="min-h-screen bg-background">
         <div className="bg-gradient-to-br from-background via-primary/5 to-secondary/10 p-4 min-h-screen">
         <main className="container mx-auto px-6 py-8">
           <div className="flex items-center justify-between mb-8">
@@ -421,6 +425,7 @@ const Deadlines = () => {
         </main>
         </div>
       </div>
+      </ProfileCompletionGuard>
     </OnboardingGuard>
   );
 };
