@@ -9,8 +9,14 @@ from pathlib import Path
 from supabase import create_client
 
 # Supabase credentials
-SUPABASE_URL = "https://otlbklcvzbcbrnamgtsk.supabase.co"
-SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im90bGJrbGN2emJjYnJuYW1ndHNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQyMjAwOTEsImV4cCI6MjA2OTc5NjA5MX0.UFqtHseTnep26jJIYW8_gjawq5ffPzG4PaePTU5FO7M"
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+SUPABASE_URL = os.getenv('SUPABASE_URL')
+SUPABASE_PUBLISHABLE_KEY = os.getenv('SUPABASE_ANON_KEY')
 
 def upload_essay_prompts():
     """Upload essay prompts from JSON file to Supabase."""

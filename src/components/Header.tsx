@@ -183,7 +183,7 @@ const Header = () => {
                 isActive('/deadlines') ? 'text-primary' : 'text-muted-foreground'
               }`}
             >
-              Deadlines
+              Progress
             </Link>
 
           </nav>

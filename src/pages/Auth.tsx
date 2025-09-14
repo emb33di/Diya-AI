@@ -66,6 +66,7 @@ const Auth = () => {
           options: {
             emailRedirectTo: redirectUrl,
             data: {
+              full_name: `${firstName} ${lastName}`,
               first_name: firstName,
               last_name: lastName,
             },

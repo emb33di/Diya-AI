@@ -109,6 +109,27 @@ export const useAuth = () => {
           basicProfile = data;
         }
 
+        // If no basic profile exists, create one
+        if (!basicProfile) {
+          console.log('No profile found, creating one for user:', user.id);
+          const { data: newProfile, error: createError } = await supabase
+            .from('profiles')
+            .insert({
+              user_id: user.id,
+              full_name: user.user_metadata?.full_name || user.user_metadata?.first_name + ' ' + user.user_metadata?.last_name || null,
+              onboarding_complete: false
+            })
+            .select()
+            .single();
+          
+          if (createError) {
+            console.error('Error creating profile:', createError);
+          } else {
+            basicProfile = newProfile;
+            console.log('Profile created successfully:', newProfile);
+          }
+        }
+
         // Handle detailed profile result
         let detailedProfile = null;
         if (detailedProfileResult.status === 'fulfilled') {
