@@ -58,13 +58,6 @@ const Dashboard = () => {
   // Profile completion is now calculated by the useProfileCompletion hook
 
   const progressData = [
-    { 
-      label: "Profile Completion", 
-      value: profileCompletion, 
-      color: "bg-primary",
-      details: `${completedFields}/${totalFields} fields completed`,
-      showButton: profileCompletion < 100
-    },
     { label: "Essay Progress", value: essayProgress.progressPercentage, color: "bg-accent" },
     { label: "School Research", value: schoolCategories.reduce((acc, cat) => acc + cat.count, 0) > 0 ? 70 : 0, color: "bg-success" },
   ];

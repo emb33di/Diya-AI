@@ -10,47 +10,51 @@ interface ProfileCompletionData {
 
 // Define all the fields that should be completed for a full profile
 const PROFILE_FIELDS = [
-  // Personal Information (7 fields)
+  // Personal Information (6 required fields)
   { key: 'full_name', category: 'Personal Information', weight: 1 },
-  { key: 'preferred_name', category: 'Personal Information', weight: 1 },
   { key: 'email_address', category: 'Personal Information', weight: 1 },
   { key: 'country_code', category: 'Personal Information', weight: 1 },
   { key: 'phone_number', category: 'Personal Information', weight: 1 },
   { key: 'applying_to', category: 'Personal Information', weight: 1 },
-  { key: 'masters_field_of_focus', category: 'Personal Information', weight: 1 },
   
-  // Academic Profile (12 fields)
+  // Optional fields (not counted in completion)
+  { key: 'preferred_name', category: 'Personal Information', weight: 0 },
+  { key: 'masters_field_of_focus', category: 'Personal Information', weight: 0 },
+  
+  // Academic Profile (core required fields)
   { key: 'high_school_name', category: 'Academic Profile', weight: 1 },
   { key: 'high_school_graduation_year', category: 'Academic Profile', weight: 1 },
-  { key: 'school_board', category: 'Academic Profile', weight: 1 },
-  { key: 'class_10_score', category: 'Academic Profile', weight: 1 },
-  { key: 'class_11_score', category: 'Academic Profile', weight: 1 },
-  { key: 'class_12_half_yearly_score', category: 'Academic Profile', weight: 1 },
-  { key: 'undergraduate_cgpa', category: 'Academic Profile', weight: 1 },
   { key: 'intended_majors', category: 'Personal Information', weight: 1 },
-  { key: 'college_name', category: 'Academic Profile', weight: 1 },
-  { key: 'college_graduation_year', category: 'Academic Profile', weight: 1 },
-  { key: 'college_gpa', category: 'Academic Profile', weight: 1 },
-  { key: 'test_type', category: 'Academic Profile', weight: 1 },
-  { key: 'test_score', category: 'Academic Profile', weight: 1 },
   
-  // College Preferences (5 fields)
-  { key: 'ideal_college_size', category: 'College Preferences', weight: 1 },
-  { key: 'ideal_college_setting', category: 'College Preferences', weight: 1 },
-  { key: 'geographic_preference', category: 'College Preferences', weight: 1 },
-  { key: 'must_haves', category: 'College Preferences', weight: 1 },
-  { key: 'deal_breakers', category: 'College Preferences', weight: 1 },
+  // Optional academic fields
+  { key: 'school_board', category: 'Academic Profile', weight: 0 },
+  { key: 'class_10_score', category: 'Academic Profile', weight: 0 },
+  { key: 'class_11_score', category: 'Academic Profile', weight: 0 },
+  { key: 'class_12_half_yearly_score', category: 'Academic Profile', weight: 0 },
+  { key: 'undergraduate_cgpa', category: 'Academic Profile', weight: 0 },
+  { key: 'college_name', category: 'Academic Profile', weight: 0 },
+  { key: 'college_graduation_year', category: 'Academic Profile', weight: 0 },
+  { key: 'college_gpa', category: 'Academic Profile', weight: 0 },
+  { key: 'test_type', category: 'Academic Profile', weight: 0 },
+  { key: 'test_score', category: 'Academic Profile', weight: 0 },
   
-  // Financial Information (3 fields)
-  { key: 'college_budget', category: 'Financial Information', weight: 1 },
-  { key: 'financial_aid_importance', category: 'Financial Information', weight: 1 },
-  { key: 'scholarship_interests', category: 'Financial Information', weight: 1 },
+  // College Preferences (optional for basic completion)
+  { key: 'ideal_college_size', category: 'College Preferences', weight: 0 },
+  { key: 'ideal_college_setting', category: 'College Preferences', weight: 0 },
+  { key: 'geographic_preference', category: 'College Preferences', weight: 0 },
+  { key: 'must_haves', category: 'College Preferences', weight: 0 },
+  { key: 'deal_breakers', category: 'College Preferences', weight: 0 },
+  
+  // Financial Information (optional for basic completion)
+  { key: 'college_budget', category: 'Financial Information', weight: 0 },
+  { key: 'financial_aid_importance', category: 'Financial Information', weight: 0 },
+  { key: 'scholarship_interests', category: 'Financial Information', weight: 0 },
 ];
 
 // Additional fields that count towards completion (test scores, etc.)
 const ADDITIONAL_FIELDS = [
-  { key: 'has_sat_scores', category: 'Test Scores', weight: 0.5 },
-  { key: 'has_act_scores', category: 'Test Scores', weight: 0.5 },
+  { key: 'has_sat_scores', category: 'Test Scores', weight: 0 },
+  { key: 'has_act_scores', category: 'Test Scores', weight: 0 },
 ];
 
 export const useProfileCompletion = () => {
@@ -125,43 +129,74 @@ export const useProfileCompletion = () => {
       let totalWeight = 0;
       const missingFields: string[] = [];
 
+      // Get the application type to determine which fields are relevant
+      const applyingTo = profile?.applying_to;
+      
+      console.log("Profile data for completion calculation:", profile);
+      
       PROFILE_FIELDS.forEach(field => {
-        totalWeight += field.weight;
-        const value = profile?.[field.key as keyof typeof profile];
+        // Skip fields that aren't relevant to the user's application type
+        if (applyingTo === "Undergraduate Colleges") {
+          // For undergraduate, skip graduate-specific fields
+          if (['masters_field_of_focus', 'college_name', 'college_graduation_year', 'college_gpa', 'test_type', 'test_score'].includes(field.key)) {
+            return;
+          }
+        } else if (['MBA', 'Masters', 'PhD', 'LLM'].includes(applyingTo)) {
+          // For graduate, skip undergraduate-specific fields
+          if (['high_school_name', 'high_school_graduation_year', 'school_board', 'class_10_score', 'class_11_score', 'class_12_half_yearly_score', 'undergraduate_cgpa', 'intended_majors'].includes(field.key)) {
+            return;
+          }
+        }
         
-        // Check if field has a meaningful value
-        const isCompleted = value !== null && value !== undefined && value !== '' && 
-          (Array.isArray(value) ? value.length > 0 : true);
-        
-        if (isCompleted) {
-          completedFields += field.weight;
-        } else {
-          missingFields.push(field.key);
+        // Only count fields with weight > 0 towards completion
+        if (field.weight > 0) {
+          totalWeight += field.weight;
+          const value = profile?.[field.key as keyof typeof profile];
+          
+          // Check if field has a meaningful value
+          const isCompleted = value !== null && value !== undefined && value !== '' && 
+            (Array.isArray(value) ? value.length > 0 : true);
+          
+          if (isCompleted) {
+            completedFields += field.weight;
+          } else {
+            missingFields.push(field.key);
+          }
         }
       });
 
-      // Add completion for additional fields
-      ADDITIONAL_FIELDS.forEach(field => {
-        totalWeight += field.weight;
-        let isCompleted = false;
-        
-        switch (field.key) {
-          case 'has_sat_scores':
-            isCompleted = hasSatScores;
-            break;
-          case 'has_act_scores':
-            isCompleted = hasActScores;
-            break;
-        }
-        
-        if (isCompleted) {
-          completedFields += field.weight;
-        } else {
-          missingFields.push(field.key);
-        }
-      });
+      // Add completion for additional fields (only for undergraduate applicants)
+      if (applyingTo === "Undergraduate Colleges") {
+        ADDITIONAL_FIELDS.forEach(field => {
+          totalWeight += field.weight;
+          let isCompleted = false;
+          
+          switch (field.key) {
+            case 'has_sat_scores':
+              isCompleted = hasSatScores;
+              break;
+            case 'has_act_scores':
+              isCompleted = hasActScores;
+              break;
+          }
+          
+          if (isCompleted) {
+            completedFields += field.weight;
+          } else {
+            missingFields.push(field.key);
+          }
+        });
+      }
 
       const completionPercentage = Math.round((completedFields / totalWeight) * 100);
+
+      console.log("Profile completion calculation:", {
+        completedFields,
+        totalWeight,
+        completionPercentage,
+        missingFields,
+        applyingTo
+      });
 
       setCompletionData({
         completionPercentage,

@@ -284,7 +284,7 @@ const countryCodes = [
 export default function Profile() {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { markOnboardingCompleted } = useOnboardingStatus();
+  const { markOnboardingCompleted, onboardingCompleted } = useOnboardingStatus();
   const [loading, setLoading] = useState(false);
   const [satScores, setSatScores] = useState<TestScore[]>([]);
   const [actScores, setActScores] = useState<TestScore[]>([]);
@@ -295,9 +295,55 @@ export default function Profile() {
   const [showOtherMajorInput, setShowOtherMajorInput] = useState(false);
   const [isCreatingProfile, setIsCreatingProfile] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [profileMode, setProfileMode] = useState<'edit' | 'review'>('edit');
+  const [profileData, setProfileData] = useState<ProfileFormData | null>(null);
 
   // Note: We intentionally don't use local storage for auto-saving
   // Users must manually save their changes to persist them
+
+  // Handle profile completion flow
+  const handleProfileCompletion = async () => {
+    const formData = form.getValues();
+    
+    // Validate required fields based on application type
+    const errors: Record<string, string> = {};
+    
+    // Always required fields
+    if (!formData.full_name) errors.full_name = "Full name is required";
+    if (!formData.email_address) errors.email_address = "Email address is required";
+    if (!formData.country_code) errors.country_code = "Country code is required";
+    if (!formData.phone_number) errors.phone_number = "Phone number is required";
+    if (!formData.applying_to) errors.applying_to = "Please select what you're applying to";
+
+    // Application-specific validation
+    if (formData.applying_to === "Undergraduate Colleges") {
+      if (!formData.high_school_name) errors.high_school_name = "High school name is required";
+      if (!formData.school_board) errors.school_board = "School board is required";
+      if (!formData.year_of_study) errors.year_of_study = "Year of study is required";
+      if (!formData.intended_majors) errors.intended_majors = "Intended major is required";
+    } else if (['MBA', 'Masters', 'PhD', 'LLM'].includes(formData.applying_to)) {
+      if (!formData.college_name) errors.college_name = "College name is required";
+      if (!formData.college_graduation_year) errors.college_graduation_year = "College graduation year is required";
+      if (!formData.college_gpa) errors.college_gpa = "College GPA is required";
+      if (!formData.test_type) errors.test_type = "Test type is required";
+      if (formData.test_type !== "Not yet taken" && !formData.test_score) {
+        errors.test_score = "Test score is required";
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      Object.keys(errors).forEach(field => {
+        form.setError(field as keyof ProfileFormData, {
+          type: "manual",
+          message: errors[field]
+        });
+      });
+      return;
+    }
+
+    // Save profile and mark onboarding as complete
+    await onSubmit(formData);
+  };
 
   const form = useForm<ProfileFormData>({
     // Remove zodResolver to prevent automatic validation
@@ -411,6 +457,13 @@ export default function Profile() {
     loadACTScores();
   }, []);
 
+  // Check if user has completed onboarding but not profile
+  useEffect(() => {
+    if (onboardingCompleted && !profileData) {
+      setProfileMode('review');
+    }
+  }, [onboardingCompleted, profileData]);
+
   // Note: We intentionally don't load from local storage on mount
   // Users must manually save their changes to persist them
 
@@ -449,6 +502,7 @@ export default function Profile() {
         .select("*")
         .eq("user_id", user.id)
         .maybeSingle();
+
 
       // Load basic profile from profiles table
       const { data: basicProfile, error: basicError } = await supabase
@@ -620,6 +674,9 @@ export default function Profile() {
 
         // Load server data directly (no local storage merging)
         form.reset(sanitizedFormData);
+        setProfileData(sanitizedFormData);
+      } else {
+        console.log("No profile data found to load");
       }
     } catch (error) {
       console.error("Error loading profile:", error);
@@ -801,10 +858,8 @@ export default function Profile() {
       if (data.full_name) {
         const { error: basicProfileError } = await supabase
           .from("profiles")
-          .upsert({
-            user_id: user.id,
-            full_name: data.full_name,
-          });
+          .update({ full_name: data.full_name })
+          .eq('user_id', user.id);
 
         if (basicProfileError) {
           console.warn("Error updating basic profile:", basicProfileError);
@@ -827,21 +882,22 @@ export default function Profile() {
 
       // Trigger a profile completion refresh to update navbar state
       // This will cause the useProfileCompletion hook to recalculate completion percentage
+      console.log("Triggering profile completion refresh...");
       window.dispatchEvent(new CustomEvent('profileUpdated'));
 
-      // If this is the onboarding completion flow, mark onboarding as complete and navigate to dashboard
-      if (isOnboardingCompletionFlow) {
+      // If this is the onboarding completion flow or profile review, mark onboarding as complete and navigate to dashboard
+      if (isOnboardingCompletionFlow || profileMode === 'review') {
         const success = await markOnboardingCompleted();
         if (success) {
           toast({
-            title: "Onboarding Complete!",
+            title: "Saved Profile!",
             description: "Welcome to your dashboard! You can now access all features.",
           });
           navigate('/dashboard');
         } else {
           toast({
             title: "Error",
-            description: "Failed to complete onboarding. Please try again.",
+            description: "Failed to complete profile. Please try again.",
             variant: "destructive",
           });
         }
@@ -1036,18 +1092,24 @@ export default function Profile() {
         <div className="container mx-auto py-8 max-w-4xl">
       <div className="mb-8">
         <h1 className="text-3xl font-bold">
-          {isOnboardingCompletionFlow ? "Confirm Your Profile" : "Profile"}
+          {isOnboardingCompletionFlow 
+            ? "Complete Your Profile" 
+            : profileMode === 'review' 
+              ? "Review Your Profile" 
+              : "Profile"}
         </h1>
         <p className="text-muted-foreground">
           {isOnboardingCompletionFlow 
-            ? "Please review and confirm your profile information from your onboarding call. You can make any necessary changes before proceeding to your dashboard. Fields marked with * are required."
-            : "Complete your profile to start using Diya."
+            ? "Great! You've completed your onboarding call. Now let's finalize your profile with the information we gathered. Please review and complete any missing required fields marked with *."
+            : profileMode === 'review'
+              ? "Please review your profile information and make any necessary changes. Once you're satisfied, click 'Complete Profile' to unlock all features."
+              : "Complete your profile to start using Diya."
           }
         </p>
       </div>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <form key={profileData ? 'loaded' : 'loading'} onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           {/* Personal Information */}
           <Card>
             <CardHeader>
@@ -1991,13 +2053,21 @@ export default function Profile() {
             <Button 
               type="submit" 
               disabled={loading}
-              onClick={() => console.log("Save Profile button clicked")}
+              onClick={() => {
+                if (isOnboardingCompletionFlow || profileMode === 'review') {
+                  handleProfileCompletion();
+                } else {
+                  console.log("Save Profile button clicked");
+                }
+              }}
             >
               {loading 
                 ? "Saving..." 
                 : isOnboardingCompletionFlow 
-                  ? "Confirm & Complete Onboarding" 
-                  : "Save Profile"
+                  ? "Save Profile" 
+                  : profileMode === 'review'
+                    ? "Save Profile"
+                    : "Save Profile"
               }
             </Button>
           </div>
