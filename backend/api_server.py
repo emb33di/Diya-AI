@@ -20,6 +20,7 @@ sys.path.append('src')
 
 from src.school_fetcher_agent.school_fetcher_agent import SchoolFetcherAgent
 from src.conversation_resume_agent import ConversationResumeAgent
+from src.profile_extraction_agent import ProfileExtractionAgent
 # Deadline sync service removed - functionality will be reimplemented later
 
 # Initialize FastAPI app
@@ -100,6 +101,17 @@ class DeadlineSyncResponse(BaseModel):
     schools_updated: int
     total_schools: int
 
+class ProfileExtractionRequest(BaseModel):
+    conversation_id: str
+    user_id: str
+
+class ProfileExtractionResponse(BaseModel):
+    success: bool
+    message: str
+    conversation_id: str
+    user_id: str
+    profile_data: Optional[Dict[str, Any]] = None
+
 # Initialize the school fetcher agent
 try:
     agent = SchoolFetcherAgent()
@@ -107,6 +119,14 @@ try:
 except Exception as e:
     print(f"❌ Error initializing School Fetcher Agent: {e}")
     agent = None
+
+# Initialize the profile extraction agent
+try:
+    profile_agent = ProfileExtractionAgent()
+    print("✅ Profile Extraction Agent initialized successfully")
+except Exception as e:
+    print(f"❌ Error initializing Profile Extraction Agent: {e}")
+    profile_agent = None
 
 # Deadline sync service removed - functionality will be reimplemented later
 
@@ -242,6 +262,55 @@ async def get_user_recommendations(user_id: str):
         
     except Exception as e:
         print(f"❌ Error retrieving recommendations: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+@app.post("/api/profile-extraction", response_model=ProfileExtractionResponse)
+async def extract_profile_from_conversation(request: ProfileExtractionRequest):
+    """
+    Extract profile information from an onboarding conversation transcript
+    
+    Args:
+        request: Contains conversation_id and user_id
+        
+    Returns:
+        Extracted profile information saved to user_profiles table
+    """
+    if not profile_agent:
+        raise HTTPException(status_code=500, detail="Profile Extraction Agent not initialized")
+    
+    try:
+        print(f"🎯 Extracting profile from conversation: {request.conversation_id}")
+        print(f"👤 User ID: {request.user_id}")
+        
+        # Extract profile using the agent
+        profile_data = profile_agent.extract_profile_from_conversation(
+            request.conversation_id, 
+            request.user_id
+        )
+        
+        if not profile_data:
+            return ProfileExtractionResponse(
+                success=False,
+                message="Failed to extract profile information. Check if conversation exists and has a transcript.",
+                conversation_id=request.conversation_id,
+                user_id=request.user_id
+            )
+        
+        print(f"✅ Successfully extracted profile for user: {request.user_id}")
+        
+        return ProfileExtractionResponse(
+            success=True,
+            message="Profile information extracted and saved successfully",
+            conversation_id=request.conversation_id,
+            user_id=request.user_id,
+            profile_data=profile_data
+        )
+        
+    except ValueError as e:
+        # Handle specific errors like missing transcript
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        print(f"❌ Error extracting profile: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @app.get("/api/conversations/{conversation_id}/transcript")

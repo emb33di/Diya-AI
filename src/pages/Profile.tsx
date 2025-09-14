@@ -2,10 +2,11 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { format } from "date-fns";
-import { CalendarIcon, Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
+import { useOnboardingStatus } from "@/hooks/useOnboardingStatus";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,8 +14,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -22,25 +21,24 @@ import OnboardingGuard from "@/components/OnboardingGuard";
 
 const profileSchema = z.object({
   // Personal Information
-  full_name: z.string().optional(),
+  full_name: z.string().min(1, "Full name is required"),
   preferred_name: z.string().optional(),
-  date_of_birth: z.date().optional(),
-  email_address: z.string().email().optional().or(z.literal("")),
-  phone_number: z.string().optional(),
-  street_address: z.string().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
-  zip_code: z.string().optional(),
-  citizenship_status: z.enum(["U.S. Citizen", "Permanent Resident", "International Student", "Other"]).optional(),
-  ethnicity: z.enum(["American Indian or Alaska Native", "Asian", "Black or African American", "Hispanic or Latino", "Native Hawaiian or Other Pacific Islander", "White", "Two or More Races", "Other", "Prefer not to answer"]).optional(),
+  email_address: z.string().email("Valid email address is required").min(1, "Email address is required"),
+  phone_number: z.string().min(1, "Phone number is required"),
   
   // Academic Profile
-  high_school_name: z.string().optional(),
+  high_school_name: z.string().min(1, "High school name is required"),
   high_school_graduation_year: z.number().min(1900).max(2030).optional(),
-  gpa_unweighted: z.number().min(0).max(4).optional(),
-  gpa_weighted: z.number().min(0).max(5).optional(),
-  class_rank: z.string().optional(),
-  intended_majors: z.string().optional(),
+  school_board: z.enum(["ICSE", "CBSE", "IB", "NIOS", "CISCE", "Other"], {
+    required_error: "School board is required"
+  }),
+  year_of_study: z.enum(["11th", "12th", "Graduate"], {
+    required_error: "Year of study is required"
+  }),
+  class_10_score: z.number().min(0).max(100).optional(),
+  class_11_score: z.number().min(0).max(100).optional(),
+  class_12_half_yearly_score: z.number().min(0).max(100).optional(),
+  intended_majors: z.string().min(1, "Intended major is required"),
   secondary_major_minor_interests: z.string().optional(),
   career_interests: z.string().optional(),
   
@@ -59,12 +57,6 @@ const profileSchema = z.object({
 
 type ProfileFormData = z.infer<typeof profileSchema>;
 
-interface APIBExam {
-  id?: string;
-  exam_name: string;
-  score: number;
-  year_taken: number;
-}
 
 interface TestScore {
   id?: string;
@@ -85,13 +77,14 @@ const scholarshipOptions = [
 
 export default function Profile() {
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { markOnboardingCompleted } = useOnboardingStatus();
   const [loading, setLoading] = useState(false);
-  const [apIbExams, setApIbExams] = useState<APIBExam[]>([]);
   const [satScores, setSatScores] = useState<TestScore[]>([]);
   const [actScores, setActScores] = useState<TestScore[]>([]);
-  const [newExam, setNewExam] = useState<APIBExam>({ exam_name: "", score: 0, year_taken: new Date().getFullYear() });
   const [newSatScore, setNewSatScore] = useState<TestScore>({ score: 0, year_taken: new Date().getFullYear() });
   const [newActScore, setNewActScore] = useState<TestScore>({ score: 0, year_taken: new Date().getFullYear() });
+  const [isOnboardingCompletionFlow, setIsOnboardingCompletionFlow] = useState(false);
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
@@ -101,8 +94,15 @@ export default function Profile() {
   });
 
   useEffect(() => {
+    // Check if user is coming from onboarding completion
+    const onboardingFlow = localStorage.getItem('onboarding_completion_flow');
+    if (onboardingFlow === 'true') {
+      setIsOnboardingCompletionFlow(true);
+      // Clear the flag
+      localStorage.removeItem('onboarding_completion_flow');
+    }
+    
     loadProfile();
-    loadAPIBExams();
     loadSATScores();
     loadACTScores();
   }, []);
@@ -142,25 +142,97 @@ export default function Profile() {
       };
 
       if (combinedProfile) {
-        // Convert database values to form values
-        const formData: any = { ...combinedProfile };
-        if (combinedProfile.date_of_birth) {
-          formData.date_of_birth = new Date(combinedProfile.date_of_birth);
-        }
+      // Convert database values to form values
+      const formData: any = { ...combinedProfile };
         if (combinedProfile.high_school_graduation_year) {
           formData.high_school_graduation_year = Number(combinedProfile.high_school_graduation_year);
         }
-        if (combinedProfile.gpa_unweighted) {
-          formData.gpa_unweighted = Number(combinedProfile.gpa_unweighted);
+        if (combinedProfile.class_10_score) {
+          formData.class_10_score = Number(combinedProfile.class_10_score);
         }
-        if (combinedProfile.gpa_weighted) {
-          formData.gpa_weighted = Number(combinedProfile.gpa_weighted);
+        if (combinedProfile.class_11_score) {
+          formData.class_11_score = Number(combinedProfile.class_11_score);
+        }
+        if (combinedProfile.class_12_half_yearly_score) {
+          formData.class_12_half_yearly_score = Number(combinedProfile.class_12_half_yearly_score);
         }
         
         form.reset(formData);
       }
     } catch (error) {
       console.error("Error loading profile:", error);
+    }
+  };
+
+
+
+  const onSubmit = async (data: ProfileFormData) => {
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Convert Date to string for database
+      const profileData = {
+        ...data,
+        user_id: user.id,
+      };
+
+      // Save detailed profile to user_profiles table
+      const { error: userProfileError } = await supabase
+        .from("user_profiles")
+        .upsert(profileData);
+
+      if (userProfileError) {
+        throw userProfileError;
+      }
+
+      // Also update the basic profile table with full_name if it exists
+      if (data.full_name) {
+        const { error: basicProfileError } = await supabase
+          .from("profiles")
+          .upsert({
+            user_id: user.id,
+            full_name: data.full_name,
+          });
+
+        if (basicProfileError) {
+          console.warn("Error updating basic profile:", basicProfileError);
+          // Don't throw here as the main profile was saved successfully
+        }
+      }
+
+      toast({
+        title: "Profile updated",
+        description: "Your profile has been saved successfully.",
+      });
+
+      // If this is the onboarding completion flow, mark onboarding as complete and navigate to dashboard
+      if (isOnboardingCompletionFlow) {
+        const success = await markOnboardingCompleted();
+        if (success) {
+          toast({
+            title: "Onboarding Complete!",
+            description: "Welcome to your dashboard! You can now access all features.",
+          });
+          navigate('/dashboard');
+        } else {
+          toast({
+            title: "Error",
+            description: "Failed to complete onboarding. Please try again.",
+            variant: "destructive",
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error saving profile:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save profile. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -205,144 +277,6 @@ export default function Profile() {
       setActScores(scores || []);
     } catch (error) {
       console.error("Error loading ACT scores:", error);
-    }
-  };
-
-  const loadAPIBExams = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: exams, error } = await supabase
-        .from("ap_ib_exams")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("year_taken", { ascending: false });
-
-      if (error) {
-        console.error("Error loading exams:", error);
-        return;
-      }
-
-      setApIbExams(exams || []);
-    } catch (error) {
-      console.error("Error loading exams:", error);
-    }
-  };
-
-  const onSubmit = async (data: ProfileFormData) => {
-    try {
-      setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Convert Date to string for database
-      const profileData = {
-        ...data,
-        user_id: user.id,
-        date_of_birth: data.date_of_birth ? data.date_of_birth.toISOString().split('T')[0] : null,
-      };
-
-      // Save detailed profile to user_profiles table
-      const { error: userProfileError } = await supabase
-        .from("user_profiles")
-        .upsert(profileData);
-
-      if (userProfileError) {
-        throw userProfileError;
-      }
-
-      // Also update the basic profile table with full_name if it exists
-      if (data.full_name) {
-        const { error: basicProfileError } = await supabase
-          .from("profiles")
-          .upsert({
-            user_id: user.id,
-            full_name: data.full_name,
-          });
-
-        if (basicProfileError) {
-          console.warn("Error updating basic profile:", basicProfileError);
-          // Don't throw here as the main profile was saved successfully
-        }
-      }
-
-      toast({
-        title: "Profile updated",
-        description: "Your profile has been saved successfully.",
-      });
-    } catch (error) {
-      console.error("Error saving profile:", error);
-      toast({
-        title: "Error",
-        description: "Failed to save profile. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const addAPIBExam = async () => {
-    if (!newExam.exam_name || !newExam.score || !newExam.year_taken) {
-      toast({
-        title: "Error",
-        description: "Please fill in all exam fields.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { error } = await supabase
-        .from("ap_ib_exams")
-        .insert({
-          ...newExam,
-          user_id: user.id,
-        });
-
-      if (error) throw error;
-
-      setNewExam({ exam_name: "", score: 0, year_taken: new Date().getFullYear() });
-      loadAPIBExams();
-      toast({
-        title: "Exam added",
-        description: "AP/IB exam has been added successfully.",
-      });
-    } catch (error) {
-      console.error("Error adding exam:", error);
-      toast({
-        title: "Error",
-        description: "Failed to add exam. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const deleteAPIBExam = async (examId: string) => {
-    try {
-      const { error } = await supabase
-        .from("ap_ib_exams")
-        .delete()
-        .eq("id", examId);
-
-      if (error) throw error;
-
-      loadAPIBExams();
-      toast({
-        title: "Exam deleted",
-        description: "AP/IB exam has been deleted successfully.",
-      });
-    } catch (error) {
-      console.error("Error deleting exam:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete exam. Please try again.",
-        variant: "destructive",
-      });
     }
   };
 
@@ -478,9 +412,14 @@ export default function Profile() {
         <div className="bg-gradient-to-br from-background via-primary/5 to-secondary/10 p-4 min-h-screen">
         <div className="container mx-auto py-8 max-w-4xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">Profile</h1>
+        <h1 className="text-3xl font-bold">
+          {isOnboardingCompletionFlow ? "Confirm Your Profile" : "Profile"}
+        </h1>
         <p className="text-muted-foreground">
-          Complete your profile to get personalized college recommendations.
+          {isOnboardingCompletionFlow 
+            ? "Please review and confirm your profile information from your onboarding call. You can make any necessary changes before proceeding to your dashboard. Fields marked with * are required."
+            : "Complete your profile to get personalized college recommendations. Fields marked with * are required."
+          }
         </p>
       </div>
 
@@ -499,7 +438,7 @@ export default function Profile() {
                   name="full_name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Full Name</FormLabel>
+                      <FormLabel>Full Name <span className="text-red-500">*</span></FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
@@ -522,102 +461,6 @@ export default function Profile() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="date_of_birth"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Date of Birth</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                "pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP")
-                              ) : (
-                                <span>Pick a date</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            disabled={(date) =>
-                              date > new Date() || date < new Date("1900-01-01")
-                            }
-                            initialFocus
-                            className="p-3 pointer-events-auto"
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="citizenship_status"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Citizenship Status</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select citizenship status" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="U.S. Citizen">U.S. Citizen</SelectItem>
-                          <SelectItem value="Permanent Resident">Permanent Resident</SelectItem>
-                          <SelectItem value="International Student">International Student</SelectItem>
-                          <SelectItem value="Other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <FormField
-                control={form.control}
-                name="ethnicity"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Ethnicity</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select ethnicity" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="American Indian or Alaska Native">American Indian or Alaska Native</SelectItem>
-                        <SelectItem value="Asian">Asian</SelectItem>
-                        <SelectItem value="Black or African American">Black or African American</SelectItem>
-                        <SelectItem value="Hispanic or Latino">Hispanic or Latino</SelectItem>
-                        <SelectItem value="Native Hawaiian or Other Pacific Islander">Native Hawaiian or Other Pacific Islander</SelectItem>
-                        <SelectItem value="White">White</SelectItem>
-                        <SelectItem value="Two or More Races">Two or More Races</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
-                        <SelectItem value="Prefer not to answer">Prefer not to answer</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
@@ -625,7 +468,7 @@ export default function Profile() {
                   name="email_address"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email Address</FormLabel>
+                      <FormLabel>Email Address <span className="text-red-500">*</span></FormLabel>
                       <FormControl>
                         <Input type="email" {...field} />
                       </FormControl>
@@ -638,7 +481,7 @@ export default function Profile() {
                   name="phone_number"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Phone Number</FormLabel>
+                      <FormLabel>Phone Number <span className="text-red-500">*</span></FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
@@ -648,61 +491,6 @@ export default function Profile() {
                 />
               </div>
 
-              <FormField
-                control={form.control}
-                name="street_address"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Street Address</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <FormField
-                  control={form.control}
-                  name="city"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>City</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="state"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>State</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="zip_code"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Zip Code</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
             </CardContent>
           </Card>
 
@@ -719,7 +507,7 @@ export default function Profile() {
                   name="high_school_name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>High School Name</FormLabel>
+                      <FormLabel>High School Name <span className="text-red-500">*</span></FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
@@ -746,20 +534,74 @@ export default function Profile() {
                 />
               </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="school_board"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>School Board <span className="text-red-500">*</span></FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select your school board" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="ICSE">ICSE</SelectItem>
+                          <SelectItem value="CBSE">CBSE</SelectItem>
+                          <SelectItem value="IB">IB</SelectItem>
+                          <SelectItem value="NIOS">NIOS</SelectItem>
+                          <SelectItem value="CISCE">CISCE</SelectItem>
+                          <SelectItem value="Other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="year_of_study"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Year of Study <span className="text-red-500">*</span></FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select your year of study" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="11th">11th</SelectItem>
+                          <SelectItem value="12th">12th</SelectItem>
+                          <SelectItem value="Graduate">Graduate</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <FormField
                   control={form.control}
-                  name="gpa_unweighted"
+                  name="class_10_score"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>GPA (Unweighted)</FormLabel>
+                      <FormLabel>Class 10 Grade</FormLabel>
                       <FormControl>
                         <Input 
                           type="number" 
                           step="0.01"
-                          max="4.0"
+                          min="0"
+                          max="100"
                           {...field}
                           onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                          placeholder="e.g., 85.5%"
+                          className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
                       </FormControl>
                       <FormMessage />
@@ -768,17 +610,20 @@ export default function Profile() {
                 />
                 <FormField
                   control={form.control}
-                  name="gpa_weighted"
+                  name="class_11_score"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>GPA (Weighted)</FormLabel>
+                      <FormLabel>Class 11 Grade</FormLabel>
                       <FormControl>
                         <Input 
                           type="number" 
                           step="0.01"
-                          max="5.0"
+                          min="0"
+                          max="100"
                           {...field}
                           onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                          placeholder="e.g., 87.2%"
+                          className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
                       </FormControl>
                       <FormMessage />
@@ -787,12 +632,21 @@ export default function Profile() {
                 />
                 <FormField
                   control={form.control}
-                  name="class_rank"
+                  name="class_12_half_yearly_score"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Class Rank (if applicable)</FormLabel>
+                      <FormLabel>Class 12 Half-Yearly Grade</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="e.g., 15/300" />
+                        <Input 
+                          type="number" 
+                          step="0.01"
+                          min="0"
+                          max="100"
+                          {...field}
+                          onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                          placeholder="e.g., 89.1%"
+                          className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -890,62 +744,12 @@ export default function Profile() {
                 )}
               </div>
 
-              {/* AP/IB Exams Section */}
-              <div className="space-y-4">
-                <div>
-                  <h4 className="text-lg font-semibold mb-2">AP/IB Exams</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-4">
-                    <Input
-                      placeholder="Exam name"
-                      value={newExam.exam_name}
-                      onChange={(e) => setNewExam({ ...newExam, exam_name: e.target.value })}
-                    />
-                    <Input
-                      type="number"
-                      placeholder="Score"
-                      min="1"
-                      max="5"
-                      value={newExam.score || ""}
-                      onChange={(e) => setNewExam({ ...newExam, score: parseInt(e.target.value) || 0 })}
-                    />
-                    <Input
-                      type="number"
-                      placeholder="Year taken"
-                      value={newExam.year_taken}
-                      onChange={(e) => setNewExam({ ...newExam, year_taken: parseInt(e.target.value) || new Date().getFullYear() })}
-                    />
-                    <Button type="button" onClick={addAPIBExam} size="sm">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add
-                    </Button>
-                  </div>
-                </div>
-                
-                {apIbExams.length > 0 && (
-                  <div className="space-y-2">
-                    {apIbExams.map((exam) => (
-                      <div key={exam.id} className="flex items-center justify-between p-3 bg-muted rounded-md">
-                        <span>{exam.exam_name} - Score: {exam.score} ({exam.year_taken})</span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => exam.id && deleteAPIBExam(exam.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
               <FormField
                 control={form.control}
                 name="intended_majors"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Intended Major(s)</FormLabel>
+                    <FormLabel>Intended Major(s) <span className="text-red-500">*</span></FormLabel>
                     <FormControl>
                       <Textarea {...field} />
                     </FormControl>
@@ -1204,7 +1008,12 @@ export default function Profile() {
 
           <div className="flex justify-end">
             <Button type="submit" disabled={loading}>
-              {loading ? "Saving..." : "Save Profile"}
+              {loading 
+                ? "Saving..." 
+                : isOnboardingCompletionFlow 
+                  ? "Confirm & Complete Onboarding" 
+                  : "Save Profile"
+              }
             </Button>
           </div>
         </form>

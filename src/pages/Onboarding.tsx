@@ -56,7 +56,7 @@ const Onboarding = () => {
   const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null);
   const [sessionDuration, setSessionDuration] = useState(0);
   const [cumulativeSessionTime, setCumulativeSessionTime] = useState(0);
-  const [loadingMessages] = useState(["Retrieving conversation metadata", "Generating recommendations"]);
+  const [loadingMessages] = useState(["Retrieving conversation metadata", "Extracting profile information", "Generating recommendations"]);
   const [audioLevel, setAudioLevel] = useState(0);
   // Audio analysis refs
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -1079,7 +1079,54 @@ const Onboarding = () => {
           // Mark step 1 done
           setLoadingStep(1);
 
-          // Step 2: Generate school recommendations (real operation)
+          // Step 2: Extract profile information from conversation
+          try {
+            console.log('👤 Extracting profile information from conversation:', conversationId);
+            const profileResponse = await fetch('/api/profile-extraction', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                conversation_id: conversationId,
+                user_id: user.id
+              })
+            });
+            
+            if (profileResponse.ok) {
+              const profileData = await profileResponse.json();
+              if (profileData.success) {
+                console.log('✅ Profile information extracted successfully');
+                toast({
+                  title: "Profile Information Extracted",
+                  description: "Your profile information has been extracted from the conversation!"
+                });
+              } else {
+                console.log('❌ Profile extraction failed:', profileData.message);
+                toast({
+                  title: "Profile Extraction Warning",
+                  description: "Could not extract profile information. You can fill it manually.",
+                  variant: "destructive"
+                });
+              }
+            } else {
+              console.error('❌ Profile extraction API error:', profileResponse.status);
+              toast({
+                title: "Profile Extraction Error",
+                description: "Failed to extract profile information. You can fill it manually.",
+                variant: "destructive"
+              });
+            }
+          } catch (error) {
+            console.error('❌ Error extracting profile:', error);
+            toast({
+              title: "Profile Extraction Error",
+              description: "Failed to extract profile information. You can fill it manually.",
+              variant: "destructive"
+            });
+          }
+
+          // Step 3: Generate school recommendations (real operation)
           try {
             console.log('🎓 Generating school recommendations for conversation:', conversationId);
             const response = await SchoolRecommendationService.generateSchoolRecommendations(conversationId, user.id);
@@ -1106,8 +1153,8 @@ const Onboarding = () => {
             });
           }
 
-          // Mark step 2 done
-          setLoadingStep(2);
+          // Mark step 3 done
+          setLoadingStep(3);
 
                       // Mark onboarding as completed only for full sessions
             if (isSessionComplete) {
@@ -1117,9 +1164,12 @@ const Onboarding = () => {
               localStorage.removeItem('previous_onboarding_context');
               localStorage.removeItem('onboarding_remaining_time');
 
-            // Navigate to school list page after processing
+            // Set flag to indicate user is coming from onboarding completion
+            localStorage.setItem('onboarding_completion_flow', 'true');
+            
+            // Navigate to profile page for confirmation after processing
             setShowLoadingModal(false);
-            navigate('/schools');
+            navigate('/profile');
           } else {
             setShowLoadingModal(false);
           }

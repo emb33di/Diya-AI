@@ -10,25 +10,19 @@ interface ProfileCompletionData {
 
 // Define all the fields that should be completed for a full profile
 const PROFILE_FIELDS = [
-  // Personal Information (10 fields)
+  // Personal Information (4 fields)
   { key: 'full_name', category: 'Personal Information', weight: 1 },
   { key: 'preferred_name', category: 'Personal Information', weight: 1 },
-  { key: 'date_of_birth', category: 'Personal Information', weight: 1 },
   { key: 'email_address', category: 'Personal Information', weight: 1 },
   { key: 'phone_number', category: 'Personal Information', weight: 1 },
-  { key: 'street_address', category: 'Personal Information', weight: 1 },
-  { key: 'city', category: 'Personal Information', weight: 1 },
-  { key: 'state', category: 'Personal Information', weight: 1 },
-  { key: 'zip_code', category: 'Personal Information', weight: 1 },
-  { key: 'citizenship_status', category: 'Personal Information', weight: 1 },
-  { key: 'ethnicity', category: 'Personal Information', weight: 1 },
   
   // Academic Profile (8 fields)
   { key: 'high_school_name', category: 'Academic Profile', weight: 1 },
   { key: 'high_school_graduation_year', category: 'Academic Profile', weight: 1 },
-  { key: 'gpa_unweighted', category: 'Academic Profile', weight: 1 },
-  { key: 'gpa_weighted', category: 'Academic Profile', weight: 1 },
-  { key: 'class_rank', category: 'Academic Profile', weight: 1 },
+  { key: 'school_board', category: 'Academic Profile', weight: 1 },
+  { key: 'class_10_score', category: 'Academic Profile', weight: 1 },
+  { key: 'class_11_score', category: 'Academic Profile', weight: 1 },
+  { key: 'class_12_half_yearly_score', category: 'Academic Profile', weight: 1 },
   { key: 'intended_majors', category: 'Academic Profile', weight: 1 },
   { key: 'secondary_major_minor_interests', category: 'Academic Profile', weight: 1 },
   { key: 'career_interests', category: 'Academic Profile', weight: 1 },
@@ -50,7 +44,6 @@ const PROFILE_FIELDS = [
 const ADDITIONAL_FIELDS = [
   { key: 'has_sat_scores', category: 'Test Scores', weight: 0.5 },
   { key: 'has_act_scores', category: 'Test Scores', weight: 0.5 },
-  { key: 'has_ap_ib_exams', category: 'Test Scores', weight: 0.5 },
 ];
 
 export const useProfileCompletion = () => {
@@ -86,7 +79,7 @@ export const useProfileCompletion = () => {
       }
 
       // Load all data in parallel with timeouts
-      const [profileResult, satScoresResult, actScoresResult, apIbExamsResult] = await Promise.allSettled([
+      const [profileResult, satScoresResult, actScoresResult] = await Promise.allSettled([
         Promise.race([
           supabase
             .from('user_profiles')
@@ -101,10 +94,6 @@ export const useProfileCompletion = () => {
         ]),
         Promise.race([
           supabase.from('act_scores').select('id').eq('user_id', user.id),
-          createTimeoutPromise(3000)
-        ]),
-        Promise.race([
-          supabase.from('ap_ib_exams').select('id').eq('user_id', user.id),
           createTimeoutPromise(3000)
         ])
       ]);
@@ -123,7 +112,6 @@ export const useProfileCompletion = () => {
       // Handle test scores data
       const hasSatScores = satScoresResult.status === 'fulfilled' && (satScoresResult.value.data?.length || 0) > 0;
       const hasActScores = actScoresResult.status === 'fulfilled' && (actScoresResult.value.data?.length || 0) > 0;
-      const hasApIbExams = apIbExamsResult.status === 'fulfilled' && (apIbExamsResult.value.data?.length || 0) > 0;
 
       // Calculate completion for main profile fields
       let completedFields = 0;
@@ -156,9 +144,6 @@ export const useProfileCompletion = () => {
             break;
           case 'has_act_scores':
             isCompleted = hasActScores;
-            break;
-          case 'has_ap_ib_exams':
-            isCompleted = hasApIbExams;
             break;
         }
         
