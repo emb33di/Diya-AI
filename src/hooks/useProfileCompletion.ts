@@ -10,23 +10,24 @@ interface ProfileCompletionData {
 
 // Define all the fields that should be completed for a full profile
 const PROFILE_FIELDS = [
-  // Personal Information (5 fields)
+  // Personal Information (7 fields)
   { key: 'full_name', category: 'Personal Information', weight: 1 },
   { key: 'preferred_name', category: 'Personal Information', weight: 1 },
   { key: 'email_address', category: 'Personal Information', weight: 1 },
   { key: 'country_code', category: 'Personal Information', weight: 1 },
   { key: 'phone_number', category: 'Personal Information', weight: 1 },
+  { key: 'applying_to', category: 'Personal Information', weight: 1 },
+  { key: 'masters_field_of_focus', category: 'Personal Information', weight: 1 },
   
-  // Academic Profile (8 fields)
+  // Academic Profile (7 fields)
   { key: 'high_school_name', category: 'Academic Profile', weight: 1 },
   { key: 'high_school_graduation_year', category: 'Academic Profile', weight: 1 },
   { key: 'school_board', category: 'Academic Profile', weight: 1 },
   { key: 'class_10_score', category: 'Academic Profile', weight: 1 },
   { key: 'class_11_score', category: 'Academic Profile', weight: 1 },
   { key: 'class_12_half_yearly_score', category: 'Academic Profile', weight: 1 },
-  { key: 'intended_majors', category: 'Academic Profile', weight: 1 },
-  { key: 'secondary_major_minor_interests', category: 'Academic Profile', weight: 1 },
-  { key: 'career_interests', category: 'Academic Profile', weight: 1 },
+  { key: 'undergraduate_cgpa', category: 'Academic Profile', weight: 1 },
+  { key: 'intended_majors', category: 'Personal Information', weight: 1 },
   
   // College Preferences (5 fields)
   { key: 'ideal_college_size', category: 'College Preferences', weight: 1 },
@@ -181,9 +182,19 @@ export const useProfileCompletion = () => {
 
     runCalculation();
 
+    // Listen for profile updates to refresh completion data
+    const handleProfileUpdate = () => {
+      if (isMounted) {
+        runCalculation();
+      }
+    };
+
+    window.addEventListener('profileUpdated', handleProfileUpdate);
+
     // Cleanup function to prevent state updates after unmount
     return () => {
       isMounted = false;
+      window.removeEventListener('profileUpdated', handleProfileUpdate);
     };
   }, []);
 

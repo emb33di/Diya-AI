@@ -26,6 +26,10 @@ const profileSchema = z.object({
   email_address: z.string().email("Valid email address is required").min(1, "Email address is required"),
   country_code: z.string().min(1, "Country code is required"),
   phone_number: z.string().min(1, "Phone number is required"),
+  applying_to: z.enum(["Undergraduate Colleges", "MBA", "LLM", "PhD", "Masters"], {
+    required_error: "Please select what you're applying to"
+  }),
+  masters_field_of_focus: z.string().optional(),
   
   // Academic Profile
   high_school_name: z.string().min(1, "High school name is required"),
@@ -39,9 +43,8 @@ const profileSchema = z.object({
   class_10_score: z.number().min(0).max(100).optional(),
   class_11_score: z.number().min(0).max(100).optional(),
   class_12_half_yearly_score: z.number().min(0).max(100).optional(),
+  undergraduate_cgpa: z.number().min(0).max(10).optional(),
   intended_majors: z.string().min(1, "Intended major is required"),
-  secondary_major_minor_interests: z.string().optional(),
-  career_interests: z.string().optional(),
   
   // College Preferences
   ideal_college_size: z.enum(["Small (< 2,000 students)", "Medium (2,000 - 15,000 students)", "Large (> 15,000 students)"]).optional(),
@@ -74,6 +77,111 @@ const scholarshipOptions = [
   "First-generation",
   "Community Service",
   "Ethnicity"
+];
+
+const popularMajorsForIndianStudents = [
+  "Computer Science",
+  "Data Science",
+  "Artificial Intelligence",
+  "Machine Learning",
+  "Software Engineering",
+  "Information Technology",
+  "Cybersecurity",
+  "Computer Engineering",
+  "Electrical Engineering",
+  "Mechanical Engineering",
+  "Civil Engineering",
+  "Chemical Engineering",
+  "Aerospace Engineering",
+  "Biomedical Engineering",
+  "Industrial Engineering",
+  "Materials Science Engineering",
+  "Environmental Engineering",
+  "Petroleum Engineering",
+  "Nuclear Engineering",
+  "Robotics Engineering",
+  "Business Administration",
+  "Finance",
+  "Accounting",
+  "Marketing",
+  "Management",
+  "International Business",
+  "Economics",
+  "Supply Chain Management",
+  "Human Resources",
+  "Operations Research",
+  "Statistics",
+  "Mathematics",
+  "Applied Mathematics",
+  "Actuarial Science",
+  "Physics",
+  "Chemistry",
+  "Biology",
+  "Biochemistry",
+  "Biotechnology",
+  "Microbiology",
+  "Genetics",
+  "Neuroscience",
+  "Psychology",
+  "Public Health",
+  "Health Administration",
+  "Nursing",
+  "Pharmacy",
+  "Medicine (Pre-med)",
+  "Dentistry (Pre-dental)",
+  "Veterinary Science",
+  "Architecture",
+  "Urban Planning",
+  "Graphic Design",
+  "Digital Media",
+  "Film Studies",
+  "Journalism",
+  "Mass Communication",
+  "Public Relations",
+  "Advertising",
+  "English Literature",
+  "Creative Writing",
+  "Political Science",
+  "International Relations",
+  "Public Policy",
+  "Law (Pre-law)",
+  "Criminal Justice",
+  "Social Work",
+  "Sociology",
+  "Anthropology",
+  "History",
+  "Geography",
+  "Philosophy",
+  "Religious Studies",
+  "Education",
+  "Elementary Education",
+  "Secondary Education",
+  "Special Education",
+  "Educational Psychology",
+  "Agricultural Sciences",
+  "Food Science",
+  "Nutrition",
+  "Hospitality Management",
+  "Tourism Management",
+  "Sports Management",
+  "Exercise Science",
+  "Kinesiology",
+  "Music",
+  "Fine Arts",
+  "Art History",
+  "Theater",
+  "Dance",
+  "Fashion Design",
+  "Interior Design",
+  "Landscape Architecture",
+  "Environmental Science",
+  "Sustainability Studies",
+  "Renewable Energy",
+  "Geology",
+  "Meteorology",
+  "Astronomy",
+  "Astrophysics",
+  "Other"
 ];
 
 const countryCodes = [
@@ -177,14 +285,45 @@ export default function Profile() {
   const [newSatScore, setNewSatScore] = useState<TestScore>({ score: 0, year_taken: new Date().getFullYear() });
   const [newActScore, setNewActScore] = useState<TestScore>({ score: 0, year_taken: new Date().getFullYear() });
   const [isOnboardingCompletionFlow, setIsOnboardingCompletionFlow] = useState(false);
+  const [majorSearchQuery, setMajorSearchQuery] = useState("");
+  const [showOtherMajorInput, setShowOtherMajorInput] = useState(false);
 
   const form = useForm<ProfileFormData>({
-    resolver: zodResolver(profileSchema),
+    // Remove zodResolver to prevent automatic validation
+    // resolver: zodResolver(profileSchema),
     defaultValues: {
       country_code: "+91",
       scholarship_interests: [],
+      undergraduate_cgpa: undefined,
+      applying_to: undefined,
+      masters_field_of_focus: undefined,
     },
   });
+
+  // Function to clear error for a specific field when user starts typing
+  const clearFieldError = (fieldName: keyof ProfileFormData) => {
+    if (form.formState.errors[fieldName]) {
+      form.clearErrors(fieldName);
+    }
+  };
+
+  // Filter majors based on search query
+  const filteredMajors = popularMajorsForIndianStudents.filter(major =>
+    major.toLowerCase().includes(majorSearchQuery.toLowerCase())
+  );
+
+  // Handle major selection
+  const handleMajorSelection = (selectedMajor: string) => {
+    if (selectedMajor === "Other") {
+      setShowOtherMajorInput(true);
+      form.setValue("intended_majors", "");
+    } else {
+      setShowOtherMajorInput(false);
+      form.setValue("intended_majors", selectedMajor);
+      clearFieldError("intended_majors");
+    }
+    setMajorSearchQuery("");
+  };
 
   useEffect(() => {
     // Check if user is coming from onboarding completion
@@ -249,6 +388,9 @@ export default function Profile() {
         if (combinedProfile.class_12_half_yearly_score) {
           formData.class_12_half_yearly_score = Number(combinedProfile.class_12_half_yearly_score);
         }
+        if (combinedProfile.undergraduate_cgpa) {
+          formData.undergraduate_cgpa = Number(combinedProfile.undergraduate_cgpa);
+        }
         
         // Parse combined phone number back into country code and phone number
         if (combinedProfile.phone_number) {
@@ -275,6 +417,12 @@ export default function Profile() {
           }
         }
         
+        // Check if the intended_majors value is in our popular majors list
+        if (formData.intended_majors && !popularMajorsForIndianStudents.includes(formData.intended_majors)) {
+          // If it's not in the list, it's a custom "Other" major
+          setShowOtherMajorInput(true);
+        }
+
         form.reset(formData);
       }
     } catch (error) {
@@ -289,6 +437,67 @@ export default function Profile() {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+
+      // Custom validation based on year_of_study
+      const errors: Record<string, string> = {};
+      
+      // Always required fields
+      if (!data.full_name) errors.full_name = "Full name is required";
+      if (!data.email_address) {
+        errors.email_address = "Email address is required";
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email_address)) {
+        errors.email_address = "Please enter a valid email address";
+      }
+      if (!data.country_code) errors.country_code = "Country code is required";
+      if (!data.phone_number) errors.phone_number = "Phone number is required";
+      if (!data.applying_to) errors.applying_to = "Please select what you're applying to";
+      if (!data.high_school_name) errors.high_school_name = "High school name is required";
+      if (!data.school_board) errors.school_board = "School board is required";
+      if (!data.year_of_study) errors.year_of_study = "Year of study is required";
+      
+      // Conditional validation based on applying_to
+      if (data.applying_to === "Undergraduate Colleges") {
+        if (!data.intended_majors) errors.intended_majors = "Intended major is required";
+      } else if (data.applying_to === "Masters") {
+        if (!data.masters_field_of_focus) errors.masters_field_of_focus = "Field of focus is required";
+      }
+
+      // Conditional validation based on year_of_study
+      if (data.year_of_study === "Graduate") {
+        if (!data.undergraduate_cgpa) {
+          errors.undergraduate_cgpa = "Undergraduate CGPA is required";
+        } else if (data.undergraduate_cgpa < 0 || data.undergraduate_cgpa > 10) {
+          errors.undergraduate_cgpa = "CGPA must be between 0 and 10";
+        }
+      } else if (data.year_of_study === "11th" || data.year_of_study === "12th") {
+        if (!data.class_10_score) {
+          errors.class_10_score = "Class 10 Grade is required";
+        } else if (data.class_10_score < 0 || data.class_10_score > 100) {
+          errors.class_10_score = "Grade must be between 0 and 100";
+        }
+        if (!data.class_11_score) {
+          errors.class_11_score = "Class 11 Grade is required";
+        } else if (data.class_11_score < 0 || data.class_11_score > 100) {
+          errors.class_11_score = "Grade must be between 0 and 100";
+        }
+        if (!data.class_12_half_yearly_score) {
+          errors.class_12_half_yearly_score = "Class 12 Half-Yearly Grade is required";
+        } else if (data.class_12_half_yearly_score < 0 || data.class_12_half_yearly_score > 100) {
+          errors.class_12_half_yearly_score = "Grade must be between 0 and 100";
+        }
+      }
+
+      // If there are validation errors, set them and return
+      if (Object.keys(errors).length > 0) {
+        Object.keys(errors).forEach(field => {
+          form.setError(field as keyof ProfileFormData, {
+            type: "manual",
+            message: errors[field]
+          });
+        });
+        setLoading(false);
+        return;
+      }
 
       // Combine country code and phone number into a single field
       const combinedPhoneNumber = data.country_code && data.phone_number 
@@ -326,10 +535,17 @@ export default function Profile() {
         }
       }
 
+      // Clear any existing form errors
+      form.clearErrors();
+
       toast({
         title: "Profile updated",
         description: "Your profile has been saved successfully.",
       });
+
+      // Trigger a profile completion refresh to update navbar state
+      // This will cause the useProfileCompletion hook to recalculate completion percentage
+      window.dispatchEvent(new CustomEvent('profileUpdated'));
 
       // If this is the onboarding completion flow, mark onboarding as complete and navigate to dashboard
       if (isOnboardingCompletionFlow) {
@@ -564,7 +780,13 @@ export default function Profile() {
                     <FormItem>
                       <FormLabel>Full Name <span className="text-red-500">*</span></FormLabel>
                       <FormControl>
-                        <Input {...field} />
+                        <Input 
+                          {...field} 
+                          onChange={(e) => {
+                            field.onChange(e);
+                            clearFieldError('full_name');
+                          }}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -594,7 +816,14 @@ export default function Profile() {
                     <FormItem>
                       <FormLabel>Email Address <span className="text-red-500">*</span></FormLabel>
                       <FormControl>
-                        <Input type="email" {...field} />
+                        <Input 
+                          type="email" 
+                          {...field} 
+                          onChange={(e) => {
+                            field.onChange(e);
+                            clearFieldError('email_address');
+                          }}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -632,13 +861,198 @@ export default function Profile() {
                       <FormItem className="md:col-span-2">
                         <FormLabel>Phone Number <span className="text-red-500">*</span></FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="Enter phone number" />
+                          <Input 
+                            {...field} 
+                            placeholder="Enter phone number"
+                            onChange={(e) => {
+                              field.onChange(e);
+                              clearFieldError('phone_number');
+                            }}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
+              </div>
+
+              {/* Applying To Section */}
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="applying_to"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Applying To <span className="text-red-500">*</span></FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select what you're applying to" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Undergraduate Colleges">Undergraduate Colleges</SelectItem>
+                          <SelectItem value="MBA">MBA</SelectItem>
+                          <SelectItem value="LLM">LLM</SelectItem>
+                          <SelectItem value="PhD">PhD</SelectItem>
+                          <SelectItem value="Masters">Masters</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Conditional Field: Masters Field of Focus */}
+                {form.watch("applying_to") === "Masters" && (
+                  <FormField
+                    control={form.control}
+                    name="masters_field_of_focus"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Field of Focus <span className="text-red-500">*</span></FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            placeholder="e.g., Computer Science, Business Analytics, Data Science"
+                            onChange={(e) => {
+                              field.onChange(e);
+                              clearFieldError('masters_field_of_focus');
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                {/* Conditional Field: Intended Majors (only for Undergraduate Colleges) */}
+                {form.watch("applying_to") === "Undergraduate Colleges" && (
+                  <FormField
+                    control={form.control}
+                    name="intended_majors"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Intended Major(s) <span className="text-red-500">*</span></FormLabel>
+                        <FormControl>
+                          <div className="space-y-2">
+                            {!showOtherMajorInput ? (
+                              <div className="relative">
+                                <Input
+                                  placeholder="Search for your intended major..."
+                                  value={field.value || majorSearchQuery}
+                                  onChange={(e) => {
+                                    setMajorSearchQuery(e.target.value);
+                                    if (!e.target.value) {
+                                      field.onChange("");
+                                    }
+                                  }}
+                                  onFocus={() => {
+                                    if (field.value) {
+                                      setMajorSearchQuery(field.value);
+                                    }
+                                  }}
+                                />
+                                {majorSearchQuery && filteredMajors.length > 0 && (
+                                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                    {filteredMajors.map((major) => (
+                                      <div
+                                        key={major}
+                                        className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                                        onClick={() => handleMajorSelection(major)}
+                                      >
+                                        {major}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                {majorSearchQuery && filteredMajors.length === 0 && (
+                                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+                                    <div className="px-3 py-2 text-sm text-gray-500">
+                                      No majors found. Try selecting "Other" below.
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <Input
+                                placeholder="Enter your custom major..."
+                                {...field}
+                                onChange={(e) => {
+                                  field.onChange(e);
+                                  clearFieldError("intended_majors");
+                                }}
+                              />
+                            )}
+                            {field.value && !showOtherMajorInput && (
+                              <div className="flex items-center justify-between p-2 bg-green-50 border border-green-200 rounded-md">
+                                <span className="text-sm text-green-800">Selected: {field.value}</span>
+                                <button
+                                  type="button"
+                                  className="text-xs text-green-600 hover:text-green-800 underline"
+                                  onClick={() => {
+                                    field.onChange("");
+                                    setMajorSearchQuery("");
+                                  }}
+                                >
+                                  Clear
+                                </button>
+                              </div>
+                            )}
+                            {!showOtherMajorInput && (
+                              <div className="text-sm">
+                                <span className="text-gray-600">Popular majors: </span>
+                                <button
+                                  type="button"
+                                  className="text-blue-600 hover:text-blue-800 underline mr-2"
+                                  onClick={() => handleMajorSelection("Computer Science")}
+                                >
+                                  Computer Science
+                                </button>
+                                <button
+                                  type="button"
+                                  className="text-blue-600 hover:text-blue-800 underline mr-2"
+                                  onClick={() => handleMajorSelection("Business Administration")}
+                                >
+                                  Business
+                                </button>
+                                <button
+                                  type="button"
+                                  className="text-blue-600 hover:text-blue-800 underline mr-2"
+                                  onClick={() => handleMajorSelection("Engineering")}
+                                >
+                                  Engineering
+                                </button>
+                                <button
+                                  type="button"
+                                  className="text-blue-600 hover:text-blue-800 underline mr-2"
+                                  onClick={() => handleMajorSelection("Other")}
+                                >
+                                  Other
+                                </button>
+                              </div>
+                            )}
+                            {showOtherMajorInput && (
+                              <button
+                                type="button"
+                                className="text-sm text-blue-600 hover:text-blue-800 underline"
+                                onClick={() => {
+                                  setShowOtherMajorInput(false);
+                                  form.setValue("intended_majors", "");
+                                }}
+                              >
+                                ← Back to popular majors
+                              </button>
+                            )}
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
               </div>
 
             </CardContent>
@@ -735,98 +1149,134 @@ export default function Profile() {
               </div>
 
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <FormField
-                  control={form.control}
-                  name="class_10_score"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Class 10 Grade</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="number" 
-                          step="0.01"
-                          min="0"
-                          max="100"
-                          {...field}
-                          onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                          placeholder="e.g., 85.5%"
-                          className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="class_11_score"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Class 11 Grade</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="number" 
-                          step="0.01"
-                          min="0"
-                          max="100"
-                          {...field}
-                          onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                          placeholder="e.g., 87.2%"
-                          className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="class_12_half_yearly_score"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Class 12 Half-Yearly Grade</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="number" 
-                          step="0.01"
-                          min="0"
-                          max="100"
-                          {...field}
-                          onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                          placeholder="e.g., 89.1%"
-                          className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+              {/* Conditional Academic Fields based on Year of Study */}
+              {form.watch("year_of_study") === "Graduate" ? (
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="undergraduate_cgpa"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Undergraduate CGPA <span className="text-red-500">*</span></FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            step="0.01"
+                            min="0"
+                            max="10"
+                            {...field}
+                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                            placeholder="e.g., 8.5"
+                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="class_10_score"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Class 10 Grade <span className="text-red-500">*</span></FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            step="0.01"
+                            min="0"
+                            max="100"
+                            {...field}
+                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                            placeholder="e.g., 85.5%"
+                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="class_11_score"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Class 11 Grade <span className="text-red-500">*</span></FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            step="0.01"
+                            min="0"
+                            max="100"
+                            {...field}
+                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                            placeholder="e.g., 87.2%"
+                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="class_12_half_yearly_score"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Class 12 Half-Yearly Grade <span className="text-red-500">*</span></FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            step="0.01"
+                            min="0"
+                            max="100"
+                            {...field}
+                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                            placeholder="e.g., 89.1%"
+                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
 
               {/* SAT Scores Section */}
               <div className="space-y-4">
                 <div>
                   <h4 className="text-lg font-semibold mb-2">SAT Scores</h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-4">
-                    <Input
-                      type="number"
-                      placeholder="SAT Score"
-                      min="400"
-                      max="1600"
-                      value={newSatScore.score || ""}
-                      onChange={(e) => setNewSatScore({ ...newSatScore, score: parseInt(e.target.value) || 0 })}
-                    />
-                    <Input
-                      type="number"
-                      placeholder="Year taken"
-                      value={newSatScore.year_taken}
-                      onChange={(e) => setNewSatScore({ ...newSatScore, year_taken: parseInt(e.target.value) || new Date().getFullYear() })}
-                    />
-                    <Button type="button" onClick={addSATScore} size="sm">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add SAT Score
-                    </Button>
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium text-gray-700">SAT Score</label>
+                      <Input
+                        type="number"
+                        placeholder="Enter your SAT score"
+                        min="400"
+                        max="1600"
+                        value={newSatScore.score || ""}
+                        onChange={(e) => setNewSatScore({ ...newSatScore, score: parseInt(e.target.value) || 0 })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium text-gray-700">Year Taken</label>
+                      <Input
+                        type="number"
+                        placeholder="Year you took the test"
+                        value={newSatScore.year_taken}
+                        onChange={(e) => setNewSatScore({ ...newSatScore, year_taken: parseInt(e.target.value) || new Date().getFullYear() })}
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <Button type="button" onClick={addSATScore} size="sm" className="w-full">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add SAT Score
+                      </Button>
+                    </div>
                   </div>
                 </div>
                 
@@ -854,24 +1304,32 @@ export default function Profile() {
                 <div>
                   <h4 className="text-lg font-semibold mb-2">ACT Scores</h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-4">
-                    <Input
-                      type="number"
-                      placeholder="ACT Score"
-                      min="1"
-                      max="36"
-                      value={newActScore.score || ""}
-                      onChange={(e) => setNewActScore({ ...newActScore, score: parseInt(e.target.value) || 0 })}
-                    />
-                    <Input
-                      type="number"
-                      placeholder="Year taken"
-                      value={newActScore.year_taken}
-                      onChange={(e) => setNewActScore({ ...newActScore, year_taken: parseInt(e.target.value) || new Date().getFullYear() })}
-                    />
-                    <Button type="button" onClick={addACTScore} size="sm">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add ACT Score
-                    </Button>
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium text-gray-700">ACT Score</label>
+                      <Input
+                        type="number"
+                        placeholder="Enter your ACT score"
+                        min="1"
+                        max="36"
+                        value={newActScore.score || ""}
+                        onChange={(e) => setNewActScore({ ...newActScore, score: parseInt(e.target.value) || 0 })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium text-gray-700">Year Taken</label>
+                      <Input
+                        type="number"
+                        placeholder="Year you took the test"
+                        value={newActScore.year_taken}
+                        onChange={(e) => setNewActScore({ ...newActScore, year_taken: parseInt(e.target.value) || new Date().getFullYear() })}
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <Button type="button" onClick={addACTScore} size="sm" className="w-full">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add ACT Score
+                      </Button>
+                    </div>
                   </div>
                 </div>
                 
@@ -894,47 +1352,6 @@ export default function Profile() {
                 )}
               </div>
 
-              <FormField
-                control={form.control}
-                name="intended_majors"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Intended Major(s) <span className="text-red-500">*</span></FormLabel>
-                    <FormControl>
-                      <Textarea {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="secondary_major_minor_interests"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Secondary Major/Minor Interests</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="career_interests"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Career Interests</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </CardContent>
           </Card>
 
