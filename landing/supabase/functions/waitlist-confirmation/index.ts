@@ -1,0 +1,299 @@
+// Edge Function to send confirmation email to users who join the waitlist
+// Deploy with: supabase functions deploy waitlist-confirmation
+// Required environment variables (already set):
+//   RESEND_API_KEY - your Resend API key
+//   RESEND_FROM    - verified sender email address (e.g., mihir@meetdiya.com)
+
+import { createClient } from "npm:@supabase/supabase-js@2.39.4";
+
+const supabase = createClient(
+  Deno.env.get("SUPABASE_URL") ?? "", 
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", 
+  {
+    auth: {
+      persistSession: false
+    }
+  }
+);
+
+/** Send an email using Resend */
+async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
+  const apiKey = Deno.env.get("RESEND_API_KEY");
+  const fromEmail = Deno.env.get("RESEND_FROM") ?? "mihir@meetdiya.com";
+  const from = `Mihir from Diya <${fromEmail}>`;
+  
+  if (!apiKey) {
+    console.error("Resend API key missing");
+    return false;
+  }
+
+  const body = {
+    from: from,
+    to: [to],
+    subject: subject,
+    html: html
+  };
+
+  try {
+    const resp = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(body)
+    });
+
+    if (!resp.ok) {
+      const txt = await resp.text();
+      console.error("Failed to send email via Resend", resp.status, txt);
+      return false;
+    } else {
+      const result = await resp.json();
+      console.log("Confirmation email sent successfully via Resend:", result.id);
+      return true;
+    }
+  } catch (error) {
+    console.error("Error sending confirmation email:", error);
+    return false;
+  }
+}
+
+/** Generate confirmation email HTML template */
+function generateConfirmationEmail(): string {
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Welcome to Diya AI - You're on the waitlist!</title>
+        <style>
+          body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            line-height: 1.6; 
+            color: #333; 
+            margin: 0; 
+            padding: 20px; 
+            background-color: #f8fafc; 
+          }
+          .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            background: white; 
+            border-radius: 8px; 
+            overflow: hidden; 
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); 
+          }
+          .header { 
+            background: linear-gradient(135deg, #D07D00 0%, #B86D00 100%); 
+            color: white; 
+            padding: 40px 30px; 
+            text-align: center; 
+          }
+          .logo { 
+            font-size: 28px; 
+            font-weight: bold; 
+            margin-bottom: 10px; 
+          }
+          .header-subtitle { 
+            opacity: 0.9; 
+            font-size: 16px; 
+          }
+          .content { 
+            padding: 40px 30px; 
+          }
+          .welcome-text { 
+            font-size: 18px; 
+            margin-bottom: 20px; 
+            color: #2d3748; 
+          }
+          .highlight { 
+            background-color: #fef7e6; 
+            padding: 20px; 
+            border-radius: 8px; 
+            margin: 20px 0; 
+            border-left: 4px solid #D07D00; 
+          }
+          .feature-list { 
+            list-style: none; 
+            padding: 0; 
+            margin: 20px 0; 
+          }
+          .feature-list li { 
+            padding: 8px 0; 
+            padding-left: 25px; 
+            position: relative; 
+          }
+          .feature-list li:before { 
+            content: "✨"; 
+            position: absolute; 
+            left: 0; 
+          }
+          .footer { 
+            background-color: #f7fafc; 
+            padding: 30px; 
+            text-align: center; 
+            color: #718096; 
+            font-size: 14px; 
+          }
+          .social-links { 
+            margin: 20px 0; 
+          }
+          .social-links a { 
+            color: #D07D00; 
+            text-decoration: none; 
+            margin: 0 10px; 
+            display: inline-block;
+            transition: transform 0.2s ease;
+          }
+          .social-links a:hover {
+            transform: scale(1.1);
+          }
+          .social-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="logo">✨ Diya AI</div>
+            <div class="header-subtitle">Your AI College Counselor</div>
+          </div>
+          
+          <div class="content">
+            <div class="welcome-text">
+              <strong>Welcome to the future of college counseling!</strong>
+            </div>
+            
+            <p>Hi there! 👋</p>
+            
+            <p>Thank you for joining the Diya AI waitlist! We're excited to have a student like you be part of our journey to revolutionize college admissions counseling with AI.</p>
+            
+            <div class="highlight">
+              <strong>🎉 You're officially on the waitlist!</strong><br>
+              We'll keep you updated on our progress and notify you as soon as Diya AI becomes available.
+            </div>
+            
+            <p><strong>What to expect from Diya AI:</strong></p>
+            <ul class="feature-list">
+              <li>24/7 AI counselor for all your college admissions questions</li>
+              <li>Hyper-personalized school recommendations based on your profile</li>
+              <li>Essay writing support and management across all your applications</li>
+              <li>Automatic deadline tracking with timely reminders</li>
+              <li>Exclusive webinars from alumni and admissions officers</li>
+              <li>Early guidance starting from 9th grade to build a strong profile</li>
+            </ul>
+            
+            <p>In the meantime, follow us on social media for updates, college admissions tips, and sneak peeks of what we're building!</p>
+            
+            <div class="social-links">
+              <a href="https://www.facebook.com/profile.php?id=61579586417145" target="_blank" title="Follow us on Facebook">
+                <svg class="social-icon" viewBox="0 0 24 24" fill="#1877F2">
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                </svg>
+              </a>
+              <a href="https://www.instagram.com/meetdiyaai?igsh=bW45NXR4YTg1NWg%3D&utm_source=qr" target="_blank" title="Follow us on Instagram">
+                <svg class="social-icon" viewBox="0 0 24 24" fill="url(#instagram-gradient)">
+                  <defs>
+                    <linearGradient id="instagram-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" style="stop-color:#f09433"/>
+                      <stop offset="25%" style="stop-color:#e6683c"/>
+                      <stop offset="50%" style="stop-color:#dc2743"/>
+                      <stop offset="75%" style="stop-color:#cc2366"/>
+                      <stop offset="100%" style="stop-color:#bc1888"/>
+                    </linearGradient>
+                  </defs>
+                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                </svg>
+              </a>
+            </div>
+            
+            <p>Questions? Ideas? We'd love to hear from you! Simply reply to this email.</p>
+            
+            <p>Best regards,<br>
+            <strong>Mihir Bedi</strong><br>
+            Co-Founder, Diya AI</p>
+          </div>
+          
+          <div class="footer">
+            <p>© 2025 Diya AI. All rights reserved.</p>
+            <p>You received this email because you signed up for our waitlist.</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+}
+
+/** Edge Function entry point */
+Deno.serve(async (req: Request) => {
+  try {
+    const payload = await req.json();
+    
+    // Expected Supabase webhook payload structure
+    // { type: "INSERT", schema: "public", table: "waitlist", record: { id, email, user_type, school_name, ... } }
+    if (payload.type !== "INSERT" || payload.table !== "waitlist") {
+      return new Response(JSON.stringify({
+        error: "Unsupported event"
+      }), {
+        status: 400,
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
+    }
+
+    const { email } = payload.record;
+    
+    if (!email) {
+      return new Response(JSON.stringify({
+        error: "Email is required"
+      }), {
+        status: 400,
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
+    }
+
+    const subject = "🎉 Welcome to Diya AI - You're on the waitlist!";
+    const html = generateConfirmationEmail();
+
+    const emailSent = await sendEmail(email, subject, html);
+
+    if (!emailSent) {
+      return new Response(JSON.stringify({
+        error: "Failed to send confirmation email"
+      }), {
+        status: 500,
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
+    }
+
+    return new Response(JSON.stringify({
+      status: "confirmation_email_sent",
+      email: email
+    }), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json"
+      }
+    });
+  } catch (e) {
+    console.error("Edge function error", e);
+    return new Response(JSON.stringify({
+      error: "internal_server_error"
+    }), {
+      status: 500,
+      headers: {
+        "Content-Type": "application/json"
+      }
+    });
+  }
+});
