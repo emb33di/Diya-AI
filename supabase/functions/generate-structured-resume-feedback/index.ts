@@ -51,7 +51,7 @@ Based on your analysis, provide specific improvements to the resume content, inc
 - Stronger academic highlights
 - More compelling extracurricular descriptions
 
-RESPONSE FORMAT (JSON only):
+RESPONSE FORMAT (JSON only - no markdown, no explanations, just pure JSON):
 {
   "overall_score": 85,
   "college_readiness_score": 78,
@@ -224,6 +224,8 @@ RESPONSE FORMAT (JSON only):
 
 Provide specific, actionable feedback that will help improve the resume's effectiveness for college applications and admissions committees. Focus on what makes a student stand out to admissions officers. Include an improved version of the resume data with enhanced descriptions, better achievement quantification, and stronger presentation.
 
+IMPORTANT: Return ONLY valid JSON. Do not include any markdown formatting, explanations, or additional text. The response must be parseable JSON.
+
 SCORING CRITERIA FOR SECTIONS AND BULLET POINTS:
 - 9-10: Excellent content, no improvements needed (good to go)
 - 7-8: Good content with minor improvements possible
@@ -248,8 +250,13 @@ async function generateResumeFeedback(resumeData: any): Promise<any> {
   }
 
   console.log('Generating feedback for structured resume data')
+  console.log('Resume data type:', typeof resumeData)
+  console.log('Resume data is object:', resumeData && typeof resumeData === 'object')
   
-  const prompt = RESUME_ANALYSIS_PROMPT.replace('{resumeData}', JSON.stringify(resumeData, null, 2))
+  const resumeDataString = JSON.stringify(resumeData, null, 2)
+  console.log('Resume data string length:', resumeDataString.length)
+  
+  const prompt = RESUME_ANALYSIS_PROMPT.replace('{resumeData}', resumeDataString)
 
   const requestBody = {
     contents: [
@@ -314,12 +321,26 @@ async function generateResumeFeedback(resumeData: any): Promise<any> {
 
     // Parse the JSON response
     try {
-      const feedbackData = JSON.parse(generatedText)
+      // Clean the response text - remove any markdown formatting
+      let cleanedText = generatedText.trim()
+      
+      // Remove markdown code blocks if present
+      if (cleanedText.startsWith('```json')) {
+        cleanedText = cleanedText.replace(/^```json\s*/, '').replace(/\s*```$/, '')
+      } else if (cleanedText.startsWith('```')) {
+        cleanedText = cleanedText.replace(/^```\s*/, '').replace(/\s*```$/, '')
+      }
+      
+      console.log('Cleaned response text:', cleanedText.substring(0, 200) + '...')
+      
+      const feedbackData = JSON.parse(cleanedText)
       console.log('Successfully parsed feedback data')
       return feedbackData
     } catch (parseError) {
       console.error('Failed to parse JSON response:', parseError)
-      console.error('Raw response:', generatedText)
+      console.error('Raw response length:', generatedText.length)
+      console.error('Raw response (first 500 chars):', generatedText.substring(0, 500))
+      console.error('Raw response (last 500 chars):', generatedText.substring(Math.max(0, generatedText.length - 500)))
       throw new Error('Failed to parse feedback data from AI response')
     }
 
@@ -422,6 +443,9 @@ serve(async (req) => {
 
     // Generate AI feedback
     console.log(`Generating AI feedback for resume ${resume_data_id}`)
+    console.log('Structured data size:', JSON.stringify(resumeRecord.structured_data).length)
+    console.log('Structured data keys:', Object.keys(resumeRecord.structured_data))
+    
     const feedbackData = await generateResumeFeedback(resumeRecord.structured_data)
 
     // Save feedback to database

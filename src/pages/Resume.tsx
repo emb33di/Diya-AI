@@ -41,6 +41,7 @@ const Resume = () => {
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [viewingResume, setViewingResume] = useState<ResumeViewState | null>(null);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const { toast } = useToast();
 
   // Loading pane state for AI processing
@@ -155,9 +156,13 @@ const Resume = () => {
     // Reload resume records to show updated feedback
     loadResumeRecords();
     
+    // Switch to the versions tab to show the results
+    const versionsTab = document.querySelector('[value="versions"]') as HTMLElement;
+    versionsTab?.click();
+    
     toast({
       title: "Resume Analysis Complete! 🎉",
-      description: "Your personalized feedback is ready. Check the 'Resume Versions' tab to see your results.",
+      description: "Your personalized feedback is ready! Check out your enhanced resume and detailed analysis.",
     });
   };
 
@@ -175,8 +180,10 @@ const Resume = () => {
     }
   };
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handleFileSelect = (fileOrEvent: File | React.ChangeEvent<HTMLInputElement>) => {
+    // Handle both File object (from drag/drop) and Event object (from file input)
+    const file = fileOrEvent instanceof File ? fileOrEvent : fileOrEvent.target.files?.[0];
+    
     if (file) {
       // Validate file type
       const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
@@ -216,11 +223,13 @@ const Resume = () => {
         throw new Error(result.error || 'Upload failed');
       }
 
+      // Clear the selected file
       setSelectedFile(null);
 
+      // Show success toast
       toast({
-        title: "Resume uploaded successfully",
-        description: "Starting AI analysis and content extraction...",
+        title: "Resume Submitted Successfully! 🎉",
+        description: "Your resume has been uploaded and AI analysis is starting...",
       });
 
       // Start the processing simulation with loading pane
@@ -397,11 +406,11 @@ const Resume = () => {
                     />
 
                     <Button 
-                      onClick={handleUpload} 
+                      onClick={() => setShowConfirmDialog(true)} 
                       disabled={!selectedFile || uploading}
                       className="w-full"
                     >
-                      {uploading ? "Uploading..." : "Upload Resume"}
+                      {uploading ? "Uploading..." : "Submit Resume for Analysis"}
                     </Button>
                   </CardContent>
                 </Card>
@@ -561,6 +570,66 @@ const Resume = () => {
                 />
               </MobileResponsiveWrapper>
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmation Dialog */}
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <FileText className="h-5 w-5 text-primary" />
+              <span>Confirm Resume Submission</span>
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {selectedFile && (
+              <div className="p-4 border rounded-lg bg-muted/30">
+                <div className="flex items-center space-x-3">
+                  <FileText className="h-5 w-5 text-primary" />
+                  <div>
+                    <p className="font-medium">{selectedFile.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {formatFileSize(selectedFile.size)} • {selectedFile.type.split('/')[1].toUpperCase()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Are you ready to submit this resume for AI analysis? Diya will:
+              </p>
+              <ul className="text-sm text-muted-foreground space-y-1 ml-4">
+                <li>• Extract and structure your resume content</li>
+                <li>• Analyze strengths and areas for improvement</li>
+                <li>• Generate personalized recommendations</li>
+                <li>• Create an enhanced version of your resume</li>
+              </ul>
+            </div>
+            
+            <div className="flex space-x-2 pt-4">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowConfirmDialog(false)}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={async () => {
+                  setShowConfirmDialog(false);
+                  await handleUpload();
+                }}
+                className="flex-1"
+              >
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Submit for Analysis
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

@@ -186,11 +186,16 @@ class StructuredResumeService {
       }
 
       // Get feedback if exists
-      const { data: feedbackData } = await supabase
+      const { data: feedbackData, error: feedbackError } = await supabase
         .from('resume_feedback')
         .select('*')
         .eq('resume_data_id', resumeDataId)
         .single();
+
+      // Log feedback error for debugging but don't throw
+      if (feedbackError && feedbackError.code !== 'PGRST116') {
+        console.warn('Feedback fetch error:', feedbackError);
+      }
 
       return {
         resume: resumeData,

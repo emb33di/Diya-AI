@@ -11,7 +11,8 @@ import {
   Download, 
   FileText,
   Eye,
-  EyeOff
+  EyeOff,
+  Clock
 } from 'lucide-react';
 import { StructuredResumeData, ResumeFeedbackData } from '@/types/resume';
 import BulletPointAnalysis from './BulletPointAnalysis';
@@ -39,6 +40,22 @@ const ResumeComparisonView: React.FC<ResumeComparisonViewProps> = ({
   onViewResume,
   resumeDataId
 }) => {
+  // Handle case where feedback is not available yet
+  if (!feedback) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <Clock className="h-12 w-12 text-muted-foreground mb-4 animate-spin" />
+            <h3 className="text-lg font-semibold mb-2">Generating Feedback</h3>
+            <p className="text-muted-foreground text-center">
+              Diya is analyzing your resume and generating personalized feedback. This may take a few moments.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
   const [showComparison, setShowComparison] = React.useState(false);
 
   const formatDate = (dateString: string) => {
