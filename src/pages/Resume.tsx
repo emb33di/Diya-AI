@@ -3,14 +3,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import OnboardingGuard from "@/components/OnboardingGuard";
 import ProfileCompletionGuard from "@/components/ProfileCompletionGuard";
+import LoadingPane from "@/components/ui/LoadingPane";
+import ResumeComparisonView from "@/components/ResumeComparisonView";
 import { 
   Upload, 
   FileText, 
@@ -25,42 +26,143 @@ import {
   X
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { resumeService, ResumeVersion } from "@/services/resumeService";
-
-// ResumeVersion interface is now imported from resumeService
+import { structuredResumeService } from "@/services/structuredResumeService";
+import { 
+  StructuredResumeRecord, 
+  ResumeFeedbackRecord, 
+  ResumeProcessingState,
+  ResumeViewState 
+} from "@/types/resume";
 
 const Resume = () => {
-  const [resumeVersions, setResumeVersions] = useState<ResumeVersion[]>([]);
+  const [resumeRecords, setResumeRecords] = useState<StructuredResumeRecord[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [viewingResume, setViewingResume] = useState<ResumeVersion | null>(null);
-  const [resumeUrl, setResumeUrl] = useState<string | null>(null);
+  const [viewingResume, setViewingResume] = useState<ResumeViewState | null>(null);
   const { toast } = useToast();
 
-  // Load resume versions on component mount
+  // Loading pane state for AI processing
+  const [showLoadingPane, setShowLoadingPane] = useState(false);
+  const [currentProcessingStep, setCurrentProcessingStep] = useState(0);
+  const [processingResumeId, setProcessingResumeId] = useState<string | null>(null);
+
+  // Define processing steps for resume analysis
+  const processingSteps = [
+    {
+      id: 'upload',
+      label: 'Uploading Resume',
+      description: 'Securely uploading your resume file'
+    },
+    {
+      id: 'extract',
+      label: 'Extracting Content',
+      description: 'AI is extracting structured data from your resume'
+    },
+    {
+      id: 'analyze',
+      label: 'AI Analysis',
+      description: 'Diya is analyzing your resume for college readiness'
+    },
+    {
+      id: 'feedback',
+      label: 'Generating Feedback',
+      description: 'Creating personalized recommendations and enhanced resume'
+    },
+    {
+      id: 'complete',
+      label: 'Finalizing Results',
+      description: 'Preparing your comprehensive feedback report'
+    }
+  ];
+
+  // Load resume records on component mount
   useEffect(() => {
-    loadResumeVersions();
+    loadResumeRecords();
   }, []);
 
-  // Cleanup blob URLs on unmount
+  // Check for processing resumes and show loading pane if needed
   useEffect(() => {
-    return () => {
-      if (resumeUrl) {
-        window.URL.revokeObjectURL(resumeUrl);
-      }
-    };
-  }, [resumeUrl]);
+    const processingResume = resumeRecords.find(record => 
+      record.extraction_status === 'processing' || 
+      (record.extraction_status === 'completed' && !resumeRecords.some(r => r.id === record.id))
+    );
+    
+    if (processingResume && !showLoadingPane) {
+      // Resume is processing, show loading pane
+      setProcessingResumeId(processingResume.id);
+      setShowLoadingPane(true);
+      setCurrentProcessingStep(1); // Start from extraction step
+      
+      // Simulate remaining steps
+      const simulateRemainingSteps = async () => {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        setCurrentProcessingStep(2);
+        
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        setCurrentProcessingStep(3);
+        
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        setCurrentProcessingStep(4);
+        
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        setCurrentProcessingStep(5);
+      };
+      
+      simulateRemainingSteps();
+    }
+  }, [resumeRecords, showLoadingPane]);
 
-  const loadResumeVersions = async () => {
+  // Function to simulate processing steps
+  const simulateProcessingSteps = async (resumeId: string) => {
+    setProcessingResumeId(resumeId);
+    setShowLoadingPane(true);
+    setCurrentProcessingStep(0);
+
+    // Step 1: Upload (already done)
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    setCurrentProcessingStep(1);
+
+    // Step 2: Extract content
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    setCurrentProcessingStep(2);
+
+    // Step 3: AI Analysis
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    setCurrentProcessingStep(3);
+
+    // Step 4: Generate feedback
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    setCurrentProcessingStep(4);
+
+    // Step 5: Complete
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    setCurrentProcessingStep(5);
+  };
+
+  // Function to handle loading pane completion
+  const handleLoadingComplete = () => {
+    setShowLoadingPane(false);
+    setCurrentProcessingStep(0);
+    setProcessingResumeId(null);
+    
+    // Reload resume records to show updated feedback
+    loadResumeRecords();
+    
+    toast({
+      title: "Resume Analysis Complete! 🎉",
+      description: "Your personalized feedback is ready. Check the 'Resume Versions' tab to see your results.",
+    });
+  };
+
+  const loadResumeRecords = async () => {
     try {
-      const versions = await resumeService.getResumeVersions();
-      setResumeVersions(versions);
+      const records = await structuredResumeService.getResumeRecords();
+      setResumeRecords(records);
     } catch (error) {
-      console.error('Failed to load resume versions:', error);
+      console.error('Failed to load resume records:', error);
       toast({
         title: "Error",
-        description: "Failed to load resume versions. Please try again.",
+        description: "Failed to load resume records. Please try again.",
         variant: "destructive"
       });
     }
@@ -98,37 +200,26 @@ const Resume = () => {
     if (!selectedFile) return;
 
     setUploading(true);
-    setUploadProgress(0);
 
     try {
-      // Simulate upload progress
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return 90;
-          }
-          return prev + 10;
-        });
-      }, 200);
-
-      // Upload resume using the service
-      const result = await resumeService.uploadResume(selectedFile);
+      // Upload resume using the structured service
+      const result = await structuredResumeService.uploadResume(selectedFile);
 
       if (!result.success) {
         throw new Error(result.error || 'Upload failed');
       }
 
       setSelectedFile(null);
-      setUploadProgress(100);
 
       toast({
         title: "Resume uploaded successfully",
-        description: "Your resume is being processed for feedback.",
+        description: "Starting AI analysis and content extraction...",
       });
 
-      // Reload resume versions to show the new upload
-      await loadResumeVersions();
+      // Start the processing simulation with loading pane
+      if (result.resume_record?.id) {
+        await simulateProcessingSteps(result.resume_record.id);
+      }
 
     } catch (error) {
       console.error('Upload error:', error);
@@ -139,7 +230,6 @@ const Resume = () => {
       });
     } finally {
       setUploading(false);
-      setUploadProgress(0);
     }
   };
 
@@ -161,54 +251,67 @@ const Resume = () => {
     });
   };
 
-  const handleDelete = async (versionId: string) => {
+  const handleDelete = async (recordId: string) => {
     try {
-      await resumeService.deleteResumeVersion(versionId);
+      await structuredResumeService.deleteResumeRecord(recordId);
       toast({
         title: "Resume deleted",
-        description: "The resume version has been deleted successfully.",
+        description: "The resume record has been deleted successfully.",
       });
-      await loadResumeVersions();
+      await loadResumeRecords();
     } catch (error) {
       console.error('Delete error:', error);
       toast({
         title: "Delete failed",
-        description: "Failed to delete the resume version. Please try again.",
+        description: "Failed to delete the resume record. Please try again.",
         variant: "destructive"
       });
     }
   };
 
-  const handleDownload = async (versionId: string) => {
+  const handleDownload = async (recordId: string, fileType: 'pdf' | 'docx') => {
     try {
-      const blob = await resumeService.downloadResume(versionId);
-      if (blob) {
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `resume_version_${versionId}`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      }
+      // Get or generate the file
+      const fileData = await structuredResumeService.getResumeFileForDownload(recordId, fileType);
+      
+      // Create download link
+      const url = window.URL.createObjectURL(fileData.blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileData.filename;
+      document.body.appendChild(a);
+      a.click();
+      
+      // Cleanup
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast({
+        title: "Download Started",
+        description: `${fileType.toUpperCase()} file is being downloaded.`,
+      });
     } catch (error) {
       console.error('Download error:', error);
       toast({
         title: "Download failed",
-        description: "Failed to download the resume. Please try again.",
+        description: "Failed to download the resume file. Please try again.",
         variant: "destructive"
       });
     }
   };
 
-  const handleView = async (version: ResumeVersion) => {
+  const handleView = async (record: StructuredResumeRecord) => {
     try {
-      setViewingResume(version);
-      const blob = await resumeService.downloadResume(version.id);
-      if (blob) {
-        const url = window.URL.createObjectURL(blob);
-        setResumeUrl(url);
+      const recordWithFeedback = await structuredResumeService.getResumeRecordWithFeedback(record.id);
+      
+      if (recordWithFeedback) {
+        setViewingResume({
+          originalResume: recordWithFeedback.resume.structured_data,
+          improvedResume: recordWithFeedback.feedback?.feedback_data.improved_resume_data || null,
+          feedback: recordWithFeedback.feedback?.feedback_data || null,
+          showComparison: true,
+          resumeDataId: record.id
+        });
       }
     } catch (error) {
       console.error('View error:', error);
@@ -222,13 +325,9 @@ const Resume = () => {
 
   const handleCloseView = () => {
     setViewingResume(null);
-    if (resumeUrl) {
-      window.URL.revokeObjectURL(resumeUrl);
-      setResumeUrl(null);
-    }
   };
 
-  const getStatusIcon = (status: ResumeVersion['status']) => {
+  const getStatusIcon = (status: 'processing' | 'completed' | 'error') => {
     switch (status) {
       case 'processing':
         return <Clock className="h-4 w-4 text-yellow-500" />;
@@ -239,7 +338,7 @@ const Resume = () => {
     }
   };
 
-  const getStatusColor = (status: ResumeVersion['status']) => {
+  const getStatusColor = (status: 'processing' | 'completed' | 'error') => {
     switch (status) {
       case 'processing':
         return 'bg-yellow-100 text-yellow-800';
@@ -308,11 +407,10 @@ const Resume = () => {
 
                     {uploading && (
                       <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <span>Uploading...</span>
-                          <span>{uploadProgress}%</span>
+                        <div className="flex items-center justify-center text-sm text-muted-foreground">
+                          <Clock className="h-4 w-4 mr-2 animate-spin" />
+                          <span>Uploading resume...</span>
                         </div>
-                        <Progress value={uploadProgress} className="h-2" />
                       </div>
                     )}
 
@@ -329,13 +427,13 @@ const Resume = () => {
 
               <TabsContent value="versions" className="space-y-6">
                 <div className="grid gap-6">
-                  {resumeVersions.length === 0 ? (
+                  {resumeRecords.length === 0 ? (
                     <Card className="shadow-lg">
                       <CardContent className="flex flex-col items-center justify-center py-12">
                         <FileText className="h-12 w-12 text-muted-foreground mb-4" />
                         <h3 className="text-lg font-semibold mb-2">No resumes uploaded yet</h3>
                         <p className="text-muted-foreground text-center mb-4">
-                          Upload your first resume to get started with AI-powered feedback
+                          Upload your first resume to get started with AI-powered feedback and enhancement
                         </p>
                         <Button onClick={() => document.getElementById('resume-upload')?.click()}>
                           <Plus className="h-4 w-4 mr-2" />
@@ -344,39 +442,39 @@ const Resume = () => {
                       </CardContent>
                     </Card>
                   ) : (
-                    resumeVersions.map((version) => (
-                      <Card key={version.id} className="shadow-lg">
+                    resumeRecords.map((record) => (
+                      <Card key={record.id} className="shadow-lg">
                         <CardHeader>
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-3">
                               <FileText className="h-5 w-5 text-primary" />
                               <div>
                                 <CardTitle className="text-lg">
-                                  {version.filename}
+                                  {record.original_filename}
                                 </CardTitle>
                                 <CardDescription>
-                                  Version {version.version} • {formatFileSize(version.file_size)} • {formatDate(version.upload_date)}
+                                  Version {record.version} • {formatFileSize(record.original_file_size)} • {formatDate(record.upload_date)}
                                 </CardDescription>
                               </div>
                             </div>
                             <div className="flex items-center space-x-2">
-                              <Badge className={getStatusColor(version.status)}>
+                              <Badge className={getStatusColor(record.extraction_status)}>
                                 <div className="flex items-center space-x-1">
-                                  {getStatusIcon(version.status)}
-                                  <span className="capitalize">{version.status}</span>
+                                  {getStatusIcon(record.extraction_status)}
+                                  <span className="capitalize">{record.extraction_status}</span>
                                 </div>
                               </Badge>
-                              <Button size="sm" variant="outline" onClick={() => handleDownload(version.id)}>
+                              <Button size="sm" variant="outline" onClick={() => handleDownload(record.id, 'pdf')}>
                                 <Download className="h-4 w-4" />
                               </Button>
-                              <Button size="sm" variant="outline" onClick={() => handleView(version)}>
+                              <Button size="sm" variant="outline" onClick={() => handleView(record)}>
                                 <Eye className="h-4 w-4" />
                               </Button>
                               <Button 
                                 size="sm" 
                                 variant="outline" 
                                 className="text-red-600 hover:text-red-700"
-                                onClick={() => handleDelete(version.id)}
+                                onClick={() => handleDelete(record.id)}
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -384,144 +482,51 @@ const Resume = () => {
                           </div>
                         </CardHeader>
                         
-                        {version.feedback && (
-                          <CardContent className="space-y-6">
-                            {/* Overall Scores */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              <div className="space-y-2">
-                                <div className="flex items-center space-x-2">
-                                  <Star className="h-4 w-4 text-yellow-500" />
-                                  <span className="font-medium">Overall Score</span>
-                                </div>
-                                <div className="text-2xl font-bold text-primary">
-                                  {version.feedback.overall_score}/100
-                                </div>
-                                <Progress value={version.feedback.overall_score} className="h-2" />
+                        {record.extraction_status === 'completed' && (
+                          <CardContent className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-2">
+                                <CheckCircle className="h-4 w-4 text-green-500" />
+                                <span className="text-sm font-medium text-green-700">Content Extracted Successfully</span>
                               </div>
-                              
-                              <div className="space-y-2">
-                                <div className="flex items-center space-x-2">
-                                  <CheckCircle className="h-4 w-4 text-blue-500" />
-                                  <span className="font-medium">College Readiness</span>
-                                </div>
-                                <div className="text-2xl font-bold text-blue-600">
-                                  {version.feedback.college_readiness_score}/100
-                                </div>
-                                <Progress value={version.feedback.college_readiness_score} className="h-2" />
-                              </div>
-
-                              <div className="space-y-2">
-                                <div className="flex items-center space-x-2">
-                                  <FileText className="h-4 w-4 text-green-500" />
-                                  <span className="font-medium">Format Score</span>
-                                </div>
-                                <div className="text-2xl font-bold text-green-600">
-                                  {Math.round((version.feedback.format_analysis?.structure_score + version.feedback.format_analysis?.readability_score + version.feedback.format_analysis?.visual_appeal_score) / 3)}/100
-                                </div>
-                                <Progress value={Math.round((version.feedback.format_analysis?.structure_score + version.feedback.format_analysis?.readability_score + version.feedback.format_analysis?.visual_appeal_score) / 3)} className="h-2" />
-                              </div>
+                              <Button 
+                                size="sm" 
+                                onClick={() => handleView(record)}
+                                className="bg-primary text-primary-foreground hover:bg-primary/90"
+                              >
+                                <Eye className="h-4 w-4 mr-2" />
+                                View Analysis
+                              </Button>
                             </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                              {/* Strengths */}
-                              <div className="space-y-2">
-                                <h4 className="font-medium text-green-700">Strengths</h4>
-                                <ul className="space-y-1">
-                                  {version.feedback.strengths?.map((strength, index) => (
-                                    <li key={index} className="text-sm text-green-600 flex items-start space-x-2">
-                                      <CheckCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                                      <span>{strength}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-
-                              {/* Weaknesses */}
-                              <div className="space-y-2">
-                                <h4 className="font-medium text-red-700">Areas for Improvement</h4>
-                                <ul className="space-y-1">
-                                  {version.feedback.weaknesses?.map((weakness, index) => (
-                                    <li key={index} className="text-sm text-red-600 flex items-start space-x-2">
-                                      <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                                      <span>{weakness}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            </div>
-
-                            {/* Academic & Extracurricular Analysis */}
-                            {version.feedback.academic_analysis && (
-                              <div className="space-y-4">
-                                <h4 className="font-medium">Academic & Extracurricular Analysis</h4>
-                                
-                                {/* Academic Achievements */}
-                                {version.feedback.academic_analysis.academic_achievements?.length > 0 && (
-                                  <div>
-                                    <h5 className="text-sm font-medium text-green-700 mb-2">Academic Achievements</h5>
-                                    <div className="flex flex-wrap gap-1">
-                                      {version.feedback.academic_analysis.academic_achievements.map((achievement, index) => (
-                                        <Badge key={index} variant="secondary" className="text-xs bg-green-100 text-green-800">
-                                          {achievement}
-                                        </Badge>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* Leadership Roles */}
-                                {version.feedback.academic_analysis.leadership_roles?.length > 0 && (
-                                  <div>
-                                    <h5 className="text-sm font-medium text-blue-700 mb-2">Leadership Roles</h5>
-                                    <div className="flex flex-wrap gap-1">
-                                      {version.feedback.academic_analysis.leadership_roles.map((role, index) => (
-                                        <Badge key={index} variant="secondary" className="text-xs bg-blue-100 text-blue-800">
-                                          {role}
-                                        </Badge>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* Community Service */}
-                                {version.feedback.academic_analysis.community_service?.length > 0 && (
-                                  <div>
-                                    <h5 className="text-sm font-medium text-purple-700 mb-2">Community Service</h5>
-                                    <div className="flex flex-wrap gap-1">
-                                      {version.feedback.academic_analysis.community_service.map((service, index) => (
-                                        <Badge key={index} variant="secondary" className="text-xs bg-purple-100 text-purple-800">
-                                          {service}
-                                        </Badge>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* Extracurricular Depth Score */}
-                                <div>
-                                  <h5 className="text-sm font-medium mb-1">Extracurricular Depth</h5>
-                                  <div className="flex items-center space-x-2">
-                                    <Progress value={version.feedback.academic_analysis.extracurricular_depth * 100} className="h-2 flex-1" />
-                                    <span className="text-sm text-muted-foreground">
-                                      {Math.round(version.feedback.academic_analysis.extracurricular_depth * 100)}%
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
+                            
+                            {record.extraction_error && (
+                              <Alert>
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertDescription>
+                                  Extraction completed with warnings: {record.extraction_error}
+                                </AlertDescription>
+                              </Alert>
                             )}
+                          </CardContent>
+                        )}
 
-                            {/* Suggestions */}
-                            <div className="space-y-2">
-                              <h4 className="font-medium">Actionable Suggestions</h4>
-                              <ul className="space-y-1">
-                                {version.feedback.suggestions?.map((suggestion, index) => (
-                                  <li key={index} className="text-sm text-muted-foreground flex items-start space-x-2">
-                                    <span className="text-primary font-bold">{index + 1}.</span>
-                                    <span>{suggestion}</span>
-                                  </li>
-                                ))}
-                              </ul>
+                        {record.extraction_status === 'processing' && (
+                          <CardContent>
+                            <div className="flex items-center space-x-2">
+                              <Clock className="h-4 w-4 text-yellow-500 animate-spin" />
+                              <span className="text-sm text-muted-foreground">Extracting content from resume...</span>
                             </div>
+                          </CardContent>
+                        )}
+
+                        {record.extraction_status === 'error' && (
+                          <CardContent>
+                            <Alert variant="destructive">
+                              <AlertCircle className="h-4 w-4" />
+                              <AlertDescription>
+                                Failed to extract content: {record.extraction_error || 'Unknown error'}
+                              </AlertDescription>
+                            </Alert>
                           </CardContent>
                         )}
                       </Card>
@@ -534,47 +539,50 @@ const Resume = () => {
         </div>
       </div>
 
-      {/* Resume View Modal */}
+      {/* Resume Analysis Modal */}
       <Dialog open={!!viewingResume} onOpenChange={handleCloseView}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
-              <span>View Resume: {viewingResume?.filename}</span>
+              <span>Resume Analysis & Enhancement</span>
               <Button variant="ghost" size="sm" onClick={handleCloseView}>
                 <X className="h-4 w-4" />
               </Button>
             </DialogTitle>
           </DialogHeader>
           
-          <div className="flex-1 overflow-hidden">
-            {viewingResume && resumeUrl && (
-              <div className="h-full">
-                {viewingResume.file_type === 'application/pdf' ? (
-                  <iframe
-                    src={resumeUrl}
-                    className="w-full h-[70vh] border rounded"
-                    title={`Resume: ${viewingResume.filename}`}
-                  />
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-[70vh] space-y-4">
-                    <FileText className="h-16 w-16 text-muted-foreground" />
-                    <div className="text-center">
-                      <h3 className="text-lg font-semibold mb-2">Word Document</h3>
-                      <p className="text-muted-foreground mb-4">
-                        Word documents cannot be displayed in the browser. Please download the file to view it.
-                      </p>
-                      <Button onClick={() => handleDownload(viewingResume.id)}>
-                        <Download className="h-4 w-4 mr-2" />
-                        Download Resume
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
+          <div className="flex-1 overflow-y-auto">
+            {viewingResume && (
+              <ResumeComparisonView
+                originalResume={viewingResume.originalResume}
+                improvedResume={viewingResume.improvedResume}
+                feedback={viewingResume.feedback!}
+                resumeDataId={viewingResume.resumeDataId}
+                onDownload={(fileType) => {
+                  if (viewingResume.resumeDataId) {
+                    handleDownload(viewingResume.resumeDataId, fileType);
+                  }
+                }}
+                onViewResume={() => {
+                  // For now, just show a message
+                  toast({
+                    title: "Full Resume View",
+                    description: "Full resume view feature coming soon!",
+                  });
+                }}
+              />
             )}
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Loading Pane for AI Processing */}
+      <LoadingPane
+        isVisible={showLoadingPane}
+        steps={processingSteps}
+        currentStepIndex={currentProcessingStep}
+        onComplete={handleLoadingComplete}
+      />
       </ProfileCompletionGuard>
     </OnboardingGuard>
   );
