@@ -143,7 +143,11 @@ const Header = () => {
     <header className="sticky top-0 z-50 w-full backdrop-blur-md bg-white/5">
       <div className="container mx-auto flex h-20 items-center justify-between px-6">
         <Link to={loading ? "/" : (isAuthenticated ? "/dashboard" : "/")} className="flex items-center space-x-2">
-          <img src="/DiyaLogo.svg" alt="Diya Logo" className="h-24 w-24" />
+          <img 
+            src={location.pathname === "/" ? "/DiyaLogo White.svg" : "/DiyaLogo.svg"} 
+            alt="Diya Logo" 
+            className="h-24 w-24" 
+          />
         </Link>
         
         {isAuthenticated && (

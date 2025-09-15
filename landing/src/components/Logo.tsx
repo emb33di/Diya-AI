@@ -7,7 +7,7 @@ interface LogoProps {
 const Logo = ({ className = "" }: LogoProps) => (
   <div className={`flex items-center justify-center ${className}`}>
     <img 
-      src="/DiyaLogo.svg" 
+      src="/DiyaLogo White.svg" 
       alt="Diya - AI College Counselor" 
       className="h-20 w-24"
     />
