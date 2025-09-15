@@ -30,7 +30,7 @@ const Header = () => {
   const { completionPercentage, missingFields, loading: profileLoading } = useProfileCompletion();
   
   // Protected pages that require profile completion
-  const protectedPages = ['/dashboard', '/schools', '/resume', '/essays', '/deadlines'];
+  const protectedPages = ['/dashboard', '/schools', '/resume', '/essays', '/deadlines', '/lor'];
   
   // Function to handle navigation with profile completion check
   const handleNavigation = (path: string, e: React.MouseEvent) => {
@@ -284,6 +284,29 @@ const Header = () => {
                   </Link>
                 </TooltipTrigger>
                 {onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/deadlines') && (
+                  <TooltipContent>
+                    <p>Please complete your Profile.</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link 
+                    to="/lor" 
+                    onClick={(e) => handleNavigation('/lor', e)}
+                    className={`text-sm font-medium transition-colors hover:text-primary ${
+                      isActive('/lor') ? 'text-primary' : 'text-muted-foreground'
+                    } ${
+                      onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/lor')
+                        ? 'opacity-60 cursor-not-allowed' : ''
+                    }`}
+                  >
+                    LOR
+                  </Link>
+                </TooltipTrigger>
+                {onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/lor') && (
                   <TooltipContent>
                     <p>Please complete your Profile.</p>
                   </TooltipContent>

@@ -19,6 +19,7 @@ import Onboarding from "./pages/Onboarding";
 import ConversationHistory from "./pages/ConversationHistory";
 import Resume from "./pages/Resume";
 import Signup from "./pages/Signup";
+import LOR from "./pages/LOR";
 
 
 const queryClient = new QueryClient();
@@ -45,6 +46,7 @@ const App = () => (
           <Route path="/conversation-history" element={<ConversationHistory />} />
           <Route path="/resume" element={<Resume />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/lor" element={<LOR />} />
 
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
