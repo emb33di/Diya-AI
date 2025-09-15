@@ -29,9 +29,10 @@ interface AddSchoolModalProps {
   onClose: () => void;
   onAddSchool: (schoolData: any) => void;
   onAddMultipleSchools?: (schoolsData: any[]) => void;
+  existingSchools?: string[]; // Array of existing school names to prevent duplicates
 }
 
-const AddSchoolModal: React.FC<AddSchoolModalProps> = ({ isOpen, onClose, onAddSchool, onAddMultipleSchools }) => {
+const AddSchoolModal: React.FC<AddSchoolModalProps> = ({ isOpen, onClose, onAddSchool, onAddMultipleSchools, existingSchools = [] }) => {
   const [schools, setSchools] = useState<School[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSchools, setSelectedSchools] = useState<School[]>([]);
@@ -67,12 +68,18 @@ const AddSchoolModal: React.FC<AddSchoolModalProps> = ({ isOpen, onClose, onAddS
     }
   }, [isOpen]);
 
-  // Filter schools based on search term
-  const filteredSchools = schools.filter(school =>
-    school.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    school.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    school.state.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter schools based on search term and exclude existing schools
+  const filteredSchools = schools.filter(school => {
+    const matchesSearch = school.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      school.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      school.state.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const isNotExisting = !existingSchools.some(existingSchool => 
+      existingSchool.toLowerCase() === school.name.toLowerCase()
+    );
+    
+    return matchesSearch && isNotExisting;
+  });
 
   // Helper functions for school selection
   const addSchoolToSelection = (school: School) => {
@@ -239,6 +246,15 @@ const AddSchoolModal: React.FC<AddSchoolModalProps> = ({ isOpen, onClose, onAddS
                   className="pl-10"
                 />
               </div>
+
+              {/* Show message about filtered schools */}
+              {existingSchools.length > 0 && (
+                <div className="text-sm text-muted-foreground bg-blue-50 p-3 rounded-lg border border-blue-200">
+                  <p>
+                    <strong>Note:</strong> Schools already in your list are hidden from the search results to prevent duplicates.
+                  </p>
+                </div>
+              )}
 
 
               <div className="max-h-60 overflow-y-auto space-y-2">

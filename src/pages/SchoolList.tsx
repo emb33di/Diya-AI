@@ -10,6 +10,7 @@ import ArchiveModal from "@/components/ArchiveModal";
 import { fetchSchoolRecommendations } from "@/utils/supabaseUtils";
 import { useNavigate } from "react-router-dom";
 import { SchoolArchiveService } from "@/services/schoolArchiveService";
+import { useToast } from "@/hooks/use-toast";
 import {
   DndContext,
   DragOverlay,
@@ -49,6 +50,7 @@ interface School {
 
 const SchoolList = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [schools, setSchools] = useState<School[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -197,6 +199,21 @@ const SchoolList = () => {
       }
       console.log('Current user:', user.id);
 
+      // Check if school already exists in the user's list
+      const existingSchool = schools.find(school => 
+        school.name.toLowerCase() === schoolData.school.toLowerCase()
+      );
+
+      if (existingSchool) {
+        console.log('School already exists in list:', schoolData.school);
+        toast({
+          title: "School Already Added",
+          description: `${schoolData.school} is already in your school list.`,
+          variant: "default",
+        });
+        return;
+      }
+
       // Create new school in database
       const insertData = {
         student_id: user.id,
@@ -252,15 +269,37 @@ const SchoolList = () => {
       }
       console.log('Current user:', user.id);
 
+      // Filter out schools that already exist in the user's list
+      const existingSchoolNames = schools.map(school => school.name.toLowerCase());
+      const newSchoolsData = schoolsData.filter(schoolData => 
+        !existingSchoolNames.includes(schoolData.school.toLowerCase())
+      );
+
+      // Show feedback about duplicates
+      const duplicateCount = schoolsData.length - newSchoolsData.length;
+      if (duplicateCount > 0) {
+        toast({
+          title: "Some Schools Already Added",
+          description: `${duplicateCount} school(s) were already in your list and were skipped.`,
+          variant: "default",
+        });
+      }
+
+      // If no new schools to add, return early
+      if (newSchoolsData.length === 0) {
+        console.log('No new schools to add after filtering duplicates');
+        return;
+      }
+
       // Prepare data for bulk insert
-      const insertData = schoolsData.map(schoolData => ({
+      const insertData = newSchoolsData.map(schoolData => ({
         student_id: user.id,
         ...schoolData
       }));
       
       console.log('Inserting multiple schools:', insertData);
       
-      const { data: newSchoolsData, error } = await supabase
+      const { data: newSchoolsDataResult, error } = await supabase
         .from('school_recommendations')
         .insert(insertData)
         .select();
@@ -270,10 +309,10 @@ const SchoolList = () => {
         return;
       }
 
-      console.log('Successfully added multiple schools:', newSchoolsData);
+      console.log('Successfully added multiple schools:', newSchoolsDataResult);
 
       // Add to local state
-      const newSchools: School[] = newSchoolsData.map(newSchoolData => ({
+      const newSchools: School[] = newSchoolsDataResult.map(newSchoolData => ({
         id: newSchoolData.id,
         name: newSchoolData.school,
         location: capitalizeSchoolType(newSchoolData.school_type),
@@ -290,6 +329,15 @@ const SchoolList = () => {
       
       console.log('Adding multiple schools to local state:', newSchools);
       setSchools([...schools, ...newSchools]);
+
+      // Show success message for newly added schools
+      if (newSchoolsData.length > 0) {
+        toast({
+          title: "Schools Added Successfully",
+          description: `${newSchoolsData.length} school(s) have been added to your list.`,
+          variant: "default",
+        });
+      }
     } catch (err) {
       console.error('Error adding multiple schools:', err);
     }
@@ -663,6 +711,7 @@ const SchoolList = () => {
       onClose={() => setIsAddModalOpen(false)}
       onAddSchool={addSchool}
       onAddMultipleSchools={addMultipleSchools}
+      existingSchools={schools.map(school => school.name)}
     />
 
     {/* Archive Modal */}
