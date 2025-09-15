@@ -14,6 +14,13 @@ import {
   EyeOff
 } from 'lucide-react';
 import { StructuredResumeData, ResumeFeedbackData } from '@/types/resume';
+import BulletPointAnalysis from './BulletPointAnalysis';
+import SectionScoringBreakdown from './SectionScoringBreakdown';
+import AcademicAnalysisVisualization from './AcademicAnalysisVisualization';
+import ContentAnalysisBreakdown from './ContentAnalysisBreakdown';
+import CategorizedRecommendations from './CategorizedRecommendations';
+import InteractiveFeedbackPanel from './InteractiveFeedbackPanel';
+import EnhancedResumeComparison from './EnhancedResumeComparison';
 
 interface ResumeComparisonViewProps {
   originalResume: StructuredResumeData;
@@ -241,153 +248,153 @@ const ResumeComparisonView: React.FC<ResumeComparisonViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Feedback Summary */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Star className="h-5 w-5 text-yellow-500" />
-            <span>Resume Analysis Results</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <Star className="h-4 w-4 text-yellow-500" />
-                <span className="font-medium">Overall Score</span>
-              </div>
-              <div className="text-2xl font-bold text-primary">
-                {feedback.overall_score}/100
-              </div>
-              <Progress value={feedback.overall_score} className="h-2" />
-            </div>
-            
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <CheckCircle className="h-4 w-4 text-blue-500" />
-                <span className="font-medium">College Readiness</span>
-              </div>
-              <div className="text-2xl font-bold text-blue-600">
-                {feedback.college_readiness_score}/100
-              </div>
-              <Progress value={feedback.college_readiness_score} className="h-2" />
-            </div>
+      {/* Main Tabs for Different Analysis Views */}
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-7">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="bullet-analysis">Bullet Analysis</TabsTrigger>
+          <TabsTrigger value="section-scores">Section Scores</TabsTrigger>
+          <TabsTrigger value="academic">Academic</TabsTrigger>
+          <TabsTrigger value="content">Content</TabsTrigger>
+          <TabsTrigger value="recommendations">Recommendations</TabsTrigger>
+          <TabsTrigger value="interactive">Interactive</TabsTrigger>
+        </TabsList>
 
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <FileText className="h-4 w-4 text-green-500" />
-                <span className="font-medium">Format Score</span>
-              </div>
-              <div className="text-2xl font-bold text-green-600">
-                {Math.round((feedback.format_analysis.structure_score + feedback.format_analysis.readability_score + feedback.format_analysis.visual_appeal_score) / 3)}/100
-              </div>
-              <Progress value={Math.round((feedback.format_analysis.structure_score + feedback.format_analysis.readability_score + feedback.format_analysis.visual_appeal_score) / 3)} className="h-2" />
-            </div>
+        {/* Overview Tab - Original Summary */}
+        <TabsContent value="overview">
+          <div className="space-y-6">
+            {/* Quick Summary */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Star className="h-5 w-5 text-yellow-500" />
+                  <span>Resume Analysis Summary</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Star className="h-4 w-4 text-yellow-500" />
+                      <span className="font-medium">Overall Score</span>
+                    </div>
+                    <div className="text-2xl font-bold text-primary">
+                      {feedback.overall_score}/100
+                    </div>
+                    <Progress value={feedback.overall_score} className="h-2" />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <CheckCircle className="h-4 w-4 text-blue-500" />
+                      <span className="font-medium">College Readiness</span>
+                    </div>
+                    <div className="text-2xl font-bold text-blue-600">
+                      {feedback.college_readiness_score}/100
+                    </div>
+                    <Progress value={feedback.college_readiness_score} className="h-2" />
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <FileText className="h-4 w-4 text-green-500" />
+                      <span className="font-medium">Format Score</span>
+                    </div>
+                    <div className="text-2xl font-bold text-green-600">
+                      {Math.round((feedback.format_analysis.structure_score + feedback.format_analysis.readability_score + feedback.format_analysis.visual_appeal_score) / 3)}/100
+                    </div>
+                    <Progress value={Math.round((feedback.format_analysis.structure_score + feedback.format_analysis.readability_score + feedback.format_analysis.visual_appeal_score) / 3)} className="h-2" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Strengths */}
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-green-700">Strengths</h4>
+                    <ul className="space-y-1">
+                      {feedback.strengths.map((strength, index) => (
+                        <li key={index} className="text-sm text-green-600 flex items-start space-x-2">
+                          <CheckCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                          <span>{strength}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Weaknesses */}
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-red-700">Areas for Improvement</h4>
+                    <ul className="space-y-1">
+                      {feedback.weaknesses.map((weakness, index) => (
+                        <li key={index} className="text-sm text-red-600 flex items-start space-x-2">
+                          <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                          <span>{weakness}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Quick Suggestions */}
+                <div className="mt-6">
+                  <h4 className="font-medium mb-2">Top Actionable Suggestions</h4>
+                  <ul className="space-y-1">
+                    {feedback.suggestions.slice(0, 5).map((suggestion, index) => (
+                      <li key={index} className="text-sm text-muted-foreground flex items-start space-x-2">
+                        <span className="text-primary font-bold">{index + 1}.</span>
+                        <span>{suggestion}</span>
+                      </li>
+                    ))}
+                    {feedback.suggestions.length > 5 && (
+                      <li className="text-sm text-muted-foreground italic">
+                        ... and {feedback.suggestions.length - 5} more suggestions in the Recommendations tab
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Enhanced Resume Comparison */}
+            <EnhancedResumeComparison
+              originalResume={originalResume}
+              improvedResume={improvedResume}
+              onDownload={onDownload}
+              onViewResume={onViewResume}
+            />
           </div>
+        </TabsContent>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Strengths */}
-            <div className="space-y-2">
-              <h4 className="font-medium text-green-700">Strengths</h4>
-              <ul className="space-y-1">
-                {feedback.strengths.map((strength, index) => (
-                  <li key={index} className="text-sm text-green-600 flex items-start space-x-2">
-                    <CheckCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                    <span>{strength}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+        {/* Bullet Point Analysis Tab */}
+        <TabsContent value="bullet-analysis">
+          <BulletPointAnalysis feedback={feedback} />
+        </TabsContent>
 
-            {/* Weaknesses */}
-            <div className="space-y-2">
-              <h4 className="font-medium text-red-700">Areas for Improvement</h4>
-              <ul className="space-y-1">
-                {feedback.weaknesses.map((weakness, index) => (
-                  <li key={index} className="text-sm text-red-600 flex items-start space-x-2">
-                    <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                    <span>{weakness}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
+        {/* Section Scoring Tab */}
+        <TabsContent value="section-scores">
+          <SectionScoringBreakdown feedback={feedback} />
+        </TabsContent>
 
-          {/* Suggestions */}
-          <div className="mt-6">
-            <h4 className="font-medium mb-2">Actionable Suggestions</h4>
-            <ul className="space-y-1">
-              {feedback.suggestions.map((suggestion, index) => (
-                <li key={index} className="text-sm text-muted-foreground flex items-start space-x-2">
-                  <span className="text-primary font-bold">{index + 1}.</span>
-                  <span>{suggestion}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </CardContent>
-      </Card>
+        {/* Academic Analysis Tab */}
+        <TabsContent value="academic">
+          <AcademicAnalysisVisualization feedback={feedback} />
+        </TabsContent>
 
-      {/* Resume Comparison */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Resume Comparison</CardTitle>
-            <div className="flex items-center space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowComparison(!showComparison)}
-              >
-                {showComparison ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
-                {showComparison ? 'Hide' : 'Show'} Comparison
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onViewResume}
-              >
-                <Eye className="h-4 w-4 mr-2" />
-                View Full Resume
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {showComparison && improvedResume ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {renderResumeSection(originalResume, "Original Resume", false)}
-              {renderResumeSection(improvedResume, "AI Enhanced Resume", true)}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1">
-              {renderResumeSection(originalResume, "Your Resume", false)}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        {/* Content Analysis Tab */}
+        <TabsContent value="content">
+          <ContentAnalysisBreakdown feedback={feedback} />
+        </TabsContent>
 
-      {/* Download Options */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Download Enhanced Resume</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center space-x-4">
-            <Button onClick={() => onDownload('pdf')} className="flex items-center space-x-2">
-              <Download className="h-4 w-4" />
-              <span>Download PDF</span>
-            </Button>
-            <Button onClick={() => onDownload('docx')} variant="outline" className="flex items-center space-x-2">
-              <Download className="h-4 w-4" />
-              <span>Download DOCX</span>
-            </Button>
-          </div>
-          <p className="text-sm text-muted-foreground mt-2">
-            Download the AI-enhanced version of your resume in your preferred format.
-          </p>
-        </CardContent>
-      </Card>
+        {/* Recommendations Tab */}
+        <TabsContent value="recommendations">
+          <CategorizedRecommendations feedback={feedback} />
+        </TabsContent>
+
+        {/* Interactive Feedback Tab */}
+        <TabsContent value="interactive">
+          <InteractiveFeedbackPanel feedback={feedback} resumeDataId={resumeDataId || ''} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

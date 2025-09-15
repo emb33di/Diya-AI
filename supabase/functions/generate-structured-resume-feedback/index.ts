@@ -58,6 +58,35 @@ RESPONSE FORMAT (JSON only):
   "strengths": ["specific strength 1", "specific strength 2", "specific strength 3"],
   "weaknesses": ["specific weakness 1", "specific weakness 2", "specific weakness 3"],
   "suggestions": ["actionable suggestion 1", "actionable suggestion 2", "actionable suggestion 3"],
+  "section_scores": {
+    "personal_info": 8,
+    "summary": 6,
+    "education": 9,
+    "work_experience": 7,
+    "projects": 5,
+    "skills": 8,
+    "extracurriculars": 6,
+    "volunteer_experience": 7,
+    "awards": 9,
+    "publications": 8,
+    "languages": 7,
+    "additional_info": 6
+  },
+  "bullet_point_scores": {
+    "work_experience": [
+      {"bullet": "Led team of 5 developers", "score": 8, "suggestion": "Quantify team impact and project outcomes"},
+      {"bullet": "Developed web applications", "score": 4, "suggestion": "Specify technologies used and measurable results"},
+      {"bullet": "Improved system performance by 40%", "score": 9, "suggestion": "Excellent quantification"}
+    ],
+    "projects": [
+      {"bullet": "Built mobile app", "score": 3, "suggestion": "Add specific technologies, user count, and key features"},
+      {"bullet": "Created e-commerce platform serving 1000+ users", "score": 8, "suggestion": "Good quantification, consider adding tech stack"}
+    ],
+    "extracurriculars": [
+      {"bullet": "President of coding club", "score": 7, "suggestion": "Add specific achievements and impact"},
+      {"bullet": "Organized hackathon with 200 participants", "score": 9, "suggestion": "Excellent leadership and impact demonstration"}
+    ]
+  },
   "academic_analysis": {
     "academic_achievements": ["achievement1", "achievement2"],
     "leadership_roles": ["role1", "role2"],
@@ -193,7 +222,25 @@ RESPONSE FORMAT (JSON only):
   }
 }
 
-Provide specific, actionable feedback that will help improve the resume's effectiveness for college applications and admissions committees. Focus on what makes a student stand out to admissions officers. Include an improved version of the resume data with enhanced descriptions, better achievement quantification, and stronger presentation.`
+Provide specific, actionable feedback that will help improve the resume's effectiveness for college applications and admissions committees. Focus on what makes a student stand out to admissions officers. Include an improved version of the resume data with enhanced descriptions, better achievement quantification, and stronger presentation.
+
+SCORING CRITERIA FOR SECTIONS AND BULLET POINTS:
+- 9-10: Excellent content, no improvements needed (good to go)
+- 7-8: Good content with minor improvements possible
+- 5-6: Fair content that needs moderate improvements
+- 3-4: Poor content requiring significant improvements
+- 1-2: Very poor content needing major improvements
+
+SCORING LOGIC:
+- Score ≥7: Content is good to go, minimal or no changes needed
+- Score <7: AI suggests improvements, content needs enhancement
+
+For each section and bullet point, provide:
+1. A score (1-10) indicating quality
+2. Specific suggestions for improvement (if score < 7)
+3. Recognition of strengths (if score ≥ 7)
+
+Focus on college admissions criteria: impact, quantification, leadership, academic excellence, and unique contributions.`
 
 async function generateResumeFeedback(resumeData: any): Promise<any> {
   if (!GEMINI_API_KEY) {

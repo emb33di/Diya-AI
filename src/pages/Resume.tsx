@@ -10,8 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import OnboardingGuard from "@/components/OnboardingGuard";
 import ProfileCompletionGuard from "@/components/ProfileCompletionGuard";
-import LoadingPane from "@/components/ui/LoadingPane";
+import EnhancedLoadingPane from "@/components/EnhancedLoadingPane";
+import MobileResponsiveWrapper from "@/components/MobileResponsiveWrapper";
 import ResumeComparisonView from "@/components/ResumeComparisonView";
+import DragDropUpload from "@/components/DragDropUpload";
 import { 
   Upload, 
   FileText, 
@@ -51,27 +53,32 @@ const Resume = () => {
     {
       id: 'upload',
       label: 'Uploading Resume',
-      description: 'Securely uploading your resume file'
+      description: 'Securely uploading your resume file',
+      estimatedTime: 2
     },
     {
       id: 'extract',
       label: 'Extracting Content',
-      description: 'AI is extracting structured data from your resume'
+      description: 'AI is extracting structured data from your resume',
+      estimatedTime: 15
     },
     {
       id: 'analyze',
       label: 'AI Analysis',
-      description: 'Diya is analyzing your resume for college readiness'
+      description: 'Diya is analyzing your resume for college readiness',
+      estimatedTime: 30
     },
     {
       id: 'feedback',
       label: 'Generating Feedback',
-      description: 'Creating personalized recommendations and enhanced resume'
+      description: 'Creating personalized recommendations and enhanced resume',
+      estimatedTime: 20
     },
     {
       id: 'complete',
       label: 'Finalizing Results',
-      description: 'Preparing your comprehensive feedback report'
+      description: 'Preparing your comprehensive feedback report',
+      estimatedTime: 5
     }
   ];
 
@@ -353,8 +360,9 @@ const Resume = () => {
     <OnboardingGuard pageName="Resume">
       <ProfileCompletionGuard pageName="Resume">
         <div className="min-h-screen bg-background">
-        <div className="bg-gradient-to-br from-background via-primary/5 to-secondary/10 p-4 min-h-screen">
-          <main className="container mx-auto px-6 py-8">
+        <div className="bg-gradient-to-br from-background via-primary/5 to-secondary/10 min-h-screen">
+          <MobileResponsiveWrapper>
+            <main className="container mx-auto">
             {/* Header */}
             <div className="mb-8">
               <h1 className="text-3xl font-display font-bold mb-2">Resume Review</h1>
@@ -381,38 +389,12 @@ const Resume = () => {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="resume-upload">Choose File</Label>
-                      <Input
-                        id="resume-upload"
-                        type="file"
-                        accept=".pdf,.doc,.docx"
-                        onChange={handleFileSelect}
-                        disabled={uploading}
-                      />
-                      <p className="text-sm text-muted-foreground">
-                        Supported formats: PDF (Max 5MB)
-                      </p>
-                    </div>
-
-                    {selectedFile && (
-                      <div className="p-4 border rounded-lg bg-muted/30">
-                        <div className="flex items-center space-x-2">
-                          <FileText className="h-4 w-4" />
-                          <span className="font-medium">{selectedFile.name}</span>
-                          <Badge variant="secondary">{formatFileSize(selectedFile.size)}</Badge>
-                        </div>
-                      </div>
-                    )}
-
-                    {uploading && (
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-center text-sm text-muted-foreground">
-                          <Clock className="h-4 w-4 mr-2 animate-spin" />
-                          <span>Uploading resume...</span>
-                        </div>
-                      </div>
-                    )}
+                    <DragDropUpload
+                      onFileSelect={handleFileSelect}
+                      selectedFile={selectedFile}
+                      uploading={uploading}
+                      onRemoveFile={() => setSelectedFile(null)}
+                    />
 
                     <Button 
                       onClick={handleUpload} 
@@ -435,7 +417,11 @@ const Resume = () => {
                         <p className="text-muted-foreground text-center mb-4">
                           Upload your first resume to get started with AI-powered feedback and enhancement
                         </p>
-                        <Button onClick={() => document.getElementById('resume-upload')?.click()}>
+                        <Button onClick={() => {
+                          // Switch to upload tab
+                          const uploadTab = document.querySelector('[value="upload"]') as HTMLElement;
+                          uploadTab?.click();
+                        }}>
                           <Plus className="h-4 w-4 mr-2" />
                           Upload Resume
                         </Button>
@@ -535,13 +521,14 @@ const Resume = () => {
                 </div>
               </TabsContent>
             </Tabs>
-          </main>
+            </main>
+          </MobileResponsiveWrapper>
         </div>
       </div>
 
       {/* Resume Analysis Modal */}
       <Dialog open={!!viewingResume} onOpenChange={handleCloseView}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden">
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden w-full mx-4">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               <span>Resume Analysis & Enhancement</span>
@@ -553,35 +540,49 @@ const Resume = () => {
           
           <div className="flex-1 overflow-y-auto">
             {viewingResume && (
-              <ResumeComparisonView
-                originalResume={viewingResume.originalResume}
-                improvedResume={viewingResume.improvedResume}
-                feedback={viewingResume.feedback!}
-                resumeDataId={viewingResume.resumeDataId}
-                onDownload={(fileType) => {
-                  if (viewingResume.resumeDataId) {
-                    handleDownload(viewingResume.resumeDataId, fileType);
-                  }
-                }}
-                onViewResume={() => {
-                  // For now, just show a message
-                  toast({
-                    title: "Full Resume View",
-                    description: "Full resume view feature coming soon!",
-                  });
-                }}
-              />
+              <MobileResponsiveWrapper>
+                <ResumeComparisonView
+                  originalResume={viewingResume.originalResume}
+                  improvedResume={viewingResume.improvedResume}
+                  feedback={viewingResume.feedback!}
+                  resumeDataId={viewingResume.resumeDataId}
+                  onDownload={(fileType) => {
+                    if (viewingResume.resumeDataId) {
+                      handleDownload(viewingResume.resumeDataId, fileType);
+                    }
+                  }}
+                  onViewResume={() => {
+                    // For now, just show a message
+                    toast({
+                      title: "Full Resume View",
+                      description: "Full resume view feature coming soon!",
+                    });
+                  }}
+                />
+              </MobileResponsiveWrapper>
             )}
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Loading Pane for AI Processing */}
-      <LoadingPane
+      {/* Enhanced Loading Pane for AI Processing */}
+      <EnhancedLoadingPane
         isVisible={showLoadingPane}
         steps={processingSteps}
         currentStepIndex={currentProcessingStep}
         onComplete={handleLoadingComplete}
+        onCancel={() => {
+          setShowLoadingPane(false);
+          setCurrentProcessingStep(0);
+          setProcessingResumeId(null);
+          toast({
+            title: "Analysis Cancelled",
+            description: "Resume analysis has been cancelled. You can try again later.",
+            variant: "destructive"
+          });
+        }}
+        showCancelButton={true}
+        realTimeProgress={true}
       />
       </ProfileCompletionGuard>
     </OnboardingGuard>

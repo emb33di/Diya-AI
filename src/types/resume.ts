@@ -169,6 +169,51 @@ export interface ResumeFeedbackData {
   strengths: string[];
   weaknesses: string[];
   
+  // Section Scores (1-10 scale)
+  section_scores: {
+    personal_info: number;
+    summary: number;
+    education: number;
+    work_experience: number;
+    projects: number;
+    skills: number;
+    extracurriculars: number;
+    volunteer_experience: number;
+    awards: number;
+    publications: number;
+    languages: number;
+    additional_info: number;
+  };
+  
+  // Bullet Point Scores with Suggestions
+  bullet_point_scores: {
+    work_experience: Array<{
+      bullet: string;
+      score: number;
+      suggestion: string;
+    }>;
+    projects: Array<{
+      bullet: string;
+      score: number;
+      suggestion: string;
+    }>;
+    extracurriculars: Array<{
+      bullet: string;
+      score: number;
+      suggestion: string;
+    }>;
+    volunteer_experience?: Array<{
+      bullet: string;
+      score: number;
+      suggestion: string;
+    }>;
+    awards?: Array<{
+      bullet: string;
+      score: number;
+      suggestion: string;
+    }>;
+  };
+  
   // Detailed Analysis
   academic_analysis: {
     academic_achievements: string[];
