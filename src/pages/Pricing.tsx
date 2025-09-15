@@ -21,31 +21,35 @@ const Pricing = () => {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
           {/* Free Plan */}
           <Card className="border-2 hover:shadow-lg transition-shadow">
             <CardHeader>
               <CardTitle className="text-2xl">Free</CardTitle>
-              <CardDescription>Perfect for getting started</CardDescription>
-              <div className="text-3xl font-bold">$0<span className="text-lg font-normal text-muted-foreground">/month</span></div>
+              <CardDescription>Manage your entire application</CardDescription>
+              <div className="text-3xl font-bold">₹0<span className="text-lg font-normal text-muted-foreground">/month</span></div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
                   <Check className="h-5 w-5 text-primary" />
-                  <span>Common App Statement of Purpose</span>
+                  <span>Voice onboarding call with Diya</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Check className="h-5 w-5 text-primary" />
-                  <span>School Selection Tool</span>
+                  <span>Deadline tracking and reminders</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Check className="h-5 w-5 text-primary" />
-                  <span>Deadline Tracking</span>
+                  <span>All your essays, in one place</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Check className="h-5 w-5 text-primary" />
-                  <span>Basic AI Writing Assistance</span>
+                  <span>Resume management</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Check className="h-5 w-5 text-primary" />
+                  <span>Limited access to LOR templates, successful essays, and sample resumes</span>
                 </div>
               </div>
               <Button 
@@ -58,7 +62,7 @@ const Pricing = () => {
             </CardContent>
           </Card>
 
-          {/* Premium Plan */}
+          {/* Pro Plan */}
           <Card className="border-2 border-primary hover:shadow-lg transition-shadow relative">
             <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
               <span className="bg-primary text-primary-foreground px-4 py-1 rounded-full text-sm font-medium">
@@ -66,43 +70,71 @@ const Pricing = () => {
               </span>
             </div>
             <CardHeader>
-              <CardTitle className="text-2xl">Premium</CardTitle>
-              <CardDescription>Complete college application support</CardDescription>
-              <div className="text-3xl font-bold">$150<span className="text-lg font-normal text-muted-foreground">/one-time</span></div>
+              <CardTitle className="text-2xl">Pro</CardTitle>
+              <CardDescription>AI-powered counseling</CardDescription>
+              <div className="text-3xl font-bold">₹10,000<span className="text-lg font-normal text-muted-foreground">/one-time</span></div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
                   <Check className="h-5 w-5 text-primary" />
-                  <span className="font-medium">Everything in Free, plus:</span>
+                  <span className="font-medium">All features in Free, plus:</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Check className="h-5 w-5 text-primary" />
-                  <span>Up to 10 School Applications</span>
+                  <span>Unlimited access to Diya essay feedback and scoring</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Check className="h-5 w-5 text-primary" />
-                  <span>Unlimited Supplemental Essays</span>
+                  <span>Unlimited access to Diya resume enhancements</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Check className="h-5 w-5 text-primary" />
-                  <span>24/7 AI Counselor Access</span>
+                  <span>Full access to templates and successful essays</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Check className="h-5 w-5 text-primary" />
-                  <span>Personalized Strategy Sessions</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Check className="h-5 w-5 text-primary" />
-                  <span>Real-time Collaboration</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Check className="h-5 w-5 text-primary" />
-                  <span>Priority Support</span>
+                  <span>Access to weekly webinars and college guidance videos</span>
                 </div>
               </div>
               <Button className="w-full mt-6">
-                Upgrade to Premium
+                Upgrade to Pro
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Expert Plan */}
+          <Card className="border-2 hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <CardTitle className="text-2xl">Expert</CardTitle>
+              <CardDescription>Application review from the founder</CardDescription>
+              <div className="text-3xl font-bold">₹30,000<span className="text-lg font-normal text-muted-foreground">/one-time</span></div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <Check className="h-5 w-5 text-primary" />
+                  <span className="font-medium">All features in Pro, plus:</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Check className="h-5 w-5 text-primary" />
+                  <span>Full application review report from our Founder</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Check className="h-5 w-5 text-primary" />
+                  <span>Includes 5 College Essays + Common App</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Check className="h-5 w-5 text-primary" />
+                  <span>2 day turnaround on review</span>
+                </div>
+              </div>
+              <Button 
+                className="w-full mt-6" 
+                variant="outline"
+                onClick={() => navigate('/auth')}
+              >
+                Upgrade to Expert
               </Button>
             </CardContent>
           </Card>
