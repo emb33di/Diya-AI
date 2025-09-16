@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { usePageVisibility } from './usePageVisibility';
 
 interface ProfileCompletionData {
   completionPercentage: number;
@@ -237,6 +238,13 @@ export const useProfileCompletion = () => {
       window.removeEventListener('profileUpdated', handleProfileUpdate);
     };
   }, []);
+
+  // Refresh profile completion when page becomes visible
+  usePageVisibility(() => {
+    if (isMounted) {
+      runCalculation();
+    }
+  });
 
   return {
     ...completionData,

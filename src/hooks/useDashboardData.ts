@@ -3,6 +3,7 @@ import { useAuth } from './useAuth';
 import { EssayService, Essay } from '@/services/essayService';
 import { DeadlineService, UserDeadline } from '@/services/deadlineService';
 import { supabase } from '@/integrations/supabase/client';
+import { usePageVisibility } from './usePageVisibility';
 
 export interface SchoolCategory {
   name: string;
@@ -44,15 +45,8 @@ export const useDashboardData = () => {
     error: null,
   });
 
-  useEffect(() => {
-    if (!user) {
-      setData(prev => ({ ...prev, loading: false }));
-      return;
-    }
-
+  const fetchDashboardData = async (userId: string) => {
     let isMounted = true; // Prevent state updates after component unmounts
-
-    const fetchDashboardData = async (userId: string) => {
       try {
         setData(prev => ({ ...prev, loading: true, error: null }));
 
@@ -175,6 +169,13 @@ export const useDashboardData = () => {
       isMounted = false;
     };
   }, [user]);
+
+  // Refresh dashboard data when page becomes visible
+  usePageVisibility(() => {
+    if (user) {
+      fetchDashboardData(user.id);
+    }
+  });
 
   return data;
 };

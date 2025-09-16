@@ -9,6 +9,7 @@ import {
   countWordsInHTML,
   countCharactersInHTML
 } from '@/services/essayService';
+import { usePageVisibility } from './usePageVisibility';
 
 export const useTipTapEssayEditor = (essayId: string | null) => {
   const [essay, setEssay] = useState<Essay | null>(null);
@@ -23,8 +24,7 @@ export const useTipTapEssayEditor = (essayId: string | null) => {
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialLoadRef = useRef(true);
 
-  // Load essay
-  useEffect(() => {
+  const loadEssay = useCallback(async () => {
     if (!essayId) {
       setEssay(null);
       setHtmlContent('');
@@ -34,33 +34,41 @@ export const useTipTapEssayEditor = (essayId: string | null) => {
       return;
     }
 
-    const loadEssay = async () => {
-      setLoading(true);
-      try {
-        const essayData = await EssayService.getEssay(essayId);
-        setEssay(essayData);
-        
-        // Convert blocks to HTML for TipTap
-        const html = convertBlocksToHTML(essayData.content.blocks);
-        setHtmlContent(html);
-        
-        setLastSaved(new Date(essayData.last_saved_at));
-        setHasUnsavedChanges(false);
-        isInitialLoadRef.current = false;
-      } catch (error) {
-        console.error('Error loading essay:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load essay",
-          variant: "destructive"
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadEssay();
+    setLoading(true);
+    try {
+      const essayData = await EssayService.getEssay(essayId);
+      setEssay(essayData);
+      
+      // Convert blocks to HTML for TipTap
+      const html = convertBlocksToHTML(essayData.content.blocks);
+      setHtmlContent(html);
+      
+      setLastSaved(new Date(essayData.last_saved_at));
+      setHasUnsavedChanges(false);
+      isInitialLoadRef.current = false;
+    } catch (error) {
+      console.error('Error loading essay:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load essay",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   }, [essayId, toast]);
+
+  // Load essay on mount
+  useEffect(() => {
+    loadEssay();
+  }, [loadEssay]);
+
+  // Refresh essay data when page becomes visible (to catch any external changes)
+  usePageVisibility(() => {
+    if (essayId && !loading) {
+      loadEssay();
+    }
+  });
 
   // Auto-save functionality
   const saveContent = useCallback(async (html: string) => {
