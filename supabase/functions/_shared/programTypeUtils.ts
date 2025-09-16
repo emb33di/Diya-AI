@@ -1,4 +1,7 @@
-import { supabase } from '@/integrations/supabase/client';
+/**
+ * Shared utility functions for program type mapping in edge functions
+ * This ensures consistency across all edge functions
+ */
 
 export type SchoolProgramType = 'Undergraduate' | 'MBA' | 'LLM' | 'PhD' | 'Masters';
 export type ApplyingToType = 'Undergraduate Colleges' | 'MBA' | 'LLM' | 'PhD' | 'Masters';
@@ -41,54 +44,16 @@ export function mapApplyingToToProgramTypeWithFallback(
 }
 
 /**
- * Get the user's program type from their profile
- * Maps the applying_to field to the appropriate school_program_type
+ * Get user's program type from their profile data
+ * @param userProfile - User profile data containing applying_to field
+ * @param fallback - Fallback value if mapping fails
+ * @returns The corresponding SchoolProgramType or fallback
  */
-export async function getUserProgramType(): Promise<SchoolProgramType | null> {
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
-
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .select('applying_to')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (error) {
-      console.error('Error fetching user program type:', error);
-      return null;
-    }
-
-    return mapApplyingToToProgramType(data?.applying_to);
-  } catch (error) {
-    console.error('Error in getUserProgramType:', error);
-    return null;
-  }
-}
-
-/**
- * Check if a user is applying to undergraduate programs
- */
-export async function isUndergraduateUser(): Promise<boolean> {
-  const programType = await getUserProgramType();
-  return programType === 'Undergraduate';
-}
-
-/**
- * Check if a user is applying to MBA programs
- */
-export async function isMBAUser(): Promise<boolean> {
-  const programType = await getUserProgramType();
-  return programType === 'MBA';
-}
-
-/**
- * Check if a user is applying to graduate programs (MBA, LLM, PhD, Masters)
- */
-export async function isGraduateUser(): Promise<boolean> {
-  const programType = await getUserProgramType();
-  return ['MBA', 'LLM', 'PhD', 'Masters'].includes(programType || '');
+export function getUserProgramTypeFromProfile(
+  userProfile: { applying_to?: string | null } | null | undefined,
+  fallback: SchoolProgramType = 'Undergraduate'
+): SchoolProgramType {
+  return mapApplyingToToProgramTypeWithFallback(userProfile?.applying_to, fallback);
 }
 
 /**

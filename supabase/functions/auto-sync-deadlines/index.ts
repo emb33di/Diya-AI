@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getUserProgramTypeFromProfile } from '../_shared/programTypeUtils.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -159,16 +160,8 @@ serve(async (req) => {
       console.warn('Could not fetch user profile:', profileError.message)
     }
 
-    // Map applying_to to program type
-    const programTypeMap: Record<string, string> = {
-      'Undergraduate Colleges': 'Undergraduate',
-      'MBA': 'MBA',
-      'LLM': 'LLM',
-      'PhD': 'PhD',
-      'Masters': 'Masters'
-    }
-
-    const userProgramType = userProfile?.applying_to ? programTypeMap[userProfile.applying_to] || 'Undergraduate' : 'Undergraduate'
+    // Use centralized mapping function
+    const userProgramType = getUserProgramTypeFromProfile(userProfile, 'Undergraduate')
     console.log(`User program type: ${userProgramType}`)
 
     // Get appropriate deadline data based on program type

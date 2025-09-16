@@ -19,6 +19,7 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import OnboardingGuard from "@/components/OnboardingGuard";
 import { debugSupabase406, testCreateUserProfile } from "@/utils/debugSupabase";
+import { getValidApplyingToValues } from "@/utils/userProfileUtils";
 
 const profileSchema = z.object({
   // Personal Information
@@ -27,9 +28,7 @@ const profileSchema = z.object({
   email_address: z.string().email("Valid email address is required").min(1, "Email address is required"),
   country_code: z.string().min(1, "Country code is required"),
   phone_number: z.string().min(1, "Phone number is required"),
-  applying_to: z.enum(["Undergraduate Colleges", "MBA", "LLM", "PhD", "Masters"], {
-    required_error: "Please select what you're applying to"
-  }),
+  applying_to: z.enum(["Undergraduate Colleges", "MBA", "LLM", "PhD", "Masters"]).optional(),
   masters_field_of_focus: z.string().optional(),
   
   // Academic Profile
@@ -355,7 +354,7 @@ export default function Profile() {
       email_address: "",
       country_code: "+91",
       phone_number: "",
-      applying_to: "Undergraduate Colleges" as const,
+      applying_to: undefined,
       masters_field_of_focus: "",
       
       // Academic Profile
@@ -1222,28 +1221,22 @@ export default function Profile() {
                 </div>
               </div>
 
-              {/* Applying To Section */}
+              {/* Applying To Section - Read Only */}
               <div className="space-y-4">
                 <FormField
                   control={form.control}
                   name="applying_to"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Applying To <span className="text-red-500">*</span></FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select what you're applying to" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="Undergraduate Colleges">Undergraduate Colleges</SelectItem>
-                          <SelectItem value="MBA">MBA</SelectItem>
-                          <SelectItem value="LLM">LLM</SelectItem>
-                          <SelectItem value="PhD">PhD</SelectItem>
-                          <SelectItem value="Masters">Masters</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <FormLabel>Program Type</FormLabel>
+                      <div className="flex items-center space-x-2">
+                        <div className="px-3 py-2 bg-muted rounded-md text-sm font-medium">
+                          {field.value || "Not set"}
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          Set during account creation
+                        </span>
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}

@@ -4,10 +4,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import StarryBackground from "@/components/StarryBackground";
+import { getValidApplyingToValues } from "@/utils/userProfileUtils";
 import "@/styles/landing.css";
 
 const Auth = () => {
@@ -16,6 +18,7 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [applyingTo, setApplyingTo] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -58,6 +61,17 @@ const Auth = () => {
           description: "You've been signed in successfully.",
         });
       } else {
+        // Validate required fields for signup
+        if (!applyingTo) {
+          toast({
+            title: "Program Type Required",
+            description: "Please select what you're applying to.",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+
         const redirectUrl = `${window.location.origin}/`;
         
         const { error } = await supabase.auth.signUp({
@@ -69,11 +83,29 @@ const Auth = () => {
               full_name: `${firstName} ${lastName}`,
               first_name: firstName,
               last_name: lastName,
+              applying_to: applyingTo,
             },
           },
         });
 
         if (error) throw error;
+
+        // Create user profile with program type
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { error: profileError } = await supabase
+            .from('user_profiles')
+            .insert({
+              user_id: user.id,
+              full_name: `${firstName} ${lastName}`,
+              email_address: email,
+              applying_to: applyingTo,
+            });
+
+          if (profileError) {
+            console.error('Error creating user profile:', profileError);
+          }
+        }
 
         toast({
           title: "Account created!",
@@ -171,6 +203,24 @@ const Auth = () => {
                     minLength={6}
                   />
                 </div>
+
+                {!isSignIn && (
+                  <div className="space-y-2">
+                    <Label htmlFor="applyingTo">What are you applying to? <span className="text-red-500">*</span></Label>
+                    <Select value={applyingTo} onValueChange={setApplyingTo}>
+                      <SelectTrigger className="h-12 text-base">
+                        <SelectValue placeholder="Select your program type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getValidApplyingToValues().map((value) => (
+                          <SelectItem key={value} value={value}>
+                            {value}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 {isSignIn && (
                   <div className="text-right">

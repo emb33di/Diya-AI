@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Search, Plus, X, Trash2 } from 'lucide-react';
+import { getUserProgramType } from '@/utils/userProfileUtils';
 
 interface School {
   ranking: number;
@@ -49,11 +50,34 @@ const AddSchoolModal: React.FC<AddSchoolModalProps> = ({ isOpen, onClose, onAddS
   });
   const [loading, setLoading] = useState(false);
 
-  // Load schools from JSON file
+  // Load schools from appropriate JSON file based on user's program type
   useEffect(() => {
     const loadSchools = async () => {
       try {
-        const response = await fetch('/schools.json');
+        const userProgramType = await getUserProgramType();
+        let schoolFile = '/schools.json'; // Default fallback
+        
+        // Map program type to appropriate school file
+        switch (userProgramType) {
+          case 'Undergraduate':
+            schoolFile = '/undergraduate-schools.json';
+            break;
+          case 'MBA':
+            schoolFile = '/mba-schools.json';
+            break;
+          case 'LLM':
+          case 'PhD':
+          case 'Masters':
+            schoolFile = '/graduate-schools.json';
+            break;
+          default:
+            schoolFile = '/schools.json'; // Fallback to original file
+            break;
+        }
+
+        console.log(`Loading schools for program type: ${userProgramType} from ${schoolFile}`);
+        
+        const response = await fetch(schoolFile);
         const data = await response.json();
         setSchools(data.schools || []);
       } catch (error) {

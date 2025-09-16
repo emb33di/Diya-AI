@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getUserProgramTypeFromProfile } from '../_shared/programTypeUtils.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -40,24 +41,29 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey)
 const GEMINI_API_KEY = Deno.env.get('GOOGLE_API_KEY')
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent'
 
-// School recommendation prompt
-const SCHOOL_RECOMMENDATION_PROMPT = `You are an expert college admissions counselor. Based on the following conversation transcript, generate personalized school recommendations for the student.
+// School recommendation prompt template
+const SCHOOL_RECOMMENDATION_PROMPT_TEMPLATE = `You are an expert {program_type} admissions counselor. Based on the following conversation transcript, generate personalized school recommendations for the student.
 
 CONVERSATION TRANSCRIPT:
 {transcript}
 
+PROGRAM TYPE: {program_type}
+
 INSTRUCTIONS:
 1. Analyze the student's academic profile, interests, preferences, and goals from the conversation
-2. Generate 8-12 school recommendations across different categories (reach, target, safety)
+2. Generate 8-12 {program_type} school recommendations across different categories (reach, target, safety)
 3. For each school, provide:
    - School name (exact official name)
-   - School type (e.g., "Private University", "Public University", "Liberal Arts College")
+   - School type (e.g., "Private University", "Public University", "Liberal Arts College", "Business School")
    - Category (reach/target/safety based on student's profile)
    - Acceptance rate (if known)
    - School ranking (if known)
    - First round deadline (if known)
    - Brief notes explaining why this school fits the student
    - Student thesis (key reasons for recommendation)
+
+SPECIAL CONSIDERATIONS FOR {program_type}:
+{program_specific_guidance}
 
 RESPONSE FORMAT (JSON only):
 {
@@ -75,14 +81,28 @@ RESPONSE FORMAT (JSON only):
   ]
 }
 
-Focus on schools that genuinely match the student's profile and interests.`
+Focus on schools that genuinely match the student's profile and interests for {program_type} applications.`
 
-async function generateSchoolRecommendations(transcript: string): Promise<SchoolRecommendation[]> {
+// Program-specific guidance for different application types
+const PROGRAM_GUIDANCE = {
+  'Undergraduate': 'Focus on undergraduate programs, liberal arts education, research opportunities for undergraduates, campus culture, and academic fit. Consider factors like class size, professor accessibility, undergraduate research opportunities, and campus life.',
+  'MBA': 'Focus on MBA programs, business school rankings, career outcomes, alumni networks, and industry connections. Consider factors like GMAT/GRE scores, work experience, career goals, and program format (full-time, part-time, executive).',
+  'LLM': 'Focus on law school programs, legal specializations, bar exam pass rates, and career outcomes in law. Consider factors like LSAT scores, undergraduate GPA, legal interests, and career goals in the legal field.',
+  'PhD': 'Focus on doctoral programs, research opportunities, faculty advisors, funding availability, and academic reputation. Consider factors like research interests, GRE scores, academic background, and career goals in academia or research.',
+  'Masters': 'Focus on master\'s programs, specialized fields of study, research opportunities, and career advancement. Consider factors like GRE scores, undergraduate background, career goals, and program specialization.'
+};
+
+async function generateSchoolRecommendations(transcript: string, programType: string = 'Undergraduate'): Promise<SchoolRecommendation[]> {
   if (!GEMINI_API_KEY) {
     throw new Error('Google API key not configured')
   }
 
-  const prompt = SCHOOL_RECOMMENDATION_PROMPT.replace('{transcript}', transcript)
+  const programSpecificGuidance = PROGRAM_GUIDANCE[programType as keyof typeof PROGRAM_GUIDANCE] || PROGRAM_GUIDANCE['Undergraduate'];
+  
+  const prompt = SCHOOL_RECOMMENDATION_PROMPT_TEMPLATE
+    .replace('{transcript}', transcript)
+    .replace('{program_type}', programType)
+    .replace('{program_specific_guidance}', programSpecificGuidance)
 
   try {
     const response = await fetch(GEMINI_API_URL, {
@@ -236,8 +256,23 @@ serve(async (req) => {
       )
     }
 
+    // Get user's program type
+    const { data: userProfile, error: profileError } = await supabase
+      .from('user_profiles')
+      .select('applying_to')
+      .eq('user_id', user_id)
+      .maybeSingle()
+
+    if (profileError) {
+      console.warn('Could not fetch user profile:', profileError.message)
+    }
+
+    // Use centralized mapping function
+    const userProgramType = getUserProgramTypeFromProfile(userProfile, 'Undergraduate')
+    console.log(`Generating school recommendations for program type: ${userProgramType}`)
+
     // Generate school recommendations
-    const recommendations = await generateSchoolRecommendations(conversation.transcript)
+    const recommendations = await generateSchoolRecommendations(conversation.transcript, userProgramType)
 
     if (recommendations.length === 0) {
       return new Response(
