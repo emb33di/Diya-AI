@@ -55,14 +55,14 @@ export const BackendIntegration = () => {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Backend Integration Test</h1>
+      <h1 className="text-3xl font-bold mb-6">Supabase Integration Test</h1>
       
       {/* Connection Status */}
       <div className="mb-6 p-4 border rounded-lg">
         <h2 className="text-xl font-semibold mb-2">Connection Status</h2>
         <div className="flex items-center space-x-2">
           <span className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>
-          <span>{isConnected ? 'Connected' : 'Disconnected'} to Backend API</span>
+          <span>{isConnected ? 'Connected' : 'Disconnected'} to Supabase</span>
         </div>
         {isLoading && <p className="text-sm text-gray-600 mt-2">Testing connection...</p>}
       </div>
@@ -132,10 +132,10 @@ export const BackendIntegration = () => {
       <div className="mt-8 p-4 bg-gray-100 rounded-lg">
         <h3 className="font-semibold mb-2">Instructions</h3>
         <ol className="list-decimal list-inside space-y-1 text-sm">
-          <li>Make sure you're authenticated with Supabase</li>
-          <li>Click "Test Connection" to verify the service is accessible</li>
-          <li>Click "Generate Recommendations" to test the school recommendation service</li>
-          <li>Check the browser console for detailed logs</li>
+        <li>Make sure you're authenticated with Supabase</li>
+        <li>Click "Test Connection" to verify Supabase authentication</li>
+        <li>Click "Generate Recommendations" to test the Supabase Edge Function</li>
+        <li>Check the browser console for detailed logs</li>
         </ol>
       </div>
     </div>

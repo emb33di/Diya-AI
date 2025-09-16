@@ -14,7 +14,7 @@ import { ConversationStorage } from '@/utils/conversationStorage';
 import { SchoolRecommendationService } from '@/services/schoolRecommendationService';
 import { useNavigate } from 'react-router-dom';
 import { useOnboardingStatus } from '@/hooks/useOnboardingStatus';
-import { AIAgentAPI } from '@/services/aiAgentAPI';
+import { ConversationResumeService } from '@/services/conversationResumeService';
 import VoiceOrb from '@/components/VoiceOrb';
 const ONBOARDING_AGENT_ID = import.meta.env.VITE_ELEVENLABS_AGENT_ID; // Replace with your actual agent ID from Eleven Labs
 
@@ -629,13 +629,50 @@ const Onboarding = () => {
           console.log('🤖 Getting AI-powered conversation context...');
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
-            // Use AI Agent API with fallback
-            const contextResult = await AIAgentAPI.getContextWithFallback(user.id, previousContext);
-            dynamicVariables.previous_sessions = contextResult.context;
-            dynamicVariables.session_count = contextResult.session_count;
-            console.log(`✅ Using ${contextResult.source} context for ElevenLabs`);
-            console.log('Context:', contextResult.context);
-            console.log('Session count:', contextResult.session_count);
+            // Use Supabase Edge Function for conversation resume context
+            try {
+              const contextResult = await ConversationResumeService.generateConversationResumeContext(user.id);
+              if (contextResult.success && contextResult.context) {
+                dynamicVariables.previous_sessions = contextResult.context;
+                dynamicVariables.session_count = contextResult.session_count;
+                console.log('✅ Using AI-generated context for ElevenLabs');
+                console.log('Context:', contextResult.context);
+                console.log('Session count:', contextResult.session_count);
+              } else {
+                // Fallback to local method
+                const contextSummary = previousContext
+                  .map((ctx: any) => {
+                    const content = ctx.transcript || '';
+                    return `${ctx.session}: ${content}`;
+                  })
+                  .filter(ctx => {
+                    const parts = ctx.split(': ');
+                    return parts.length > 1 && parts[1].trim() !== '';
+                  })
+                  .join('\n\n');
+                
+                dynamicVariables.previous_sessions = contextSummary;
+                dynamicVariables.session_count = previousContext.length;
+                console.log('⚠️ Using fallback context for ElevenLabs');
+              }
+            } catch (error) {
+              console.error('❌ Error getting context:', error);
+              // Fallback to local method
+              const contextSummary = previousContext
+                .map((ctx: any) => {
+                  const content = ctx.transcript || '';
+                  return `${ctx.session}: ${content}`;
+                })
+                .filter(ctx => {
+                  const parts = ctx.split(': ');
+                  return parts.length > 1 && parts[1].trim() !== '';
+                })
+                .join('\n\n');
+              
+              dynamicVariables.previous_sessions = contextSummary;
+              dynamicVariables.session_count = previousContext.length;
+              console.log('⚠️ Using fallback context due to error');
+            }
           }
         } catch (error) {
           console.error('❌ Error getting conversation context:', error);

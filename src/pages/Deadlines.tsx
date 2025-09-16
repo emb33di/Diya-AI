@@ -27,6 +27,43 @@ const Deadlines = () => {
     fetchDeadlines();
   }, []);
 
+  // Auto-sync deadlines for existing schools that don't have them
+  useEffect(() => {
+    const syncExistingDeadlines = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        // Check if any schools don't have regular decision deadlines
+        const { data: schoolRecommendations } = await supabase
+          .from('school_recommendations')
+          .select('id, school, regular_decision_deadline')
+          .eq('student_id', user.id)
+          .is('regular_decision_deadline', null);
+
+        if (schoolRecommendations && schoolRecommendations.length > 0) {
+          // Auto-sync deadlines for schools that don't have them
+          const { data: deadlineSyncData, error: deadlineSyncError } = await supabase.functions.invoke('auto-sync-deadlines', {
+            body: { user_id: user.id },
+            headers: {
+              Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+            }
+          });
+
+          if (!deadlineSyncError && deadlineSyncData?.schools_updated > 0) {
+            console.log('Auto-synced deadlines for existing schools:', deadlineSyncData);
+            // Refresh the deadlines after syncing
+            fetchDeadlines();
+          }
+        }
+      } catch (error) {
+        console.warn('Error auto-syncing existing deadlines:', error);
+      }
+    };
+
+    syncExistingDeadlines();
+  }, []);
+
   const fetchDeadlines = async () => {
     try {
       setLoading(true);
@@ -78,7 +115,10 @@ const Deadlines = () => {
         return;
       }
 
-      await DeadlineService.syncDeadlinesForUser(user.id);
+      console.log('Starting deadline sync for user:', user.id);
+      const result = await DeadlineService.syncDeadlinesForUser(user.id);
+      console.log('Sync result:', result);
+      
       await fetchDeadlines(); // Refresh the data
       
       // Show success message
@@ -174,8 +214,14 @@ const Deadlines = () => {
   };
 
   const getDisplayDeadline = (deadline: UserDeadline) => {
+    // Debug logging
+    console.log(`School: ${deadline.schoolName}, Deadline: "${deadline.regularDecisionDeadline}"`);
+    
     // Only show Regular Decision deadlines
-    if (deadline.regularDecisionDeadline) {
+    // Handle both null values and "null" strings
+    if (deadline.regularDecisionDeadline && 
+        deadline.regularDecisionDeadline !== 'null' && 
+        deadline.regularDecisionDeadline.trim() !== '') {
       return { 
         type: 'Regular Decision', 
         date: deadline.regularDecisionDeadline 
@@ -241,6 +287,24 @@ const Deadlines = () => {
             </div>
             
             <div className="flex items-center space-x-4">
+              <Button 
+                onClick={handleSyncDeadlines}
+                disabled={syncing}
+                variant="outline"
+                className="flex items-center space-x-2"
+              >
+                {syncing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+                <span>{syncing ? 'Syncing...' : 'Sync Deadlines'}</span>
+              </Button>
+              
+              <div className="text-sm text-muted-foreground">
+                Deadlines are automatically synced when schools are added
+              </div>
+              
               <div className="flex items-center space-x-2">
                 <Filter className="h-4 w-4 text-muted-foreground" />
                 <div className="flex space-x-2">

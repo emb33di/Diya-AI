@@ -271,29 +271,6 @@ const Header = () => {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Link 
-                    to="/deadlines" 
-                    onClick={(e) => handleNavigation('/deadlines', e)}
-                    className={`text-sm font-medium transition-colors hover:text-primary ${
-                      isActive('/deadlines') ? 'text-primary' : 'text-muted-foreground'
-                    } ${
-                      onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/deadlines')
-                        ? 'opacity-60 cursor-not-allowed' : ''
-                    }`}
-                  >
-                    Progress
-                  </Link>
-                </TooltipTrigger>
-                {onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/deadlines') && (
-                  <TooltipContent>
-                    <p>Please complete your Profile.</p>
-                  </TooltipContent>
-                )}
-              </Tooltip>
-            </TooltipProvider>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Link 
                     to="/lor" 
                     onClick={(e) => handleNavigation('/lor', e)}
                     className={`text-sm font-medium transition-colors hover:text-primary ${
@@ -307,6 +284,29 @@ const Header = () => {
                   </Link>
                 </TooltipTrigger>
                 {onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/lor') && (
+                  <TooltipContent>
+                    <p>Please complete your Profile.</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link 
+                    to="/deadlines" 
+                    onClick={(e) => handleNavigation('/deadlines', e)}
+                    className={`text-sm font-medium transition-colors hover:text-primary ${
+                      isActive('/deadlines') ? 'text-primary' : 'text-muted-foreground'
+                    } ${
+                      onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/deadlines')
+                        ? 'opacity-60 cursor-not-allowed' : ''
+                    }`}
+                  >
+                    Progress
+                  </Link>
+                </TooltipTrigger>
+                {onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/deadlines') && (
                   <TooltipContent>
                     <p>Please complete your Profile.</p>
                   </TooltipContent>

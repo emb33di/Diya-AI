@@ -207,18 +207,10 @@ cd backend
 ### Manual Testing
 1. **Voice Conversation**: Test at `/onboarding`
 2. **Conversation History**: Test at `/conversation-history`
-3. **Backend Integration**: Test at `/backend-integration`
+3. **Supabase Integration**: Test at `/backend-integration`
 
-### API Testing
-```bash
-# Test backend health
-curl http://localhost:8000/
-
-# Test recommendations
-curl -X POST http://localhost:8000/api/recommendations \
-  -H "Content-Type: application/json" \
-  -d '{"conversation_id": "test", "user_id": "test_user"}'
-```
+### Supabase Integration Testing
+The application now uses Supabase Edge Functions instead of a separate backend API. All functionality is accessible through the Supabase client in the frontend.
 
 ## 📈 Performance
 

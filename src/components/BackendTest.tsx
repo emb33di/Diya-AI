@@ -97,9 +97,9 @@ export const BackendTest: React.FC<BackendTestProps> = ({
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Backend API Test</CardTitle>
+          <CardTitle>Supabase Integration Test</CardTitle>
           <CardDescription>
-            Test the connection to the backend API server
+            Test the connection to Supabase Edge Functions
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -109,7 +109,7 @@ export const BackendTest: React.FC<BackendTestProps> = ({
               {isConnected ? "Connected" : "Disconnected"}
             </Badge>
             <span className="text-sm text-muted-foreground">
-              Backend API Server
+              Supabase Edge Functions
             </span>
           </div>
 

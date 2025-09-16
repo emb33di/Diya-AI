@@ -1,0 +1,1444 @@
+[
+  {
+    "college_name": "Common Application",
+    "how_many": "one",
+    "selection_type": "choose_one",
+    "school_program_type": "Undergraduate",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "Some students have a background, identity, interest, or talent that is so meaningful they believe their application would be incomplete without it. If this sounds like you, then please share your story.",
+        "word_limit": "250-650",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "2",
+        "prompt": "The lessons we take from obstacles we encounter can be fundamental to later success. Recount a time when you faced a challenge, setback, or failure. How did it affect you, and what did you learn from the experience?",
+        "word_limit": "250-650",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "3",
+        "prompt": "Reflect on a time when you questioned or challenged a belief or idea. What prompted your thinking? What was the outcome?",
+        "word_limit": "250-650",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "4",
+        "prompt": "Reflect on something that someone has done for you that has made you happy or thankful in a surprising way. How has this gratitude affected or motivated you?",
+        "word_limit": "250-650",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "5",
+        "prompt": "Discuss an accomplishment, event, or realization that sparked a period of personal growth and a new understanding of yourself or others.",
+        "word_limit": "250-650",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "6",
+        "prompt": "Describe a topic, idea, or concept you find so engaging that it makes you lose all track of time. Why does it captivate you? What or who do you turn to when you want to learn more?",
+        "word_limit": "250-650",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "7",
+        "prompt": "Share an essay on any topic of your choice. It can be one you've already written, one that responds to a different prompt, or one of your own design.",
+        "word_limit": "250-650",
+        "selection_type": "choose_one"
+      }
+    ]
+  },
+  {
+    "college_name": "Coalition Application",
+    "how_many": "one",
+    "school_program_type": "Undergraduate",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "Tell a story from your life, describing an experience that either demonstrates your character or helped to shape it.",
+        "word_limit": "500-650",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "2",
+        "prompt": "What interests or excites you? How does it shape who you are now or who you might become in the future?",
+        "word_limit": "500-650",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "3",
+        "prompt": "Describe a time when you had a positive impact on others. What were the challenges? What were the rewards?",
+        "word_limit": "500-650",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "4",
+        "prompt": "Has there been a time when an idea or belief of yours was questioned? How did you respond? What did you learn?",
+        "word_limit": "500-650",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "5",
+        "prompt": "What success have you achieved or obstacle have you faced? What advice would you give a sibling or friend going through a similar experience?",
+        "word_limit": "500-650",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "6",
+        "prompt": "Submit an essay on a topic of your choice",
+        "word_limit": "500-650",
+        "selection_type": "choose_one"
+      }
+    ]
+  },
+  {
+    "college_name": "American University",
+    "how_many": "one",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "American University students identify as changemakers and describe themselves as passionate. Describe a belief, hobby, idea, issue, or topic about which you're excited.",
+        "word_limit": "250",
+        "selection_type": "required"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "Amherst College",
+    "how_many": "one",
+    "prompts": [
+      {
+        "prompt_number": "Option A - Prompt 1",
+        "prompt": "What does curiosity mean to you? How do you experience curiosity in your own life?",
+        "word_limit": "350",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "Option A - Prompt 2",
+        "prompt": "In what ways could your unique experiences enhance our understanding of our nation and our world?",
+        "word_limit": "350",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "Option A - Prompt 3",
+        "prompt": "Tell us about a time that you engaged with a viewpoint different from your own. How did you enter that engagement, and what did you learn about yourself from it?",
+        "word_limit": "350",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "Option B",
+        "prompt": "Submit a graded paper from your junior or senior year that best represents your writing skills and analytical abilities. We are particularly interested in your ability to construct a tightly reasoned, persuasive argument that calls upon literary, sociological or historical evidence. You should not submit a laboratory report, journal entry, creative writing sample or in-class essay. Also, if you have submitted an analytical essay in response to the \"essay topic of your choice\" prompt in the Common Application or Apply Coalition with Scoir writing section, you should not select Option B.",
+        "word_limit": "Graded paper",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "Option C",
+        "prompt": "If you are/were an applicant to Amherst's Access to Amherst (A2A) program, you may use your A2A Writing Supplement essay in satisfaction of our supplementary essay requirement. If you would like to do so, please select Option C. However, if you would prefer not to use your A2A Writing Supplement for this purpose and you want to submit a different piece of writing, select either Option A or Option B. Option A, Prompt 2 is the same prompt as the A2A Writing Supplement essay; if you would like to submit an updated version of your A2A Writing Supplement essay, please choose Option A, Prompt 2. Please note that Option C is available only to applicants to Amherst's A2A program. Non-A2A applicants must choose either Option A or Option B.",
+        "word_limit": "A2A essay",
+        "selection_type": "choose_one"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "Babson College",
+    "how_many": "all",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "The Babson education prepares students for all types of careers across business, entrepreneurship, social innovation, and more. Tell us about your interest in this area of study and in Babson specifically.",
+        "word_limit": "500",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "2",
+        "prompt": "A defining element of the Babson experience is learning and thriving in an equitable and inclusive community with a wide range of perspectives, experiences, and interests. Please share something about your background, lived experiences, or viewpoint(s) that speaks to: (1) your commitment to promoting access, connection, or understanding across differences; and/or (2) how you will contribute to and learn from Babson's collaborative community.",
+        "word_limit": "250",
+        "selection_type": "required"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "Barnard College",
+    "how_many": "one",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "Rooted in a history of trailblazing women, Barnard College is a collaborative community of care shaped by bold women with a multitude of perspectives. Choose one woman— historical, fictional, contemporary, or personally significant— whose views differ from your own. Imagine a conversation with her. What would you discuss? How might her perspective challenge or shift your own? Share how this new mindset could influence your approach to learning and engagement both in and beyond the classroom at Barnard.",
+        "word_limit": "250",
+        "selection_type": "required"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "Boston College",
+    "how_many": "one",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "Strong communities are sustained by traditions. Boston College's annual calendar is marked with both long-standing and newer traditions that help shape our community. Tell us about a meaningful tradition in your family or community. Why is it important to you, and how does it bring people together or strengthen the bonds of those who participate?",
+        "word_limit": "400",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "2",
+        "prompt": "The late BC theology professor, Father Michael Himes, argued that a university is not a place to which you go, but instead, a \"rigorous and sustained conversation about the great questions of human existence, among the widest possible circle of the best possible conversation partners.\" Who has been your most meaningful conversation partner, and what profound questions have you considered together?",
+        "word_limit": "400",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "3",
+        "prompt": "In her July 2009 Ted Talk, \"The Danger of a Single Story,\" Chimamanda Ngozi Adichie warned viewers against assigning people a \"single story\" through assumptions about their nationality, appearance, or background. Discuss a time when someone defined you by a single story. What challenges did this present and how did you overcome them?",
+        "word_limit": "400",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "4",
+        "prompt": "Boston College's Jesuit mission highlights \"the three Be's\": be attentive, be reflective, be loving – core to Jesuit education (see A Pocket Guide to Jesuit Education). If you could add a fourth \"Be,\" what would it be and why? How would this new value support your personal development and enrich the BC community?",
+        "word_limit": "400",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "5",
+        "prompt": "Human-Centered Engineering (HCE) Applicants only: One goal of a Jesuit education is to prepare students to serve the Common Good. Human-Centered Engineering at Boston College integrates technical knowledge, creativity, and a humanistic perspective to address societal challenges and opportunities. What societal problems are important to you and how will you use your HCE education to solve them?",
+        "word_limit": "400",
+        "selection_type": "required"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "Boston University",
+    "how_many": "one",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "Reflect on a social or community issue that deeply resonates with you. Why is it important to you, and how have you been involved in addressing or raising awareness about it?",
+        "word_limit": "300",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "2",
+        "prompt": "What about being a student at BU most excites you? How do you hope to contribute to our campus community",
+        "word_limit": "300",
+        "selection_type": "choose_one"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "Brandeis University",
+    "how_many": "one",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "What excites you the most about being an international student at Brandeis University?",
+        "word_limit": "250",
+        "selection_type": "required"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "Brown University",
+    "how_many": "all",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "Brown's Open Curriculum allows students to explore broadly while also diving deeply into their academic pursuits. Tell us about any academic interests that excite you, and how you might pursue them at Brown.",
+        "word_limit": "200-250",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "2",
+        "prompt": "Students entering Brown often find that making their home on College Hill naturally invites reflection on where they came from. Share how an aspect of your growing up has inspired or challenged you, and what unique contributions this might allow you to make to the Brown community.",
+        "word_limit": "200-250",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "3",
+        "prompt": "Brown students care deeply about their work and the world around them. Students find contentment, satisfaction, and meaning in daily interactions and major discoveries. Whether big or small, mundane or spectacular, tell us about something that brings you joy.",
+        "word_limit": "200-250",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "4",
+        "prompt": "What three words best describe you?",
+        "word_limit": "3 words",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "5",
+        "prompt": "If you could teach a class on any one thing, whether academic or otherwise, what would it be?",
+        "word_limit": "100",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "6",
+        "prompt": "In one sentence, Why Brown?",
+        "word_limit": "50",
+        "selection_type": "required"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "Bryn Mawr College",
+    "how_many": "one",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "Why are you interested in Bryn Mawr?",
+        "word_limit": "Not specified",
+        "selection_type": "required"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "Bowdoin College",
+    "how_many": "one",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "Generations of students have found connection and meaning in Bowdoin's \"The Offer of the College,\" written in 1906 by Bowdoin President William DeWitt Hyde.\n\nTo be at home in all lands and all ages;\nto count Nature a familiar acquaintance,\nand Art an intimate friend;\nto gain a standard for the appreciation of others' work\nand the criticism of your own;\nto carry the keys of the world's library in your pocket,\nand feel its resources behind you in whatever task you undertake;\nto make hosts of friends…who are to be leaders in all walks of life;\nto lose yourself in generous enthusiasms and cooperate with others for common ends –\nthis is the offer of the college for the best four years of your life.\n\nWhich line from The Offer resonates most with you?\n\na. To be at home in all lands and all ages\nb. To count Nature a familiar acquaintance…\nc. …and Art an intimate friend\nd. To gain a standard for the appreciation of others' work and the criticism of your own\ne. To carry the keys of the world's library in your pocket,\nand feel its resources behind you in whatever task you undertake\nf. To make hosts of friends…who are to be leaders in all walks of life\ng. To lose yourself in generous enthusiasms and cooperate with others for common ends\n\nOptional: The Offer represents Bowdoin's values. Please reflect on the line you selected and how it has meaning to you.",
+        "word_limit": "250",
+        "selection_type": "optional"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "Caltech",
+    "how_many": "all",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "Your STEM Future – STEM Academic Interests\n\nCaltech has a rigorous core curriculum and students don't declare a major until the end of their first year. However, some students arrive knowing which academic fields and areas already most excite them, or which novel fields and areas they most want to explore.\n\nIf you had to choose an area of interest or two today, what would you choose?\n\n*Note that you are under no obligation to follow this choice if admitted.\n\nWhy did you choose your proposed area of interest? If you selected 'other', what topics are you interested in pursuing?",
+        "word_limit": "100-200",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "2",
+        "prompt": "Your STEM Present – STEM Curiosity\n\nRegardless of your STEM interest listed above, take this opportunity to nerd out and talk to us about whatever STEM rabbit hole you have found yourself falling into. Be as specific or broad as you would like.",
+        "word_limit": "50-150",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "3",
+        "prompt": "Your STEM Past – STEM Experiences\n\nAt Caltech, we investigate some of the most challenging, fundamental problems in science, technology, engineering, and mathematics. We are interested in learning more about your engagement with STEM.\n\nSelect one of the following two STEM Experience prompts to respond to:\n\n– Tell us how you initially found your interest and passion for science or for a particular STEM topic, and how you have pursued or developed your interest or passion over the last few years.\n\n– Tell us about a meaningful STEM-related experience from the last few years and share how and why it inspired your curiosity.",
+        "word_limit": "100-200",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "4",
+        "prompt": "Creativity in Action Question\n\nThe creativity, inventiveness, and innovation of Caltech's students, faculty, and researchers have won Nobel Prizes and put rovers on Mars. But Techers also innovate in smaller-scale ways everyday, from imagining new ways to design solar cells or how to 3D-print dorm decor, to cooking up new recipes in the kitchen. How have you been a creator, inventor, or innovator in your own life?",
+        "word_limit": "50-150",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "5",
+        "prompt": "Choose two of the four questions below and answer both in 250 words or less.\n\nIt's up to you how you use your 250 words, whether that means you use exactly 125 words for each answer or you tell us about a niche interest in 30 words so you can spend 200 telling us about a core piece of your identity.\n\nThere is no 'right' way to choose which question to answer. If you're all STEMmed out, feel free to tell us about a creative hobby. Or if you just can't get enough math, tell us about a concept you can barely wrap your head around. Just remember the Caltech Honor Code and stick to 250 words for both answers combined.\n\n– What is an interest or hobby you do for fun, and why does it bring you joy?\n\n– If you could teach a class on any topic or concept, what would it be and why?\n\n– What is a core piece of your identity or being that shapes how you view and/or interact with the world?\n\n– What is a concept that blew your mind or baffled you when you first encountered it?",
+        "word_limit": "250",
+        "selection_type": "choose_two"
+      },
+      {
+        "prompt_number": "6",
+        "prompt": "OPTIONAL: Have you had any extenuating circumstances (such as limited course selection or disruptions), that have affected your coursework, but that are not described elsewhere in your application? If so, tell us about them here.",
+        "word_limit": "Not specified",
+        "selection_type": "optional"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "Carnegie Mellon University",
+    "how_many": "all",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "Most students choose their intended major or area of study based on a passion or inspiration that's developed over time – what passion or inspiration led you to choose this area of study?",
+        "word_limit": "300",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "2",
+        "prompt": "Many students pursue college for a specific degree, career opportunity or personal goal. Whichever it may be, learning will be critical to achieve your ultimate goal. As you think ahead to the process of learning during your college years, how will you define a successful college experience?",
+        "word_limit": "300",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "3",
+        "prompt": "Consider your application as a whole. What do you personally want to emphasize about your application for the admission committee's consideration? Highlight something that's important to you or something you haven't had a chance to share. Tell us, don't show us (no websites please).",
+        "word_limit": "300",
+        "selection_type": "required"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "Chapman University",
+    "how_many": "all",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "There are thousands of universities and colleges. Why are you interested in attending Chapman?",
+        "word_limit": "200",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "2",
+        "prompt": "Fast Facts are a way for us to get to know you. We want to see who you are as a student and as a person! Feel free to be creative, but remember what we're asking. Just because they're \"fast\" doesn't mean you shouldn't put some thought into your answers. We spend a lot of time debating the merits of each Fast Fact and voting on our favorites. Seriously. Here's a list of some of our past and current Fast Fact questions:\n\n– What is your dream job?\n– What is a family tradition that you want to continue?\n– What song should we be listening to while reading your application?\n– Name one dish you would cook for our admission team.\n– What is your favorite subject?\n– What is the top thing on your bucket list?\n– Which well-known person or fictional character would you like to have as your roommate?\n– If Chapman's admission team came to visit your hometown, what site would you take them to?\n– What can you give a 30-minute presentation on without any preparation?\n– What are the best words of advice you have received?",
+        "word_limit": "Not specified",
+        "selection_type": "required"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "Harvard University",
+    "how_many": "all",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "Harvard has long recognized the importance of enrolling a student body with a diversity of perspectives and experiences. How will the life experiences that shaped who you are today enable you to contribute to Harvard?",
+        "word_limit": "100",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "2",
+        "prompt": "Describe a time when you strongly disagreed with someone about an idea or issue. How did you communicate or engage with this person? What did you learn from this experience?",
+        "word_limit": "100",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "3",
+        "prompt": "Briefly describe any of your extracurricular activities, employment experience, travel, or family responsibilities that have shaped who you are.",
+        "word_limit": "100",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "4",
+        "prompt": "How do you hope to use your Harvard education in the future?",
+        "word_limit": "100",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "5",
+        "prompt": "Top 3 things your roommates might like to know about you.",
+        "word_limit": "100",
+        "selection_type": "required"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "Yale University",
+    "how_many": "all",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "Students at Yale have time to explore their academic interests before committing to one or more major fields of study. Many students either modify their original academic direction or change their minds entirely. As of this moment, what academic areas seem to fit your interests or goals most comfortably? Please indicate up to three from the list provided.",
+        "word_limit": "Not specified",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "2",
+        "prompt": "Tell us about a topic or idea that excites you and is related to one or more academic areas you selected above. Why are you drawn to it?",
+        "word_limit": "200",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "3",
+        "prompt": "Reflect on how your interests, values, and/or experiences have drawn you to Yale.",
+        "word_limit": "125",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "4",
+        "prompt": "What inspires you?",
+        "word_limit": "200 characters",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "5",
+        "prompt": "If you could teach any college course, write a book, or create an original piece of art of any kind, what would it be?",
+        "word_limit": "200 characters",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "6",
+        "prompt": "Other than a family member, who is someone who has had a significant influence on you? What has been the impact of their influence?",
+        "word_limit": "200 characters",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "7",
+        "prompt": "What is something about you that is not included anywhere else in your application?",
+        "word_limit": "200 characters",
+        "selection_type": "required"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "Duke University",
+    "how_many": "one",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "What is your impression of Duke as a university and community, and why do you believe it is a good match for your goals, values, and interests? If there is something specific that attracts you to our academic offerings in Trinity College of Arts and Sciences or the Pratt School of Engineering, or to our co-curricular opportunities, feel free to include that too.",
+        "word_limit": "250",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "2",
+        "prompt": "We believe a wide range of viewpoints and experiences is essential to maintaining Duke's vibrant living and learning community. Please share anything in this context that might help us better understand you and your potential contributions to Duke.",
+        "word_limit": "250",
+        "selection_type": "optional"
+      },
+      {
+        "prompt_number": "3",
+        "prompt": "Meaningful dialogue often involves respectful disagreement. Provide an example of a difference of opinion you've had with someone you care about. What did you learn from it?",
+        "word_limit": "250",
+        "selection_type": "optional"
+      },
+      {
+        "prompt_number": "4",
+        "prompt": "What's the last thing that you've been really excited about?",
+        "word_limit": "250",
+        "selection_type": "optional"
+      },
+      {
+        "prompt_number": "5",
+        "prompt": "Duke recently launched an initiative \"to bring together Duke experts across all disciplines who are advancing AI research, addressing the most pressing ethical challenges posed by AI, and shaping the future of AI in the classroom.\" Tell us about a situation when you would or would not choose to use AI (when possible and permitted). What shapes your thinking?",
+        "word_limit": "250",
+        "selection_type": "optional"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "Northwestern University",
+    "how_many": "one",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "We want to be sure we're considering your application in the context of your personal experiences: What aspects of your background (your identity, your school setting, your community, your household, etc.) have most shaped how you see yourself engaging in Northwestern's community, be it academically, extracurricularly, culturally, politically, socially, or otherwise?",
+        "word_limit": "300",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "2a",
+        "prompt": "Painting \"The Rock\" is a tradition at Northwestern that invites all forms of expression—students promote campus events or extracurricular groups, support social or activist causes, show their Wildcat spirit (what we call \"Purple Pride\"), celebrate their culture, and more. What would you paint on The Rock, and why?",
+        "word_limit": "200",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "2b",
+        "prompt": "Northwestern fosters a distinctively interdisciplinary culture. We believe discovery and innovation thrive at the intersection of diverse ideas, perspectives, and academic interests. Within this setting, if you could dream up an undergraduate class, research project, or creative effort (a start-up, a design prototype, a performance, etc.), what would it be? Who might be some ideal classmates or collaborators?",
+        "word_limit": "200",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "2c",
+        "prompt": "Community and belonging matter at Northwestern. Tell us about one or more communities, networks, or student groups you see yourself connecting with on campus.",
+        "word_limit": "200",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "2d",
+        "prompt": "Northwestern's location is special: on the shore of Lake Michigan, steps from downtown Evanston, just a few miles from Chicago. What aspects of our location are most compelling to you, and why?",
+        "word_limit": "200",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "2e",
+        "prompt": "Northwestern is a place where people with diverse backgrounds from all over the world can study, live, and talk with one another. This range of experiences and viewpoints immeasurably enriches learning. How might your individual background contribute to this diversity of perspectives in Northwestern's classrooms and around our campus?",
+        "word_limit": "200",
+        "selection_type": "choose_one"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "University of Pennsylvania",
+    "how_many": "all",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "Write a short thank-you note to someone you have not yet thanked and would like to acknowledge. (We encourage you to share this note with that person, if possible, and reflect on the experience!)",
+        "word_limit": "150-200",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "2",
+        "prompt": "How will you explore community at Penn? Consider how Penn will help shape your perspective, and how your experiences and perspective will help shape Penn.",
+        "word_limit": "150-200",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "School of Nursing",
+        "prompt": "Penn Nursing intends to meet the health needs of society in a global and multicultural world by preparing its students to impact healthcare by advancing science. Why have you decided to apply to Nursing? Where do you see yourself professionally in the future and how will you contribute to our mission of promoting equity in healthcare?",
+        "word_limit": "150-200",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "College of Arts and Sciences",
+        "prompt": "The flexible structure of The College of Arts and Sciences' curriculum is designed to inspire exploration, foster connections, and help you create a path of study through general education courses and a major. What are you curious about and how would you take advantage of opportunities in the arts and sciences?",
+        "word_limit": "150-200",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "The Wharton School",
+        "prompt": "Wharton prepares its students to make an impact by applying business methods and economic theory to real-world problems, including economic, political, and social issues. Please reflect on a current issue of importance to you and share how you hope a Wharton education would help you to explore it.",
+        "word_limit": "150-200",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "The School of Engineering and Applied Science",
+        "prompt": "Penn Engineering prepares its students to become leaders in technology by combining a strong foundation in the natural sciences and mathematics with depth of study in focused disciplinary majors. Please share how you plan to pursue your engineering interests at Penn, particularly within the intended major you selected.",
+        "word_limit": "150-200",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "DMD: Digital Media Design Program",
+        "prompt": "Discuss how your interests align with the Digital Media Design (DMD) program at the University of Pennsylvania?",
+        "word_limit": "400-650",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "Huntsman: Target Language",
+        "prompt": "Applicants to the Huntsman Program must choose one of eleven target languages. Please select your target language.\n\nTell us about your background and interest in the target language you selected.",
+        "word_limit": "50-125",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "Huntsman: Dual Degree",
+        "prompt": "The Huntsman Program supports the development of globally-minded scholars who become engaged citizens, creative innovators, and ethical leaders in the public, private, and non-profit sectors in the United States and around the world. What draws you to a dual degree in international studies and business, and how would you use what you learn to address a global issue where these two domains intersect?",
+        "word_limit": "400-600",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "LSM: Life Sciences and Management",
+        "prompt": "The Vagelos Life Sciences & Management (LSM) program brings together two powerful modes of understanding—scientific inquiry and strategic thinking—to prepare students to engage thoughtfully and creatively with some of the most complex challenges of our time. Reflecting on this intersection, what questions, problems, or opportunities would you hope to explore through LSM? How might the integration of life sciences and management shape your approach to these challenges?\n\nYour response should go beyond how LSM might advance your career and instead focus on the ideas, values, or issues that animate your interest in the program. Please ensure that this essay is distinct from your single-degree application.",
+        "word_limit": "400-650",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "M&T: Program Interest",
+        "prompt": "Explain how you will use the M&T program to explore your interest in business, engineering, and the intersection of the two.",
+        "word_limit": "400-650",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "M&T: Leadership and Creativity",
+        "prompt": "Describe a problem that you solved that showed leadership and creativity.",
+        "word_limit": "250",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "NHCM: Nursing and Healthcare Management",
+        "prompt": "Discuss your interest in nursing and health care management. How might Penn's coordinated dual-degree program in nursing and business help you meet your goals?",
+        "word_limit": "400-650",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "VIPER: Science and Engineering Majors",
+        "prompt": "If you were to join the Vagelos Integrated Program in Energy Research (VIPER), which science major and which engineering major are most interesting to you at this time? You can learn more about available majors on our website.",
+        "word_limit": "Not specified",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "VIPER: Energy Science and Technology",
+        "prompt": "How do you envision your participation in VIPER furthering your interests in energy science and technology? Please include any past experiences (ex. academic, research, or extracurricular) that have led to your interest in the program. Additionally, please indicate why you are interested in pursuing dual degrees in the VIPER majors listed above.",
+        "word_limit": "400-650",
+        "selection_type": "required"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "Columbia University",
+    "how_many": "all",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "List a selection of texts, resources and outlets that have contributed to your intellectual development outside of academic courses, including but not limited to books, journals, websites, podcasts, essays, plays, presentations, videos, museums and other content that you enjoy.",
+        "word_limit": "100",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "2",
+        "prompt": "Tell us about an aspect of your life so far or your lived experience that is important to you, and describe how it has shaped the way you would learn from and contribute to Columbia's multidimensional and collaborative environment.",
+        "word_limit": "150",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "3",
+        "prompt": "At Columbia, students representing a wide range of perspectives are invited to live and learn together. In such a community, questions and debates naturally arise. Please describe a time when you did not agree with someone and discuss how you engaged with them and what you took away from the interaction.",
+        "word_limit": "150",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "4",
+        "prompt": "In college/university, students are often challenged in ways that they could not anticipate. Please describe a situation in which you have navigated through adversity and discuss how you changed as a result.",
+        "word_limit": "150",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "5",
+        "prompt": "Why are you interested in attending Columbia University? We encourage you to consider the aspect(s) that you find unique and compelling about Columbia.",
+        "word_limit": "150",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "Columbia College",
+        "prompt": "What attracts you to your preferred areas of study at Columbia College?",
+        "word_limit": "150",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "Columbia Engineering",
+        "prompt": "What attracts you to your preferred areas of study at Columbia Engineering?",
+        "word_limit": "150",
+        "selection_type": "required"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "Cornell University",
+    "how_many": "all",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "We all contribute to, and are influenced by, the communities that are meaningful to us. Share how you've been shaped by one of the communities you belong to.\n\nRemember that this essay is about you and your lived experience. Define community in the way that is most meaningful to you. Some examples of community you might choose from are: family, school, shared interest, virtual, local, global, cultural.",
+        "word_limit": "350",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "College of Agriculture and Life Sciences",
+        "prompt": "By applying to Cornell's College of Agriculture and Life Sciences (CALS), you are also applying for direct entry into one of our 20+ majors. From here, you would be part of a community dedicated to purpose-driven science; working within your major and across disciplines to tackle the complex challenges of our time.\n\nWhy are you drawn to studying the major you have selected and specifically, why do you want to pursue this major at Cornell CALS? You should share how your current interests, related experiences, and/or goals influenced your choice.",
+        "word_limit": "500",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "CALS Optional 1",
+        "prompt": "At Cornell CALS, we aim to leave the world better than we found it, so we seek out those who are passionate about serving the public good. Please elaborate on an experience where you were able to have a meaningful impact on people, a community, and/or an environment of importance to you.",
+        "word_limit": "100",
+        "selection_type": "optional"
+      },
+      {
+        "prompt_number": "CALS Optional 2",
+        "prompt": "Given our agricultural history and commitment to educating the next generation of agriculturalists, please share if you have a background or interest in agriculture, regardless of your intended major. An \"agricultural entity\" for the purpose of this question is defined as cultivating soil, growing crops, and raising livestock (e.g., farm, ranch, greenhouse, vineyard, etc.)\n\nSelect all that apply:\n\n– A primary source of income for my parent/guardian(s) comes from ownership of or employment by an agricultural entity.\n– My extended family owns or operates an agricultural entity.\n– I have experience working in an agricultural entity.\n– I have interest in pursuing a career in an agricultural entity.\nPlease feel free to share additional details (optional).",
+        "word_limit": "100",
+        "selection_type": "optional"
+      },
+      {
+        "prompt_number": "College of Architecture, Art, and Planning",
+        "prompt": "How do your interests directly connect with your intended major at the College of Architecture, Art, and Planning (AAP)? Why architecture (B.Arch), art (BFA), or urban and regional studies (URS)? B. Arch applicants, please provide an example of how a creative project or passion sparks your motivation to pursue a 5-year professional degree program. BFA applicants may want to to consider how they could integrate a range of interests and available resources at Cornell into a coherent art practice. URS students may want to emphasize their enthusiasm and depth of interest in the study of urban and regional issues.",
+        "word_limit": "650",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "College of Arts & Sciences",
+        "prompt": "At the College of Arts and Sciences, curiosity will be your guide. Discuss how your passion for learning is shaping your academic journey, and what areas of study or majors excite you and why. Your response should convey how your interests align with the College, and how you would take advantage of the opportunities and curriculum in Arts and Sciences.",
+        "word_limit": "650",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "Cornell Jeb E. Brooks School of Public Policy",
+        "prompt": "Why are you interested in studying policy, and why do you want to pursue this major at Cornell's Jeb E. Brooks School of Public Policy? You should share how your current interests, related experiences, and/or goals have influenced your choice of policy major.",
+        "word_limit": "Not specified",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "Cornell SC Johnson College of Business",
+        "prompt": "What kind of a business student are you? Using your personal, academic, or volunteer/work experiences, describe the topics or issues that you care about and why they are important to you. Your response should convey how your interests align with the school to which you are applying within the Cornell SC Johnson College of Business (Charles H. Dyson School of Applied Economics and Management or the Cornell Peter and Stephanie Nolan School of Hotel Administration).",
+        "word_limit": "650",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "College of Engineering - Long Essay 1",
+        "prompt": "Fundamentally, engineering is the application of math, science, and technology to solve complex problems. Why do you want to study engineering?",
+        "word_limit": "200",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "College of Engineering - Long Essay 2",
+        "prompt": "Why do you think you would love to study at Cornell Engineering?",
+        "word_limit": "200",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "College of Engineering - Short Answer 1",
+        "prompt": "What brings you joy?",
+        "word_limit": "100",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "College of Engineering - Short Answer 2",
+        "prompt": "What do you believe you will contribute to the Cornell Engineering community beyond what you've already detailed in your application? What unique voice will you bring?",
+        "word_limit": "100",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "College of Engineering - Short Answer 3",
+        "prompt": "What is one activity, club, team, organization, work/volunteer experience or family responsibility that is especially meaningful to you? Please briefly tell us about its significance for you.",
+        "word_limit": "100",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "College of Engineering - Short Answer 4",
+        "prompt": "What is one award you have received or achievement you have attained that has meant the most to you? Please briefly describe its importance to you.",
+        "word_limit": "100",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "College of Human Ecology",
+        "prompt": "Identify a challenge in your greater community or in the career/industry in which you are interested. Share how the CHE education, your CHE major of choice, as well as the breadth of CHE majors, will help you address that challenge.",
+        "word_limit": "600",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "School of Industrial and Labor Relations",
+        "prompt": "Using your personal, academic, or volunteer/work experiences, describe the topics or issues that you care about and why they are important to you. Your response should show us that your interests align with the ILR School.",
+        "word_limit": "650",
+        "selection_type": "required"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "Dartmouth College",
+    "how_many": "all",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "As you seek admission to Dartmouth's Class of 2030, what aspects of the college's academic program, community, and/or campus environment attract your interest? How is Dartmouth a good fit for you?",
+        "word_limit": "100",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "2A",
+        "prompt": "There is a Quaker saying: Let your life speak. Describe the environment in which you were raised and the impact it has had on the person you are today.",
+        "word_limit": "250",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "2B",
+        "prompt": "\"Be yourself,\" Oscar Wilde advised. \"Everyone else is taken.\" Introduce yourself.",
+        "word_limit": "250",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "3A",
+        "prompt": "What excites you?",
+        "word_limit": "250",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "3B",
+        "prompt": "Labor leader and civil rights activist Dolores Huerta recommended a life of purpose. \"We must use our lives to make the world a better place to live, not just to acquire things,\" she said. \"That is what we are put on the earth for.\" In what ways do you hope to make—or are you already making—an impact? Why? How?",
+        "word_limit": "250",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "3C",
+        "prompt": "In an Instagram post, best-selling British author Matt Haig cheered the impact of reading. \"A good novel is the best invention humans have ever created for imagining other lives,\" he wrote. How have you experienced such insight from reading? What did you read and how did it alter the way you understand yourself and others?",
+        "word_limit": "250",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "3D",
+        "prompt": "The social and family interactions of wild chimpanzees have been the focus of Dame Jane Goodall's research for decades. Her understanding of animal behavior prompted the English primatologist to see a lesson for human communities as well: \"Change happens by listening and then starting a dialogue with the people who are doing something you don't believe is right.\" Channel Dame Goodall: Tell us about a moment when you engaged in a difficult conversation or encountered someone with an opinion or perspective that was different from your own. How did you find common ground?",
+        "word_limit": "250",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "3E",
+        "prompt": "Celebrate your nerdy side.",
+        "word_limit": "250",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "3F",
+        "prompt": "\"It's not easy being green…\" was the frequent refrain of Kermit the Frog. How has difference been a part of your life, and how have you embraced it as part of your identity, outlook, or sense of purpose?",
+        "word_limit": "250",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "3G",
+        "prompt": "The Mindy Kaling Theater Lab will be an exciting new addition to Dartmouth's Hopkins Center for the Arts. \"It's a place where you can fail,\" the actor/producer and Dartmouth alumna said when her gift was announced. \"You can try things out, fail, and then revamp and rework things… A thing can be bad on its journey to becoming good.\" Share a story of failure, trial runs, revamping, reworking, or journeying from bad to good.",
+        "word_limit": "250",
+        "selection_type": "choose_one"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "University of Chicago",
+    "how_many": "all",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "How does the University of Chicago, as you know it now, satisfy your desire for a particular kind of learning, community, and future? Please address with some specificity your own wishes and how they relate to UChicago.",
+        "word_limit": "Not specified",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "2",
+        "prompt": "In an ideal world where inter-species telepathic communication exists, which species would you choose to have a conversation with, and what would you want to learn from them? Would you ask beavers for architectural advice? Octopuses about cognition? Pigeons about navigation? Ants about governance? Make your case—both for the species and the question.",
+        "word_limit": "Not specified",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "3",
+        "prompt": "If you could uninvent one thing, what would it be — and what would unravel as a result?",
+        "word_limit": "Not specified",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "4",
+        "prompt": "\"Left\" can mean remaining or departed. \"Dust\" can mean to add fine particles or to remove them. \"Fast\" can mean moving quickly or fixed firmly in place. These contronyms—words that are their own antonyms—somehow hold opposing meanings in perfect tension. Explore a contronym: a role, identity, or experience in your life that has contained its own opposite.",
+        "word_limit": "Not specified",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "5",
+        "prompt": "The penny is on its way out—too small to matter, too costly to keep. But not everything small should disappear. What's one object the world is phasing out that you think we can't afford to lose, and why?",
+        "word_limit": "Not specified",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "6",
+        "prompt": "From Michelin Tires creating the Michelin Guide, to the audio equipment company Audio-Technica becoming one of the world's largest manufacturers of sushi robots, brand identity can turn out to be a lot more flexible than we think. Choose an existing brand, company, or institution and propose an unexpected but strangely logical new product or service for them to launch. Why is this unlikely extension exactly what the world (or the brand) needs right now?",
+        "word_limit": "Not specified",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "7",
+        "prompt": "Statistically speaking, ice cream doesn't cause shark attacks, pet spending doesn't drive the number of lawyers in California, and margarine consumption isn't responsible for Maine's divorce rate—at least, not according to conventional wisdom. But what if the statisticians got it wrong? Choose your favorite spurious correlation and make the case for why it might actually reveal a deeper, causative truth.",
+        "word_limit": "Not specified",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "8",
+        "prompt": "And, as always… the classic choose your own adventure option! In the spirit of adventurous inquiry, choose one of our past prompts (or create a question of your own). Be original, creative, thought provoking. Draw on your best qualities as a writer, thinker, visionary, social critic, sage, citizen of the world, or future citizen of the University of Chicago; take a little risk and have fun!",
+        "word_limit": "Not specified",
+        "selection_type": "choose_one"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "University of California",
+    "how_many": "four",
+    "selection_type": "choose_four",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "Describe an example of your leadership experience in which you have positively influenced others, helped resolve disputes or contributed to group efforts over time.",
+        "word_limit": "350",
+        "selection_type": "choose_four"
+      },
+      {
+        "prompt_number": "2",
+        "prompt": "Every person has a creative side, and it can be expressed in many ways: problem solving, original and innovative thinking, and artistically, to name a few. Describe how you express your creative side.",
+        "word_limit": "350",
+        "selection_type": "choose_four"
+      },
+      {
+        "prompt_number": "3",
+        "prompt": "What would you say is your greatest talent or skill? How have you developed and demonstrated that talent over time?",
+        "word_limit": "350",
+        "selection_type": "choose_four"
+      },
+      {
+        "prompt_number": "4",
+        "prompt": "Describe how you have taken advantage of a significant educational opportunity or worked to overcome an educational barrier you have faced.",
+        "word_limit": "350",
+        "selection_type": "choose_four"
+      },
+      {
+        "prompt_number": "5",
+        "prompt": "Describe the most significant challenge you have faced and the steps you have taken to overcome this challenge. How has this challenge affected your academic achievement?",
+        "word_limit": "350",
+        "selection_type": "choose_four"
+      },
+      {
+        "prompt_number": "6",
+        "prompt": "Think about an academic subject that inspires you. Describe how you have furthered this interest inside and/or outside of the classroom.",
+        "word_limit": "350",
+        "selection_type": "choose_four"
+      },
+      {
+        "prompt_number": "7",
+        "prompt": "What have you done to make your school or your community a better place?",
+        "word_limit": "350",
+        "selection_type": "choose_four"
+      },
+      {
+        "prompt_number": "8",
+        "prompt": "Beyond what has already been shared in your application, what do you believe makes you a strong candidate for admission to the University of California?",
+        "word_limit": "350",
+        "selection_type": "choose_four"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "Rice University",
+    "how_many": "all",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "Please explain why you wish to study in the academic areas you selected.",
+        "word_limit": "150",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "2",
+        "prompt": "Based upon your exploration of Rice University, what elements of the Rice experience appeal to you?",
+        "word_limit": "150",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "3A",
+        "prompt": "The Residential College System is at the heart of Rice student life and is heavily influenced by the particular cultural traditions and unique life experiences each student brings. What life experiences and/or unique perspectives are you looking forward to sharing with fellow Owls in the residential college system?",
+        "word_limit": "500",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "3B",
+        "prompt": "Rice is strengthened by its diverse community of learning and discovery that produces leaders and change agents across the spectrum of human endeavor. What perspectives shaped by your background, experiences, upbringing, and/or cultural identity inspire you to join our community of change agents at Rice?",
+        "word_limit": "500",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "Rice Box",
+        "prompt": "One of Rice's long-standing traditions is \"The Box,\" a question on our application where we ask all of our applicants to share an image of something that appeals to them. The Box gives you the opportunity to present us with an image that shares something about yourself, your interests or what is meaningful to you. This image is not used for evaluative purposes in the application, but allows you to put your stamp on the application about who you are aside from what you have achieved. Be sure to choose an image that speaks for itself and does not need an explanation. The Box must be a two-dimensional image that is uploaded in the Common Application or uploaded in the Rice Admission Student Portal.",
+        "word_limit": "Image upload",
+        "selection_type": "required"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "University of Notre Dame",
+    "how_many": "all",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "Many students have multiple areas of study that they consider before declaring a major at Notre Dame. We invite you to share up to two additional majors that you are considering. Briefly share what draws you to the area(s) of study you listed.",
+        "word_limit": "100",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "2",
+        "prompt": "Everyone has different priorities when considering their higher education options and building their college or university list. Tell us about your \"non-negotiable\" factor(s) when searching for your future college home.",
+        "word_limit": "150",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "3",
+        "prompt": "How does faith influence the decisions you make?",
+        "word_limit": "50-100",
+        "selection_type": "choose_three"
+      },
+      {
+        "prompt_number": "4",
+        "prompt": "What is distinctive about your personal experiences and development (eg, family support, culture, disability, personal background, community)? Why are these experiences important to you and how will you enrich the Notre Dame community?",
+        "word_limit": "50-100",
+        "selection_type": "choose_three"
+      },
+      {
+        "prompt_number": "5",
+        "prompt": "Notre Dame's undergraduate experience is characterized by a collective sense of care for every person. How do you foster service to others in your community?",
+        "word_limit": "50-100",
+        "selection_type": "choose_three"
+      },
+      {
+        "prompt_number": "6",
+        "prompt": "What compliment are you most proud of receiving, and why does it mean so much to you?",
+        "word_limit": "50-100",
+        "selection_type": "choose_three"
+      },
+      {
+        "prompt_number": "7",
+        "prompt": "What would you fight for?",
+        "word_limit": "50-100",
+        "selection_type": "choose_three"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "Vanderbilt University",
+    "how_many": "one",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "Vanderbilt University's motto, Crescere aude, is Latin for \"dare to grow.\" In your response, reflect on how one or more aspects of your identity, culture, or background has played a role in your personal growth, and how it will contribute to our campus community as you dare to grow at Vanderbilt.",
+        "word_limit": "250",
+        "selection_type": "required"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "University of Michigan",
+    "how_many": "all",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "At the University of Michigan, we are focused on developing leaders and citizens who will challenge the present and enrich the future. In your essay, share with us how you are prepared to contribute to these goals. This could include the people, places, experiences, or aspirations that have shaped your journey and future plans.",
+        "word_limit": "100-300",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "2",
+        "prompt": "Describe the unique qualities that attract you to the specific undergraduate college or school (including preferred admission and dual degree programs) to which you are applying at the University of Michigan. How would that curriculum support your interests?",
+        "word_limit": "100-500",
+        "selection_type": "required"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "Washington University in St. Louis",
+    "how_many": "one",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "Please tell us what you are interested in studying at college and why.\n\nUndecided about your academic interest(s)? Don't worry—tell us what excites you about the academic division you selected. Remember that all of our first-year students enter officially \"undeclared\" and work closely with their team of academic advisors to discover their academic passions. You can explore all of our majors and programs on our website.",
+        "word_limit": "250",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "2A",
+        "prompt": "WashU supports engagement in the St. Louis community by considering the university as \"In St. Louis, For St. Louis.\" What is a community you are a part of and your place or impact within it?",
+        "word_limit": "250",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "2B",
+        "prompt": "WashU strives to know every undergraduate student \"By Name & Story.\" How have your life experiences shaped your story?",
+        "word_limit": "250",
+        "selection_type": "choose_one"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "Emory University",
+    "how_many": "one",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "What academic areas are you interested in exploring at Emory University and why?",
+        "word_limit": "200",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "2A",
+        "prompt": "Emory University has a strong commitment to building community. Tell us about a community that you have been part of where your personal participation helped to change or shape the community for the better.",
+        "word_limit": "150",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "2B",
+        "prompt": "Reflect on a personal experience where you intentionally expanded your cultural awareness.",
+        "word_limit": "150",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "2C",
+        "prompt": "Emory University's unique mission calls for service to humanity. Share how you might personally contribute to this mission of service to humanity.",
+        "word_limit": "150",
+        "selection_type": "choose_one"
+      },
+      {
+        "prompt_number": "2D",
+        "prompt": "In a scholarly community, differing ideas often collide before they converge. How do you personally navigate disagreement in a way that promotes progress and deepens meaningful dialogue?",
+        "word_limit": "150",
+        "selection_type": "choose_one"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "Georgetown University",
+    "how_many": "all",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "As Georgetown is a diverse community, the Admissions Committee would like to know more about you in your own words. Please submit a brief personal or creative essay which you feel best describes you and reflects on your own background, identity, skills, and talents.",
+        "word_limit": "One page",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "College of Arts & Sciences",
+        "prompt": "Founded in 1789, the Georgetown College of Arts & Sciences is committed to the Jesuit traditions of an integrated education and of productive research in the natural sciences, humanities, social sciences, and fine arts. Describe your interest in studying at College of Arts & Sciences. Applicants interested in the sciences, mathematics, or languages are encouraged to make specific reference to their choice of major.",
+        "word_limit": "One page",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "School of Nursing",
+        "prompt": "Georgetown University's School of Nursing is committed to the formation of ethical, empathetic, and transformational nursing leaders. Describe the factors that have influenced your interest in studying Nursing at Georgetown University.",
+        "word_limit": "One page",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "School of Health",
+        "prompt": "Georgetown University's School of Health was founded to advance the health and well-being of people locally, nationally, and globally through innovative research, the delivery of interdisciplinary education, and transformative engagement of communities. Describe the factors that influenced your interest in studying health care at Georgetown University, specifically addressing your intended related major: Global Health, Health Care Management & Policy, or Human Science.",
+        "word_limit": "One page",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "Walsh School of Foreign Service",
+        "prompt": "Georgetown University's Walsh School of Foreign Service was founded more than a century ago to prepare generations of leaders with the foundational skills to address global issues. Describe your primary motivations for studying international affairs at Georgetown University and dedicating your undergraduate studies toward a future in global service.",
+        "word_limit": "One page",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "McDonough School of Business",
+        "prompt": "Georgetown University's McDonough School of Business provides graduates with essential global, ethical, analytical, financial, and diverse perspectives on the economies of our nation and the world. Describe your primary motivations for studying business at Georgetown University.",
+        "word_limit": "One page",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "McCourt School of Public Policy",
+        "prompt": "For nearly 50 years, Georgetown University's McCourt School of Public Policy has equipped leaders and changemakers with the interdisciplinary skills to address local, national and global policy problems. Undergraduate public policy students at Georgetown will have the unique opportunity to live and study on two campuses, spending their first two years immersed on the Hilltop, before completing the second half of their time at Georgetown on the Capitol Campus, immersed in the policy world. Describe your primary motivations for studying public policy at Georgetown University and dedicating your undergraduate studies toward a future related to public service.",
+        "word_limit": "One page",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "Special Talents or Skills",
+        "prompt": "Please indicate any special talents or skills you possess. You should write in either paragraph or bulleted-list format.",
+        "word_limit": "250",
+        "selection_type": "required"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "Georgia Institute of Technology",
+    "how_many": "one",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "Why do you want to study your chosen major, and why do you want to study that major at Georgia Tech?",
+        "word_limit": "300",
+        "selection_type": "required"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "University of North Carolina",
+    "how_many": "all",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "Discuss one of your personal qualities and share a story, anecdote, or memory of how it helped you make a positive impact on a community. This could be your current community or another community you have engaged.",
+        "word_limit": "250",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "2",
+        "prompt": "Discuss an academic topic that you're excited to explore and learn more about in college. Why does this topic interest you? Topics could be a specific course of study, research interests, or any other area related to your academic experience in college.",
+        "word_limit": "250",
+        "selection_type": "required"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "University of Massachusetts Amherst",
+    "how_many": "one",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "Please tell us why you chose the Major(s) you did.",
+        "word_limit": "100",
+        "selection_type": "required"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "University of Georgia",
+    "how_many": "one",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "The transition from middle to high school is a key time for students as they reach new levels of both academic and personal discovery. Please share a book (novel, non-fiction, etc.) that had a serious impact on you during this time. Please focus more on why this book made an impact on you and less on the plot/theme of the book itself (we are not looking for a book report).\n\nWe are not restricting you to the exact years of 8th-9th grades, but rather the general timeframe of the middle to high school transition, which can extend somewhat further than one year on each end. Feel free to use your discretion in your choice of the timeline focused on the shift to your high school years.",
+        "word_limit": "200-300",
+        "selection_type": "required"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "University of Texas",
+    "how_many": "two",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "Why are you interested in the major you indicated as your first-choice major?",
+        "word_limit": "250-300",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "2",
+        "prompt": "Think of all the activities — both in and outside of school — that you have been involved with during high school. Which one are you most proud of and why? (Guidance for students: This can include an extracurricular activity, a club/organization, volunteer activity, work or a family responsibility.)",
+        "word_limit": "250-300",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "3",
+        "prompt": "Please share background on events or special circumstances that you feel may have impacted your high school academic performance.",
+        "word_limit": "250-300",
+        "selection_type": "optional"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "University of Southern California",
+    "how_many": "all",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "Describe how you plan to pursue your academic interests and why you want to explore them at USC specifically. Please feel free to address your first- and second-choice major selections.",
+        "word_limit": "250",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "2",
+        "prompt": "Starting with the beginning of high school/secondary school, if you have had a gap where you were not enrolled in school during a fall or spring term, please address this gap in your educational history. You do not need to address a summer break.",
+        "word_limit": "Not specified",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "3",
+        "prompt": "Describe yourself in three words.\nFirst Word:\nSecond Word:\nThird Word:",
+        "word_limit": "Three words",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "4",
+        "prompt": "What is your favorite snack?",
+        "word_limit": "Not specified",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "5",
+        "prompt": "Best movie of all time:",
+        "word_limit": "Not specified",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "6",
+        "prompt": "Dream job:",
+        "word_limit": "Not specified",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "7",
+        "prompt": "If your life had a theme song, what would it be?",
+        "word_limit": "Not specified",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "8",
+        "prompt": "Dream trip:",
+        "word_limit": "Not specified",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "9",
+        "prompt": "What TV show will you binge watch next?",
+        "word_limit": "Not specified",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "10",
+        "prompt": "Which well-known person or fictional character would be your ideal roommate?",
+        "word_limit": "Not specified",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "11",
+        "prompt": "Favorite book:",
+        "word_limit": "Not specified",
+        "selection_type": "required"
+      },
+      {
+        "prompt_number": "12",
+        "prompt": "If you could teach a class on any topic, what would it be?",
+        "word_limit": "Not specified",
+        "selection_type": "required"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "University of Virginia",
+    "how_many": "one",
+    "prompts": [
+      {
+        "prompt_number": "School of Nursing",
+        "prompt": "Describe a health care-related experience or another significant interaction that deepened your interest in studying Nursing.",
+        "word_limit": "300",
+        "selection_type": "required"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "New York University",
+    "how_many": "one",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "We are looking for students who want to be bridge builders—students who can connect people, groups, and ideas to span divides, foster understanding, and promote collaboration within a dynamic, interconnected, and vibrant global academic community. We are eager for you to tell us how your experiences have helped you understand what qualities and efforts are needed to bridge divides so that people can better learn and work together.\n\nPlease consider one or more of the following questions in your essay:\n\n· Tell us about a time you encountered a perspective different from your own. What did you learn—about yourself, the other person, or the world?\n\n· Tell us about an experience you've had working with others who have different backgrounds or perspectives. What challenges did your group face? Did you overcome them, and if so, how? What role did you try to play in helping people to work together, and what did you learn from your efforts?\n\n· Tell us about someone you've observed who does a particularly good job helping people think or work together. How does this person set the stage for common exploration or work? How do they react when difficulties or dissensions arise?",
+        "word_limit": "250",
+        "selection_type": "required"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "University of Arizona",
+    "how_many": "one",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "Why is the University of Arizona the right fit for you and how will your chosen academic area of study align with your interests, goals, and values?",
+        "word_limit": "500",
+        "selection_type": "required"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  },
+  {
+    "college_name": "University of Wisconsin-Madison",
+    "how_many": "one",
+    "prompts": [
+      {
+        "prompt_number": "1",
+        "prompt": "Tell us why you would like to attend the University of Wisconsin–Madison. In addition, please include why you are interested in studying the major(s) you have selected. If you selected undecided, please describe your areas of possible academic interest.",
+        "word_limit": "650",
+        "selection_type": "required"
+      }
+    ],
+    "school_program_type": "Undergraduate"
+  }
+]

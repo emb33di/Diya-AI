@@ -1,0 +1,134 @@
+{
+  "essay_prompts": [
+    {
+      "college_name": "Harvard Business School",
+      "how_many": "1",
+      "selection_type": "required",
+      "prompt_number": "1",
+      "prompt": "Harvard Business School's mission is to educate leaders who make a difference in the world. How do you plan to make a difference in the world after you graduate?",
+      "word_limit": "400",
+      "prompt_selection_type": "required",
+      "school_program_type": "MBA"
+    },
+    {
+      "college_name": "Stanford Graduate School of Business",
+      "how_many": "1",
+      "selection_type": "required",
+      "prompt_number": "1",
+      "prompt": "What matters most to you, and why?",
+      "word_limit": "650",
+      "prompt_selection_type": "required",
+      "school_program_type": "MBA"
+    },
+    {
+      "college_name": "Stanford Graduate School of Business",
+      "how_many": "1",
+      "selection_type": "required",
+      "prompt_number": "2",
+      "prompt": "Why Stanford?",
+      "word_limit": "400",
+      "prompt_selection_type": "required",
+      "school_program_type": "MBA"
+    },
+    {
+      "college_name": "Wharton School",
+      "how_many": "1",
+      "selection_type": "required",
+      "prompt_number": "1",
+      "prompt": "How do you plan to use the Wharton MBA program to help you achieve your future professional plans?",
+      "word_limit": "500",
+      "prompt_selection_type": "required",
+      "school_program_type": "MBA"
+    },
+    {
+      "college_name": "Wharton School",
+      "how_many": "1",
+      "selection_type": "required",
+      "prompt_number": "2",
+      "prompt": "Taking into consideration your background – personal, professional, and/or academic – how do you plan to make specific, meaningful contributions to the Wharton community?",
+      "word_limit": "400",
+      "prompt_selection_type": "required",
+      "school_program_type": "MBA"
+    },
+    {
+      "college_name": "Kellogg School of Management",
+      "how_many": "1",
+      "selection_type": "required",
+      "prompt_number": "1",
+      "prompt": "Kellogg's purpose is to educate, equip and inspire brave leaders who create lasting value. Tell us about a time you have demonstrated leadership and created lasting value. What challenges did you face, and what did you learn?",
+      "word_limit": "450",
+      "prompt_selection_type": "required",
+      "school_program_type": "MBA"
+    },
+    {
+      "college_name": "Kellogg School of Management",
+      "how_many": "1",
+      "selection_type": "required",
+      "prompt_number": "2",
+      "prompt": "Values are what guide you in your life and work. What values are important to you and how have they influenced you?",
+      "word_limit": "450",
+      "prompt_selection_type": "required",
+      "school_program_type": "MBA"
+    },
+    {
+      "college_name": "MIT Sloan",
+      "how_many": "1",
+      "selection_type": "required",
+      "prompt_number": "1",
+      "prompt": "The mission of the MIT Sloan School of Management is to develop principled, innovative leaders who improve the world and to generate ideas that advance management practice. Discuss how you will contribute toward advancing the mission based on examples of past work and activities. (300 words or fewer)",
+      "word_limit": "300",
+      "prompt_selection_type": "required",
+      "school_program_type": "MBA"
+    },
+    {
+      "college_name": "MIT Sloan",
+      "how_many": "1",
+      "selection_type": "required",
+      "prompt_number": "2",
+      "prompt": "Describe a time when you went beyond what was defined, expected, or required in your role. What did you do, why did you do it, and what was the outcome? (300 words or fewer)",
+      "word_limit": "300",
+      "prompt_selection_type": "required",
+      "school_program_type": "MBA"
+    },
+    {
+      "college_name": "Chicago Booth",
+      "how_many": "1",
+      "selection_type": "required",
+      "prompt_number": "1",
+      "prompt": "How will the Booth MBA help you achieve your immediate and long-term post-MBA career goals? (250 word minimum)",
+      "word_limit": "250",
+      "prompt_selection_type": "required",
+      "school_program_type": "MBA"
+    },
+    {
+      "college_name": "Chicago Booth",
+      "how_many": "1",
+      "selection_type": "required",
+      "prompt_number": "2",
+      "prompt": "An MBA is as much about personal growth as it is about professional development. In addition to your career goals, what aspects of your personal development do you hope to develop while at Booth? (250 word minimum)",
+      "word_limit": "250",
+      "prompt_selection_type": "required",
+      "school_program_type": "MBA"
+    },
+    {
+      "college_name": "Columbia Business School",
+      "how_many": "1",
+      "selection_type": "required",
+      "prompt_number": "1",
+      "prompt": "Through your resume and recommendations, we have a clear sense of your professional path to date. What are your career goals over the next 3-5 years and what, in your imagination, would be your long-term dream job? (500 words)",
+      "word_limit": "500",
+      "prompt_selection_type": "required",
+      "school_program_type": "MBA"
+    },
+    {
+      "college_name": "Columbia Business School",
+      "how_many": "1",
+      "selection_type": "required",
+      "prompt_number": "2",
+      "prompt": "We believe Columbia Business School is a special place. CBS proudly fosters a collaborative and supportive community where students are encouraged to engage with each other and the broader community. Why do you feel Columbia Business School is a good fit for you academically, culturally, and professionally? Please be specific. (250 words)",
+      "word_limit": "250",
+      "prompt_selection_type": "required",
+      "school_program_type": "MBA"
+    }
+  ]
+}

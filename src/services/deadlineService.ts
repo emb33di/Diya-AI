@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getUserProgramType } from "@/utils/userProfileUtils";
 
 export interface DeadlineData {
   School: string;
@@ -47,79 +48,40 @@ export interface UserDeadlinesResponse {
 
 export class DeadlineService {
   /**
-   * Sync deadlines for a user based on their school list
+   * Sync deadlines for a user based on their school list using Supabase Edge Function
    */
   static async syncDeadlinesForUser(userId: string): Promise<DeadlineSyncResponse> {
     try {
-      // Get user's school recommendations
-      const { data: schoolRecommendations, error: schoolError } = await supabase
-        .from('school_recommendations')
-        .select('*')
-        .eq('student_id', userId);
-
-      if (schoolError) {
-        throw new Error(`Failed to fetch school recommendations: ${schoolError.message}`);
+      // Get the current user's session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('User not authenticated');
       }
 
-      if (!schoolRecommendations || schoolRecommendations.length === 0) {
-        return {
-          success: true,
-          message: 'No school recommendations found to sync deadlines',
-          updatedCount: 0,
-          schools_updated: 0,
-          total_schools: 0
-        };
-      }
-
-      // Get school names from recommendations
-      const schoolNames = schoolRecommendations.map(rec => rec.school);
-
-      // Get deadline data for these schools
-      const { data: deadlineData, error: deadlineError } = await supabase
-        .from('school_deadlines')
-        .select('*')
-        .in('school_name', schoolNames);
-
-      if (deadlineError) {
-        throw new Error(`Failed to fetch deadline data: ${deadlineError.message}`);
-      }
-
-      // Create a map of school names to deadline data
-      const deadlineMap = new Map();
-      deadlineData?.forEach(deadline => {
-        deadlineMap.set(deadline.school_name, deadline);
-      });
-
-      // Update school recommendations with deadline data
-      let updatedCount = 0;
-      const updatePromises = schoolRecommendations.map(async (school) => {
-        const deadlineInfo = deadlineMap.get(school.school);
-        if (deadlineInfo) {
-          const { error: updateError } = await supabase
-            .from('school_recommendations')
-            .update({
-              early_action_deadline: deadlineInfo.early_action_deadline,
-              early_decision_1_deadline: deadlineInfo.early_decision_1_deadline,
-              early_decision_2_deadline: deadlineInfo.early_decision_2_deadline,
-              regular_decision_deadline: deadlineInfo.regular_decision_deadline,
-              last_updated: new Date().toISOString()
-            })
-            .eq('id', school.id);
-
-          if (!updateError) {
-            updatedCount++;
-          }
+      // Call the Supabase Edge Function
+      console.log('Calling sync-deadlines function for user:', userId);
+      const { data, error } = await supabase.functions.invoke('sync-deadlines', {
+        body: {
+          user_id: userId
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
         }
       });
 
-      await Promise.all(updatePromises);
+      console.log('Function response:', { data, error });
+
+      if (error) {
+        throw new Error(`Edge Function error: ${error.message}`);
+      }
 
       return {
-        success: true,
-        message: `Successfully synced deadlines for ${updatedCount} schools`,
-        updatedCount,
-        schools_updated: updatedCount,
-        total_schools: schoolRecommendations.length
+        success: data.success,
+        message: data.message,
+        updatedCount: data.schools_updated || 0,
+        schools_updated: data.schools_updated || 0,
+        total_schools: data.total_schools || 0
       };
     } catch (error) {
       console.error('Error syncing deadlines:', error);
@@ -128,10 +90,14 @@ export class DeadlineService {
   }
 
   /**
-   * Get all deadlines for a user
+   * Get all deadlines for a user, filtered by their program type
    */
   static async getUserDeadlines(userId: string): Promise<UserDeadlinesResponse> {
     try {
+      // Get user's program type
+      const userProgramType = await getUserProgramType();
+      console.log(`User program type: ${userProgramType}`);
+
       // Get user's school recommendations with deadline data
       const { data: schoolRecommendations, error } = await supabase
         .from('school_recommendations')
@@ -149,8 +115,42 @@ export class DeadlineService {
         };
       }
 
+      // Filter schools by program type if user has a specific program type
+      let filteredSchools = schoolRecommendations;
+      if (userProgramType) {
+        // For MBA users, only show MBA schools; for undergraduate users, only show undergraduate schools
+        filteredSchools = schoolRecommendations.filter(school => {
+          const schoolName = school.school.toLowerCase();
+          
+          if (userProgramType === 'MBA') {
+            // MBA schools typically have "Business School", "School of Management", "MBA", etc. in their names
+            return schoolName.includes('business school') || 
+                   schoolName.includes('school of management') || 
+                   schoolName.includes('mba') ||
+                   schoolName.includes('graduate school of business') ||
+                   schoolName.includes('school of business');
+          } else if (userProgramType === 'Undergraduate') {
+            // Undergraduate schools typically don't have business school indicators
+            return !schoolName.includes('business school') && 
+                   !schoolName.includes('school of management') && 
+                   !schoolName.includes('mba') &&
+                   !schoolName.includes('graduate school of business') &&
+                   !schoolName.includes('school of business');
+          }
+          
+          return true; // For other program types, show all schools
+        });
+        
+        console.log(`Filtered ${schoolRecommendations.length} schools to ${filteredSchools.length} schools for ${userProgramType} program type`);
+      }
+
       // Process each school into deadline format
-      const deadlines: UserDeadline[] = schoolRecommendations.map(school => {
+      const deadlines: UserDeadline[] = filteredSchools.map(school => {
+        console.log(`Processing school: ${school.school}`);
+        console.log(`Raw deadline value:`, school.regular_decision_deadline);
+        console.log(`Deadline type:`, typeof school.regular_decision_deadline);
+        console.log(`Deadline length:`, school.regular_decision_deadline?.length);
+        
         const daysRemaining = school.regular_decision_deadline 
           ? this.calculateDaysRemaining(school.regular_decision_deadline)
           : null;
@@ -267,10 +267,20 @@ export class DeadlineService {
    * Calculate days remaining until deadline
    */
   static calculateDaysRemaining(deadline: string): number {
+    console.log(`Calculating days remaining for deadline: "${deadline}"`);
     const deadlineDate = new Date(deadline);
+    console.log(`Parsed deadline date:`, deadlineDate);
+    console.log(`Is valid date:`, !isNaN(deadlineDate.getTime()));
+    
+    if (isNaN(deadlineDate.getTime())) {
+      console.error(`Invalid date format: "${deadline}"`);
+      return 0;
+    }
+    
     const today = new Date();
     const diffTime = deadlineDate.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    console.log(`Days remaining: ${diffDays}`);
     return diffDays;
   }
 

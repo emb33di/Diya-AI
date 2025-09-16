@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { SchoolProgramType, getUserProgramType } from '@/utils/userProfileUtils';
 
 export interface EssayPrompt {
   id: string;
@@ -9,6 +10,7 @@ export interface EssayPrompt {
   prompt: string;
   word_limit: string;
   prompt_selection_type: string;
+  school_program_type?: SchoolProgramType;
   created_at: string;
   updated_at: string;
 }
@@ -23,21 +25,31 @@ export interface EssayPromptSelection {
   word_limit: string;
   selected: boolean;
   essay_content?: string;
+  school_program_type?: SchoolProgramType;
   created_at: string;
   updated_at: string;
 }
 
 export class EssayPromptService {
   /**
-   * Get essay prompts for a specific college
+   * Get essay prompts for a specific college, optionally filtered by school program type
    */
-  static async getPromptsForCollege(collegeName: string): Promise<EssayPrompt[]> {
+  static async getPromptsForCollege(
+    collegeName: string, 
+    schoolProgramType?: SchoolProgramType
+  ): Promise<EssayPrompt[]> {
     try {
-      const { data, error } = await (supabase as any)
+      let query = supabase
         .from('essay_prompts')
         .select('*')
-        .eq('college_name', collegeName)
-        .order('prompt_number');
+        .eq('college_name', collegeName);
+
+      // Filter by school program type if provided
+      if (schoolProgramType) {
+        query = query.eq('school_program_type', schoolProgramType);
+      }
+
+      const { data, error } = await query.order('prompt_number');
 
       if (error) {
         console.error('Error fetching essay prompts:', error);
@@ -47,6 +59,19 @@ export class EssayPromptService {
       return (data || []) as EssayPrompt[];
     } catch (error) {
       console.error('Error in getPromptsForCollege:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get essay prompts for a specific college, automatically filtered by user's program type
+   */
+  static async getPromptsForCollegeForUser(collegeName: string): Promise<EssayPrompt[]> {
+    try {
+      const userProgramType = await getUserProgramType();
+      return await this.getPromptsForCollege(collegeName, userProgramType || undefined);
+    } catch (error) {
+      console.error('Error in getPromptsForCollegeForUser:', error);
       throw error;
     }
   }
@@ -88,11 +113,15 @@ export class EssayPromptService {
     prompt: string,
     wordLimit: string,
     selected: boolean = true,
-    essayContent?: string
+    essayContent?: string,
+    schoolProgramType?: SchoolProgramType
   ): Promise<void> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
+
+      // Get user's program type if not provided
+      const userProgramType = schoolProgramType || await getUserProgramType();
 
       const selectionData = {
         user_id: user.id,
@@ -102,7 +131,8 @@ export class EssayPromptService {
         prompt: prompt,
         word_limit: wordLimit,
         selected: selected,
-        essay_content: essayContent
+        essay_content: essayContent,
+        school_program_type: userProgramType
       };
 
       // Check if selection already exists

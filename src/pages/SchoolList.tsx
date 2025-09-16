@@ -234,6 +234,27 @@ const SchoolList = () => {
 
       console.log('Successfully added school:', newSchoolData);
 
+      // Automatically sync regular decision deadline for the new school
+      try {
+        console.log('Starting auto-sync for new school:', newSchoolData.school);
+        const { data: deadlineSyncData, error: deadlineSyncError } = await supabase.functions.invoke('auto-sync-deadlines', {
+          body: { user_id: user.id },
+          headers: {
+            Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          }
+        });
+
+        console.log('Auto-sync response:', { deadlineSyncData, deadlineSyncError });
+
+        if (deadlineSyncError) {
+          console.warn('Failed to auto-sync deadline for new school:', deadlineSyncError.message);
+        } else {
+          console.log('Auto-synced deadline for new school:', deadlineSyncData);
+        }
+      } catch (deadlineError) {
+        console.warn('Error during auto-sync deadline for new school:', deadlineError);
+      }
+
       // Add to local state
       const newSchool: School = {
         id: newSchoolData.id,
@@ -310,6 +331,27 @@ const SchoolList = () => {
       }
 
       console.log('Successfully added multiple schools:', newSchoolsDataResult);
+
+      // Automatically sync regular decision deadlines for the new schools
+      try {
+        console.log('Starting auto-sync for multiple new schools');
+        const { data: deadlineSyncData, error: deadlineSyncError } = await supabase.functions.invoke('auto-sync-deadlines', {
+          body: { user_id: user.id },
+          headers: {
+            Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          }
+        });
+
+        console.log('Auto-sync response for multiple schools:', { deadlineSyncData, deadlineSyncError });
+
+        if (deadlineSyncError) {
+          console.warn('Failed to auto-sync deadlines for new schools:', deadlineSyncError.message);
+        } else {
+          console.log('Auto-synced deadlines for new schools:', deadlineSyncData);
+        }
+      } catch (deadlineError) {
+        console.warn('Error during auto-sync deadlines for new schools:', deadlineError);
+      }
 
       // Add to local state
       const newSchools: School[] = newSchoolsDataResult.map(newSchoolData => ({

@@ -204,8 +204,8 @@ const Essays = () => {
     if (selectedSchool) {
       const fetchPrompts = async () => {
         try {
-          // Try to find prompts for the school name
-          let prompts = await EssayPromptService.getPromptsForCollege(selectedSchool);
+          // Try to find prompts for the school name, filtered by user's program type
+          let prompts = await EssayPromptService.getPromptsForCollegeForUser(selectedSchool);
           
           // If no prompts found, try common variations
           if (prompts.length === 0) {
@@ -219,7 +219,7 @@ const Essays = () => {
             ];
 
             for (const variation of variations) {
-              prompts = await EssayPromptService.getPromptsForCollege(variation);
+              prompts = await EssayPromptService.getPromptsForCollegeForUser(variation);
               if (prompts.length > 0) break;
             }
           }

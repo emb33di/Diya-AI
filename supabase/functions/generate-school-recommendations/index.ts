@@ -258,6 +258,24 @@ serve(async (req) => {
     // Save recommendations to database
     await saveRecommendationsToDatabase(user_id, conversation_id, recommendations)
 
+    // Automatically sync regular decision deadlines for the new schools
+    try {
+      const { data: deadlineSyncData, error: deadlineSyncError } = await supabase.functions.invoke('auto-sync-deadlines', {
+        body: { user_id },
+        headers: {
+          Authorization: `Bearer ${supabaseServiceKey}`,
+        }
+      })
+
+      if (deadlineSyncError) {
+        console.warn('Failed to auto-sync deadlines:', deadlineSyncError.message)
+      } else {
+        console.log('Auto-synced deadlines:', deadlineSyncData)
+      }
+    } catch (deadlineError) {
+      console.warn('Error during auto-sync deadlines:', deadlineError)
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
