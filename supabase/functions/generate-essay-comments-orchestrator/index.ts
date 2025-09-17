@@ -1872,6 +1872,17 @@ async function saveCommentsToDatabase(essayId: string, userId: string, comments:
       validCommentSubcategory = 'body' // Default fallback
     }
     
+    // Ensure organization_category is valid
+    let validOrganizationCategory = comment.organizationCategory
+    if (!validOrganizationCategory || !['overall-strength', 'overall-weakness', 'overall-combined', 'inline'].includes(validOrganizationCategory)) {
+      // Default based on agent type
+      if (['weaknesses', 'strengths', 'reconciliation', 'tone'].includes(comment.agentType || '')) {
+        validOrganizationCategory = 'overall-combined'
+      } else {
+        validOrganizationCategory = 'inline'
+      }
+    }
+    
     return {
       essay_id: essayId,
       user_id: userId,
@@ -1893,7 +1904,7 @@ async function saveCommentsToDatabase(essayId: string, userId: string, comments:
       comment_subcategory: validCommentSubcategory, // Store comment subcategory (validated)
       // New organization fields
       comment_nature: comment.commentNature || 'neutral',
-      organization_category: comment.organizationCategory || 'inline',
+      organization_category: validOrganizationCategory,
       reconciliation_source: comment.reconciliationSource || 'none',
       reconciliation_type: comment.reconciliationType,
       original_source: comment.originalSource

@@ -119,9 +119,8 @@ const EnhancedEssayEditor: React.FC<EnhancedEssayEditorProps> = ({
         // Then load current version
         await loadCurrentVersion();
         
-        // Check if current version has AI feedback
-        const activeVersion = await EssayVersionService.getActiveVersion(essayId);
-        const hasAIFeedback = activeVersion?.has_ai_feedback || false;
+        // Check if there are actually AI comments in the database (more accurate than checkpoint flag)
+        const hasAIFeedback = await AICommentService.hasExistingAIComments(essayId);
         setAiFeedbackGenerated(hasAIFeedback);
         
         // Load comments if they exist
@@ -242,8 +241,9 @@ const EnhancedEssayEditor: React.FC<EnhancedEssayEditorProps> = ({
     // Show/hide comments based on version type
     setShowComments(!version.is_fresh_draft);
     
-    // Update AI feedback state based on version
-    setAiFeedbackGenerated(version.has_ai_feedback || false);
+    // Update AI feedback state based on actual comments in database
+    const hasAIFeedback = await AICommentService.hasExistingAIComments(essayId);
+    setAiFeedbackGenerated(hasAIFeedback);
     
     // Reload all versions to update editable status
     await loadAllVersions();
@@ -306,7 +306,8 @@ const EnhancedEssayEditor: React.FC<EnhancedEssayEditorProps> = ({
       }
 
       // Check if AI comments already exist for the current version
-      if (currentVersion?.has_ai_feedback) {
+      const hasExistingComments = await AICommentService.hasExistingAIComments(essayId);
+      if (hasExistingComments) {
         alert('AI feedback has already been generated for this version. Create a new version to get new feedback.');
         return;
       }

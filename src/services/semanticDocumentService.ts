@@ -438,29 +438,33 @@ export class SemanticDocumentService {
     const startTime = Date.now();
     
     try {
-      // Call the AI service with semantic blocks
-      const response = await fetch('/api/ai/generate-semantic-comments', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(request)
-      });
-
-      if (!response.ok) {
-        throw new Error(`AI service error: ${response.statusText}`);
+      // Get the current user's session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('User not authenticated');
       }
 
-      const result = await response.json();
-      
+      // Call the Supabase edge function for semantic comments
+      const { data, error } = await supabase.functions.invoke('generate-semantic-comments', {
+        body: request,
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        }
+      });
+
+      if (error) {
+        throw new Error(`Edge Function error: ${error.message}`);
+      }
+
       return {
         success: true,
-        comments: result.comments || [],
-        message: result.message,
+        comments: data.comments || [],
+        message: data.message || 'AI comments generated successfully',
         metadata: {
           processingTime: Date.now() - startTime,
           blocksAnalyzed: request.blocks.length,
-          commentsGenerated: result.comments?.length || 0
+          commentsGenerated: data.comments?.length || 0
         }
       };
     } catch (error) {
