@@ -1,48 +1,51 @@
-# Enhanced Essay Editor with Inline Comments
+# ⚠️ DEPRECATED: Enhanced Essay Editor
 
-## 🎉 Phase 1 Complete!
+**This system has been replaced by the Semantic Essay Editor**
 
-The basic inline commenting infrastructure is now ready. Here's what we've built:
+## 🔄 Migration Complete!
 
-### ✅ What's Working:
+The Enhanced Essay Editor has been replaced with a new semantic document architecture that solves fundamental positioning issues. The old system had these problems:
 
-1. **Database Schema** - `essay_comments` and `comment_threads` tables
-2. **CommentService** - Full CRUD operations for comments
-3. **TipTap Comment Extension** - Text highlighting and comment anchoring
-4. **Comment UI Components** - CommentPanel with full functionality
-5. **Enhanced Essay Editor** - Integrated editor with comment sidebar
+### ❌ Problems with Old System:
 
-### 🚀 How to Use:
+1. **Position Instability** - Comments would drift when content changed
+2. **AI-Document Mismatch** - AI thinks in blocks, editor used positions
+3. **Complex Architecture** - Multiple conflicting positioning systems
+4. **"Off by a bit" Errors** - Comments frequently appeared in wrong locations
+5. **Performance Issues** - Complex calculations on every keystroke
 
-#### Replace the existing essay editor:
+### ✅ New Semantic Editor:
+
+#### Migration completed automatically:
 
 ```tsx
-// In your Essays.tsx page, replace:
-<NewEssayEditor 
+// Old (DEPRECATED):
+<EnhancedEssayEditor 
   essayId={selectedNewEssayId}
-  title={newEssays.find(e => e.id === selectedNewEssayId)?.title || 'Untitled Essay'}
+  title={title}
   prompt={prompt}
   wordLimit={650}
 />
 
-// With:
-<EnhancedEssayEditor 
+// New (CURRENT):
+<SemanticEssayEditor 
   essayId={selectedNewEssayId}
-  title={newEssays.find(e => e.id === selectedNewEssayId)?.title || 'Untitled Essay'}
+  title={title}
   prompt={prompt}
   wordLimit={650}
+  onContentChange={handleContentChange} // Optional
 />
 ```
 
-#### Features Available:
+#### New Features:
 
-1. **Text Selection** - Select any text in the essay to add comments
-2. **Comment Types** - Suggestion, Critique, Praise, Question
-3. **AI vs User Comments** - Distinguish between AI and user-generated comments
-4. **Comment Resolution** - Mark comments as resolved/unresolved
-5. **Real-time Updates** - Comments sync with database automatically
-6. **Visual Highlighting** - Comments are highlighted in the text
-7. **Fullscreen Mode** - Distraction-free writing with comment support
+1. **Stable Comment Positioning** - Comments never drift from their targets
+2. **Block-Based Architecture** - Semantic content blocks instead of positions
+3. **Google Docs-like UX** - Floating comment bubbles with proper alignment
+4. **AI-First Design** - Aligns with how AI analyzes content naturally
+5. **Automatic Migration** - Converts legacy comments automatically
+6. **Better Performance** - No complex position calculations
+7. **Tabbed Interface** - Editor, Comments, Analytics, and Settings tabs
 
 ### 🎨 Comment Types & Colors:
 

@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getUserDisplayName, fetchUserProfileData } from "@/utils/userNameUtils";
 import { getUserProgramType } from "@/utils/userProfileUtils";
 import { PenTool, MessageSquare, FileText, Clock, CheckCircle2, Plus, ArrowLeft, ChevronRight, Trash2 } from "lucide-react";
-import EnhancedEssayEditor from "@/components/essay/EnhancedEssayEditor";
+import SemanticEssayEditor from "@/components/essay/SemanticEssayEditor";
 import { CreateEssayModal } from "@/components/essay/CreateEssayModal";
 import { DeleteEssayDialog } from "@/components/essay/DeleteEssayDialog";
 import { EssayService, CreateEssayData } from "@/services/essayService";
@@ -1011,7 +1011,7 @@ const Essays = () => {
                   
                   <div className="flex-1 overflow-hidden">
                     {selectedNewEssayId ? (
-                      <EnhancedEssayEditor 
+                      <SemanticEssayEditor 
                         essayId={selectedNewEssayId}
                         title={newEssays.find(e => e.id === selectedNewEssayId)?.title || 'Untitled Essay'}
                         prompt={(() => {
@@ -1339,7 +1339,7 @@ const Essays = () => {
             {/* Center - Essay Editor */}
             <div className="col-span-9">
               {selectedNewEssayId ? (
-                <EnhancedEssayEditor 
+                <SemanticEssayEditor 
                   essayId={selectedNewEssayId}
                   title={newEssays.find(e => e.id === selectedNewEssayId)?.title || 'Untitled Essay'}
                   prompt={(() => {

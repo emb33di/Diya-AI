@@ -30,6 +30,8 @@ import {
 interface SemanticEssayEditorProps {
   essayId: string;
   title: string;
+  prompt?: string;
+  wordLimit?: number;
   initialContent?: string;
   onTitleChange?: (newTitle: string) => void;
   onContentChange?: (content: string) => void;
@@ -39,6 +41,8 @@ interface SemanticEssayEditorProps {
 const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
   essayId,
   title,
+  prompt,
+  wordLimit = 650,
   initialContent = '',
   onTitleChange,
   onContentChange,
@@ -95,7 +99,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
               title,
               essayId,
               'user', // TODO: Get actual user ID
-              { prompt: '', wordLimit: 650 }
+              { prompt: prompt || '', wordLimit: wordLimit || 650 }
             );
 
             // Convert initial content to blocks
@@ -305,6 +309,45 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                 </Button>
               </div>
             </div>
+
+            {/* Prompt Section */}
+            {(prompt || document.metadata.prompt) && (
+              <div className="bg-white p-4 md:p-8 rounded-xl shadow-lg border border-gray-300 relative overflow-hidden group hover:shadow-xl transition-shadow duration-300">
+                {/* Subtle accent line */}
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500"></div>
+                
+                <div className="flex flex-col sm:flex-row sm:items-start space-y-4 sm:space-y-0 sm:space-x-4">
+                  <div className="flex-shrink-0 self-center sm:self-start sm:mt-1">
+                    <div className="p-3 bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg border border-blue-100">
+                      <FileText className="h-5 w-5 text-blue-600" />
+                    </div>
+                  </div>
+                  
+                  <div className="flex-1">
+                    <h3 className="text-base md:text-lg font-semibold text-gray-800 mb-3 flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0">
+                      <span>Essay Prompt</span>
+                      <div className="sm:ml-2 px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full self-start">
+                        Required
+                      </div>
+                    </h3>
+                    <div className="prose prose-gray max-w-none">
+                      <p className="text-gray-700 leading-relaxed text-base md:text-lg m-0">
+                        {prompt || document.metadata.prompt}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Word limit reminder */}
+                <div className="mt-4 md:mt-6 pt-4 border-t border-gray-100">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">
+                      Word limit: {wordLimit || document.metadata.wordLimit || 650} words
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Editor */}
             <SemanticEditor
