@@ -67,6 +67,37 @@ const Essays = () => {
     if (!text || text.trim() === '') return 0;
     return text.trim().split(/\s+/).filter(word => word.length > 0).length;
   };
+
+  // Helper function to parse word limits safely
+  const parseWordLimit = (wordLimit: string): number => {
+    if (!wordLimit || wordLimit.trim() === '') return 650; // Default fallback
+    
+    const cleanLimit = wordLimit.trim();
+    
+    // Handle range format like "250-650"
+    if (cleanLimit.includes('-')) {
+      const parts = cleanLimit.split('-');
+      const maxLimit = parseInt(parts[parts.length - 1]);
+      return isNaN(maxLimit) ? 650 : maxLimit;
+    }
+    
+    // Handle single number like "400"
+    const singleLimit = parseInt(cleanLimit);
+    if (!isNaN(singleLimit)) return singleLimit;
+    
+    // Handle special cases
+    switch (cleanLimit.toLowerCase()) {
+      case 'not specified':
+      case 'no limit':
+        return 650; // Default fallback
+      case 'one page':
+        return 500; // Approximate for one page
+      case 'three words':
+        return 3;
+      default:
+        return 650; // Default fallback
+    }
+  };
   const [schools, setSchools] = useState<School[]>([]);
   const [selectedSchool, setSelectedSchool] = useState<string>(() => {
     // Initialize from localStorage
@@ -263,7 +294,7 @@ const Essays = () => {
               title: prompt.title || `${selectedSchool} - ${prompt.prompt_number}`, // Use database title, fallback to generated title
               prompt: prompt.prompt,
               wordCount: wordCount,
-              wordLimit: parseInt(prompt.word_limit.split('-')[1] || '650'),
+              wordLimit: parseWordLimit(prompt.word_limit),
               status: existingSelection ? 'draft' : 'not_started',
               lastEdited: existingSelection ? 'Recently' : 'Never',
               feedback: 0,
@@ -869,7 +900,7 @@ const Essays = () => {
                                 </div>
                                 
                                 <p className="text-xs text-blue-800 line-clamp-3 leading-relaxed">
-                                  {prompt.prompt.split('\n\n')[1] || prompt.prompt}
+                                  {prompt.prompt?.split('\n\n')[1] || prompt.prompt || 'No prompt text available'}
                                 </p>
                               </div>
                             </CardContent>
@@ -1000,7 +1031,7 @@ const Essays = () => {
                         </div>
                         
                         <p className="text-sm text-muted-foreground line-clamp-4">
-                          {prompt.prompt.split('\n\n')[1] || prompt.prompt}
+                          {prompt.prompt?.split('\n\n')[1] || prompt.prompt || 'No prompt text available'}
                         </p>
                         
                         <div className="flex items-center justify-between">
@@ -1310,7 +1341,7 @@ const Essays = () => {
                             </div>
                             
                             <p className="text-xs text-blue-800 line-clamp-4 leading-relaxed">
-                              {prompt.prompt.split('\n\n')[1] || prompt.prompt}
+                              {prompt.prompt?.split('\n\n')[1] || prompt.prompt || 'No prompt text available'}
                             </p>
                             
                             <div className="flex items-center justify-between">
