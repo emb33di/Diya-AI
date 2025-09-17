@@ -80,6 +80,37 @@ const SemanticEditor: React.FC<SemanticEditorProps> = ({
     blockId: string | null;
     hasSelectedBlock: boolean;
   }>({ blockId: null, hasSelectedBlock: false });
+  
+  // Multi-block selection state
+  const [multiSelectState, setMultiSelectState] = useState<{
+    selectedBlockIds: Set<string>;
+    anchorBlockId: string | null;
+    focusBlockId: string | null;
+    isDragging: boolean;
+    dragStartBlockId: string | null;
+  }>({
+    selectedBlockIds: new Set(),
+    anchorBlockId: null,
+    focusBlockId: null,
+    isDragging: false,
+    dragStartBlockId: null
+  });
+
+  // Cross-block text selection state
+  const [crossBlockSelection, setCrossBlockSelection] = useState<{
+    startBlockId: string | null;
+    endBlockId: string | null;
+    startOffset: number;
+    endOffset: number;
+    isActive: boolean;
+  }>({
+    startBlockId: null,
+    endBlockId: null,
+    startOffset: 0,
+    endOffset: 0,
+    isActive: false
+  });
+  
   const autosaveTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
   const textareaRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
 
@@ -420,6 +451,49 @@ const SemanticEditor: React.FC<SemanticEditorProps> = ({
     }, 10);
   }, [state.document, autoResizeTextarea]);
 
+  // Handle smart paste behavior - split multi-paragraph content into blocks
+  const handleSmartPaste = useCallback(async (blockId: string, pastedText: string, currentPosition: number) => {
+    // Split by double newlines (paragraph breaks) or single newlines followed by capital letters
+    const paragraphs = pastedText
+      .split(/\n\s*\n|\n(?=[A-Z])/) // Split on double newlines or newline + capital letter
+      .map(p => p.trim())
+      .filter(p => p.length > 0);
+
+    // If only one paragraph or very short text, use normal paste behavior
+    if (paragraphs.length <= 1 || pastedText.length < 100) {
+      return false; // Let default paste behavior handle it
+    }
+
+    // Handle multi-paragraph paste: replace current block and create new blocks
+    const currentBlock = state.document.blocks.find(b => b.id === blockId);
+    if (!currentBlock) return false;
+
+    // Update current block with first paragraph
+    handleBlockContentChange(blockId, paragraphs[0]);
+
+    // Create new blocks for remaining paragraphs
+    for (let i = 1; i < paragraphs.length; i++) {
+      const newBlock = semanticDocumentService.addBlock(
+        state.document,
+        {
+          type: 'paragraph',
+          content: paragraphs[i],
+          position: currentPosition + i
+        },
+        true // isUserCreated = true
+      );
+    }
+
+    // Update state to reflect all new blocks
+    setState(prev => ({
+      ...prev,
+      document: { ...prev.document },
+      pendingChanges: true
+    }));
+
+    return true; // Indicate we handled the paste
+  }, [state.document, handleBlockContentChange]);
+
   // Handle smart Cmd+A behavior
   const handleSmartSelectAll = useCallback((blockId: string, textarea: HTMLTextAreaElement) => {
     const currentBlock = state.document.blocks.find(b => b.id === blockId);
@@ -485,6 +559,367 @@ const SemanticEditor: React.FC<SemanticEditorProps> = ({
       setCmdASelectionState({ blockId, hasSelectedBlock: true });
     }
   }, [state.document.blocks, cmdASelectionState]);
+
+  // Multi-block selection helpers
+  const clearSelection = useCallback(() => {
+    setMultiSelectState({
+      selectedBlockIds: new Set(),
+      anchorBlockId: null,
+      focusBlockId: null,
+      isDragging: false,
+      dragStartBlockId: null
+    });
+  }, []);
+
+  const selectBlock = useCallback((blockId: string, extend: boolean = false) => {
+    setMultiSelectState(prev => {
+      if (!extend) {
+        return {
+          selectedBlockIds: new Set([blockId]),
+          anchorBlockId: blockId,
+          focusBlockId: blockId,
+          isDragging: false,
+          dragStartBlockId: null
+        };
+      }
+      
+      // Extend selection
+      if (!prev.anchorBlockId) {
+        return {
+          selectedBlockIds: new Set([blockId]),
+          anchorBlockId: blockId,
+          focusBlockId: blockId,
+          isDragging: false,
+          dragStartBlockId: null
+        };
+      }
+      
+      // Select range between anchor and focus
+      const blocks = state.document.blocks.sort((a, b) => a.position - b.position);
+      const anchorIndex = blocks.findIndex(b => b.id === prev.anchorBlockId);
+      const focusIndex = blocks.findIndex(b => b.id === blockId);
+      
+      const startIndex = Math.min(anchorIndex, focusIndex);
+      const endIndex = Math.max(anchorIndex, focusIndex);
+      
+      const selectedIds = new Set<string>();
+      for (let i = startIndex; i <= endIndex; i++) {
+        selectedIds.add(blocks[i].id);
+      }
+      
+      return {
+        ...prev,
+        selectedBlockIds: selectedIds,
+        focusBlockId: blockId
+      };
+    });
+  }, [state.document.blocks]);
+
+  const selectRange = useCallback((startBlockId: string, endBlockId: string) => {
+    const blocks = state.document.blocks.sort((a, b) => a.position - b.position);
+    const startIndex = blocks.findIndex(b => b.id === startBlockId);
+    const endIndex = blocks.findIndex(b => b.id === endBlockId);
+    
+    if (startIndex === -1 || endIndex === -1) return;
+    
+    const minIndex = Math.min(startIndex, endIndex);
+    const maxIndex = Math.max(startIndex, endIndex);
+    
+    const selectedIds = new Set<string>();
+    for (let i = minIndex; i <= maxIndex; i++) {
+      selectedIds.add(blocks[i].id);
+    }
+    
+    setMultiSelectState(prev => ({
+      ...prev,
+      selectedBlockIds: selectedIds,
+      anchorBlockId: startBlockId,
+      focusBlockId: endBlockId
+    }));
+  }, [state.document.blocks]);
+
+  // Delete selected blocks
+  const deleteSelectedBlocks = useCallback(() => {
+    if (multiSelectState.selectedBlockIds.size === 0) {
+      return;
+    }
+    
+    // Don't allow deleting all blocks
+    if (multiSelectState.selectedBlockIds.size >= state.document.blocks.length) {
+      return;
+    }
+    
+    // Remove selected blocks
+    const blocksToKeep = state.document.blocks.filter(
+      block => !multiSelectState.selectedBlockIds.has(block.id)
+    );
+    
+    // Update positions
+    blocksToKeep.forEach((block, index) => {
+      block.position = index;
+    });
+    
+    // Update document
+    state.document.blocks = blocksToKeep;
+    
+    setState(prev => ({
+      ...prev,
+      document: { ...prev.document },
+      pendingChanges: true
+    }));
+    
+    // Clear selection
+    clearSelection();
+    
+    // If we deleted the editing block, stop editing
+    if (editingBlockId && multiSelectState.selectedBlockIds.has(editingBlockId)) {
+      setEditingBlockId(null);
+      setState(prev => ({ ...prev, isEditing: false }));
+    }
+  }, [multiSelectState.selectedBlockIds, state.document.blocks, clearSelection, editingBlockId]);
+
+  // Cross-block text selection helpers
+  const clearCrossBlockSelection = useCallback(() => {
+    setCrossBlockSelection({
+      startBlockId: null,
+      endBlockId: null,
+      startOffset: 0,
+      endOffset: 0,
+      isActive: false
+    });
+  }, []);
+
+  const deleteCrossBlockSelection = useCallback(() => {
+    if (!crossBlockSelection.isActive || !crossBlockSelection.startBlockId || !crossBlockSelection.endBlockId) {
+      return;
+    }
+
+    const blocks = state.document.blocks.sort((a, b) => a.position - b.position);
+    const startBlockIndex = blocks.findIndex(b => b.id === crossBlockSelection.startBlockId);
+    const endBlockIndex = blocks.findIndex(b => b.id === crossBlockSelection.endBlockId);
+
+    if (startBlockIndex === -1 || endBlockIndex === -1) return;
+
+    const startBlock = blocks[startBlockIndex];
+    const endBlock = blocks[endBlockIndex];
+
+    if (startBlockIndex === endBlockIndex) {
+      // Same block - delete text within the block
+      const newContent = startBlock.content.slice(0, crossBlockSelection.startOffset) + 
+                        startBlock.content.slice(crossBlockSelection.endOffset);
+      handleBlockContentChange(startBlock.id, newContent);
+    } else {
+      // Different blocks - more complex deletion
+      const startContent = startBlock.content.slice(0, crossBlockSelection.startOffset);
+      const endContent = endBlock.content.slice(crossBlockSelection.endOffset);
+      
+      // Update start block
+      handleBlockContentChange(startBlock.id, startContent);
+      
+      // Update end block
+      handleBlockContentChange(endBlock.id, endContent);
+      
+      // Delete blocks in between (if any)
+      if (endBlockIndex - startBlockIndex > 1) {
+        const blocksToDelete = blocks.slice(startBlockIndex + 1, endBlockIndex);
+        const blocksToKeep = state.document.blocks.filter(block => 
+          !blocksToDelete.some(b => b.id === block.id)
+        );
+        
+        // Update positions
+        blocksToKeep.forEach((block, index) => {
+          block.position = index;
+        });
+        
+        state.document.blocks = blocksToKeep;
+      }
+      setState(prev => ({
+        ...prev,
+        document: { ...prev.document },
+        pendingChanges: true
+      }));
+    }
+
+    clearCrossBlockSelection();
+  }, [crossBlockSelection, state.document.blocks, handleBlockContentChange, clearCrossBlockSelection]);
+
+  // Detect cross-block text selection
+  const detectCrossBlockSelection = useCallback(() => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) {
+      clearCrossBlockSelection();
+      return;
+    }
+
+    const range = selection.getRangeAt(0);
+    const startContainer = range.startContainer;
+    const endContainer = range.endContainer;
+
+    // Find which blocks contain the selection
+    let startBlockId: string | null = null;
+    let endBlockId: string | null = null;
+    let startOffset = 0;
+    let endOffset = 0;
+
+    // Helper function to find block ID from DOM element
+    const findBlockId = (element: Node): string | null => {
+      let current = element;
+      while (current && current.nodeType !== Node.DOCUMENT_NODE) {
+        if (current.nodeType === Node.ELEMENT_NODE) {
+          const el = current as Element;
+          if (el.hasAttribute('data-block-id')) {
+            return el.getAttribute('data-block-id');
+          }
+        }
+        current = current.parentNode;
+      }
+      return null;
+    };
+
+    // Find start block and calculate text offset
+    if (startContainer.nodeType === Node.TEXT_NODE) {
+      startBlockId = findBlockId(startContainer.parentNode!);
+      startOffset = range.startOffset;
+    } else {
+      startBlockId = findBlockId(startContainer);
+      // For element nodes, try to get text content offset
+      const textContent = (startContainer as Element).textContent || '';
+      startOffset = Math.min(range.startOffset, textContent.length);
+    }
+
+    // Find end block and calculate text offset
+    if (endContainer.nodeType === Node.TEXT_NODE) {
+      endBlockId = findBlockId(endContainer.parentNode!);
+      endOffset = range.endOffset;
+    } else {
+      endBlockId = findBlockId(endContainer);
+      // For element nodes, try to get text content offset
+      const textContent = (endContainer as Element).textContent || '';
+      endOffset = Math.min(range.endOffset, textContent.length);
+    }
+
+    // Check if selection spans multiple blocks
+    if (startBlockId && endBlockId && startBlockId !== endBlockId) {
+      setCrossBlockSelection({
+        startBlockId,
+        endBlockId,
+        startOffset,
+        endOffset,
+        isActive: true
+      });
+    } else {
+      clearCrossBlockSelection();
+    }
+  }, [clearCrossBlockSelection]);
+
+  // Add selection change listener
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      // Small delay to ensure selection is fully established
+      setTimeout(detectCrossBlockSelection, 10);
+    };
+
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => document.removeEventListener('selectionchange', handleSelectionChange);
+  }, [detectCrossBlockSelection]);
+
+  // Keyboard navigation
+  const handleKeyboardNavigation = useCallback((e: KeyboardEvent) => {
+    // Only handle when not editing a block
+    if (editingBlockId) {
+      return;
+    }
+    
+    // Don't interfere with text input in any textarea or input
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT' || target.contentEditable === 'true') {
+      return;
+    }
+    
+    // If user starts typing (letters, numbers, etc.), clear selection and start editing
+    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      // Clear multi-selection and start editing the focused block
+      if (multiSelectState.focusBlockId) {
+        clearSelection();
+        startEditingBlock(multiSelectState.focusBlockId);
+        // Let the typing continue normally
+        return;
+      }
+    }
+    
+    // Only handle specific navigation keys
+    if (!['ArrowUp', 'ArrowDown', 'Delete', 'Backspace', 'Escape'].includes(e.key)) {
+      return;
+    }
+    
+    const blocks = state.document.blocks.sort((a, b) => a.position - b.position);
+    const currentFocusIndex = multiSelectState.focusBlockId 
+      ? blocks.findIndex(b => b.id === multiSelectState.focusBlockId)
+      : -1;
+    
+    let newFocusIndex = currentFocusIndex;
+    
+    switch (e.key) {
+      case 'ArrowUp':
+        e.preventDefault();
+        newFocusIndex = Math.max(0, currentFocusIndex - 1);
+        break;
+      case 'ArrowDown':
+        e.preventDefault();
+        newFocusIndex = Math.min(blocks.length - 1, currentFocusIndex + 1);
+        break;
+      case 'Delete':
+      case 'Backspace':
+        // Check for cross-block text selection first
+        if (crossBlockSelection.isActive) {
+          e.preventDefault();
+          deleteCrossBlockSelection();
+          return;
+        }
+        // Only delete blocks if we have multiple blocks selected
+        if (multiSelectState.selectedBlockIds.size > 1) {
+          e.preventDefault();
+          deleteSelectedBlocks();
+          return;
+        }
+        // For single block or no selection, let normal behavior handle it
+        break;
+      case 'Escape':
+        e.preventDefault();
+        clearSelection();
+        clearCrossBlockSelection();
+        return;
+      default:
+        return;
+    }
+    
+    if (newFocusIndex >= 0 && newFocusIndex < blocks.length) {
+      const newFocusBlockId = blocks[newFocusIndex].id;
+      selectBlock(newFocusBlockId, e.shiftKey);
+    }
+  }, [editingBlockId, state.document.blocks, multiSelectState.focusBlockId, multiSelectState.selectedBlockIds, crossBlockSelection.isActive, selectBlock, deleteSelectedBlocks, deleteCrossBlockSelection, clearSelection, clearCrossBlockSelection, startEditingBlock]);
+
+  // Add global keyboard listener
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyboardNavigation);
+    return () => document.removeEventListener('keydown', handleKeyboardNavigation);
+  }, [handleKeyboardNavigation]);
+
+  // Add global mouse up listener to end dragging
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      if (multiSelectState.isDragging) {
+        setMultiSelectState(prev => ({
+          ...prev,
+          isDragging: false,
+          dragStartBlockId: null
+        }));
+      }
+    };
+
+    document.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => document.removeEventListener('mouseup', handleGlobalMouseUp);
+  }, [multiSelectState.isDragging]);
 
   // Add a comment to the selected block
   const addComment = useCallback(() => {
@@ -589,11 +1024,68 @@ const SemanticEditor: React.FC<SemanticEditorProps> = ({
     const isSelected = state.selectedBlockId === block.id;
     const isEditing = editingBlockId === block.id;
     const isImmutable = block.isImmutable ?? false;
+    const isMultiSelected = multiSelectState.selectedBlockIds.has(block.id);
+    const isFocused = multiSelectState.focusBlockId === block.id;
 
     return (
       <div
         key={block.id}
-        className="relative"
+        data-block-id={block.id}
+        className={`relative transition-all duration-150 ${
+          isMultiSelected 
+            ? 'bg-blue-100 border-l-4 border-blue-500 pl-4 ml-2' 
+            : isFocused 
+              ? 'bg-blue-50 border-l-2 border-blue-300 pl-2 ml-1'
+              : ''
+        }`}
+        onMouseDown={(e) => {
+          if (isEditing) return;
+          
+          e.preventDefault();
+          const isShiftClick = e.shiftKey;
+          const isCtrlClick = e.ctrlKey || e.metaKey;
+          
+          if (isShiftClick && multiSelectState.anchorBlockId) {
+            // Shift+click: extend selection
+            selectRange(multiSelectState.anchorBlockId, block.id);
+          } else if (isCtrlClick) {
+            // Ctrl+click: toggle individual block
+            if (multiSelectState.selectedBlockIds.has(block.id)) {
+              const newSelection = new Set(multiSelectState.selectedBlockIds);
+              newSelection.delete(block.id);
+              setMultiSelectState(prev => ({
+                ...prev,
+                selectedBlockIds: newSelection,
+                focusBlockId: block.id
+              }));
+            } else {
+              selectBlock(block.id, true);
+            }
+          } else {
+            // Regular click: start new selection and prepare for drag
+            selectBlock(block.id, false);
+            setMultiSelectState(prev => ({
+              ...prev,
+              isDragging: true,
+              dragStartBlockId: block.id
+            }));
+          }
+        }}
+        onMouseEnter={(e) => {
+          if (multiSelectState.isDragging && multiSelectState.dragStartBlockId) {
+            // Extend selection during drag
+            selectRange(multiSelectState.dragStartBlockId, block.id);
+          }
+        }}
+        onMouseUp={() => {
+          if (multiSelectState.isDragging) {
+            setMultiSelectState(prev => ({
+              ...prev,
+              isDragging: false,
+              dragStartBlockId: null
+            }));
+          }
+        }}
       >
         {/* Block Content - Seamless essay-like appearance */}
         {isEditing ? (
@@ -615,6 +1107,15 @@ const SemanticEditor: React.FC<SemanticEditorProps> = ({
             }}
             onBlur={() => {
               finishEditingBlock(block.id);
+            }}
+            onPaste={async (e) => {
+              const pastedText = e.clipboardData.getData('text/plain');
+              if (pastedText.trim()) {
+                const handled = await handleSmartPaste(block.id, pastedText, block.position);
+                if (handled) {
+                  e.preventDefault(); // Prevent default paste if we handled it
+                }
+              }
             }}
             onKeyDown={(e) => {
               if (e.key === 'Escape') {
@@ -647,12 +1148,18 @@ const SemanticEditor: React.FC<SemanticEditorProps> = ({
               direction: 'ltr',
               textAlign: 'left'
             }}
-            placeholder="Start writing here..."
+            placeholder={block.position === 0 ? "Start writing here..." : ""}
           />
         ) : (
           <div 
+            data-block-id={block.id}
             className="prose max-w-none min-h-[1.5em] cursor-text transition-colors duration-150 hover:bg-gray-50"
-            onClick={() => {
+            onClick={(e) => {
+              // Don't start editing if we're in multi-select mode
+              if (multiSelectState.selectedBlockIds.size > 0) {
+                e.stopPropagation();
+                return;
+              }
               startEditingBlock(block.id);
             }}
             style={{ 
@@ -666,7 +1173,7 @@ const SemanticEditor: React.FC<SemanticEditorProps> = ({
               whiteSpace: 'pre-wrap'
             }}
           >
-            {block.content || <span className="text-gray-400">Start writing here...</span>}
+            {block.content || (block.position === 0 ? <span className="text-gray-400">Start writing here...</span> : "")}
           </div>
         )}
 
@@ -774,8 +1281,7 @@ const SemanticEditor: React.FC<SemanticEditorProps> = ({
         <div className="border-b border-gray-100 p-6 pb-4">
           <div className="flex items-center justify-between">
             <div className="text-sm text-gray-500">
-              {state.pendingChanges ? 'Unsaved changes' : 'All changes saved'} | 
-              Doc ID: {state.document.id.substring(0, 8)}...
+              {state.pendingChanges ? 'Unsaved changes' : 'All changes saved'}
             </div>
             <div className="flex gap-2">
               <Button
