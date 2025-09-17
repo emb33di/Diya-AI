@@ -9,12 +9,14 @@ import {
   AlertCircle,
   Minimize2,
   Maximize2,
+  Lightbulb,
   Sparkles,
   Edit3,
   Bot,
   MessageSquare,
   Loader2
 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useTipTapEssayEditor } from '@/hooks/useTipTapEssayEditor';
 import CommentableTipTapEditor from './CommentableTipTapEditor';
 import EssayCommentsPanel from './EssayCommentsPanel';
@@ -215,7 +217,7 @@ const EnhancedEssayEditor: React.FC<EnhancedEssayEditorProps> = ({
 
   const wordLimitStatus = getWordLimitStatus();
 
-  // Check if essay has content
+  // Check if essay has content (for brainstorm button)
   const hasContent = wordCount > 0;
 
   // Calculate minimum words needed for essay feedback (50% of word limit)
@@ -684,62 +686,160 @@ Use formatting options to structure your essay. Your content will be automatical
       {/* Right Panel - 4 columns, conditionally rendered */}
       {showDiyaHelpPanel && (
         <div className="col-span-4 h-full flex flex-col">
-          {/* Panel Header */}
-          <div className="mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Comments & Feedback</h3>
-          </div>
 
           {/* Panel Content */}
           <div className="flex-1 overflow-hidden">
-            {aiFeedbackGenerated && comments.length > 0 ? (
-              /* Comments Panel */
-              <EssayCommentsPanel
-                essayId={essayId}
-                comments={comments}
-                essayContent={htmlContent}
-                onCommentsChange={setComments}
-                onCommentHover={setHoveredCommentId}
-                onCommentSelect={setSelectedCommentId}
-              />
+            {rightPanelMode === 'comments' ? (
+              aiFeedbackGenerated && comments.length > 0 ? (
+                /* Comments Panel */
+                <EssayCommentsPanel
+                  essayId={essayId}
+                  comments={comments}
+                  essayContent={htmlContent}
+                  onCommentsChange={setComments}
+                  onCommentHover={setHoveredCommentId}
+                  onCommentSelect={setSelectedCommentId}
+                />
+              ) : (
+                /* No Comments Message */
+                <Card className="shadow-sm h-full flex flex-col">
+                  <CardContent className="flex-1 flex items-center justify-center p-6">
+                    <div className="text-center space-y-4">
+                      <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center">
+                        <MessageSquare className="h-8 w-8 text-gray-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">No comments yet!</h3>
+                        <p className="text-gray-600 text-sm">
+                          Write your essay draft to let Diya work her magic.
+                        </p>
+                      </div>
+                      <Button
+                        onClick={handleHelpImproveEssay}
+                        disabled={isGeneratingAI || htmlContent.length < 50}
+                        className="mt-4"
+                      >
+                        {isGeneratingAI ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Generating Feedback...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="mr-2 h-4 w-4" />
+                            Get AI Feedback
+                          </>
+                        )}
+                      </Button>
+                      {htmlContent.length < 50 && (
+                        <p className="text-xs text-gray-500 mt-2">
+                          Write more of your essay to let Diya provide the best feedback possible.
+                        </p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )
             ) : (
-              /* No Comments Message with Essay Feedback */
+              /* Diya Help Panel */
               <Card className="shadow-sm h-full flex flex-col">
-                <CardContent className="flex-1 flex items-center justify-center p-6">
-                  <div className="text-center space-y-4">
-                    <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center">
-                      <MessageSquare className="h-8 w-8 text-gray-400" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">No comments yet!</h3>
-                      <p className="text-gray-600 text-sm">
-                        Write your essay draft to let Diya provide detailed feedback.
-                      </p>
-                    </div>
+                <CardHeader className="border-b bg-gradient-to-r from-orange-50 to-orange-100 pb-4">
+                  <CardTitle className="text-2xl flex items-center justify-center space-x-3">
+                    <Sparkles className="h-7 w-7 text-orange-600" />
+                    <span className="text-orange-800 font-bold">Diya can help</span>
+                  </CardTitle>
+                </CardHeader>
+              
+              <CardContent className="p-6 flex flex-col space-y-6 flex-1 overflow-y-auto">
+                <TooltipProvider delayDuration={300}>
+                  {/* Brainstorm Essay Ideas Button */}
+                  {hasContent ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div>
+                          <Button
+                            onClick={handleBrainstormIdeas}
+                            disabled={hasContent}
+                            className="w-full h-12 bg-primary hover:bg-primary-hover text-primary-foreground border-0 flex items-center justify-center rounded-lg shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <span className="text-sm font-semibold">Brainstorm</span>
+                          </Button>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        <p>Brainstorming works best on blank sheets. Please remove any writing to start fresh with Diya!</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <Button
+                      onClick={handleBrainstormIdeas}
+                      className="w-full h-12 bg-primary hover:bg-primary-hover text-primary-foreground border-0 flex items-center justify-center rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
+                    >
+                      <span className="text-sm font-semibold">Brainstorm</span>
+                    </Button>
+                  )}
+
+                  {/* Help Improve My Essay Button */}
+                  {(!canUseEssayFeedback && !aiFeedbackGenerated && !isGeneratingAI) ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div>
+                          <Button
+                            onClick={handleHelpImproveEssay}
+                            disabled={aiFeedbackGenerated || isGeneratingAI || !canUseEssayFeedback}
+                            className="w-full h-12 bg-primary hover:bg-primary-hover text-primary-foreground border-0 flex items-center justify-center rounded-lg shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <span className="text-sm font-semibold">Essay Feedback</span>
+                          </Button>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        <p>Please write more of your essay to let Diya do her magic! (Minimum {minWordsForFeedback} words)</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : (
                     <Button
                       onClick={handleHelpImproveEssay}
-                      disabled={isGeneratingAI || !canUseEssayFeedback}
-                      className="mt-4"
+                      disabled={aiFeedbackGenerated || isGeneratingAI || !canUseEssayFeedback}
+                      className="w-full h-12 bg-primary hover:bg-primary-hover text-primary-foreground border-0 flex items-center justify-center rounded-lg shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isGeneratingAI ? (
                         <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Generating Feedback...
+                          <Clock className="h-4 w-4 mr-2 animate-spin" />
+                          <span className="text-sm font-semibold">Generating AI Feedback...</span>
+                        </>
+                      ) : aiFeedbackGenerated ? (
+                        <>
+                          <CheckCircle2 className="h-4 w-4 mr-2" />
+                          <span className="text-sm font-semibold">AI Feedback Complete</span>
                         </>
                       ) : (
-                        <>
-                          <Sparkles className="mr-2 h-4 w-4" />
-                          Get Diya Essay Feedback
-                        </>
+                        <span className="text-sm font-semibold">Essay Feedback</span>
                       )}
                     </Button>
-                    {!canUseEssayFeedback && (
-                      <p className="text-xs text-gray-500 mt-2">
-                        Write at least {minWordsForFeedback} words to get detailed feedback from Diya.
-                      </p>
-                    )}
+                  )}
+                </TooltipProvider>
+
+                {/* Help Text */}
+                <div className="mt-4 p-5 bg-orange-50 rounded-lg border border-orange-100">
+                  <h4 className="text-base font-bold text-orange-900 mb-4 text-center">How Diya can help:</h4>
+                  <div className="space-y-4 text-sm text-orange-800 leading-relaxed">
+                    <div className="flex items-start space-x-3">
+                      <span className="flex-shrink-0 w-6 h-6 bg-orange-200 text-orange-800 rounded-full flex items-center justify-center text-xs font-bold">1</span>
+                      <p>Diya Brainstorming is best when you are in very early stages of your essay and are figuring out themes and ideas.</p>
+                    </div>
+                    <div className="flex items-start space-x-3">
+                      <span className="flex-shrink-0 w-6 h-6 bg-orange-200 text-orange-800 rounded-full flex items-center justify-center text-xs font-bold">2</span>
+                      <p>Diya Essay Feedback is best when you have a draft ready of your essay and want to focus on making your story shine through your writing. Diya provides detailed comments on your essay and helps you improve specific parts of it.</p>
+                    </div>
+                    <div className="flex items-start space-x-3">
+                      <span className="flex-shrink-0 w-6 h-6 bg-orange-200 text-orange-800 rounded-full flex items-center justify-center text-xs font-bold">3</span>
+                      <p>Remember, each feature can only be used once per essay so utilize when you're ready to go!</p>
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </CardContent>
+            </Card>
             )}
           </div>
         </div>

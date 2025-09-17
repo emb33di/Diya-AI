@@ -5,33 +5,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
-import BrainstormChat from "@/components/BrainstormChat";
 import OnboardingGuard from "@/components/OnboardingGuard";
 import ProfileCompletionGuard from "@/components/ProfileCompletionGuard";
 import { EssayPromptService, EssayPrompt, EssayPromptSelection } from "@/services/essayPromptService";
 import { supabase } from "@/integrations/supabase/client";
 import { getUserDisplayName, fetchUserProfileData } from "@/utils/userNameUtils";
-import { PenTool, MessageSquare, FileText, Clock, CheckCircle2, Plus, Lightbulb, ArrowLeft, ChevronRight, Trash2 } from "lucide-react";
-import { ConversationStorage } from "@/utils/conversationStorage";
+import { getUserProgramType } from "@/utils/userProfileUtils";
+import { PenTool, MessageSquare, FileText, Clock, CheckCircle2, Plus, ArrowLeft, ChevronRight, Trash2 } from "lucide-react";
 import EnhancedEssayEditor from "@/components/essay/EnhancedEssayEditor";
 import { CreateEssayModal } from "@/components/essay/CreateEssayModal";
 import { DeleteEssayDialog } from "@/components/essay/DeleteEssayDialog";
 import { EssayService, CreateEssayData } from "@/services/essayService";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-// Extend Window interface for ElevenLabs
-declare global {
-  interface Window {
-    elevenlabsConvai?: {
-      updateInputs: (inputs: {
-        student_name: string;
-        onboarding_transcript: string;
-        target_college: string;
-        essay_prompt: string;
-      }) => void;
-    };
-  }
-}
 interface School {
   id: string;
   name: string;
@@ -54,13 +40,6 @@ interface Essay {
   promptNumber?: string;
 }
 
-interface BrainstormSummary {
-  key_themes: string[];
-  personal_stories: string[];
-  essay_angles: string[];
-  writing_prompts: string[];
-  structure_suggestions: string[];
-}
 const Essays = () => {
   // Helper function to count words consistently
   const getWordCount = (text: string): number => {
@@ -98,6 +77,42 @@ const Essays = () => {
         return 650; // Default fallback
     }
   };
+
+  // Helper function to categorize essay prompts
+  const categorizePrompts = (prompts: EssayPrompt[]) => {
+    const requiredPrompts: EssayPrompt[] = [];
+    const optionalPrompts: EssayPrompt[] = [];
+    
+    prompts.forEach(prompt => {
+      if (prompt.selection_type === 'required') {
+        requiredPrompts.push(prompt);
+      } else {
+        optionalPrompts.push(prompt);
+      }
+    });
+    
+    return { requiredPrompts, optionalPrompts };
+  };
+
+  // Helper function to get selection text for optional prompts
+  const getSelectionText = (prompts: EssayPrompt[]) => {
+    if (prompts.length === 0) return '';
+    
+    // Get the how_many value from the first prompt (they should all be the same for a school)
+    const howMany = prompts[0]?.how_many || 'one';
+    
+    // Parse the selection type to determine the format
+    const selectionType = prompts[0]?.selection_type || 'choose_one';
+    
+    if (selectionType === 'choose_one') {
+      return `Choose 1 of ${prompts.length}`;
+    } else if (selectionType.startsWith('choose_')) {
+      const number = selectionType.split('_')[1];
+      return `Choose ${number} of ${prompts.length}`;
+    } else {
+      return `Choose ${howMany} of ${prompts.length}`;
+    }
+  };
   const [schools, setSchools] = useState<School[]>([]);
   const [selectedSchool, setSelectedSchool] = useState<string>(() => {
     // Initialize from localStorage
@@ -114,16 +129,6 @@ const Essays = () => {
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState<string>('');
   const [onboardingTranscript, setOnboardingTranscript] = useState<string>('');
-  const [conversationId, setConversationId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Array<{
-    source: 'ai' | 'user';
-    text: string;
-    timestamp: Date;
-  }>>([]);
-  const [sessionStarted, setSessionStarted] = useState(false);
-  const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null);
-  const [showBrainstorming, setShowBrainstorming] = useState(false);
-  const [brainstormSummary, setBrainstormSummary] = useState<BrainstormSummary | null>(null);
   const [newEssays, setNewEssays] = useState<any[]>([]);
   const [selectedNewEssayId, setSelectedNewEssayId] = useState<string | null>(() => {
     // Initialize from localStorage
@@ -138,7 +143,7 @@ const Essays = () => {
 
   // Mobile-specific state management
   const isMobile = useIsMobile();
-  const [mobileStep, setMobileStep] = useState<'school' | 'prompts' | 'editor' | 'common-app'>('school');
+  const [mobileStep, setMobileStep] = useState<'school' | 'prompts' | 'editor'>('school');
   const [selectedMobilePrompt, setSelectedMobilePrompt] = useState<Essay | null>(null);
   const [showMobileEditor, setShowMobileEditor] = useState(false);
 
@@ -198,6 +203,21 @@ const Essays = () => {
           applicationDeadline: rec.first_round_deadline || 'TBD',
           notes: rec.notes || rec.student_thesis || 'No notes available'
         }));
+        
+        // Add Common Application as a school option for undergraduate students
+        const userProgramType = await getUserProgramType();
+        if (userProgramType === 'Undergraduate') {
+          transformedSchools.unshift({
+            id: 'common-app',
+            name: 'Common Application',
+            category: 'target',
+            acceptanceRate: 'N/A',
+            ranking: 'N/A',
+            applicationDeadline: 'TBD',
+            notes: 'Required for all undergraduate applications'
+          });
+        }
+        
         setSchools(transformedSchools);
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -215,6 +235,15 @@ const Essays = () => {
         try {
           const essays = await EssayService.getEssaysForSchool(selectedSchool);
           setNewEssays(essays);
+          
+          // Special handling for Common Application
+          if (selectedSchool === 'Common Application') {
+            // Check if user already has a Common App essay
+            const existingCommonAppEssay = await EssayService.getEssaysForSchool('Common Application');
+            if (existingCommonAppEssay.length > 0) {
+              setCommonAppEssay(existingCommonAppEssay[0]);
+            }
+          }
           
           // Validate persisted essay selection
           const persistedEssayId = localStorage.getItem('essays_selected_new_essay_id');
@@ -258,30 +287,43 @@ const Essays = () => {
     if (selectedSchool) {
       const fetchPrompts = async () => {
         try {
-          // Try to find prompts for the school name, filtered by user's program type
-          let prompts = await EssayPromptService.getPromptsForCollegeForUser(selectedSchool);
+          let prompts: EssayPrompt[] = [];
           
-          // If no prompts found, try common variations
-          if (prompts.length === 0) {
-            // Try removing "University" or "College" from the name
-            const variations = [
-              selectedSchool.replace(' University', ''),
-              selectedSchool.replace(' College', ''),
-              selectedSchool.replace(' Institute', ''),
-              'Common Application', // Fallback to common app
-              'Coalition Application' // Another fallback
-            ];
+          // Handle Common Application specially
+          if (selectedSchool === 'Common Application') {
+            prompts = await EssayPromptService.getPromptsForCollegeForUser('Common Application');
+          } else {
+            // Try to find prompts for the school name, filtered by user's program type
+            prompts = await EssayPromptService.getPromptsForCollegeForUser(selectedSchool);
+            
+            // If no prompts found, try common variations (no fallback to other application systems)
+            if (prompts.length === 0) {
+              // Try removing "University" or "College" from the name
+              const variations = [
+                selectedSchool.replace(' University', ''),
+                selectedSchool.replace(' College', ''),
+                selectedSchool.replace(' Institute', '')
+              ];
 
-            for (const variation of variations) {
-              prompts = await EssayPromptService.getPromptsForCollegeForUser(variation);
-              if (prompts.length > 0) break;
+              for (const variation of variations) {
+                prompts = await EssayPromptService.getPromptsForCollegeForUser(variation);
+                if (prompts.length > 0) break;
+              }
             }
           }
 
           setEssayPrompts(prompts);
           
+          // Clear Common App prompts when selecting a different school
+          if (selectedSchool !== 'Common Application' && selectedSchool !== 'Coalition Application') {
+            setCommonAppPrompts([]);
+            setSelectedCommonAppPrompt(null);
+          }
+          
           // Fetch user's existing selections for this school
+          console.log('Fetching selections for school:', selectedSchool);
           const selections = await EssayPromptService.getUserSelectionsForSchool(selectedSchool);
+          console.log('Retrieved selections:', selections);
           setUserSelections(selections);
 
           // Convert prompts to essays format
@@ -306,9 +348,16 @@ const Essays = () => {
           setEssays(essaysFromPrompts);
         } catch (error) {
           console.error('Error fetching prompts:', error);
+          console.error('Error details:', error);
+          
+          // Set empty arrays to prevent UI crashes
+          setEssayPrompts([]);
+          setUserSelections([]);
+          setEssays([]);
+          
           toast({
             title: "Error",
-            description: "Failed to load essay prompts for this school.",
+            description: "Failed to load essay prompts for this school. Please try again.",
             variant: "destructive"
           });
         }
@@ -318,207 +367,11 @@ const Essays = () => {
     }
   }, [selectedSchool, toast]);
 
-  // Monitor ElevenLabs widget for conversation events
-  useEffect(() => {
-    const handleWidgetMessage = (event: MessageEvent) => {
-      if (event.data && event.data.type === 'elevenlabs-convai') {
-        console.log('ElevenLabs widget message:', event.data);
 
-        // Handle conversation start
-        if (event.data.action === 'conversation_started') {
-          const convId = event.data.conversationId;
-          console.log('Conversation started:', convId);
-          setConversationId(convId);
-          setSessionStarted(true);
-          setSessionStartTime(new Date());
 
-          // Create conversation tracking record
-          createConversationRecord(convId);
-        }
 
-        // Handle messages
-        if (event.data.action === 'message_received') {
-          const message = {
-            source: event.data.source || 'ai',
-            text: event.data.message || '',
-            timestamp: new Date()
-          };
-          setMessages(prev => [...prev, message]);
-        }
 
-        // Handle conversation end
-        if (event.data.action === 'conversation_ended') {
-          console.log('Conversation ended');
-          setSessionStarted(false);
-          setSessionStartTime(null);
 
-          // Store conversation metadata
-          if (conversationId) {
-            storeConversationMetadata(conversationId);
-          }
-        }
-      }
-    };
-    window.addEventListener('message', handleWidgetMessage);
-    return () => window.removeEventListener('message', handleWidgetMessage);
-  }, [conversationId]);
-
-  // Cleanup function to handle conversation end
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (sessionStarted && conversationId) {
-        console.log('Page unloading, storing conversation metadata');
-        storeConversationMetadata(conversationId);
-      }
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      // Also store metadata when component unmounts
-      if (sessionStarted && conversationId) {
-        console.log('Component unmounting, storing conversation metadata');
-        storeConversationMetadata(conversationId);
-      }
-    };
-  }, [sessionStarted, conversationId, messages]);
-
-  // Create conversation record
-  const createConversationRecord = async (convId: string) => {
-    try {
-      const {
-        data: {
-          user
-        }
-      } = await supabase.auth.getUser();
-      if (user) {
-        const {
-          error
-        } = await supabase.from('conversation_tracking').insert({
-          conversation_id: convId,
-          user_id: user.id,
-          conversation_type: 'Brainstorming',
-          conversation_started_at: new Date().toISOString(),
-          metadata_retrieved: false
-        });
-        if (error) {
-          console.error('Error creating conversation record:', error);
-        } else {
-          console.log('✅ Created essay brainstorming conversation record');
-        }
-      }
-    } catch (error) {
-      console.error('Error creating conversation record:', error);
-    }
-  };
-
-  // Store conversation metadata
-  const storeConversationMetadata = async (convId: string) => {
-    try {
-      const {
-        data: {
-          user
-        }
-      } = await supabase.auth.getUser();
-      if (user && messages.length > 0) {
-        // Create transcript from messages
-        const transcriptText = messages.map(msg => `${msg.source === 'ai' ? 'Diya' : 'You'}: ${msg.text}`).join('\n');
-
-        // Store in conversation_metadata table
-        const {
-          error
-        } = await supabase.from('conversation_metadata').upsert({
-          conversation_id: convId,
-          user_id: user.id,
-          transcript: transcriptText,
-          transcript_summary: transcriptText,
-          created_at: new Date().toISOString()
-        });
-        if (error) {
-          console.error('Error storing conversation metadata:', error);
-        } else {
-          console.log('✅ Stored brainstorming conversation metadata');
-
-          // Update conversation tracking
-          await supabase.from('conversation_tracking').update({
-            metadata_retrieved: true,
-            metadata_retrieved_at: new Date().toISOString(),
-            conversation_ended_at: new Date().toISOString()
-          }).eq('conversation_id', convId);
-        }
-      }
-    } catch (error) {
-      console.error('Error storing conversation metadata:', error);
-    }
-  };
-
-  // Handle brainstorming summary generation
-  const handleSummaryGenerated = (summary: BrainstormSummary) => {
-    setBrainstormSummary(summary);
-    setShowBrainstorming(false);
-    
-    // Convert summary to formatted text and add to essay content
-    const summaryText = formatSummaryForEditor(summary);
-    setEssayContent(prevContent => {
-      const newContent = prevContent + (prevContent ? '\n\n' : '') + summaryText;
-      return newContent;
-    });
-    
-    toast({
-      title: "Brainstorming Summary Added",
-      description: "Your brainstorming summary has been added to the essay editor.",
-    });
-  };
-
-  // Format summary for the text editor
-  const formatSummaryForEditor = (summary: BrainstormSummary): string => {
-    if (!selectedEssay) return '';
-    
-    let formattedText = `# Brainstorming Summary for ${selectedEssay.title}\n\n`;
-    
-    if (summary.key_themes.length > 0) {
-      formattedText += `## Key Themes\n`;
-      summary.key_themes.forEach(theme => {
-        formattedText += `• ${theme}\n`;
-      });
-      formattedText += '\n';
-    }
-    
-    if (summary.personal_stories.length > 0) {
-      formattedText += `## Personal Stories\n`;
-      summary.personal_stories.forEach(story => {
-        formattedText += `• ${story}\n`;
-      });
-      formattedText += '\n';
-    }
-    
-    if (summary.essay_angles.length > 0) {
-      formattedText += `## Essay Angles\n`;
-      summary.essay_angles.forEach(angle => {
-        formattedText += `• ${angle}\n`;
-      });
-      formattedText += '\n';
-    }
-    
-    if (summary.writing_prompts.length > 0) {
-      formattedText += `## Writing Prompts\n`;
-      summary.writing_prompts.forEach(prompt => {
-        formattedText += `• ${prompt}\n`;
-      });
-      formattedText += '\n';
-    }
-    
-    if (summary.structure_suggestions.length > 0) {
-      formattedText += `## Structure Suggestions\n`;
-      summary.structure_suggestions.forEach(suggestion => {
-        formattedText += `• ${suggestion}\n`;
-      });
-      formattedText += '\n';
-    }
-    
-    formattedText += `---\n\n# Essay Draft\n\n`;
-    
-    return formattedText;
-  };
 
   // Create new essay
   const createNewEssay = async () => {
@@ -730,6 +583,13 @@ const Essays = () => {
     setEssayContent('');
     persistEssaySelection(null); // Clear essay selection when school changes
     
+    // Clear application system state when switching to a different school
+    if (schoolName !== 'Common Application' && schoolName !== 'Coalition Application') {
+      setCommonAppPrompts([]);
+      setSelectedCommonAppPrompt(null);
+      setCommonAppEssay(null);
+    }
+    
     // Mobile navigation: move to prompts step when school is selected
     if (isMobile) {
       setMobileStep('prompts');
@@ -746,6 +606,40 @@ const Essays = () => {
       setSelectedMobilePrompt(essay);
       setMobileStep('editor');
       setShowMobileEditor(false);
+    }
+
+    // Special handling for Common Application essays
+    if (essay.schoolName === 'Common Application') {
+      // Check if user already has a Common App essay
+      if (commonAppEssay) {
+        persistEssaySelection(commonAppEssay.id);
+        setSelectedEssay(null);
+        return;
+      }
+      
+      // Create new Common App essay
+      const prompt = essayPrompts.find(p => p.prompt_number === essay.promptNumber);
+      if (prompt) {
+        const essayData: CreateEssayData = {
+          title: prompt.title || `Common Application - Prompt ${prompt.prompt_number}`,
+          school_name: 'Common Application',
+          prompt_id: prompt.id,
+          initial_content: ''
+        };
+
+        const newEssay = await EssayService.createEssay(essayData);
+        setCommonAppEssay(newEssay);
+        
+        // Select the new essay
+        persistEssaySelection(newEssay.id);
+        setSelectedEssay(null);
+        
+        toast({
+          title: "Success",
+          description: "Common App essay created!"
+        });
+      }
+      return;
     }
 
     // Check if this prompt already has a new-format essay
@@ -859,99 +753,6 @@ const Essays = () => {
                 </p>
               </div>
 
-              {/* Common App Section for Mobile */}
-              {commonAppPrompts.length > 0 && (
-                <div className="mb-6">
-                  <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="flex items-center space-x-2">
-                        <div className="p-1.5 bg-blue-100 rounded-lg">
-                          <FileText className="h-4 w-4 text-blue-600" />
-                        </div>
-                        <div>
-                          <span className="text-lg text-blue-900">Common Application Essay</span>
-                          <p className="text-xs text-blue-700 font-normal mt-0.5">
-                            Required for all undergraduate applications
-                          </p>
-                        </div>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      <div className="space-y-3">
-                        {commonAppPrompts.slice(0, 3).map((prompt, index) => (
-                          <Card 
-                            key={prompt.id}
-                            className={`cursor-pointer transition-all duration-200 ${
-                              selectedCommonAppPrompt?.id === prompt.id 
-                                ? 'bg-blue-100 border-blue-300' 
-                                : 'bg-white hover:bg-blue-50'
-                            }`}
-                            onClick={() => handleCommonAppPromptSelect(prompt)}
-                          >
-                            <CardContent className="p-3">
-                              <div className="space-y-2">
-                                <div className="flex items-start justify-between">
-                                  <h3 className="text-sm font-medium text-blue-900">
-                                    {prompt.title || `Prompt ${prompt.prompt_number}`}
-                                  </h3>
-                                  <Badge variant="outline" className="text-xs border-blue-300 text-blue-700">
-                                    {prompt.word_limit}
-                                  </Badge>
-                                </div>
-                                
-                                <p className="text-xs text-blue-800 line-clamp-3 leading-relaxed">
-                                  {prompt.prompt?.split('\n\n')[1] || prompt.prompt || 'No prompt text available'}
-                                </p>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                        
-                        {commonAppPrompts.length > 3 && (
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="w-full border-blue-300 text-blue-700 hover:bg-blue-100"
-                            onClick={() => {
-                              // Show all prompts in a modal or expand
-                              setMobileStep('common-app');
-                            }}
-                          >
-                            View All {commonAppPrompts.length} Prompts
-                          </Button>
-                        )}
-                      </div>
-                      
-                      {commonAppEssay && (
-                        <div className="mt-3 p-2 bg-blue-100 rounded-lg">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-xs font-medium text-blue-900">
-                                Current: {commonAppEssay.title}
-                              </p>
-                              <p className="text-xs text-blue-700">
-                                {commonAppEssay.word_count}/650 words
-                              </p>
-                            </div>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              className="border-blue-300 text-blue-700 hover:bg-blue-200 text-xs px-2 py-1"
-                              onClick={() => {
-                                persistEssaySelection(commonAppEssay.id);
-                                setSelectedEssay(null);
-                                setMobileStep('editor');
-                              }}
-                            >
-                              Continue
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
               
               <Card className="shadow-sm">
                 <CardHeader>
@@ -990,65 +791,8 @@ const Essays = () => {
             </div>
           )}
 
-          {/* Mobile Step 2: Common App Prompts */}
-          {mobileStep === 'common-app' && (
-            <div className="p-4">
-              <div className="flex items-center mb-6">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="mr-2"
-                  onClick={() => setMobileStep('school')}
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-                <div>
-                  <h1 className="text-xl font-display font-bold">
-                    Common Application Essays
-                  </h1>
-                  <p className="text-muted-foreground text-sm">
-                    Choose one prompt to write your essay
-                  </p>
-                </div>
-              </div>
-              
-              <div className="space-y-3">
-                {commonAppPrompts.map((prompt, index) => (
-                  <Card 
-                    key={prompt.id} 
-                    className="cursor-pointer transition-all duration-200 hover:shadow-md bg-card"
-                    onClick={() => handleCommonAppPromptSelect(prompt)}
-                  >
-                    <CardContent className="p-4">
-                      <div className="space-y-3">
-                        <div className="flex items-start justify-between">
-                          <h3 className="text-sm font-medium leading-tight text-foreground">
-                            {prompt.title || `Prompt ${prompt.prompt_number}`}
-                          </h3>
-                          <Badge variant="outline" className="text-xs ml-2 flex-shrink-0">
-                            {prompt.word_limit} words
-                          </Badge>
-                        </div>
-                        
-                        <p className="text-sm text-muted-foreground line-clamp-4">
-                          {prompt.prompt?.split('\n\n')[1] || prompt.prompt || 'No prompt text available'}
-                        </p>
-                        
-                        <div className="flex items-center justify-between">
-                          <div className="text-xs text-muted-foreground">
-                            {commonAppEssay ? `${commonAppEssay.word_count}/650 words` : 'Not started'}
-                          </div>
-                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          )}
 
-          {/* Mobile Step 3: Essay Prompts */}
+          {/* Mobile Step 2: Essay Prompts */}
           {mobileStep === 'prompts' && (
             <div className="p-4">
               <div className="flex items-center mb-6">
@@ -1070,54 +814,126 @@ const Essays = () => {
                 </div>
               </div>
               
-              <div className="space-y-3">
-                {essays.length > 0 ? (
-                  essays.map((essay, index) => {
-                    const associatedNewEssay = newEssays.find(e => 
-                      e.title === essay.title || 
-                      (e.school_name === essay.schoolName && e.title.includes(essay.promptNumber || ''))
-                    );
-                    
-                    return (
-                      <Card 
-                        key={essay.id} 
-                        className="cursor-pointer transition-all duration-200 hover:shadow-md bg-card"
-                        onClick={() => handleEssaySelect(essay)}
-                      >
-                        <CardContent className="p-4">
-                          <div className="space-y-3">
-                            <div className="flex items-start justify-between">
-                              <h3 className="text-sm font-medium leading-tight text-foreground">
-                                {essay.promptNumber && `Prompt ${essay.promptNumber}`}
-                              </h3>
-                              <Badge className={`${getStatusColor(associatedNewEssay ? associatedNewEssay.status : essay.status)} text-xs ml-2 flex-shrink-0`}>
-                                <div className="flex items-center space-x-1">
-                                  {getStatusIcon(associatedNewEssay ? associatedNewEssay.status : essay.status)}
-                                  <span className="capitalize">{(associatedNewEssay ? associatedNewEssay.status : essay.status).replace('_', ' ')}</span>
-                                </div>
-                              </Badge>
-                            </div>
+              <div className="space-y-4">
+                {essays.length > 0 ? (() => {
+                  const { requiredPrompts, optionalPrompts } = categorizePrompts(essayPrompts);
+                  
+                  return (
+                    <>
+                      {/* Required Essays Section */}
+                      {requiredPrompts.length > 0 && (
+                        <div className="space-y-3">
+                          <h3 className="text-sm font-medium text-red-600 flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                            <span>Required Essays ({requiredPrompts.length})</span>
+                          </h3>
+                          {requiredPrompts.map((prompt, index) => {
+                            const essay = essays.find(e => e.promptNumber === prompt.prompt_number);
+                            if (!essay) return null;
                             
-                            <p className="text-sm text-muted-foreground line-clamp-3">
-                              {essay.prompt}
-                            </p>
+                            const associatedNewEssay = newEssays.find(e => 
+                              e.title === essay.title || 
+                              (e.school_name === essay.schoolName && e.title.includes(essay.promptNumber || ''))
+                            );
                             
-                            <div className="flex items-center justify-between">
-                              <div className="text-xs text-muted-foreground">
-                                {associatedNewEssay ? `${associatedNewEssay.word_count}/${essay.wordLimit} words` : `${essay.wordCount}/${essay.wordLimit} words`}
-                              </div>
-                              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })
-                ) : (
+                            return (
+                              <Card 
+                                key={essay.id} 
+                                className="cursor-pointer transition-all duration-200 hover:shadow-md bg-card"
+                                onClick={() => handleEssaySelect(essay)}
+                              >
+                                <CardContent className="p-4">
+                                  <div className="space-y-3">
+                                    <div className="flex items-start justify-between">
+                                      <h3 className="text-sm font-medium leading-tight text-foreground">
+                                        {essay.title}
+                                      </h3>
+                                      <Badge className={`${getStatusColor(associatedNewEssay ? associatedNewEssay.status : essay.status)} text-xs ml-2 flex-shrink-0`}>
+                                        <div className="flex items-center space-x-1">
+                                          {getStatusIcon(associatedNewEssay ? associatedNewEssay.status : essay.status)}
+                                          <span className="capitalize">{(associatedNewEssay ? associatedNewEssay.status : essay.status).replace('_', ' ')}</span>
+                                        </div>
+                                      </Badge>
+                                    </div>
+                                    
+                                    <p className="text-sm text-muted-foreground line-clamp-3">
+                                      {essay.prompt}
+                                    </p>
+                                    
+                                    <div className="flex items-center justify-between">
+                                      <div className="text-xs text-muted-foreground">
+                                        {associatedNewEssay ? `${associatedNewEssay.word_count}/${essay.wordLimit} words` : `${essay.wordCount}/${essay.wordLimit} words`}
+                                      </div>
+                                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
+                        </div>
+                      )}
+                      
+                      {/* Optional Essays Section */}
+                      {optionalPrompts.length > 0 && (
+                        <div className="space-y-3">
+                          <h3 className="text-sm font-medium text-blue-600 flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                            <span>{getSelectionText(optionalPrompts)} ({optionalPrompts.length} prompts)</span>
+                          </h3>
+                          {optionalPrompts.map((prompt, index) => {
+                            const essay = essays.find(e => e.promptNumber === prompt.prompt_number);
+                            if (!essay) return null;
+                            
+                            const associatedNewEssay = newEssays.find(e => 
+                              e.title === essay.title || 
+                              (e.school_name === essay.schoolName && e.title.includes(essay.promptNumber || ''))
+                            );
+                            
+                            return (
+                              <Card 
+                                key={essay.id} 
+                                className="cursor-pointer transition-all duration-200 hover:shadow-md bg-card"
+                                onClick={() => handleEssaySelect(essay)}
+                              >
+                                <CardContent className="p-4">
+                                  <div className="space-y-3">
+                                    <div className="flex items-start justify-between">
+                                      <h3 className="text-sm font-medium leading-tight text-foreground">
+                                        {essay.title}
+                                      </h3>
+                                      <Badge className={`${getStatusColor(associatedNewEssay ? associatedNewEssay.status : essay.status)} text-xs ml-2 flex-shrink-0`}>
+                                        <div className="flex items-center space-x-1">
+                                          {getStatusIcon(associatedNewEssay ? associatedNewEssay.status : essay.status)}
+                                          <span className="capitalize">{(associatedNewEssay ? associatedNewEssay.status : essay.status).replace('_', ' ')}</span>
+                                        </div>
+                                      </Badge>
+                                    </div>
+                                    
+                                    <p className="text-sm text-muted-foreground line-clamp-3">
+                                      {essay.prompt}
+                                    </p>
+                                    
+                                    <div className="flex items-center justify-between">
+                                      <div className="text-xs text-muted-foreground">
+                                        {associatedNewEssay ? `${associatedNewEssay.word_count}/${essay.wordLimit} words` : `${essay.wordCount}/${essay.wordLimit} words`}
+                                      </div>
+                                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </>
+                  );
+                })() : (
                   <Card className="p-8 text-center bg-muted/30">
                     <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
                     <p className="text-sm text-muted-foreground">
-                      No essay prompts found for this school
+                      {selectedSchool === 'Common Application' ? 'No Common App prompts found' : 'No essay prompts found for this school'}
                     </p>
                   </Card>
                 )}
@@ -1125,7 +941,7 @@ const Essays = () => {
             </div>
           )}
 
-          {/* Mobile Step 4: Essay Editor */}
+          {/* Mobile Step 3: Essay Editor */}
           {mobileStep === 'editor' && selectedMobilePrompt && (
             <>
               {!showMobileEditor ? (
@@ -1223,32 +1039,6 @@ const Essays = () => {
             </>
           )}
 
-          {/* Brainstorming Modal - Same for mobile */}
-          {showBrainstorming && selectedEssay && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-              <div className="bg-background rounded-lg shadow-lg w-full h-[90vh] flex flex-col">
-                <div className="flex items-center justify-between p-4 border-b">
-                  <h2 className="text-lg font-semibold">Essay Brainstorming</h2>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowBrainstorming(false)}
-                  >
-                    ×
-                  </Button>
-                </div>
-                <div className="flex-1 overflow-hidden">
-                  <BrainstormChat
-                    essayTitle={selectedEssay.title}
-                    essayPrompt={selectedEssay.prompt}
-                    targetCollege={selectedSchool}
-                    onBack={() => setShowBrainstorming(false)}
-                    onSummaryGenerated={handleSummaryGenerated}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
       </ProfileCompletionGuard>
@@ -1300,91 +1090,6 @@ const Essays = () => {
         </div>
 
         <div className="container mx-auto px-6 py-6">
-          {/* Common App Section */}
-          {commonAppPrompts.length > 0 && (
-            <div className="mb-8">
-              <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-3">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <FileText className="h-5 w-5 text-blue-600" />
-                    </div>
-                    <div>
-                      <span className="text-xl text-blue-900">Common Application Essay</span>
-                      <p className="text-sm text-blue-700 font-normal mt-1">
-                        Required for all undergraduate applications - Choose one prompt
-                      </p>
-                    </div>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {commonAppPrompts.map((prompt, index) => (
-                      <Card 
-                        key={prompt.id}
-                        className={`cursor-pointer transition-all duration-200 hover:shadow-md hover:scale-[1.02] ${
-                          selectedCommonAppPrompt?.id === prompt.id 
-                            ? 'bg-blue-100 border-blue-300 shadow-md' 
-                            : 'bg-white hover:bg-blue-50'
-                        }`}
-                        onClick={() => handleCommonAppPromptSelect(prompt)}
-                      >
-                        <CardContent className="p-4">
-                          <div className="space-y-3">
-                            <div className="flex items-start justify-between">
-                              <h3 className="text-sm font-medium text-blue-900">
-                                {prompt.title || `Prompt ${prompt.prompt_number}`}
-                              </h3>
-                              <Badge variant="outline" className="text-xs border-blue-300 text-blue-700">
-                                {prompt.word_limit} words
-                              </Badge>
-                            </div>
-                            
-                            <p className="text-xs text-blue-800 line-clamp-4 leading-relaxed">
-                              {prompt.prompt?.split('\n\n')[1] || prompt.prompt || 'No prompt text available'}
-                            </p>
-                            
-                            <div className="flex items-center justify-between">
-                              <div className="text-xs text-blue-600">
-                                {commonAppEssay ? `${commonAppEssay.word_count}/650 words` : 'Not started'}
-                              </div>
-                              <ChevronRight className="h-4 w-4 text-blue-500" />
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                  
-                  {commonAppEssay && (
-                    <div className="mt-4 p-3 bg-blue-100 rounded-lg">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-blue-900">
-                            Current Common App Essay: {commonAppEssay.title}
-                          </p>
-                          <p className="text-xs text-blue-700">
-                            {commonAppEssay.word_count}/650 words • Last updated: {new Date(commonAppEssay.updated_at).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          className="border-blue-300 text-blue-700 hover:bg-blue-200"
-                          onClick={() => {
-                            persistEssaySelection(commonAppEssay.id);
-                            setSelectedEssay(null);
-                          }}
-                        >
-                          Continue Writing
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          )}
 
           <div className="grid grid-cols-12 gap-6 h-[calc(100vh-200px)]">
             {/* Left Sidebar - Essay List */}
@@ -1477,69 +1182,147 @@ const Essays = () => {
                 )}
 
                 {/* Essay Prompts Section */}
-                {essays.length > 0 && (
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-medium text-muted-foreground px-2">Essay Prompts</h3>
-                    {essays.map((essay, index) => {
-                      // Check if this prompt has an associated new essay (from fixed prompts, not custom)
-                      const associatedNewEssay = newEssays.find(e => 
-                        (e.title === essay.title || 
-                        (e.school_name === essay.schoolName && e.title.includes(essay.promptNumber || ''))) &&
-                        !e.prompt_text // Only essays created from fixed prompts, not custom essays
-                      );
-                      const isActive = selectedNewEssayId && associatedNewEssay && selectedNewEssayId === associatedNewEssay.id;
-                      
-                      return (
-                        <Card 
-                          key={essay.id} 
-                          className={`cursor-pointer transition-all duration-200 hover:shadow-md hover:scale-[1.02] animate-fade-in ${isActive ? 'bg-primary/10 shadow-md' : 'bg-card hover:bg-accent/50'}`} 
-                          style={{ animationDelay: `${index * 50}ms` }}
-                          onClick={() => {
-                            handleEssaySelect(essay);
-                          }}
-                        >
-                      <CardContent className="p-4">
-                        <div className="space-y-3">
-                          <div className="flex items-start justify-between">
-                            <h3 className="text-sm font-medium leading-tight text-foreground line-clamp-2">
-                              {essay.title}
-                            </h3>
-                            <Badge className={`${getStatusColor(associatedNewEssay ? associatedNewEssay.status : essay.status)} text-xs ml-2 flex-shrink-0`}>
-                              <div className="flex items-center space-x-1">
-                                {getStatusIcon(associatedNewEssay ? associatedNewEssay.status : essay.status)}
-                                <span className="capitalize">{(associatedNewEssay ? associatedNewEssay.status : essay.status).replace('_', ' ')}</span>
-                              </div>
-                            </Badge>
-                          </div>
-                          
-                                                      <div className="space-y-2">
-                              <div className="flex justify-between text-xs text-muted-foreground">
-                                <span>
-                                  {associatedNewEssay ? `${associatedNewEssay.word_count}/${essay.wordLimit} words` : `${essay.wordCount}/${essay.wordLimit} words`}
-                                </span>
-                                <span>{associatedNewEssay ? new Date(associatedNewEssay.updated_at).toLocaleDateString() : essay.lastEdited}</span>
-                              </div>
-                              
-                              {/* Progress bar */}
-                              <div className="w-full bg-muted rounded-full h-1.5">
-                                <div className="bg-primary h-1.5 rounded-full transition-all duration-300" style={{
-                            width: `${Math.min((associatedNewEssay ? associatedNewEssay.word_count : essay.wordCount) / essay.wordLimit * 100, 100)}%`
-                          }} />
-                              </div>
+                {essays.length > 0 && (() => {
+                  const { requiredPrompts, optionalPrompts } = categorizePrompts(essayPrompts);
+                  
+                  return (
+                    <div className="space-y-4">
+                      {/* Required Essays Section */}
+                      {requiredPrompts.length > 0 && (
+                        <div className="space-y-2">
+                          <h3 className="text-sm font-medium text-red-600 px-2 flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                            <span>Required Essays ({requiredPrompts.length})</span>
+                          </h3>
+                          {requiredPrompts.map((prompt, index) => {
+                            const essay = essays.find(e => e.promptNumber === prompt.prompt_number);
+                            if (!essay) return null;
                             
-                            {essay.feedback > 0 && <div className="flex items-center space-x-1 text-xs text-accent">
-                                <MessageSquare className="h-3 w-3" />
-                                <span>{essay.feedback} feedback</span>
-                              </div>}
-
-                          </div>
+                            const associatedNewEssay = newEssays.find(e => 
+                              (e.title === essay.title || 
+                              (e.school_name === essay.schoolName && e.title.includes(essay.promptNumber || ''))) &&
+                              !e.prompt_text
+                            );
+                            
+                            const isActive = selectedNewEssayId && associatedNewEssay && selectedNewEssayId === associatedNewEssay.id;
+                            
+                            return (
+                              <Card 
+                                key={essay.id} 
+                                className={`cursor-pointer transition-all duration-200 hover:shadow-md hover:scale-[1.02] animate-fade-in ${isActive ? 'bg-primary/10 shadow-md' : 'bg-card hover:bg-accent/50'}`} 
+                                style={{ animationDelay: `${index * 50}ms` }}
+                                onClick={() => handleEssaySelect(essay)}
+                              >
+                                <CardContent className="p-4">
+                                  <div className="space-y-3">
+                                    <div className="flex items-start justify-between">
+                                      <h3 className="text-sm font-medium leading-tight text-foreground line-clamp-2">
+                                        {essay.title}
+                                      </h3>
+                                      <Badge className={`${getStatusColor(associatedNewEssay ? associatedNewEssay.status : essay.status)} text-xs ml-2 flex-shrink-0`}>
+                                        <div className="flex items-center space-x-1">
+                                          {getStatusIcon(associatedNewEssay ? associatedNewEssay.status : essay.status)}
+                                          <span className="capitalize">{(associatedNewEssay ? associatedNewEssay.status : essay.status).replace('_', ' ')}</span>
+                                        </div>
+                                      </Badge>
+                                    </div>
+                                    
+                                    <div className="space-y-2">
+                                      <div className="flex justify-between text-xs text-muted-foreground">
+                                        <span>
+                                          {associatedNewEssay ? `${associatedNewEssay.word_count}/${essay.wordLimit} words` : `${essay.wordCount}/${essay.wordLimit} words`}
+                                        </span>
+                                        <span>{associatedNewEssay ? new Date(associatedNewEssay.updated_at).toLocaleDateString() : essay.lastEdited}</span>
+                                      </div>
+                                      
+                                      <div className="w-full bg-muted rounded-full h-1.5">
+                                        <div className="bg-primary h-1.5 rounded-full transition-all duration-300" style={{
+                                          width: `${Math.min((associatedNewEssay ? associatedNewEssay.word_count : essay.wordCount) / essay.wordLimit * 100, 100)}%`
+                                        }} />
+                                      </div>
+                                    
+                                      {essay.feedback > 0 && <div className="flex items-center space-x-1 text-xs text-accent">
+                                          <MessageSquare className="h-3 w-3" />
+                                          <span>{essay.feedback} feedback</span>
+                                        </div>}
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
                         </div>
-                      </CardContent>
-                    </Card>
-                      );
-                    })}
-                  </div>
-                )}
+                      )}
+                      
+                      {/* Optional Essays Section */}
+                      {optionalPrompts.length > 0 && (
+                        <div className="space-y-2">
+                          <h3 className="text-sm font-medium text-blue-600 px-2 flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                            <span>{getSelectionText(optionalPrompts)} ({optionalPrompts.length} prompts)</span>
+                          </h3>
+                          {optionalPrompts.map((prompt, index) => {
+                            const essay = essays.find(e => e.promptNumber === prompt.prompt_number);
+                            if (!essay) return null;
+                            
+                            const associatedNewEssay = newEssays.find(e => 
+                              (e.title === essay.title || 
+                              (e.school_name === essay.schoolName && e.title.includes(essay.promptNumber || ''))) &&
+                              !e.prompt_text
+                            );
+                            
+                            const isActive = selectedNewEssayId && associatedNewEssay && selectedNewEssayId === associatedNewEssay.id;
+                            
+                            return (
+                              <Card 
+                                key={essay.id} 
+                                className={`cursor-pointer transition-all duration-200 hover:shadow-md hover:scale-[1.02] animate-fade-in ${isActive ? 'bg-primary/10 shadow-md' : 'bg-card hover:bg-accent/50'}`} 
+                                style={{ animationDelay: `${index * 50}ms` }}
+                                onClick={() => handleEssaySelect(essay)}
+                              >
+                                <CardContent className="p-4">
+                                  <div className="space-y-3">
+                                    <div className="flex items-start justify-between">
+                                      <h3 className="text-sm font-medium leading-tight text-foreground line-clamp-2">
+                                        {essay.title}
+                                      </h3>
+                                      <Badge className={`${getStatusColor(associatedNewEssay ? associatedNewEssay.status : essay.status)} text-xs ml-2 flex-shrink-0`}>
+                                        <div className="flex items-center space-x-1">
+                                          {getStatusIcon(associatedNewEssay ? associatedNewEssay.status : essay.status)}
+                                          <span className="capitalize">{(associatedNewEssay ? associatedNewEssay.status : essay.status).replace('_', ' ')}</span>
+                                        </div>
+                                      </Badge>
+                                    </div>
+                                    
+                                    <div className="space-y-2">
+                                      <div className="flex justify-between text-xs text-muted-foreground">
+                                        <span>
+                                          {associatedNewEssay ? `${associatedNewEssay.word_count}/${essay.wordLimit} words` : `${essay.wordCount}/${essay.wordLimit} words`}
+                                        </span>
+                                        <span>{associatedNewEssay ? new Date(associatedNewEssay.updated_at).toLocaleDateString() : essay.lastEdited}</span>
+                                      </div>
+                                      
+                                      <div className="w-full bg-muted rounded-full h-1.5">
+                                        <div className="bg-primary h-1.5 rounded-full transition-all duration-300" style={{
+                                          width: `${Math.min((associatedNewEssay ? associatedNewEssay.word_count : essay.wordCount) / essay.wordLimit * 100, 100)}%`
+                                        }} />
+                                      </div>
+                                    
+                                      {essay.feedback > 0 && <div className="flex items-center space-x-1 text-xs text-accent">
+                                          <MessageSquare className="h-3 w-3" />
+                                          <span>{essay.feedback} feedback</span>
+                                        </div>}
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* Empty State */}
                 {newEssays.length === 0 && essays.length === 0 && (
@@ -1600,15 +1383,6 @@ const Essays = () => {
                       
                       <div className="flex items-center justify-between pt-2">
                         <div className="flex items-center space-x-2">
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
-                            className="shadow-sm"
-                            onClick={() => setShowBrainstorming(true)}
-                          >
-                            <Lightbulb className="h-3 w-3 mr-1" />
-                            AI Brainstorm
-                          </Button>
                           <Button size="sm" variant="outline" className="shadow-sm">
                             <CheckCircle2 className="h-3 w-3 mr-1" />
                             Get Feedback
@@ -1649,32 +1423,6 @@ const Essays = () => {
 
           </div>
 
-          {/* Brainstorming Modal */}
-          {showBrainstorming && selectedEssay && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-              <div className="bg-background rounded-lg shadow-lg w-full max-w-4xl h-[80vh] flex flex-col">
-                <div className="flex items-center justify-between p-4 border-b">
-                  <h2 className="text-lg font-semibold">Essay Brainstorming</h2>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowBrainstorming(false)}
-                  >
-                    ×
-                  </Button>
-                </div>
-                <div className="flex-1 overflow-hidden">
-                  <BrainstormChat
-                    essayTitle={selectedEssay.title}
-                    essayPrompt={selectedEssay.prompt}
-                    targetCollege={selectedSchool}
-                    onBack={() => setShowBrainstorming(false)}
-                    onSummaryGenerated={handleSummaryGenerated}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
         </div>
         </div>
       </div>

@@ -85,22 +85,32 @@ export class EssayPromptService {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      const { data, error } = await (supabase as any)
+      console.log('Fetching selections for school:', schoolName, 'user:', user.id);
+
+      const { data, error } = await supabase
         .from('essay_prompt_selections')
         .select('*')
         .eq('user_id', user.id)
         .eq('school_name', schoolName)
-        .order('created_at');
+        .order('created_at', { ascending: true });
 
       if (error) {
         console.error('Error fetching user selections:', error);
+        console.error('Error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
         throw error;
       }
 
+      console.log('Fetched selections:', data);
       return (data || []) as EssayPromptSelection[];
     } catch (error) {
       console.error('Error in getUserSelectionsForSchool:', error);
-      throw error;
+      // Return empty array instead of throwing to prevent UI crashes
+      return [];
     }
   }
 
@@ -137,7 +147,7 @@ export class EssayPromptService {
       };
 
       // Check if selection already exists
-      const { data: existing } = await (supabase as any)
+      const { data: existing } = await supabase
         .from('essay_prompt_selections')
         .select('id')
         .eq('user_id', user.id)
@@ -147,7 +157,7 @@ export class EssayPromptService {
 
       if (existing) {
         // Update existing selection
-        const { error } = await (supabase as any)
+        const { error } = await supabase
           .from('essay_prompt_selections')
           .update(selectionData)
           .eq('id', existing.id);
@@ -155,7 +165,7 @@ export class EssayPromptService {
         if (error) throw error;
       } else {
         // Create new selection
-        const { error } = await (supabase as any)
+        const { error } = await supabase
           .from('essay_prompt_selections')
           .insert(selectionData);
 
