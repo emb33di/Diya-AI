@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { usePageVisibility } from './usePageVisibility';
 
 export interface UserProfile {
   id: string;
@@ -248,13 +247,6 @@ export const useAuth = () => {
       subscription.unsubscribe();
     };
   }, []);
-
-  // Refresh auth state when page becomes visible
-  usePageVisibility(() => {
-    if (isMounted) {
-      getInitialSession();
-    }
-  });
 
   const signOut = async () => {
     try {

@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { EssayService, Essay, EssayContent, EssayBlock } from '@/services/essayService';
-import { usePageVisibility } from './usePageVisibility';
 
 export const useEssayEditor = (essayId: string | null) => {
   const [essay, setEssay] = useState<Essay | null>(null);
@@ -16,7 +15,8 @@ export const useEssayEditor = (essayId: string | null) => {
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialLoadRef = useRef(true);
 
-  const loadEssay = useCallback(async () => {
+  // Load essay
+  useEffect(() => {
     if (!essayId) {
       setEssay(null);
       setContent(null);
@@ -26,37 +26,29 @@ export const useEssayEditor = (essayId: string | null) => {
       return;
     }
 
-    setLoading(true);
-    try {
-      const essayData = await EssayService.getEssay(essayId);
-      setEssay(essayData);
-      setContent(essayData.content);
-      setLastSaved(new Date(essayData.last_saved_at));
-      setHasUnsavedChanges(false);
-      isInitialLoadRef.current = false;
-    } catch (error) {
-      console.error('Error loading essay:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load essay",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [essayId, toast]);
+    const loadEssay = async () => {
+      setLoading(true);
+      try {
+        const essayData = await EssayService.getEssay(essayId);
+        setEssay(essayData);
+        setContent(essayData.content);
+        setLastSaved(new Date(essayData.last_saved_at));
+        setHasUnsavedChanges(false);
+        isInitialLoadRef.current = false;
+      } catch (error) {
+        console.error('Error loading essay:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load essay",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  // Load essay on mount
-  useEffect(() => {
     loadEssay();
-  }, [loadEssay]);
-
-  // Refresh essay data when page becomes visible (to catch any external changes)
-  usePageVisibility(() => {
-    if (essayId && !loading) {
-      loadEssay();
-    }
-  });
+  }, [essayId, toast]);
 
   // Auto-save functionality
   const saveContent = useCallback(async (contentToSave: EssayContent) => {

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { usePageVisibility } from './usePageVisibility';
 
 export const useOnboardingStatus = () => {
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(() => {
@@ -120,9 +119,6 @@ export const useOnboardingStatus = () => {
   useEffect(() => {
     checkOnboardingStatus();
   }, []);
-
-  // Refresh onboarding status when page becomes visible
-  usePageVisibility(checkOnboardingStatus);
 
   return {
     onboardingCompleted,

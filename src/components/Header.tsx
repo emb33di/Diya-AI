@@ -2,7 +2,6 @@ import { Button } from "@/components/ui/button";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 import { useOnboardingStatus } from "@/hooks/useOnboardingStatus";
 import { useProfileCompletion } from "@/hooks/useProfileCompletion";
 import { getUserFirstName, fetchUserProfileData } from "@/utils/userNameUtils";
@@ -24,13 +23,11 @@ import { LogOut } from "lucide-react";
 const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, profile, loading: authLoading } = useAuth();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [userFirstName, setUserFirstName] = useState<string>('');
   const { onboardingCompleted, loading: onboardingLoading } = useOnboardingStatus();
   const { completionPercentage, missingFields, loading: profileLoading } = useProfileCompletion();
-  
-  const isAuthenticated = !!user;
-  const loading = authLoading;
   
   // Protected pages that require profile completion
   const protectedPages = ['/dashboard', '/schools', '/resume', '/essays', '/deadlines', '/lor'];
@@ -50,15 +47,59 @@ const Header = () => {
     }
   };
   
-  // Update userFirstName when user or profile changes
-  useEffect(() => {
-    if (user && profile) {
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      // Get user data for metadata fallback
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // Fetch profile data using centralized utility
+      const profile = await fetchUserProfileData(userId);
+      
+      // Get first name using centralized logic
       const firstName = getUserFirstName(profile, user, '');
       setUserFirstName(firstName);
-    } else {
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
       setUserFirstName('');
     }
-  }, [user, profile]);
+  };
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        setIsAuthenticated(!!user);
+        
+        // Don't await profile fetch to avoid blocking the UI
+        if (user) {
+          fetchUserProfile(user.id);
+        } else {
+          setUserFirstName('');
+        }
+      } catch (error) {
+        console.error('Error checking auth status:', error);
+        setIsAuthenticated(false);
+        setUserFirstName('');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    checkAuth();
+    
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setIsAuthenticated(!!session?.user);
+      
+      if (session?.user) {
+        fetchUserProfile(session.user.id);
+      } else {
+        setUserFirstName('');
+      }
+    });
+    
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Handle hash scrolling when navigating from other pages
   useEffect(() => {
