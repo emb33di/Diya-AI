@@ -1,8 +1,8 @@
 /**
  * Generate Semantic Comments Edge Function
  * 
- * AI-powered comment generation for semantic document blocks.
- * This replaces the old position-based system with stable block-based anchoring.
+ * AI-powered comment generation for semantic document blocks using specialized agents.
+ * Integrates with existing tone, clarity, strengths, and weaknesses agents.
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
@@ -24,9 +24,10 @@ interface SemanticComment {
   type: 'suggestion' | 'critique' | 'praise' | 'question' | 'comment';
   confidence: number;
   metadata?: {
-    agentType?: 'big-picture' | 'paragraph' | 'weaknesses' | 'strengths';
+    agentType?: 'tone' | 'clarity' | 'strengths' | 'weaknesses' | 'paragraph' | 'big-picture';
     category?: 'overall' | 'inline';
     subcategory?: 'opening' | 'body' | 'conclusion' | 'opening-sentence' | 'transition' | 'paragraph-specific' | 'paragraph-quality' | 'final-sentence';
+    commentNature?: 'strength' | 'weakness' | 'suggestion';
   };
 }
 
@@ -64,65 +65,7 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// Google Gemini API configuration
-const GEMINI_API_KEY = Deno.env.get('GOOGLE_API_KEY');
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent';
-
-// Semantic AI prompt for block-based analysis
-const SEMANTIC_AI_PROMPT = `You are an expert college admissions counselor specializing in strategic essay analysis. Analyze the following college application essay structured as semantic blocks and provide targeted feedback using precise text anchoring.
-
-ESSAY PROMPT:
-{prompt}
-
-ESSAY CONTENT (Structured Blocks):
-{blocks}
-
-INSTRUCTIONS:
-You will receive the essay content as structured blocks, each with a unique blockId and text content. Your task is to:
-
-1. Analyze each block for potential improvements
-2. For each comment you make, you MUST:
-   - Use the exact blockId from the input
-   - Provide the exact targetText substring from that block's content
-   - Ensure the targetText exists verbatim in the block's content
-   - Choose meaningful text that clearly represents what you're analyzing
-
-RESPONSE FORMAT (JSON only):
-{
-  "comments": [
-    {
-      "targetBlockId": "block_uuid_12345",
-      "targetText": "exact text from the block",
-      "comment": "Your feedback text here",
-      "type": "suggestion|critique|praise|question",
-      "confidence": 0.85,
-      "metadata": {
-        "agentType": "paragraph",
-        "category": "inline",
-        "subcategory": "opening-sentence|transition|paragraph-quality|final-sentence"
-      }
-    }
-  ]
-}
-
-CRITICAL REQUIREMENTS:
-- Your response MUST be a valid JSON array of objects
-- For each comment, you must provide the targetBlockId from the input context
-- The targetText MUST be an exact substring from that block's content
-- Do not invent targetText - use only text that exists in the block
-- Provide 3-5 targeted comments focusing on the most impactful improvements
-- Focus on strategic improvements that will have the biggest impact on admissions success
-
-Focus on:
-- Opening paragraph engagement and thesis clarity
-- Body paragraph development and evidence
-- Conclusion effectiveness
-- Transition quality
-- Overall essay flow and coherence
-- Specific word choices and sentence structure
-- Argument strength and evidence quality
-
-Be specific and actionable in your feedback.`;
+// Note: This function now uses specialized agents instead of a single generic prompt
 
 serve(async (req) => {
   try {
@@ -176,9 +119,9 @@ serve(async (req) => {
       });
     }
 
-    // Generate AI comments
+    // Generate AI comments using specialized agents
     const startTime = Date.now();
-    const comments = await generateSemanticAIComments(blocks, context, options);
+    const comments = await generateSpecializedSemanticComments(blocks, context, options);
     const processingTime = Date.now() - startTime;
 
     // Store comments in database
@@ -248,147 +191,345 @@ serve(async (req) => {
   }
 });
 
-async function generateSemanticAIComments(
+/**
+ * Generate specialized semantic comments using existing edge functions
+ */
+async function generateSpecializedSemanticComments(
   blocks: DocumentBlock[], 
   context: any, 
   options?: any
 ): Promise<SemanticComment[]> {
   
-  if (!GEMINI_API_KEY) {
-    throw new Error('Google API key not configured');
-  }
-
-  // Format blocks for AI analysis
-  const blocksText = blocks
+  console.log(`Generating specialized semantic comments for ${blocks.length} blocks`);
+  
+  // Convert blocks to essay content for existing agents
+  const essayContent = blocks
     .sort((a, b) => a.position - b.position)
-    .map(block => `Block ID: ${block.id}\nType: ${block.type}\nContent: ${block.content}`)
+    .map(block => block.content)
     .join('\n\n');
 
-  // Prepare the prompt
-  const prompt = SEMANTIC_AI_PROMPT
-    .replace('{prompt}', context.prompt || 'No specific prompt provided')
-    .replace('{blocks}', blocksText);
+  const allComments: SemanticComment[] = [];
 
   try {
-    const response = await fetch(GEMINI_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${GEMINI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: prompt
-          }]
-        }],
-        generationConfig: {
-          temperature: 0.7,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 2048,
-        },
-        safetySettings: [
-          {
-            category: 'HARM_CATEGORY_HARASSMENT',
-            threshold: 'BLOCK_MEDIUM_AND_ABOVE'
-          },
-          {
-            category: 'HARM_CATEGORY_HATE_SPEECH',
-            threshold: 'BLOCK_MEDIUM_AND_ABOVE'
-          },
-          {
-            category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-            threshold: 'BLOCK_MEDIUM_AND_ABOVE'
-          },
-          {
-            category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-            threshold: 'BLOCK_MEDIUM_AND_ABOVE'
-          }
-        ]
-      })
-    });
+    // Call specialized agents in parallel
+    const [toneResult, clarityResult, strengthsResult, weaknessesResult] = await Promise.allSettled([
+      callSemanticToneAgent(blocks, context),
+      callSemanticClarityAgent(blocks, context),
+      callSemanticStrengthsAgent(blocks, context),
+      callSemanticWeaknessesAgent(blocks, context)
+    ]);
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Gemini API error: ${response.status} ${errorText}`);
+    // Process tone agent results
+    if (toneResult.status === 'fulfilled' && toneResult.value.success) {
+      const toneComments = convertAgentCommentsToSemantic(toneResult.value.comments, blocks, 'tone');
+      allComments.push(...toneComments);
+      console.log(`Tone agent: ${toneComments.length} comments`);
+    } else {
+      console.error('Tone agent failed:', toneResult.status === 'rejected' ? toneResult.reason : toneResult.value.error);
     }
 
-    const data = await response.json();
-    
-    if (!data.candidates || data.candidates.length === 0) {
-      throw new Error('No response from Gemini API');
+    // Process clarity agent results
+    if (clarityResult.status === 'fulfilled' && clarityResult.value.success) {
+      const clarityComments = convertAgentCommentsToSemantic(clarityResult.value.comments, blocks, 'clarity');
+      allComments.push(...clarityComments);
+      console.log(`Clarity agent: ${clarityComments.length} comments`);
+    } else {
+      console.error('Clarity agent failed:', clarityResult.status === 'rejected' ? clarityResult.reason : clarityResult.value.error);
     }
 
-    const responseText = data.candidates[0].content.parts[0].text;
-    
-    // Parse JSON response
-    let parsedResponse;
-    try {
-      // Extract JSON from response text
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error('No JSON found in response');
-      }
-      
-      parsedResponse = JSON.parse(jsonMatch[0]);
-    } catch (parseError) {
-      console.error('Failed to parse AI response:', responseText);
-      throw new Error('Invalid JSON response from AI');
+    // Process strengths agent results
+    if (strengthsResult.status === 'fulfilled' && strengthsResult.value.success) {
+      const strengthsComments = convertAgentCommentsToSemantic(strengthsResult.value.comments, blocks, 'strengths');
+      allComments.push(...strengthsComments);
+      console.log(`Strengths agent: ${strengthsComments.length} comments`);
+    } else {
+      console.error('Strengths agent failed:', strengthsResult.status === 'rejected' ? strengthsResult.reason : strengthsResult.value.error);
     }
 
-    // Validate and process comments
-    if (!parsedResponse.comments || !Array.isArray(parsedResponse.comments)) {
-      throw new Error('Invalid comment structure in AI response');
+    // Process weaknesses agent results
+    if (weaknessesResult.status === 'fulfilled' && weaknessesResult.value.success) {
+      const weaknessesComments = convertAgentCommentsToSemantic(weaknessesResult.value.comments, blocks, 'weaknesses');
+      allComments.push(...weaknessesComments);
+      console.log(`Weaknesses agent: ${weaknessesComments.length} comments`);
+    } else {
+      console.error('Weaknesses agent failed:', weaknessesResult.status === 'rejected' ? weaknessesResult.reason : weaknessesResult.value.error);
     }
 
-    const comments: SemanticComment[] = parsedResponse.comments.map((comment: any, index: number) => {
-      // Validate required fields
-      if (!comment.targetBlockId || typeof comment.targetBlockId !== 'string') {
-        throw new Error(`Comment ${index}: missing or invalid 'targetBlockId' field`);
-      }
-      
-      if (!comment.comment || typeof comment.comment !== 'string') {
-        throw new Error(`Comment ${index}: missing or invalid 'comment' field`);
-      }
-
-      // Validate that the targetBlockId exists in our input
-      const targetBlock = blocks.find(b => b.id === comment.targetBlockId);
-      if (!targetBlock) {
-        throw new Error(`Comment ${index}: targetBlockId '${comment.targetBlockId}' not found in input`);
-      }
-
-      // Validate targetText if provided
-      if (comment.targetText && typeof comment.targetText === 'string') {
-        if (!targetBlock.content.includes(comment.targetText)) {
-          throw new Error(`Comment ${index}: targetText '${comment.targetText}' not found in block '${comment.targetBlockId}'`);
-        }
-      }
-
-      // Validate comment type
-      const validTypes = ['suggestion', 'critique', 'praise', 'question', 'comment'];
-      if (!comment.type || !validTypes.includes(comment.type)) {
-        comment.type = 'suggestion'; // Default fallback
-      }
-
-      return {
-        targetBlockId: comment.targetBlockId,
-        targetText: comment.targetText || undefined,
-        comment: comment.comment,
-        type: comment.type,
-        confidence: Math.max(0.5, Math.min(1.0, comment.confidence || 0.8)),
-        metadata: {
-          agentType: comment.metadata?.agentType || 'paragraph',
-          category: comment.metadata?.category || 'inline',
-          subcategory: comment.metadata?.subcategory || 'paragraph-specific'
-        }
-      };
-    });
-
-    return comments;
+    console.log(`Total semantic comments generated: ${allComments.length}`);
+    return allComments;
 
   } catch (error) {
-    console.error('Error generating semantic AI comments:', error);
+    console.error('Error generating specialized semantic comments:', error);
     throw error;
+  }
+}
+
+/**
+ * Call tone agent adapted for semantic blocks
+ */
+async function callSemanticToneAgent(blocks: DocumentBlock[], context: any): Promise<any> {
+  const essayContent = blocks.map(b => b.content).join('\n\n');
+  
+  const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/ai_agent_tone`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
+    },
+    body: JSON.stringify({
+      essayContent,
+      essayPrompt: context.prompt
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Tone agent error: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Call clarity agent adapted for semantic blocks
+ */
+async function callSemanticClarityAgent(blocks: DocumentBlock[], context: any): Promise<any> {
+  const essayContent = blocks.map(b => b.content).join('\n\n');
+  
+  const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/ai_agent_clarity`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
+    },
+    body: JSON.stringify({
+      essayContent,
+      essayPrompt: context.prompt
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Clarity agent error: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Call strengths agent adapted for semantic blocks
+ */
+async function callSemanticStrengthsAgent(blocks: DocumentBlock[], context: any): Promise<any> {
+  const essayContent = blocks.map(b => b.content).join('\n\n');
+  
+  const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/generate-essay-comments-orchestrator`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
+    },
+    body: JSON.stringify({
+      essayContent,
+      essayPrompt: context.prompt,
+      agentTypes: ['strengths']
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Strengths agent error: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Call weaknesses agent adapted for semantic blocks
+ */
+async function callSemanticWeaknessesAgent(blocks: DocumentBlock[], context: any): Promise<any> {
+  const essayContent = blocks.map(b => b.content).join('\n\n');
+  
+  const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/generate-essay-comments-orchestrator`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
+    },
+    body: JSON.stringify({
+      essayContent,
+      essayPrompt: context.prompt,
+      agentTypes: ['weaknesses']
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Weaknesses agent error: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Convert agent comments to semantic format
+ */
+function convertAgentCommentsToSemantic(
+  agentComments: any[], 
+  blocks: DocumentBlock[], 
+  agentType: 'tone' | 'clarity' | 'strengths' | 'weaknesses'
+): SemanticComment[] {
+  const semanticComments: SemanticComment[] = [];
+
+  for (const agentComment of agentComments) {
+    // Find the best matching block for this comment
+    const targetBlock = findBestMatchingBlock(agentComment, blocks);
+    if (!targetBlock) continue;
+
+    // Extract target text from the comment
+    const targetText = agentComment.anchor_text || agentComment.target_text || 
+                      extractTargetTextFromComment(agentComment, targetBlock.content);
+
+    // Map comment type
+    const commentType = mapAgentCommentType(agentComment, agentType);
+
+    // Map comment nature
+    const commentNature = mapCommentNature(agentComment, agentType);
+
+    const semanticComment: SemanticComment = {
+      targetBlockId: targetBlock.id,
+      targetText: targetText,
+      comment: agentComment.comment_text || agentComment.commentText || agentComment.comment,
+      type: commentType,
+      confidence: agentComment.confidence_score || agentComment.confidenceScore || 0.8,
+      metadata: {
+        agentType: agentType,
+        category: agentComment.comment_category || agentComment.commentCategory || 'inline',
+        subcategory: agentComment.comment_subcategory || agentComment.commentSubcategory || 'paragraph-specific',
+        commentNature: commentNature
+      }
+    };
+
+    semanticComments.push(semanticComment);
+  }
+
+  return semanticComments;
+}
+
+/**
+ * Find the best matching block for an agent comment
+ */
+function findBestMatchingBlock(agentComment: any, blocks: DocumentBlock[]): DocumentBlock | null {
+  // Strategy 1: Use paragraph_id if available
+  if (agentComment.paragraph_id || agentComment.paragraphId) {
+    const block = blocks.find(b => b.id === agentComment.paragraph_id || b.id === agentComment.paragraphId);
+    if (block) return block;
+  }
+
+  // Strategy 2: Use paragraph_index if available
+  if (agentComment.paragraph_index !== null && agentComment.paragraph_index !== undefined) {
+    const block = blocks[agentComment.paragraph_index];
+    if (block) return block;
+  }
+
+  // Strategy 3: Try to match anchor_text with block content
+  const anchorText = agentComment.anchor_text || agentComment.anchorText;
+  if (anchorText) {
+    const block = blocks.find(b => 
+      b.content.toLowerCase().includes(anchorText.toLowerCase())
+    );
+    if (block) return block;
+  }
+
+  // Strategy 4: Use text selection if available
+  if (agentComment.text_selection || agentComment.textSelection) {
+    const selection = agentComment.text_selection || agentComment.textSelection;
+    if (selection.start !== undefined && selection.end !== undefined) {
+      // Find block that contains this text range
+      let currentPos = 0;
+      for (const block of blocks) {
+        const blockEnd = currentPos + block.content.length;
+        if (selection.start >= currentPos && selection.end <= blockEnd) {
+          return block;
+        }
+        currentPos = blockEnd + 2; // +2 for newlines
+      }
+    }
+  }
+
+  // Strategy 5: For overall comments, use first block
+  if (agentComment.comment_category === 'overall' || agentComment.commentCategory === 'overall') {
+    return blocks[0] || null;
+  }
+
+  // Strategy 6: Fallback to first block
+  return blocks[0] || null;
+}
+
+/**
+ * Extract target text from comment
+ */
+function extractTargetTextFromComment(agentComment: any, blockContent: string): string | undefined {
+  const anchorText = agentComment.anchor_text || agentComment.anchorText;
+  if (anchorText && blockContent.includes(anchorText)) {
+    return anchorText;
+  }
+
+  // Try to extract a meaningful snippet from the block
+  const words = blockContent.split(' ');
+  if (words.length > 10) {
+    return words.slice(0, 10).join(' ') + '...';
+  }
+  
+  return blockContent.substring(0, 50) + '...';
+}
+
+/**
+ * Map agent comment type to semantic comment type
+ */
+function mapAgentCommentType(agentComment: any, agentType: string): 'suggestion' | 'critique' | 'praise' | 'question' | 'comment' {
+  const commentType = agentComment.comment_type || agentComment.commentType;
+  
+  if (commentType) {
+    switch (commentType) {
+      case 'suggestion': return 'suggestion';
+      case 'critique': return 'critique';
+      case 'praise': return 'praise';
+      case 'question': return 'question';
+      default: return 'comment';
+    }
+  }
+
+  // Map based on agent type and comment nature
+  const commentNature = agentComment.comment_nature || agentComment.commentNature;
+  
+  if (agentType === 'strengths' || commentNature === 'strength') {
+    return 'praise';
+  } else if (agentType === 'weaknesses' || commentNature === 'weakness') {
+    return 'critique';
+  } else if (agentType === 'tone' || agentType === 'clarity') {
+    return 'suggestion';
+  }
+
+  return 'suggestion';
+}
+
+/**
+ * Map comment nature
+ */
+function mapCommentNature(agentComment: any, agentType: string): 'strength' | 'weakness' | 'suggestion' {
+  const commentNature = agentComment.comment_nature || agentComment.commentNature;
+  
+  if (commentNature) {
+    switch (commentNature) {
+      case 'strength': return 'strength';
+      case 'weakness': return 'weakness';
+      case 'suggestion': return 'suggestion';
+      default: return 'suggestion';
+    }
+  }
+
+  // Map based on agent type
+  switch (agentType) {
+    case 'strengths': return 'strength';
+    case 'weaknesses': return 'weakness';
+    case 'tone':
+    case 'clarity': return 'suggestion';
+    default: return 'suggestion';
   }
 }

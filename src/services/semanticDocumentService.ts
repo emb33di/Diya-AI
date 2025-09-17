@@ -99,6 +99,51 @@ export class SemanticDocumentService {
   }
 
   /**
+   * Load a semantic document by essay ID (from metadata)
+   */
+  async loadDocumentByEssayId(essayId: string): Promise<SemanticDocument | null> {
+    try {
+      console.log('Searching for document with essay ID:', essayId);
+      
+      // First try to get all documents and filter client-side as a fallback
+      const { data: allDocs, error } = await supabase
+        .from('semantic_documents')
+        .select('*');
+
+      if (error) {
+        console.error('Supabase query error:', error);
+        throw new Error(`Failed to load documents: ${error.message}`);
+      }
+
+      console.log('Found', allDocs?.length || 0, 'total documents');
+      
+      // Filter client-side to find the document with matching essayId
+      const matchingDoc = allDocs?.find(doc => 
+        doc.metadata && doc.metadata.essayId === essayId
+      );
+
+      if (!matchingDoc) {
+        console.log('No document found for essay ID:', essayId);
+        return null;
+      }
+
+      console.log('Found matching document:', matchingDoc.id, 'for essay:', essayId);
+
+      return {
+        id: matchingDoc.id,
+        title: matchingDoc.title,
+        blocks: matchingDoc.blocks || [],
+        metadata: matchingDoc.metadata || {},
+        createdAt: new Date(matchingDoc.created_at),
+        updatedAt: new Date(matchingDoc.updated_at)
+      };
+    } catch (error) {
+      console.error('Error in loadDocumentByEssayId:', error);
+      return null;
+    }
+  }
+
+  /**
    * Save a semantic document
    */
   async saveDocument(document: SemanticDocument): Promise<void> {
@@ -122,12 +167,16 @@ export class SemanticDocumentService {
    */
   addBlock(
     document: SemanticDocument, 
-    block: Omit<DocumentBlock, 'id' | 'annotations'>
+    block: Omit<DocumentBlock, 'id' | 'annotations' | 'isImmutable' | 'createdAt' | 'lastUserEdit'>,
+    isUserCreated: boolean = true
   ): DocumentBlock {
     const newBlock: DocumentBlock = {
       ...block,
       id: crypto.randomUUID(),
-      annotations: []
+      annotations: [],
+      isImmutable: true, // Blocks are immutable by default
+      createdAt: new Date(),
+      lastUserEdit: isUserCreated ? new Date() : undefined
     };
 
     // Insert at the specified position
@@ -148,17 +197,27 @@ export class SemanticDocumentService {
   updateBlock(
     document: SemanticDocument, 
     blockId: string, 
-    updates: Partial<DocumentBlock>
+    updates: Partial<DocumentBlock>,
+    isUserEdit: boolean = false
   ): DocumentBlock | null {
     const blockIndex = document.blocks.findIndex(b => b.id === blockId);
     if (blockIndex === -1) {
       return null;
     }
 
+    const existingBlock = document.blocks[blockIndex];
+    
+    // Check if block is immutable and this is not a user edit
+    if (existingBlock.isImmutable && !isUserEdit) {
+      console.warn(`Block ${blockId} is immutable and cannot be updated by system`);
+      return null;
+    }
+
     const updatedBlock = {
-      ...document.blocks[blockIndex],
+      ...existingBlock,
       ...updates,
-      id: blockId // Ensure ID doesn't change
+      id: blockId, // Ensure ID doesn't change
+      lastUserEdit: isUserEdit ? new Date() : existingBlock.lastUserEdit
     };
 
     document.blocks[blockIndex] = updatedBlock;
@@ -324,9 +383,29 @@ export class SemanticDocumentService {
   }
 
   /**
-   * Convert HTML content to semantic blocks
+   * Check if a block can be edited by the user
    */
-  convertHtmlToBlocks(htmlContent: string): DocumentBlock[] {
+  canEditBlock(document: SemanticDocument, blockId: string): boolean {
+    const block = document.blocks.find(b => b.id === blockId);
+    if (!block) return false;
+    
+    // Blocks are always editable by users, but immutable blocks cannot be changed by system
+    return true;
+  }
+
+  /**
+   * Check if a block is immutable (cannot be changed by system)
+   */
+  isBlockImmutable(document: SemanticDocument, blockId: string): boolean {
+    const block = document.blocks.find(b => b.id === blockId);
+    return block?.isImmutable ?? false;
+  }
+
+  /**
+   * Convert HTML content to semantic blocks
+   * Only used for initial document creation - blocks become immutable after creation
+   */
+  convertHtmlToBlocks(htmlContent: string, isInitialCreation: boolean = true): DocumentBlock[] {
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlContent, 'text/html');
     const blocks: DocumentBlock[] = [];
@@ -345,7 +424,10 @@ export class SemanticDocumentService {
                 type: 'paragraph',
                 content: element.textContent.trim(),
                 position: position++,
-                annotations: []
+                annotations: [],
+                isImmutable: true, // Blocks are immutable from creation
+                createdAt: new Date(),
+                lastUserEdit: undefined // No user edit yet
               });
             }
             break;
@@ -361,7 +443,10 @@ export class SemanticDocumentService {
                 type: 'heading',
                 content: element.textContent.trim(),
                 position: position++,
-                annotations: []
+                annotations: [],
+                isImmutable: true,
+                createdAt: new Date(),
+                lastUserEdit: undefined
               });
             }
             break;
@@ -373,7 +458,10 @@ export class SemanticDocumentService {
                 type: 'list',
                 content: element.textContent.trim(),
                 position: position++,
-                annotations: []
+                annotations: [],
+                isImmutable: true,
+                createdAt: new Date(),
+                lastUserEdit: undefined
               });
             }
             break;
@@ -384,7 +472,10 @@ export class SemanticDocumentService {
                 type: 'quote',
                 content: element.textContent.trim(),
                 position: position++,
-                annotations: []
+                annotations: [],
+                isImmutable: true,
+                createdAt: new Date(),
+                lastUserEdit: undefined
               });
             }
             break;

@@ -28,6 +28,9 @@ export interface DocumentBlock {
   children?: DocumentBlock[]; // For nested structures
   annotations: Annotation[];
   metadata?: BlockMetadata;
+  isImmutable?: boolean; // If true, block content cannot be changed except by user
+  createdAt?: Date; // When the block was first created
+  lastUserEdit?: Date; // When user last manually edited this block
 }
 
 /**
@@ -97,9 +100,10 @@ export interface BlockMetadata {
  */
 export interface AnnotationMetadata {
   confidence?: number; // For AI-generated annotations
-  agentType?: 'big-picture' | 'paragraph' | 'weaknesses' | 'strengths';
+  agentType?: 'big-picture' | 'paragraph' | 'weaknesses' | 'strengths' | 'tone' | 'clarity';
   category?: 'overall' | 'inline';
   subcategory?: 'opening' | 'body' | 'conclusion' | 'opening-sentence' | 'transition' | 'paragraph-specific' | 'paragraph-quality' | 'final-sentence';
+  commentNature?: 'strength' | 'weakness' | 'suggestion';
 }
 
 /**
