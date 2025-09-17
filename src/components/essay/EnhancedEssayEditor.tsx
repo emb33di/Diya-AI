@@ -690,35 +690,48 @@ Use formatting options to structure your essay. Your content will be automatical
           </div>
 
           {/* Panel Content */}
-          <div className="flex-1 overflow-hidden">
-            {aiFeedbackGenerated && comments.length > 0 ? (
-              /* Comments Panel */
-              <EssayCommentsPanel
-                essayId={essayId}
-                comments={comments}
-                essayContent={htmlContent}
-                onCommentsChange={setComments}
-                onCommentHover={setHoveredCommentId}
-                onCommentSelect={setSelectedCommentId}
-              />
-            ) : (
-              /* No Comments Message with Essay Feedback */
-              <Card className="shadow-sm h-full flex flex-col">
-                <CardContent className="flex-1 flex items-center justify-center p-6">
-                  <div className="text-center space-y-4">
-                    <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center">
-                      <MessageSquare className="h-8 w-8 text-gray-400" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">No comments yet!</h3>
-                      <p className="text-gray-600 text-sm">
-                        Write your essay draft to let Diya provide detailed feedback.
+          <div className="flex-1 overflow-hidden flex flex-col">
+            {/* Comments Section */}
+            <div className="flex-1 overflow-hidden">
+              {aiFeedbackGenerated && comments.length > 0 ? (
+                /* Comments Panel with Feedback Button at Bottom */
+                <div className="h-full flex flex-col">
+                  <div className="flex-1 overflow-hidden">
+                    <EssayCommentsPanel
+                      essayId={essayId}
+                      comments={comments}
+                      essayContent={htmlContent}
+                      onCommentsChange={setComments}
+                      onCommentHover={setHoveredCommentId}
+                      onCommentSelect={setSelectedCommentId}
+                    />
+                  </div>
+                  {/* Disabled Feedback Button at Bottom */}
+                  <div className="mt-4 p-3 bg-gray-50 rounded-lg border">
+                    <div className="text-center">
+                      <Button
+                        disabled={true}
+                        className="w-full opacity-50 cursor-not-allowed"
+                        title="Create a new version to continue commenting"
+                      >
+                        <Sparkles className="mr-2 h-4 w-4" />
+                        Get Diya Essay Feedback
+                      </Button>
+                      <p className="text-xs text-gray-500 mt-2">
+                        Create a new version to continue commenting
                       </p>
                     </div>
+                  </div>
+                </div>
+              ) : (
+                /* No Comments Message with Feedback Button at Top */
+                <div className="h-full flex flex-col">
+                  {/* Feedback Button Section - At top when no comments */}
+                  <div className="mb-4">
                     <Button
                       onClick={handleHelpImproveEssay}
                       disabled={isGeneratingAI || !canUseEssayFeedback}
-                      className="mt-4"
+                      className="w-full"
                     >
                       {isGeneratingAI ? (
                         <>
@@ -733,14 +746,33 @@ Use formatting options to structure your essay. Your content will be automatical
                       )}
                     </Button>
                     {!canUseEssayFeedback && (
-                      <p className="text-xs text-gray-500 mt-2">
+                      <p className="text-xs text-gray-500 mt-2 text-center">
                         Write at least {minWordsForFeedback} words to get detailed feedback from Diya.
                       </p>
                     )}
                   </div>
-                </CardContent>
-              </Card>
-            )}
+
+                  {/* No Comments Message */}
+                  <div className="flex-1">
+                    <Card className="shadow-sm h-full flex flex-col">
+                      <CardContent className="flex-1 flex items-center justify-center p-6">
+                        <div className="text-center space-y-4">
+                          <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center">
+                            <MessageSquare className="h-8 w-8 text-gray-400" />
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">No comments yet!</h3>
+                            <p className="text-gray-600 text-sm">
+                              Write your essay draft to let Diya provide detailed feedback.
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
