@@ -144,21 +144,86 @@ export class SemanticDocumentService {
   }
 
   /**
+   * Ensure essay exists in essays table for RLS policies
+   */
+  private async ensureEssayExists(essayId: string, title: string): Promise<void> {
+    try {
+      // Check if essay exists
+      const { data: existingEssay, error: checkError } = await supabase
+        .from('essays')
+        .select('id')
+        .eq('id', essayId)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('Error checking essay existence:', checkError);
+        return;
+      }
+
+      // If essay doesn't exist, create it
+      if (!existingEssay) {
+        console.log('Essay not found, creating essay record:', essayId);
+        
+        const { error: insertError } = await supabase
+          .from('essays')
+          .insert({
+            id: essayId,
+            title: title,
+            content: { blocks: [] }, // Empty content initially
+            user_id: (await supabase.auth.getUser()).data.user?.id,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+
+        if (insertError) {
+          console.error('Failed to create essay record:', insertError);
+        } else {
+          console.log('Essay record created successfully');
+        }
+      }
+    } catch (error) {
+      console.error('Error in ensureEssayExists:', error);
+    }
+  }
+
+  /**
    * Save a semantic document
    */
   async saveDocument(document: SemanticDocument): Promise<void> {
-    const { error } = await supabase
-      .from('semantic_documents')
-      .upsert({
+    try {
+      console.log('Attempting to save document to database:', {
         id: document.id,
         title: document.title,
-        blocks: document.blocks,
-        metadata: document.metadata,
-        updated_at: new Date().toISOString()
+        blocksCount: document.blocks.length,
+        metadata: document.metadata
       });
 
-    if (error) {
-      throw new Error(`Failed to save document: ${error.message}`);
+      // Ensure the essay exists in essays table for RLS policies
+      const essayId = document.metadata?.essayId;
+      if (essayId) {
+        await this.ensureEssayExists(essayId, document.title);
+      }
+
+      const { data, error } = await supabase
+        .from('semantic_documents')
+        .upsert({
+          id: document.id,
+          title: document.title,
+          blocks: document.blocks,
+          metadata: document.metadata,
+          updated_at: new Date().toISOString()
+        })
+        .select();
+
+      if (error) {
+        console.error('Supabase save error:', error);
+        throw new Error(`Failed to save document: ${error.message}`);
+      }
+
+      console.log('Document saved successfully to database:', data);
+    } catch (error) {
+      console.error('Error in saveDocument:', error);
+      throw error;
     }
   }
 

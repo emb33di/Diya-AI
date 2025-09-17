@@ -76,6 +76,10 @@ const SemanticEditor: React.FC<SemanticEditorProps> = ({
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [editingStates, setEditingStates] = useState<Record<string, boolean>>({});
+  const [cmdASelectionState, setCmdASelectionState] = useState<{
+    blockId: string | null;
+    hasSelectedBlock: boolean;
+  }>({ blockId: null, hasSelectedBlock: false });
   const autosaveTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
   const textareaRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
 
@@ -180,7 +184,7 @@ const SemanticEditor: React.FC<SemanticEditorProps> = ({
         }
       };
 
-      const timeoutId = setTimeout(saveDocument, 500); // Faster autosave - 500ms
+      const timeoutId = setTimeout(saveDocument, 200); // Even faster autosave - 200ms
       return () => clearTimeout(timeoutId);
     }
   }, [state.document, state.pendingChanges, onDocumentChange]);
@@ -298,6 +302,11 @@ const SemanticEditor: React.FC<SemanticEditorProps> = ({
     setEditingStates(prev => ({ ...prev, [blockId]: true }));
     setState(prev => ({ ...prev, isEditing: true }));
     
+    // Reset Cmd+A selection state when switching blocks
+    if (cmdASelectionState.blockId !== blockId) {
+      setCmdASelectionState({ blockId: null, hasSelectedBlock: false });
+    }
+    
     // Auto-resize textarea when editing starts
     setTimeout(() => {
       if (textareaRefs.current[blockId]) {
@@ -305,11 +314,14 @@ const SemanticEditor: React.FC<SemanticEditorProps> = ({
         textareaRefs.current[blockId]!.focus();
       }
     }, 0);
-  }, [editingBlockId, finishEditingBlock, autoResizeTextarea]);
+  }, [editingBlockId, finishEditingBlock, autoResizeTextarea, cmdASelectionState.blockId]);
 
   // Handle content change in block with immediate save and localStorage backup
   const handleBlockContentChange = useCallback((blockId: string, newContent: string) => {
     console.log('Block content changed:', blockId, 'new content length:', newContent.length);
+    
+    // Reset Cmd+A selection state when content changes
+    setCmdASelectionState({ blockId: null, hasSelectedBlock: false });
     
     // Update the block content immediately
     const updatedBlock = semanticDocumentService.updateBlock(
@@ -345,20 +357,42 @@ const SemanticEditor: React.FC<SemanticEditorProps> = ({
         console.log('Debounced autosave triggered for block:', blockId);
         autoSaveBlock(blockId, newContent);
         delete autosaveTimeouts.current[blockId];
-      }, 500); // Faster save - 500ms of inactivity
+      }, 200); // Even faster save - 200ms of inactivity
     } else {
       console.error('Failed to update block:', blockId);
     }
   }, [state.document, autoSaveBlock]);
 
-  // Add a new block
-  const addNewBlock = useCallback(() => {
+  // Force save document
+  const forceSaveDocument = useCallback(async () => {
+    try {
+      console.log('Force saving document...');
+      setIsAutoSaving(true);
+      await semanticDocumentService.saveDocument(state.document);
+      setState(prev => ({ ...prev, pendingChanges: false }));
+      setLastSaved(new Date());
+      onDocumentChange?.(state.document);
+      
+      // Also save to localStorage as backup
+      localStorage.setItem(`semantic-doc-${state.document.id}`, JSON.stringify(state.document));
+      console.log('Force save completed successfully');
+    } catch (error) {
+      console.error('Force save failed:', error);
+    } finally {
+      setIsAutoSaving(false);
+    }
+  }, [state.document, onDocumentChange]);
+
+  // Add a new block at a specific position
+  const addNewBlock = useCallback((insertPosition?: number) => {
+    const position = insertPosition !== undefined ? insertPosition : state.document.blocks.length;
+    
     const newBlock = semanticDocumentService.addBlock(
       state.document, 
       {
         type: 'paragraph',
         content: '',
-        position: state.document.blocks.length
+        position: position
       },
       true // isUserCreated = true
     );
@@ -374,15 +408,83 @@ const SemanticEditor: React.FC<SemanticEditorProps> = ({
     setEditingStates(prev => ({ ...prev, [newBlock.id]: true }));
     setState(prev => ({ ...prev, isEditing: true }));
     
-    // Auto-resize and focus the new textarea
+    // Auto-resize and focus the new textarea with a slight delay to ensure DOM update
     setTimeout(() => {
-      if (textareaRefs.current[newBlock.id]) {
-        autoResizeTextarea(textareaRefs.current[newBlock.id]!);
-        textareaRefs.current[newBlock.id]!.focus();
+      const textarea = textareaRefs.current[newBlock.id];
+      if (textarea) {
+        autoResizeTextarea(textarea);
+        textarea.focus();
+        // Ensure cursor is at the end
+        textarea.setSelectionRange(textarea.value.length, textarea.value.length);
       }
-    }, 0);
+    }, 10);
   }, [state.document, autoResizeTextarea]);
 
+  // Handle smart Cmd+A behavior
+  const handleSmartSelectAll = useCallback((blockId: string, textarea: HTMLTextAreaElement) => {
+    const currentBlock = state.document.blocks.find(b => b.id === blockId);
+    if (!currentBlock) return;
+
+    // Check if this is the same block and we've already selected it
+    if (cmdASelectionState.blockId === blockId && cmdASelectionState.hasSelectedBlock) {
+      // Second Cmd+A: Create a temporary textarea with all content for selection
+      const allContent = state.document.blocks
+        .sort((a, b) => a.position - b.position)
+        .map(block => block.content)
+        .join('\n\n');
+      
+      // Create a temporary textarea positioned over the current one
+      const tempTextarea = document.createElement('textarea');
+      tempTextarea.value = allContent;
+      tempTextarea.style.position = 'fixed';
+      tempTextarea.style.top = '50%';
+      tempTextarea.style.left = '50%';
+      tempTextarea.style.transform = 'translate(-50%, -50%)';
+      tempTextarea.style.width = '80%';
+      tempTextarea.style.height = '60%';
+      tempTextarea.style.zIndex = '9999';
+      tempTextarea.style.fontSize = '12pt';
+      tempTextarea.style.fontFamily = 'Times New Roman';
+      tempTextarea.style.lineHeight = '1.6';
+      tempTextarea.style.padding = '20px';
+      tempTextarea.style.border = '2px solid #3b82f6';
+      tempTextarea.style.borderRadius = '8px';
+      tempTextarea.style.backgroundColor = 'white';
+      tempTextarea.style.boxShadow = '0 10px 25px rgba(0,0,0,0.2)';
+      tempTextarea.style.outline = 'none';
+      
+      document.body.appendChild(tempTextarea);
+      tempTextarea.select();
+      
+      // Reset selection state
+      setCmdASelectionState({ blockId: null, hasSelectedBlock: false });
+      
+      // Remove the temporary textarea when user clicks outside or presses Escape
+      const cleanup = () => {
+        if (document.body.contains(tempTextarea)) {
+          document.body.removeChild(tempTextarea);
+        }
+        document.removeEventListener('click', cleanup);
+        document.removeEventListener('keydown', handleEscape);
+      };
+      
+      const handleEscape = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          cleanup();
+        }
+      };
+      
+      // Clean up after 5 seconds or on click outside
+      setTimeout(cleanup, 5000);
+      document.addEventListener('click', cleanup);
+      document.addEventListener('keydown', handleEscape);
+      
+    } else {
+      // First Cmd+A: Select current block content
+      textarea.select();
+      setCmdASelectionState({ blockId, hasSelectedBlock: true });
+    }
+  }, [state.document.blocks, cmdASelectionState]);
 
   // Add a comment to the selected block
   const addComment = useCallback(() => {
@@ -518,11 +620,20 @@ const SemanticEditor: React.FC<SemanticEditorProps> = ({
               if (e.key === 'Escape') {
                 finishEditingBlock(block.id);
               }
+              // Handle Cmd+A (or Ctrl+A on Windows/Linux) for smart select all
+              if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
+                e.preventDefault();
+                handleSmartSelectAll(block.id, e.currentTarget);
+              }
               // Handle Enter key to create new block
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                finishEditingBlock(block.id);
-                addNewBlock();
+                // Save current block content first
+                const currentContent = e.currentTarget.value;
+                handleBlockContentChange(block.id, currentContent);
+                
+                // Create new block at the next position (current block position + 1)
+                addNewBlock(block.position + 1);
               }
             }}
             autoFocus
@@ -555,7 +666,7 @@ const SemanticEditor: React.FC<SemanticEditorProps> = ({
               whiteSpace: 'pre-wrap'
             }}
           >
-            {block.content || 'Start writing here...'}
+            {block.content || <span className="text-gray-400">Start writing here...</span>}
           </div>
         )}
 
@@ -661,8 +772,20 @@ const SemanticEditor: React.FC<SemanticEditorProps> = ({
       <div className="bg-white min-h-[600px] relative">
         {/* Page Header */}
         <div className="border-b border-gray-100 p-6 pb-4">
-          <div className="flex items-center justify-end">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-500">
+              {state.pendingChanges ? 'Unsaved changes' : 'All changes saved'} | 
+              Doc ID: {state.document.id.substring(0, 8)}...
+            </div>
             <div className="flex gap-2">
+              <Button
+                onClick={forceSaveDocument}
+                disabled={isAutoSaving}
+                size="sm"
+                variant="outline"
+              >
+                {isAutoSaving ? 'Saving...' : 'Save Now'}
+              </Button>
               <Button
                 onClick={generateAIComments}
                 disabled={isGeneratingAIComments || state.document.blocks.length === 0}
@@ -718,7 +841,7 @@ const SemanticEditor: React.FC<SemanticEditorProps> = ({
                 {/* Invisible add block area - click anywhere at the end to add */}
                 <div 
                   className="min-h-[3em] cursor-text hover:bg-gray-50 transition-colors duration-150 rounded"
-                  onClick={addNewBlock}
+                  onClick={() => addNewBlock()}
                   style={{
                     fontFamily: 'Times New Roman',
                     fontSize: '12pt',
