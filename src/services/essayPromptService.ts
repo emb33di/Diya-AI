@@ -3,6 +3,7 @@ import { SchoolProgramType, getUserProgramType } from '@/utils/userProfileUtils'
 
 export interface EssayPrompt {
   id: string;
+  title: string;
   college_name: string;
   how_many: string;
   selection_type: string;

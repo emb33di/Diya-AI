@@ -77,6 +77,9 @@ const Essays = () => {
   const [essays, setEssays] = useState<Essay[]>([]);
   const [selectedEssay, setSelectedEssay] = useState<Essay | null>(null);
   const [essayContent, setEssayContent] = useState<string>('');
+  const [commonAppPrompts, setCommonAppPrompts] = useState<EssayPrompt[]>([]);
+  const [selectedCommonAppPrompt, setSelectedCommonAppPrompt] = useState<EssayPrompt | null>(null);
+  const [commonAppEssay, setCommonAppEssay] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState<string>('');
   const [onboardingTranscript, setOnboardingTranscript] = useState<string>('');
@@ -104,7 +107,7 @@ const Essays = () => {
 
   // Mobile-specific state management
   const isMobile = useIsMobile();
-  const [mobileStep, setMobileStep] = useState<'school' | 'prompts' | 'editor'>('school');
+  const [mobileStep, setMobileStep] = useState<'school' | 'prompts' | 'editor' | 'common-app'>('school');
   const [selectedMobilePrompt, setSelectedMobilePrompt] = useState<Essay | null>(null);
   const [showMobileEditor, setShowMobileEditor] = useState(false);
 
@@ -199,6 +202,26 @@ const Essays = () => {
     }
   }, [selectedSchool]);
 
+  // Fetch Common App prompts for undergraduate students
+  useEffect(() => {
+    const fetchCommonAppPrompts = async () => {
+      try {
+        const prompts = await EssayPromptService.getPromptsForCollegeForUser('Common Application');
+        setCommonAppPrompts(prompts);
+        
+        // Check if user already has a Common App essay
+        const existingCommonAppEssay = await EssayService.getEssaysForSchool('Common Application');
+        if (existingCommonAppEssay.length > 0) {
+          setCommonAppEssay(existingCommonAppEssay[0]);
+        }
+      } catch (error) {
+        console.error('Error fetching Common App prompts:', error);
+      }
+    };
+
+    fetchCommonAppPrompts();
+  }, []);
+
   // Fetch essay prompts when a school is selected
   useEffect(() => {
     if (selectedSchool) {
@@ -237,7 +260,7 @@ const Essays = () => {
             
             return {
               id: `${selectedSchool}-${prompt.prompt_number}`,
-              title: `${selectedSchool} - ${prompt.prompt_number}`,
+              title: prompt.title || `${selectedSchool} - ${prompt.prompt_number}`, // Use database title, fallback to generated title
               prompt: prompt.prompt,
               wordCount: wordCount,
               wordLimit: parseInt(prompt.word_limit.split('-')[1] || '650'),
@@ -628,6 +651,48 @@ const Essays = () => {
     }
   };
 
+  // Handle Common App prompt selection
+  const handleCommonAppPromptSelect = async (prompt: EssayPrompt) => {
+    try {
+      setSelectedCommonAppPrompt(prompt);
+      
+      // Check if user already has a Common App essay
+      if (commonAppEssay) {
+        // User already has a Common App essay, select it
+        persistEssaySelection(commonAppEssay.id);
+        setSelectedEssay(null);
+        return;
+      }
+      
+      // Create new Common App essay
+      const essayData: CreateEssayData = {
+        title: prompt.title || `Common Application - Prompt ${prompt.prompt_number}`,
+        school_name: 'Common Application',
+        prompt_id: prompt.id,
+        initial_content: ''
+      };
+
+      const newEssay = await EssayService.createEssay(essayData);
+      setCommonAppEssay(newEssay);
+      
+      // Select the new essay
+      persistEssaySelection(newEssay.id);
+      setSelectedEssay(null);
+      
+      toast({
+        title: "Success",
+        description: "Common App essay created!"
+      });
+    } catch (error) {
+      console.error('Error creating Common App essay:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create Common App essay",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleSchoolChange = (schoolName: string) => {
     setSelectedSchool(schoolName);
     setSelectedEssay(null);
@@ -762,6 +827,100 @@ const Essays = () => {
                   Select a school to see essay prompts
                 </p>
               </div>
+
+              {/* Common App Section for Mobile */}
+              {commonAppPrompts.length > 0 && (
+                <div className="mb-6">
+                  <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center space-x-2">
+                        <div className="p-1.5 bg-blue-100 rounded-lg">
+                          <FileText className="h-4 w-4 text-blue-600" />
+                        </div>
+                        <div>
+                          <span className="text-lg text-blue-900">Common Application Essay</span>
+                          <p className="text-xs text-blue-700 font-normal mt-0.5">
+                            Required for all undergraduate applications
+                          </p>
+                        </div>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <div className="space-y-3">
+                        {commonAppPrompts.slice(0, 3).map((prompt, index) => (
+                          <Card 
+                            key={prompt.id}
+                            className={`cursor-pointer transition-all duration-200 ${
+                              selectedCommonAppPrompt?.id === prompt.id 
+                                ? 'bg-blue-100 border-blue-300' 
+                                : 'bg-white hover:bg-blue-50'
+                            }`}
+                            onClick={() => handleCommonAppPromptSelect(prompt)}
+                          >
+                            <CardContent className="p-3">
+                              <div className="space-y-2">
+                                <div className="flex items-start justify-between">
+                                  <h3 className="text-sm font-medium text-blue-900">
+                                    {prompt.title || `Prompt ${prompt.prompt_number}`}
+                                  </h3>
+                                  <Badge variant="outline" className="text-xs border-blue-300 text-blue-700">
+                                    {prompt.word_limit}
+                                  </Badge>
+                                </div>
+                                
+                                <p className="text-xs text-blue-800 line-clamp-3 leading-relaxed">
+                                  {prompt.prompt.split('\n\n')[1] || prompt.prompt}
+                                </p>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                        
+                        {commonAppPrompts.length > 3 && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="w-full border-blue-300 text-blue-700 hover:bg-blue-100"
+                            onClick={() => {
+                              // Show all prompts in a modal or expand
+                              setMobileStep('common-app');
+                            }}
+                          >
+                            View All {commonAppPrompts.length} Prompts
+                          </Button>
+                        )}
+                      </div>
+                      
+                      {commonAppEssay && (
+                        <div className="mt-3 p-2 bg-blue-100 rounded-lg">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-xs font-medium text-blue-900">
+                                Current: {commonAppEssay.title}
+                              </p>
+                              <p className="text-xs text-blue-700">
+                                {commonAppEssay.word_count}/650 words
+                              </p>
+                            </div>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              className="border-blue-300 text-blue-700 hover:bg-blue-200 text-xs px-2 py-1"
+                              onClick={() => {
+                                persistEssaySelection(commonAppEssay.id);
+                                setSelectedEssay(null);
+                                setMobileStep('editor');
+                              }}
+                            >
+                              Continue
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
               
               <Card className="shadow-sm">
                 <CardHeader>
@@ -800,7 +959,65 @@ const Essays = () => {
             </div>
           )}
 
-          {/* Mobile Step 2: Essay Prompts */}
+          {/* Mobile Step 2: Common App Prompts */}
+          {mobileStep === 'common-app' && (
+            <div className="p-4">
+              <div className="flex items-center mb-6">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="mr-2"
+                  onClick={() => setMobileStep('school')}
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <div>
+                  <h1 className="text-xl font-display font-bold">
+                    Common Application Essays
+                  </h1>
+                  <p className="text-muted-foreground text-sm">
+                    Choose one prompt to write your essay
+                  </p>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                {commonAppPrompts.map((prompt, index) => (
+                  <Card 
+                    key={prompt.id} 
+                    className="cursor-pointer transition-all duration-200 hover:shadow-md bg-card"
+                    onClick={() => handleCommonAppPromptSelect(prompt)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="space-y-3">
+                        <div className="flex items-start justify-between">
+                          <h3 className="text-sm font-medium leading-tight text-foreground">
+                            {prompt.title || `Prompt ${prompt.prompt_number}`}
+                          </h3>
+                          <Badge variant="outline" className="text-xs ml-2 flex-shrink-0">
+                            {prompt.word_limit} words
+                          </Badge>
+                        </div>
+                        
+                        <p className="text-sm text-muted-foreground line-clamp-4">
+                          {prompt.prompt.split('\n\n')[1] || prompt.prompt}
+                        </p>
+                        
+                        <div className="flex items-center justify-between">
+                          <div className="text-xs text-muted-foreground">
+                            {commonAppEssay ? `${commonAppEssay.word_count}/650 words` : 'Not started'}
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Mobile Step 3: Essay Prompts */}
           {mobileStep === 'prompts' && (
             <div className="p-4">
               <div className="flex items-center mb-6">
@@ -877,7 +1094,7 @@ const Essays = () => {
             </div>
           )}
 
-          {/* Mobile Step 3: Essay Editor */}
+          {/* Mobile Step 4: Essay Editor */}
           {mobileStep === 'editor' && selectedMobilePrompt && (
             <>
               {!showMobileEditor ? (
@@ -1052,6 +1269,92 @@ const Essays = () => {
         </div>
 
         <div className="container mx-auto px-6 py-6">
+          {/* Common App Section */}
+          {commonAppPrompts.length > 0 && (
+            <div className="mb-8">
+              <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-3">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <FileText className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <span className="text-xl text-blue-900">Common Application Essay</span>
+                      <p className="text-sm text-blue-700 font-normal mt-1">
+                        Required for all undergraduate applications - Choose one prompt
+                      </p>
+                    </div>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {commonAppPrompts.map((prompt, index) => (
+                      <Card 
+                        key={prompt.id}
+                        className={`cursor-pointer transition-all duration-200 hover:shadow-md hover:scale-[1.02] ${
+                          selectedCommonAppPrompt?.id === prompt.id 
+                            ? 'bg-blue-100 border-blue-300 shadow-md' 
+                            : 'bg-white hover:bg-blue-50'
+                        }`}
+                        onClick={() => handleCommonAppPromptSelect(prompt)}
+                      >
+                        <CardContent className="p-4">
+                          <div className="space-y-3">
+                            <div className="flex items-start justify-between">
+                              <h3 className="text-sm font-medium text-blue-900">
+                                {prompt.title || `Prompt ${prompt.prompt_number}`}
+                              </h3>
+                              <Badge variant="outline" className="text-xs border-blue-300 text-blue-700">
+                                {prompt.word_limit} words
+                              </Badge>
+                            </div>
+                            
+                            <p className="text-xs text-blue-800 line-clamp-4 leading-relaxed">
+                              {prompt.prompt.split('\n\n')[1] || prompt.prompt}
+                            </p>
+                            
+                            <div className="flex items-center justify-between">
+                              <div className="text-xs text-blue-600">
+                                {commonAppEssay ? `${commonAppEssay.word_count}/650 words` : 'Not started'}
+                              </div>
+                              <ChevronRight className="h-4 w-4 text-blue-500" />
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                  
+                  {commonAppEssay && (
+                    <div className="mt-4 p-3 bg-blue-100 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-blue-900">
+                            Current Common App Essay: {commonAppEssay.title}
+                          </p>
+                          <p className="text-xs text-blue-700">
+                            {commonAppEssay.word_count}/650 words • Last updated: {new Date(commonAppEssay.updated_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          className="border-blue-300 text-blue-700 hover:bg-blue-200"
+                          onClick={() => {
+                            persistEssaySelection(commonAppEssay.id);
+                            setSelectedEssay(null);
+                          }}
+                        >
+                          Continue Writing
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
           <div className="grid grid-cols-12 gap-6 h-[calc(100vh-200px)]">
             {/* Left Sidebar - Essay List */}
             <div className="col-span-3 space-y-4">

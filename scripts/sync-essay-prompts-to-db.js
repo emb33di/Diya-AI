@@ -147,7 +147,7 @@ async function upsertEssayPrompt(prompt) {
  */
 function parseSelectionRule(collegeData) {
   const howMany = collegeData.how_many;
-  const selectionType = collegeData.selection_type;
+  const selectionType = collegeData.selection_type || 'required'; // Default to 'required' if missing
   
   return {
     totalRequired: howMany,
