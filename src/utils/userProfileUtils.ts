@@ -1,14 +1,15 @@
 import { supabase } from '@/integrations/supabase/client';
 
 export type SchoolProgramType = 'Undergraduate' | 'MBA' | 'LLM' | 'PhD' | 'Masters';
-export type ApplyingToType = 'Undergraduate Colleges' | 'MBA' | 'LLM' | 'PhD' | 'Masters';
+export type ApplyingToType = 'Undergraduate' | 'MBA' | 'LLM' | 'PhD' | 'Masters';
 
 /**
  * Centralized mapping from applying_to values to SchoolProgramType
  * This ensures consistency across all services and edge functions
+ * Now using the same values as the database enum
  */
 export const APPLYING_TO_TO_PROGRAM_TYPE_MAP: Record<ApplyingToType, SchoolProgramType> = {
-  'Undergraduate Colleges': 'Undergraduate',
+  'Undergraduate': 'Undergraduate',
   'MBA': 'MBA',
   'LLM': 'LLM',
   'PhD': 'PhD',
@@ -38,6 +39,18 @@ export function mapApplyingToToProgramTypeWithFallback(
   fallback: SchoolProgramType = 'Undergraduate'
 ): SchoolProgramType {
   return mapApplyingToToProgramType(applyingTo) || fallback;
+}
+
+/**
+ * Convert SchoolProgramType to applying_to value (reverse mapping)
+ * @param programType - The SchoolProgramType from database
+ * @returns The corresponding ApplyingToType or null if invalid
+ */
+export function mapProgramTypeToApplyingTo(programType: string | null | undefined): ApplyingToType | null {
+  if (!programType) return null;
+  
+  // Since values are now the same, we can return the programType directly
+  return programType as ApplyingToType;
 }
 
 /**

@@ -28,7 +28,7 @@ const profileSchema = z.object({
   email_address: z.string().email("Valid email address is required").min(1, "Email address is required"),
   country_code: z.string().min(1, "Country code is required"),
   phone_number: z.string().min(1, "Phone number is required"),
-  applying_to: z.enum(["Undergraduate Colleges", "MBA", "LLM", "PhD", "Masters"]).optional(),
+  applying_to: z.enum(["Undergraduate", "MBA", "LLM", "PhD", "Masters"]).optional(),
   masters_field_of_focus: z.string().optional(),
   
   // Academic Profile
@@ -52,15 +52,14 @@ const profileSchema = z.object({
   test_score: z.number().min(0).max(340).optional(),
   
   // College Preferences
-  ideal_college_size: z.enum(["Small (< 2,000 students)", "Medium (2,000 - 15,000 students)", "Large (> 15,000 students)"]).optional(),
-  ideal_college_setting: z.enum(["Urban", "Suburban", "Rural", "College Town"]).optional(),
-  geographic_preference: z.enum(["In-state", "Out-of-state", "Northeast", "West Coast", "No Preference"]).optional(),
+  ideal_college_size: z.enum(["not_specified", "Small (< 2,000 students)", "Medium (2,000 - 15,000 students)", "Large (> 15,000 students)"]).optional(),
+  ideal_college_setting: z.enum(["not_specified", "Urban", "Suburban", "Rural", "College Town"]).optional(),
   must_haves: z.string().optional(),
   deal_breakers: z.string().optional(),
   
   // Financial Information
-  college_budget: z.enum(["< $20,000", "$20,000 - $35,000", "$35,000 - $50,000", "$50,000 - $70,000", "> $70,000"]).optional(),
-  financial_aid_importance: z.enum(["Crucial", "Very Important", "Somewhat Important", "Not a factor"]).optional(),
+  college_budget: z.enum(["not_specified", "< $20,000", "$20,000 - $35,000", "$35,000 - $50,000", "$50,000 - $70,000", "> $70,000"]).optional(),
+  financial_aid_importance: z.enum(["not_specified", "Crucial", "Very Important", "Somewhat Important", "Not a factor"]).optional(),
   scholarship_interests: z.array(z.string()).optional(),
 });
 
@@ -71,6 +70,11 @@ interface TestScore {
   id?: string;
   score: number;
   year_taken: number;
+}
+
+interface GeographicPreference {
+  id?: string;
+  preference: string;
 }
 
 const scholarshipOptions = [
@@ -287,8 +291,10 @@ export default function Profile() {
   const [loading, setLoading] = useState(false);
   const [satScores, setSatScores] = useState<TestScore[]>([]);
   const [actScores, setActScores] = useState<TestScore[]>([]);
+  const [geographicPreferences, setGeographicPreferences] = useState<GeographicPreference[]>([]);
   const [newSatScore, setNewSatScore] = useState<TestScore>({ score: 0, year_taken: new Date().getFullYear() });
   const [newActScore, setNewActScore] = useState<TestScore>({ score: 0, year_taken: new Date().getFullYear() });
+  const [newGeographicPreference, setNewGeographicPreference] = useState<string>("");
   const [isOnboardingCompletionFlow, setIsOnboardingCompletionFlow] = useState(false);
   const [majorSearchQuery, setMajorSearchQuery] = useState("");
   const [showOtherMajorInput, setShowOtherMajorInput] = useState(false);
@@ -315,8 +321,9 @@ export default function Profile() {
     if (!formData.applying_to) errors.applying_to = "Please select what you're applying to";
 
     // Application-specific validation
-    if (formData.applying_to === "Undergraduate Colleges") {
+    if (formData.applying_to === "Undergraduate") {
       if (!formData.high_school_name) errors.high_school_name = "High school name is required";
+      if (!formData.high_school_graduation_year) errors.high_school_graduation_year = "High school graduation year is required";
       if (!formData.school_board) errors.school_board = "School board is required";
       if (!formData.year_of_study) errors.year_of_study = "Year of study is required";
       if (!formData.intended_majors) errors.intended_majors = "Intended major is required";
@@ -354,35 +361,34 @@ export default function Profile() {
       email_address: "",
       country_code: "+91",
       phone_number: "",
-      applying_to: undefined,
+      applying_to: "Undergraduate",
       masters_field_of_focus: "",
       
       // Academic Profile
       high_school_name: "",
-      high_school_graduation_year: undefined,
-      school_board: undefined,
-      year_of_study: undefined,
-      class_10_score: undefined,
-      class_11_score: undefined,
-      class_12_half_yearly_score: undefined,
-      undergraduate_cgpa: undefined,
+      high_school_graduation_year: "",
+      school_board: "",
+      year_of_study: "",
+      class_10_score: "",
+      class_11_score: "",
+      class_12_half_yearly_score: "",
+      undergraduate_cgpa: "",
       intended_majors: "",
       college_name: "",
-      college_graduation_year: undefined,
-      college_gpa: undefined,
+      college_graduation_year: "",
+      college_gpa: "",
       test_type: "Not yet taken" as const,
-      test_score: undefined,
+      test_score: "",
       
       // College Preferences
-      ideal_college_size: undefined,
-      ideal_college_setting: undefined,
-      geographic_preference: undefined,
+      ideal_college_size: "not_specified",
+      ideal_college_setting: "not_specified",
       must_haves: "",
       deal_breakers: "",
       
       // Financial Information
-      college_budget: undefined,
-      financial_aid_importance: undefined,
+      college_budget: "not_specified",
+      financial_aid_importance: "not_specified",
       scholarship_interests: [],
     },
   });
@@ -391,7 +397,7 @@ export default function Profile() {
   useEffect(() => {
     const testType = form.watch("test_type");
     if (testType === "Not yet taken") {
-      form.setValue("test_score", undefined);
+      form.setValue("test_score", "");
     }
   }, [form.watch("test_type")]);
 
@@ -454,6 +460,7 @@ export default function Profile() {
     loadProfile();
     loadSATScores();
     loadACTScores();
+    loadGeographicPreferences();
   }, []);
 
   // Check if user has completed onboarding but not profile
@@ -639,35 +646,34 @@ export default function Profile() {
           email_address: formData.email_address ?? "",
           phone_number: formData.phone_number ?? "",
           country_code: formData.country_code ?? "+91",
-          applying_to: formData.applying_to ?? "Undergraduate Colleges",
+          applying_to: formData.applying_to ?? "Undergraduate",
           masters_field_of_focus: formData.masters_field_of_focus ?? "",
           
           // Academic Profile
           high_school_name: formData.high_school_name ?? "",
-          high_school_graduation_year: formData.high_school_graduation_year ?? undefined,
-          school_board: formData.school_board ?? undefined,
-          year_of_study: formData.year_of_study ?? undefined,
-          class_10_score: formData.class_10_score ?? undefined,
-          class_11_score: formData.class_11_score ?? undefined,
-          class_12_half_yearly_score: formData.class_12_half_yearly_score ?? undefined,
-          undergraduate_cgpa: formData.undergraduate_cgpa ?? undefined,
+          high_school_graduation_year: formData.high_school_graduation_year ?? "",
+          school_board: formData.school_board ?? "",
+          year_of_study: formData.year_of_study ?? "",
+          class_10_score: formData.class_10_score ?? "",
+          class_11_score: formData.class_11_score ?? "",
+          class_12_half_yearly_score: formData.class_12_half_yearly_score ?? "",
+          undergraduate_cgpa: formData.undergraduate_cgpa ?? "",
           intended_majors: formData.intended_majors ?? "",
           college_name: formData.college_name ?? "",
-          college_graduation_year: formData.college_graduation_year ?? undefined,
-          college_gpa: formData.college_gpa ?? undefined,
+          college_graduation_year: formData.college_graduation_year ?? "",
+          college_gpa: formData.college_gpa ?? "",
           test_type: formData.test_type ?? "Not yet taken",
-          test_score: formData.test_score ?? undefined,
+          test_score: formData.test_score ?? "",
           
           // College Preferences
-          ideal_college_size: formData.ideal_college_size ?? undefined,
-          ideal_college_setting: formData.ideal_college_setting ?? undefined,
-          geographic_preference: formData.geographic_preference ?? undefined,
+          ideal_college_size: formData.ideal_college_size ?? "not_specified",
+          ideal_college_setting: formData.ideal_college_setting ?? "not_specified",
           must_haves: formData.must_haves ?? "",
           deal_breakers: formData.deal_breakers ?? "",
           
-          // Financial Information
-          college_budget: formData.college_budget ?? undefined,
-          financial_aid_importance: formData.financial_aid_importance ?? undefined,
+          // Financial Information - convert null to not_specified for enum fields
+          college_budget: formData.college_budget ?? "not_specified",
+          financial_aid_importance: formData.financial_aid_importance ?? "not_specified",
           scholarship_interests: Array.isArray(formData.scholarship_interests) ? formData.scholarship_interests : [],
         };
 
@@ -720,14 +726,14 @@ export default function Profile() {
       if (!data.applying_to) errors.applying_to = "Please select what you're applying to";
 
       // High school fields only required for Undergraduate applications
-      if (data.applying_to === "Undergraduate Colleges") {
+      if (data.applying_to === "Undergraduate") {
         if (!data.high_school_name) errors.high_school_name = "High school name is required";
         if (!data.school_board) errors.school_board = "School board is required";
         if (!data.year_of_study) errors.year_of_study = "Year of study is required";
       }
       
       // Conditional validation based on applying_to
-      if (data.applying_to === "Undergraduate Colleges") {
+      if (data.applying_to === "Undergraduate") {
         if (!data.intended_majors) errors.intended_majors = "Intended major is required";
       } else if (data.applying_to === "Masters") {
         if (!data.masters_field_of_focus) errors.masters_field_of_focus = "Field of focus is required";
@@ -802,8 +808,29 @@ export default function Profile() {
         : data.phone_number;
 
       // Convert Date to string for database
+      const { geographic_preference, ...dataWithoutGeographicPreference } = data;
+      
+      // Convert "not_specified" values to null for database storage
+      const processedData = { ...dataWithoutGeographicPreference };
+      const notSpecifiedFields = ['college_budget', 'financial_aid_importance', 'ideal_college_size', 'ideal_college_setting'];
+      
+      notSpecifiedFields.forEach(field => {
+        if (processedData[field] === 'not_specified') {
+          processedData[field] = null;
+        }
+      });
+      
+      // Convert empty strings to null for numeric fields
+      const numericFields = ['high_school_graduation_year', 'undergraduate_cgpa', 'college_graduation_year', 'college_gpa', 'test_score'];
+      
+      numericFields.forEach(field => {
+        if (processedData[field] === '') {
+          processedData[field] = null;
+        }
+      });
+      
       const profileData = {
-        ...data,
+        ...processedData,
         phone_number: combinedPhoneNumber,
         user_id: user.id,
       };
@@ -1084,6 +1111,88 @@ export default function Profile() {
     }
   };
 
+  const loadGeographicPreferences = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: preferences, error } = await supabase
+        .from("geographic_preferences")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      setGeographicPreferences(preferences || []);
+    } catch (error) {
+      console.error("Error loading geographic preferences:", error);
+    }
+  };
+
+  const addGeographicPreference = async () => {
+    if (!newGeographicPreference) {
+      toast({
+        title: "Error",
+        description: "Please select a geographic preference.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from("geographic_preferences")
+        .insert({
+          user_id: user.id,
+          preference: newGeographicPreference,
+        });
+
+      if (error) throw error;
+
+      setNewGeographicPreference("");
+      loadGeographicPreferences();
+      toast({
+        title: "Geographic preference added",
+        description: "Geographic preference has been added successfully.",
+      });
+    } catch (error) {
+      console.error("Error adding geographic preference:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add geographic preference. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteGeographicPreference = async (preferenceId: string) => {
+    try {
+      const { error } = await supabase
+        .from("geographic_preferences")
+        .delete()
+        .eq("id", preferenceId);
+
+      if (error) throw error;
+
+      loadGeographicPreferences();
+      toast({
+        title: "Geographic preference deleted",
+        description: "Geographic preference has been deleted successfully.",
+      });
+    } catch (error) {
+      console.error("Error deleting geographic preference:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete geographic preference. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <OnboardingGuard pageName="Profile">
       <div className="min-h-screen bg-background">
@@ -1266,8 +1375,8 @@ export default function Profile() {
                   />
                 )}
 
-                {/* Conditional Field: Intended Majors (only for Undergraduate Colleges) */}
-                {form.watch("applying_to") === "Undergraduate Colleges" && (
+                {/* Conditional Field: Intended Majors (only for Undergraduate) */}
+                {form.watch("applying_to") === "Undergraduate" && (
                   <FormField
                     control={form.control}
                     name="intended_majors"
@@ -1404,7 +1513,7 @@ export default function Profile() {
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Conditional Academic Fields based on Applying To */}
-              {form.watch("applying_to") === "Undergraduate Colleges" ? (
+              {form.watch("applying_to") === "Undergraduate" ? (
                 <>
                   {/* Undergraduate Fields */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1426,7 +1535,10 @@ export default function Profile() {
                       name="high_school_graduation_year"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>High School Graduation Year</FormLabel>
+                          <FormLabel>
+                            High School Graduation Year
+                            {form.watch("applying_to") === "Undergraduate" && <span className="text-red-500">*</span>}
+                          </FormLabel>
                           <FormControl>
                             <Input 
                               type="number" 
@@ -1845,6 +1957,7 @@ export default function Profile() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
+                          <SelectItem value="not_specified">Not specified</SelectItem>
                           <SelectItem value="Small (< 2,000 students)">Small (&lt; 2,000 students)</SelectItem>
                           <SelectItem value="Medium (2,000 - 15,000 students)">Medium (2,000 - 15,000 students)</SelectItem>
                           <SelectItem value="Large (> 15,000 students)">Large (&gt; 15,000 students)</SelectItem>
@@ -1867,6 +1980,7 @@ export default function Profile() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
+                          <SelectItem value="not_specified">Not specified</SelectItem>
                           <SelectItem value="Urban">Urban</SelectItem>
                           <SelectItem value="Suburban">Suburban</SelectItem>
                           <SelectItem value="Rural">Rural</SelectItem>
@@ -1879,30 +1993,51 @@ export default function Profile() {
                 />
               </div>
 
-              <FormField
-                control={form.control}
-                name="geographic_preference"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Geographic Preference</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
+              {/* Geographic Preferences Section */}
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-lg font-semibold mb-2">Geographic Preferences</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-4">
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium text-gray-700">Country Preference</label>
+                      <Select value={newGeographicPreference} onValueChange={setNewGeographicPreference}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select geographic preference" />
+                          <SelectValue placeholder="Select a country preference" />
                         </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="In-state">In-state</SelectItem>
-                        <SelectItem value="Out-of-state">Out-of-state</SelectItem>
-                        <SelectItem value="Northeast">Northeast</SelectItem>
-                        <SelectItem value="West Coast">West Coast</SelectItem>
-                        <SelectItem value="No Preference">No Preference</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
+                        <SelectContent>
+                          <SelectItem value="US">US</SelectItem>
+                          <SelectItem value="UK">UK</SelectItem>
+                          <SelectItem value="Canada">Canada</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-end">
+                      <Button type="button" onClick={addGeographicPreference} size="sm" className="w-full">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Preference
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+                
+                {geographicPreferences.length > 0 && (
+                  <div className="space-y-2">
+                    {geographicPreferences.map((preference) => (
+                      <div key={preference.id} className="flex items-center justify-between p-3 bg-muted rounded-md">
+                        <span>{preference.preference}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => preference.id && deleteGeographicPreference(preference.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
                 )}
-              />
+              </div>
 
               <FormField
                 control={form.control}
@@ -1955,6 +2090,7 @@ export default function Profile() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
+                          <SelectItem value="not_specified">Not specified</SelectItem>
                           <SelectItem value="< $20,000">&lt; $20,000</SelectItem>
                           <SelectItem value="$20,000 - $35,000">$20,000 - $35,000</SelectItem>
                           <SelectItem value="$35,000 - $50,000">$35,000 - $50,000</SelectItem>
@@ -1979,6 +2115,7 @@ export default function Profile() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
+                          <SelectItem value="not_specified">Not specified</SelectItem>
                           <SelectItem value="Crucial">Crucial</SelectItem>
                           <SelectItem value="Very Important">Very Important</SelectItem>
                           <SelectItem value="Somewhat Important">Somewhat Important</SelectItem>

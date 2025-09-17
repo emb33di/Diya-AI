@@ -41,7 +41,6 @@ const PROFILE_FIELDS = [
   // College Preferences (optional for basic completion)
   { key: 'ideal_college_size', category: 'College Preferences', weight: 0 },
   { key: 'ideal_college_setting', category: 'College Preferences', weight: 0 },
-  { key: 'geographic_preference', category: 'College Preferences', weight: 0 },
   { key: 'must_haves', category: 'College Preferences', weight: 0 },
   { key: 'deal_breakers', category: 'College Preferences', weight: 0 },
   
@@ -55,6 +54,7 @@ const PROFILE_FIELDS = [
 const ADDITIONAL_FIELDS = [
   { key: 'has_sat_scores', category: 'Test Scores', weight: 0 },
   { key: 'has_act_scores', category: 'Test Scores', weight: 0 },
+  { key: 'has_geographic_preferences', category: 'College Preferences', weight: 0 },
 ];
 
 export const useProfileCompletion = () => {
@@ -90,7 +90,7 @@ export const useProfileCompletion = () => {
       }
 
       // Load all data in parallel with timeouts
-      const [profileResult, satScoresResult, actScoresResult] = await Promise.allSettled([
+      const [profileResult, satScoresResult, actScoresResult, geographicPreferencesResult] = await Promise.allSettled([
         Promise.race([
           supabase
             .from('user_profiles')
@@ -105,6 +105,10 @@ export const useProfileCompletion = () => {
         ]),
         Promise.race([
           supabase.from('act_scores').select('id').eq('user_id', user.id),
+          createTimeoutPromise(3000)
+        ]),
+        Promise.race([
+          supabase.from('geographic_preferences').select('id').eq('user_id', user.id),
           createTimeoutPromise(3000)
         ])
       ]);
@@ -123,6 +127,7 @@ export const useProfileCompletion = () => {
       // Handle test scores data
       const hasSatScores = satScoresResult.status === 'fulfilled' && (satScoresResult.value.data?.length || 0) > 0;
       const hasActScores = actScoresResult.status === 'fulfilled' && (actScoresResult.value.data?.length || 0) > 0;
+      const hasGeographicPreferences = geographicPreferencesResult.status === 'fulfilled' && (geographicPreferencesResult.value.data?.length || 0) > 0;
 
       // Calculate completion for main profile fields
       let completedFields = 0;
@@ -136,7 +141,7 @@ export const useProfileCompletion = () => {
       
       PROFILE_FIELDS.forEach(field => {
         // Skip fields that aren't relevant to the user's application type
-        if (applyingTo === "Undergraduate Colleges") {
+        if (applyingTo === "Undergraduate") {
           // For undergraduate, skip graduate-specific fields
           if (['masters_field_of_focus', 'college_name', 'college_graduation_year', 'college_gpa', 'test_type', 'test_score'].includes(field.key)) {
             return;
@@ -166,7 +171,7 @@ export const useProfileCompletion = () => {
       });
 
       // Add completion for additional fields (only for undergraduate applicants)
-      if (applyingTo === "Undergraduate Colleges") {
+      if (applyingTo === "Undergraduate") {
         ADDITIONAL_FIELDS.forEach(field => {
           totalWeight += field.weight;
           let isCompleted = false;
@@ -177,6 +182,9 @@ export const useProfileCompletion = () => {
               break;
             case 'has_act_scores':
               isCompleted = hasActScores;
+              break;
+            case 'has_geographic_preferences':
+              isCompleted = hasGeographicPreferences;
               break;
           }
           

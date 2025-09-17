@@ -1855,7 +1855,7 @@ const Onboarding = () => {
                 <Info className="h-5 w-5 text-orange-500" />
                 Skip Onboarding?
               </DialogTitle>
-              <DialogDescription className="space-y-3">
+              <div className="space-y-3 text-sm text-muted-foreground">
                 <p>Are you sure you want to skip the onboarding conversation? This will mark onboarding as complete and redirect you to your school list.</p>
                 
                 <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 space-y-2">
@@ -1865,7 +1865,7 @@ const Onboarding = () => {
                     <li>• Diya won't have knowledge about your profile, so application reviews may have limited insights</li>
                   </ul>
                 </div>
-              </DialogDescription>
+              </div>
             </DialogHeader>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setShowSkipConfirmation(false)}>
