@@ -1071,6 +1071,19 @@ const Essays = () => {
                           const essay = newEssays.find(e => e.id === selectedNewEssayId);
                           return essay?.prompt_id || undefined;
                         })()}
+                        wordLimit={(() => {
+                          const essay = newEssays.find(e => e.id === selectedNewEssayId);
+                          const selectedPrompt = essayPrompts.find(p => p.id === essay?.prompt_id);
+                          
+                          // Use prompt's word limit first, then essay's, then default
+                          if (selectedPrompt?.word_limit && selectedPrompt.word_limit !== 'No limit') {
+                            return parseInt(selectedPrompt.word_limit);
+                          }
+                          if (essay?.word_limit && essay.word_limit !== 'No limit') {
+                            return parseInt(essay.word_limit);
+                          }
+                          return 650; // Default word limit
+                        })()}
                         onPromptChange={async (promptId) => {
                           // Handle prompt change - find or create essay for the new prompt
                           const newPrompt = essayPrompts.find(p => p.id === promptId);
@@ -1144,7 +1157,19 @@ const Essays = () => {
                             }
                           }
                         }}
-                        wordLimit={650}
+                        wordLimit={(() => {
+                          const essay = newEssays.find(e => e.id === selectedNewEssayId);
+                          const selectedPrompt = essayPrompts.find(p => p.id === essay?.prompt_id);
+                          
+                          // Use prompt's word limit first, then essay's, then default
+                          if (selectedPrompt?.word_limit && selectedPrompt.word_limit !== 'No limit') {
+                            return parseInt(selectedPrompt.word_limit);
+                          }
+                          if (essay?.word_limit && essay.word_limit !== 'No limit') {
+                            return parseInt(essay.word_limit);
+                          }
+                          return 650; // Default word limit
+                        })()}
                       />
                     ) : (
                       <Textarea 
@@ -1258,6 +1283,19 @@ const Essays = () => {
                     const essay = newEssays.find(e => e.id === selectedNewEssayId);
                     return essay?.prompt_id || undefined;
                   })()}
+                  wordLimit={(() => {
+                    const essay = newEssays.find(e => e.id === selectedNewEssayId);
+                    const selectedPrompt = essayPrompts.find(p => p.id === essay?.prompt_id);
+                    
+                    // Use prompt's word limit first, then essay's, then default
+                    if (selectedPrompt?.word_limit && selectedPrompt.word_limit !== 'No limit') {
+                      return parseInt(selectedPrompt.word_limit);
+                    }
+                    if (essay?.word_limit && essay.word_limit !== 'No limit') {
+                      return parseInt(essay.word_limit);
+                    }
+                    return 650; // Default word limit
+                  })()}
                   onPromptChange={async (promptId) => {
                     // Handle prompt change - find or create essay for the new prompt
                     const newPrompt = essayPrompts.find(p => p.id === promptId);
@@ -1333,6 +1371,12 @@ const Essays = () => {
                   }}
                   wordLimit={(() => {
                     const essay = newEssays.find(e => e.id === selectedNewEssayId);
+                    const selectedPrompt = essayPrompts.find(p => p.id === essay?.prompt_id);
+                    
+                    // Use prompt's word limit first, then essay's, then default
+                    if (selectedPrompt?.word_limit && selectedPrompt.word_limit !== 'No limit') {
+                      return parseInt(selectedPrompt.word_limit);
+                    }
                     if (essay?.word_limit && essay.word_limit !== 'No limit') {
                       return parseInt(essay.word_limit);
                     }
