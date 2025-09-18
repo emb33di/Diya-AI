@@ -38,10 +38,22 @@ export class SemanticDocumentService {
     userId: string,
     metadata?: any
   ): Promise<SemanticDocument> {
+    // Create the first empty block ready for typing
+    const firstBlock: DocumentBlock = {
+      id: crypto.randomUUID(),
+      type: 'paragraph',
+      content: '',
+      position: 0,
+      annotations: [],
+      isImmutable: false, // Allow editing
+      createdAt: new Date(),
+      lastUserEdit: undefined
+    };
+
     const document: SemanticDocument = {
       id: crypto.randomUUID(),
       title,
-      blocks: [],
+      blocks: [firstBlock], // Start with one empty block ready for typing
       metadata: {
         essayId,
         author: userId,
@@ -88,10 +100,24 @@ export class SemanticDocumentService {
       throw new Error(`Failed to load document: ${error.message}`);
     }
 
+    // Load associated annotations (non-blocking - if it fails, we still return the document)
+    let annotations: Annotation[] = [];
+    try {
+      annotations = await this.loadAnnotationsForDocument(documentId);
+    } catch (error) {
+      console.warn('Failed to load annotations, continuing without them:', error);
+    }
+
+    // Attach annotations to their respective blocks
+    const blocks = (data.blocks || []).map(block => ({
+      ...block,
+      annotations: annotations.filter(annotation => annotation.targetBlockId === block.id)
+    }));
+
     return {
       id: data.id,
       title: data.title,
-      blocks: data.blocks || [],
+      blocks: blocks,
       metadata: data.metadata || {},
       createdAt: new Date(data.created_at),
       updatedAt: new Date(data.updated_at)
@@ -129,10 +155,31 @@ export class SemanticDocumentService {
 
       console.log('Found matching document:', matchingDoc.id, 'for essay:', essayId);
 
+      // Load associated annotations (non-blocking - if it fails, we still return the document)
+      let annotations: Annotation[] = [];
+      try {
+        annotations = await this.loadAnnotationsForDocument(matchingDoc.id);
+      } catch (error) {
+        console.warn('Failed to load annotations, continuing without them:', error);
+      }
+
+      // Attach annotations to their respective blocks
+      const blocks = (matchingDoc.blocks || []).map(block => {
+        const blockAnnotations = annotations.filter(annotation => annotation.targetBlockId === block.id);
+        console.log(`Block ${block.id} has ${blockAnnotations.length} annotations:`, blockAnnotations);
+        return {
+          ...block,
+          annotations: blockAnnotations
+        };
+      });
+      
+      console.log(`Total annotations loaded: ${annotations.length}`);
+      console.log(`Total blocks: ${blocks.length}`);
+
       return {
         id: matchingDoc.id,
         title: matchingDoc.title,
-        blocks: matchingDoc.blocks || [],
+        blocks: blocks,
         metadata: matchingDoc.metadata || {},
         createdAt: new Date(matchingDoc.created_at),
         updatedAt: new Date(matchingDoc.updated_at)
@@ -140,6 +187,44 @@ export class SemanticDocumentService {
     } catch (error) {
       console.error('Error in loadDocumentByEssayId:', error);
       return null;
+    }
+  }
+
+  /**
+   * Load annotations for a document from the semantic_annotations table
+   */
+  private async loadAnnotationsForDocument(documentId: string): Promise<Annotation[]> {
+    try {
+      console.log(`Loading annotations for document: ${documentId}`);
+      const { data, error } = await supabase
+        .from('semantic_annotations')
+        .select('*')
+        .eq('document_id', documentId)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('Error loading annotations:', error);
+        return [];
+      }
+
+      console.log(`Found ${data?.length || 0} annotations in database:`, data);
+      return (data || []).map(annotation => ({
+        id: annotation.id,
+        type: annotation.type as AnnotationType,
+        author: annotation.author as 'ai' | 'user',
+        content: annotation.content,
+        targetBlockId: annotation.block_id,
+        targetText: annotation.target_text,
+        createdAt: new Date(annotation.created_at),
+        updatedAt: new Date(annotation.updated_at),
+        resolved: annotation.resolved || false,
+        resolvedAt: annotation.resolved_at ? new Date(annotation.resolved_at) : undefined,
+        resolvedBy: annotation.resolved_by,
+        metadata: annotation.metadata
+      }));
+    } catch (error) {
+      console.error('Error loading annotations for document:', documentId, error);
+      return [];
     }
   }
 
@@ -754,7 +839,7 @@ export class SemanticDocumentService {
           category: grammarComment.comment_category || 'inline',
           subcategory: grammarComment.comment_subcategory || 'grammar',
           commentNature: 'improvement',
-          grammarType: grammarComment.grammar_type || 'general'
+          commentCategory: 'grammar'
         }
       };
 

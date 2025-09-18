@@ -34,17 +34,20 @@ import {
 import AICommentsLoadingPane, { AI_COMMENTS_LOADING_STEPS } from './AICommentsLoadingPane';
 import GrammarLoadingPane, { GRAMMAR_LOADING_STEPS } from './GrammarLoadingPane';
 import CommentSidebar from './CommentSidebar';
+import './SemanticHighlighting.css';
 
 interface CleanSemanticEditorProps {
   documentId?: string;
   essayId: string;
   title: string;
   initialContent?: string;
+  wordLimit?: number;
   onDocumentChange?: (document: SemanticDocument) => void;
   onAnnotationSelect?: (annotation: Annotation | null) => void;
   onSaveStatusChange?: (isAutoSaving: boolean, lastSaved: Date | null) => void;
   showCommentSidebar?: boolean;
   selectedAnnotationId?: string;
+  onHideSidebar?: () => void;
   className?: string;
 }
 
@@ -53,11 +56,13 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
   essayId,
   title,
   initialContent = '',
+  wordLimit = 650,
   onDocumentChange,
   onAnnotationSelect,
   onSaveStatusChange,
   showCommentSidebar = false,
   selectedAnnotationId,
+  onHideSidebar,
   className = ''
 }) => {
   // Simple, clean state management
@@ -140,6 +145,18 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
             ...prev,
             document: existingDoc
           }));
+          
+          // If the document has only empty blocks, start editing the first one
+          const hasContent = existingDoc.blocks.some(block => block.content.trim().length > 0);
+          if (!hasContent && existingDoc.blocks.length > 0) {
+            setTimeout(() => {
+              setEditingBlockId(existingDoc.blocks[0].id);
+              const textarea = textareaRefs.current[existingDoc.blocks[0].id];
+              if (textarea) {
+                textarea.focus();
+              }
+            }, 100);
+          }
         } else if (!initialContent) {
           // Create a new document with a single empty block
           addNewBlock();
@@ -175,9 +192,9 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
       content: '',
       position: newPosition,
       annotations: [],
-      isImmutable: true,
+      isImmutable: newPosition > 0, // First block (position 0) is editable, others are immutable
       createdAt: new Date(),
-      lastUserEdit: new Date()
+      lastUserEdit: newPosition === 0 ? undefined : new Date() // First block hasn't been edited yet
     };
 
     setState(prev => {
@@ -211,6 +228,21 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
 
     return newBlock;
   }, [state.document.blocks]);
+
+  // Ensure there's always at least one block for editing
+  useEffect(() => {
+    if (state.document.blocks.length === 0 && !initialContent) {
+      const newBlock = addNewBlock();
+      // Automatically start editing the first block
+      setTimeout(() => {
+        setEditingBlockId(newBlock.id);
+        const textarea = textareaRefs.current[newBlock.id];
+        if (textarea) {
+          textarea.focus();
+        }
+      }, 100);
+    }
+  }, [state.document.blocks.length, initialContent, addNewBlock]);
 
   // Delete a block
   const deleteBlock = useCallback((blockId: string) => {
@@ -293,11 +325,48 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     const block = state.document.blocks.find(b => b.id === blockId);
     if (!block) return;
 
-    // Enter key: create new block
+    // Enter key: split text at cursor position or create new block
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      const newBlock = addNewBlock(block.position + 1);
-      setTimeout(() => startEditingBlock(newBlock.id), 50);
+      
+      const textarea = textareaRefs.current[blockId];
+      if (textarea) {
+        const cursorPosition = textarea.selectionStart;
+        const currentContent = block.content;
+        
+        // Split the text at cursor position
+        const textBeforeCursor = currentContent.substring(0, cursorPosition);
+        const textAfterCursor = currentContent.substring(cursorPosition);
+        
+        // Update current block with text before cursor
+        updateBlockContent(blockId, textBeforeCursor);
+        
+        // Create new block with text after cursor
+        const newBlock = addNewBlock(block.position + 1);
+        if (textAfterCursor) {
+          // Update the new block with the text after cursor
+          setTimeout(() => {
+            updateBlockContent(newBlock.id, textAfterCursor);
+            startEditingBlock(newBlock.id);
+            
+            // Set cursor to beginning of new block
+            const newTextarea = textareaRefs.current[newBlock.id];
+            if (newTextarea) {
+              setTimeout(() => {
+                newTextarea.setSelectionRange(0, 0);
+                newTextarea.focus();
+              }, 10);
+            }
+          }, 50);
+        } else {
+          // If no text after cursor, just start editing the new empty block
+          setTimeout(() => startEditingBlock(newBlock.id), 50);
+        }
+      } else {
+        // Fallback to original behavior if textarea ref is not available
+        const newBlock = addNewBlock(block.position + 1);
+        setTimeout(() => startEditingBlock(newBlock.id), 50);
+      }
     }
 
     // Backspace on empty block: delete block
@@ -515,6 +584,117 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     }));
   }, []);
 
+  // Render highlighted text with annotations
+  const renderHighlightedText = (text: string, annotations: Annotation[]) => {
+    if (!text || annotations.length === 0) {
+      return text;
+    }
+
+    // Create highlight segments for annotations with targetText
+    const segments: Array<{ start: number; end: number; annotation: Annotation }> = [];
+    
+    annotations.forEach(annotation => {
+      if (annotation.targetText && !annotation.resolved) {
+        // Find all occurrences of the target text (in case it appears multiple times)
+        let index = text.indexOf(annotation.targetText);
+        let searchStart = 0;
+        
+        while (index !== -1) {
+          segments.push({
+            start: index,
+            end: index + annotation.targetText.length,
+            annotation
+          });
+          
+          // Look for next occurrence
+          searchStart = index + 1;
+          index = text.indexOf(annotation.targetText, searchStart);
+          
+          // Only highlight the first occurrence to avoid confusion
+          break;
+        }
+      }
+    });
+
+    // Sort segments by start position, then by end position (longer segments first for overlaps)
+    segments.sort((a, b) => {
+      if (a.start !== b.start) {
+        return a.start - b.start;
+      }
+      return b.end - a.end; // Longer segments first
+    });
+
+    // Remove overlapping segments (keep the first/longest one)
+    const nonOverlappingSegments: typeof segments = [];
+    for (const segment of segments) {
+      const hasOverlap = nonOverlappingSegments.some(existing => 
+        (segment.start < existing.end && segment.end > existing.start)
+      );
+      
+      if (!hasOverlap) {
+        nonOverlappingSegments.push(segment);
+      }
+    }
+
+    // If no segments to highlight, return plain text
+    if (nonOverlappingSegments.length === 0) {
+      return text;
+    }
+
+    // Build the highlighted text
+    const parts: React.ReactNode[] = [];
+    let lastEnd = 0;
+
+    nonOverlappingSegments.forEach((segment, index) => {
+      // Add text before the highlight
+      if (segment.start > lastEnd) {
+        parts.push(
+          <span key={`text-${index}-before`}>
+            {text.substring(lastEnd, segment.start)}
+          </span>
+        );
+      }
+
+      // Add the highlighted segment
+      const isSelected = selectedAnnotationId === segment.annotation.id;
+      const highlightClass = `inline-highlight ${getHighlightClass(segment.annotation)} ${isSelected ? 'selected' : ''}`;
+      
+      parts.push(
+        <span
+          key={`highlight-${segment.annotation.id}`}
+          className={highlightClass}
+          onClick={(e) => {
+            e.stopPropagation();
+            onAnnotationSelect?.(segment.annotation);
+          }}
+          title={`${segment.annotation.type}: ${segment.annotation.content}`}
+        >
+          {text.substring(segment.start, segment.end)}
+        </span>
+      );
+
+      lastEnd = Math.max(lastEnd, segment.end);
+    });
+
+    // Add remaining text after the last highlight
+    if (lastEnd < text.length) {
+      parts.push(
+        <span key="text-after">
+          {text.substring(lastEnd)}
+        </span>
+      );
+    }
+
+    return <>{parts}</>;
+  };
+
+  // Get CSS class for highlight based on annotation type and metadata
+  const getHighlightClass = (annotation: Annotation) => {
+    const baseClass = `highlight-${annotation.type}`;
+    const agentClass = annotation.metadata?.agentType ? `highlight-agent-${annotation.metadata.agentType}` : '';
+    return `${baseClass} ${agentClass}`.trim();
+  };
+
   // Render a single block
   const renderBlock = (block: DocumentBlock) => {
     const isEditing = editingBlockId === block.id;
@@ -591,7 +771,9 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
               lineHeight: '1.6',
             }}
           >
-            {block.content || (
+            {block.content ? (
+              renderHighlightedText(block.content, block.annotations)
+            ) : (
               <span className="text-gray-400 italic">
                 {block.position === 0 ? "Start writing here..." : "Click to add content..."}
               </span>
@@ -614,45 +796,25 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
   return (
     <div className={`clean-semantic-editor ${className} ${showCommentSidebar ? 'flex' : ''}`}>
       {/* Main Editor Area */}
-      <div className={`${showCommentSidebar ? 'flex-1 pr-6' : 'w-full'}`}>
+      <div className={`${showCommentSidebar ? 'flex-1 pr-4' : 'w-full'}`}>
         {/* Editor Content */}
         <div className="relative pl-12">
-          {state.document.blocks.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-500 mb-4">No content yet. Start writing!</p>
-              <Button onClick={() => addNewBlock()}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add First Block
-              </Button>
-            </div>
-          ) : (
-            <>
-              {/* Render all blocks */}
-              {state.document.blocks
-                .sort((a, b) => a.position - b.position)
-                .map(renderBlock)}
+          {/* Render all blocks */}
+          {state.document.blocks
+            .sort((a, b) => a.position - b.position)
+            .map(renderBlock)}
 
-              {/* Add new block at the end */}
-              <div className="mt-4">
-                <Button
-                  variant="ghost"
-                  onClick={() => addNewBlock()}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add new paragraph
-                </Button>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Status Bar */}
-        <div className="mt-6 pt-4 border-t text-sm text-gray-500 flex justify-between">
-          <span>{state.document.blocks.length} blocks</span>
-          <span>
-            {state.document.blocks.reduce((total, block) => total + block.content.split(' ').filter(w => w.length > 0).length, 0)} words
-          </span>
+          {/* Add new block at the end */}
+          <div className="mt-4">
+            <Button
+              variant="ghost"
+              onClick={() => addNewBlock()}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add new paragraph
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -664,6 +826,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
           onAnnotationDelete={deleteAnnotation}
           onAnnotationSelect={onAnnotationSelect}
           selectedAnnotationId={selectedAnnotationId}
+          onHideSidebar={onHideSidebar}
         />
       )}
 

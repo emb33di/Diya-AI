@@ -8,6 +8,12 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+// Initialize Supabase client
+const supabase = createClient(
+  Deno.env.get('SUPABASE_URL') ?? '',
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+);
+
 // Types for semantic document system
 interface DocumentBlock {
   id: string;
@@ -69,23 +75,59 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 // Note: This function now uses specialized agents instead of a single generic prompt
 
 serve(async (req) => {
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS, GET',
+  };
+
   try {
-    // Handle CORS
+    // Handle CORS preflight
     if (req.method === 'OPTIONS') {
       return new Response(null, {
         status: 200,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        },
+        headers: corsHeaders,
       });
     }
 
     if (req.method !== 'POST') {
       return new Response(JSON.stringify({ error: 'Method not allowed' }), {
         status: 405,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...corsHeaders
+        },
+      });
+    }
+
+    // Get user from Authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: 'Authorization header required' 
+      }), {
+        status: 401,
+        headers: { 
+          'Content-Type': 'application/json',
+          ...corsHeaders
+        },
+      });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: 'Invalid authentication token' 
+      }), {
+        status: 401,
+        headers: { 
+          'Content-Type': 'application/json',
+          ...corsHeaders
+        },
       });
     }
 
@@ -99,30 +141,52 @@ serve(async (req) => {
         error: 'Invalid request: documentId and blocks are required' 
       }), {
         status: 400,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...corsHeaders
+        },
       });
     }
 
     // Check if AI comments already exist for this document
     const { data: existingComments } = await supabase
       .from('semantic_annotations')
-      .select('id')
+      .select('*')
       .eq('document_id', documentId)
       .eq('author', 'ai');
 
     if (existingComments && existingComments.length > 0) {
+      // Convert existing comments to semantic format
+      const semanticComments: SemanticComment[] = existingComments.map(comment => ({
+        targetBlockId: comment.block_id,
+        targetText: comment.target_text,
+        comment: comment.content,
+        type: comment.type,
+        confidence: comment.metadata?.confidence || 0.8,
+        metadata: comment.metadata
+      }));
+
       return new Response(JSON.stringify({
-        success: false,
-        error: 'AI comments already exist for this document'
+        success: true,
+        comments: semanticComments,
+        message: `Found ${semanticComments.length} existing AI comments`,
+        metadata: {
+          processingTime: 0,
+          blocksAnalyzed: blocks.length,
+          commentsGenerated: semanticComments.length
+        }
       }), {
-        status: 409,
-        headers: { 'Content-Type': 'application/json' },
+        status: 200,
+        headers: { 
+          'Content-Type': 'application/json',
+          ...corsHeaders
+        },
       });
     }
 
     // Generate AI comments using specialized agents
     const startTime = Date.now();
-    const comments = await generateSpecializedSemanticComments(blocks, context, options);
+    const comments = await generateSpecializedSemanticComments(blocks, context, options, documentId, user.id);
     const processingTime = Date.now() - startTime;
 
     // Store comments in database
@@ -155,7 +219,10 @@ serve(async (req) => {
           error: 'Failed to store AI comments'
         }), {
           status: 500,
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            ...corsHeaders
+          },
         });
       }
     }
@@ -175,7 +242,7 @@ serve(async (req) => {
       status: 200,
       headers: { 
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
+        ...corsHeaders
       },
     });
 
@@ -189,7 +256,7 @@ serve(async (req) => {
       status: 500,
       headers: { 
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
+        ...corsHeaders
       },
     });
   }
@@ -201,7 +268,9 @@ serve(async (req) => {
 async function generateSpecializedSemanticComments(
   blocks: DocumentBlock[], 
   context: any, 
-  options?: any
+  options?: any,
+  documentId?: string,
+  userId?: string
 ): Promise<SemanticComment[]> {
   
   console.log(`Generating specialized semantic comments for ${blocks.length} blocks`);
@@ -219,9 +288,9 @@ async function generateSpecializedSemanticComments(
     const [toneResult, clarityResult, strengthsResult, weaknessesResult, bigPictureResult] = await Promise.allSettled([
       callSemanticToneAgent(blocks, context),
       callSemanticClarityAgent(blocks, context),
-      callSemanticStrengthsAgent(blocks, context),
-      callSemanticWeaknessesAgent(blocks, context),
-      callSemanticBigPictureAgent(blocks, context)
+      callSemanticStrengthsAgent(blocks, context, documentId, userId),
+      callSemanticWeaknessesAgent(blocks, context, documentId, userId),
+      callSemanticBigPictureAgent(blocks, context, documentId, userId)
     ]);
 
     // Process tone agent results
@@ -331,7 +400,7 @@ async function callSemanticClarityAgent(blocks: DocumentBlock[], context: any): 
 /**
  * Call strengths agent adapted for semantic blocks
  */
-async function callSemanticStrengthsAgent(blocks: DocumentBlock[], context: any): Promise<any> {
+async function callSemanticStrengthsAgent(blocks: DocumentBlock[], context: any, documentId?: string, userId?: string): Promise<any> {
   const essayContent = blocks.map(b => b.content).join('\n\n');
   
   const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/generate-essay-comments-orchestrator`, {
@@ -341,8 +410,10 @@ async function callSemanticStrengthsAgent(blocks: DocumentBlock[], context: any)
       'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
     },
     body: JSON.stringify({
+      essayId: documentId || 'semantic-document',
       essayContent,
       essayPrompt: context.prompt,
+      userId: userId || 'semantic-user',
       agentTypes: ['strengths']
     })
   });
@@ -357,7 +428,7 @@ async function callSemanticStrengthsAgent(blocks: DocumentBlock[], context: any)
 /**
  * Call weaknesses agent adapted for semantic blocks
  */
-async function callSemanticWeaknessesAgent(blocks: DocumentBlock[], context: any): Promise<any> {
+async function callSemanticWeaknessesAgent(blocks: DocumentBlock[], context: any, documentId?: string, userId?: string): Promise<any> {
   const essayContent = blocks.map(b => b.content).join('\n\n');
   
   const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/generate-essay-comments-orchestrator`, {
@@ -367,8 +438,10 @@ async function callSemanticWeaknessesAgent(blocks: DocumentBlock[], context: any
       'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
     },
     body: JSON.stringify({
+      essayId: documentId || 'semantic-document',
       essayContent,
       essayPrompt: context.prompt,
+      userId: userId || 'semantic-user',
       agentTypes: ['weaknesses']
     })
   });
@@ -383,7 +456,7 @@ async function callSemanticWeaknessesAgent(blocks: DocumentBlock[], context: any
 /**
  * Call big-picture agent adapted for semantic blocks
  */
-async function callSemanticBigPictureAgent(blocks: DocumentBlock[], context: any): Promise<any> {
+async function callSemanticBigPictureAgent(blocks: DocumentBlock[], context: any, documentId?: string, userId?: string): Promise<any> {
   const essayContent = blocks.map(b => b.content).join('\n\n');
   
   const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/generate-essay-comments-orchestrator`, {
@@ -393,8 +466,10 @@ async function callSemanticBigPictureAgent(blocks: DocumentBlock[], context: any
       'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
     },
     body: JSON.stringify({
+      essayId: documentId || 'semantic-document',
       essayContent,
       essayPrompt: context.prompt,
+      userId: userId || 'semantic-user',
       agentTypes: ['big-picture']
     })
   });

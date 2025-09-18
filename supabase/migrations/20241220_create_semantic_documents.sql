@@ -54,10 +54,12 @@ END;
 $$ language 'plpgsql';
 
 -- Create triggers for updated_at
+DROP TRIGGER IF EXISTS update_semantic_documents_updated_at ON semantic_documents;
 CREATE TRIGGER update_semantic_documents_updated_at 
   BEFORE UPDATE ON semantic_documents 
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_semantic_annotations_updated_at ON semantic_annotations;
 CREATE TRIGGER update_semantic_annotations_updated_at 
   BEFORE UPDATE ON semantic_annotations 
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -70,6 +72,7 @@ ALTER TABLE semantic_annotations ENABLE ROW LEVEL SECURITY;
 -- You may need to adjust these based on your actual user authentication setup
 
 -- Policy for semantic_documents - users can only access their own documents
+DROP POLICY IF EXISTS "Users can view their own semantic documents" ON semantic_documents;
 CREATE POLICY "Users can view their own semantic documents" ON semantic_documents
   FOR SELECT USING (
     EXISTS (
@@ -79,6 +82,7 @@ CREATE POLICY "Users can view their own semantic documents" ON semantic_document
     )
   );
 
+DROP POLICY IF EXISTS "Users can insert their own semantic documents" ON semantic_documents;
 CREATE POLICY "Users can insert their own semantic documents" ON semantic_documents
   FOR INSERT WITH CHECK (
     EXISTS (
@@ -88,6 +92,7 @@ CREATE POLICY "Users can insert their own semantic documents" ON semantic_docume
     )
   );
 
+DROP POLICY IF EXISTS "Users can update their own semantic documents" ON semantic_documents;
 CREATE POLICY "Users can update their own semantic documents" ON semantic_documents
   FOR UPDATE USING (
     EXISTS (
@@ -97,6 +102,7 @@ CREATE POLICY "Users can update their own semantic documents" ON semantic_docume
     )
   );
 
+DROP POLICY IF EXISTS "Users can delete their own semantic documents" ON semantic_documents;
 CREATE POLICY "Users can delete their own semantic documents" ON semantic_documents
   FOR DELETE USING (
     EXISTS (
@@ -107,6 +113,7 @@ CREATE POLICY "Users can delete their own semantic documents" ON semantic_docume
   );
 
 -- Policy for semantic_annotations - users can only access annotations for their documents
+DROP POLICY IF EXISTS "Users can view annotations for their documents" ON semantic_annotations;
 CREATE POLICY "Users can view annotations for their documents" ON semantic_annotations
   FOR SELECT USING (
     EXISTS (
@@ -117,6 +124,7 @@ CREATE POLICY "Users can view annotations for their documents" ON semantic_annot
     )
   );
 
+DROP POLICY IF EXISTS "Users can insert annotations for their documents" ON semantic_annotations;
 CREATE POLICY "Users can insert annotations for their documents" ON semantic_annotations
   FOR INSERT WITH CHECK (
     EXISTS (
@@ -127,6 +135,7 @@ CREATE POLICY "Users can insert annotations for their documents" ON semantic_ann
     )
   );
 
+DROP POLICY IF EXISTS "Users can update annotations for their documents" ON semantic_annotations;
 CREATE POLICY "Users can update annotations for their documents" ON semantic_annotations
   FOR UPDATE USING (
     EXISTS (
@@ -137,6 +146,7 @@ CREATE POLICY "Users can update annotations for their documents" ON semantic_ann
     )
   );
 
+DROP POLICY IF EXISTS "Users can delete annotations for their documents" ON semantic_annotations;
 CREATE POLICY "Users can delete annotations for their documents" ON semantic_annotations
   FOR DELETE USING (
     EXISTS (

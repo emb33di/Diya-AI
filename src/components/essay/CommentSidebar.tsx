@@ -23,7 +23,8 @@ import {
   TrendingUp,
   FileText,
   CheckSquare,
-  Target
+  Target,
+  SidebarClose
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -33,6 +34,7 @@ interface CommentSidebarProps {
   onAnnotationDelete?: (annotationId: string) => void;
   onAnnotationSelect?: (annotation: Annotation | null) => void;
   selectedAnnotationId?: string;
+  onHideSidebar?: () => void;
   className?: string;
 }
 
@@ -48,48 +50,13 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
   onAnnotationDelete,
   onAnnotationSelect,
   selectedAnnotationId,
+  onHideSidebar,
   className
 }) => {
   const [expandedCategories, setExpandedCategories] = useState<Set<CommentCategory>>(
     new Set(['overall-analysis', 'tone', 'clarity', 'strengths', 'areas-for-improvement', 'paragraph-quality', 'grammar'])
   );
   const [activeTab, setActiveTab] = useState<'all' | 'unresolved'>('unresolved');
-
-  // Group comments by category
-  const groupedComments = useMemo(() => {
-    const allComments: GroupedComment[] = [];
-    
-    blocks.forEach((block, blockIndex) => {
-      block.annotations.forEach(annotation => {
-        // Skip resolved comments if we're only showing unresolved
-        if (activeTab === 'unresolved' && annotation.resolved) return;
-        
-        allComments.push({
-          annotation,
-          blockIndex,
-          blockContent: block.content
-        });
-      });
-    });
-
-    // Group by category
-    const grouped: Record<CommentCategory, GroupedComment[]> = {
-      'overall-analysis': [],
-      'tone': [],
-      'clarity': [],
-      'strengths': [],
-      'areas-for-improvement': [],
-      'paragraph-quality': [],
-      'grammar': []
-    };
-
-    allComments.forEach(comment => {
-      const category = determineCommentCategory(comment.annotation);
-      grouped[category].push(comment);
-    });
-
-    return grouped;
-  }, [blocks, activeTab]);
 
   // Determine comment category based on annotation metadata and type
   const determineCommentCategory = (annotation: Annotation): CommentCategory => {
@@ -132,6 +99,46 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
         return 'clarity'; // Default fallback
     }
   };
+
+  // Group comments by category
+  const groupedComments = useMemo(() => {
+    const allComments: GroupedComment[] = [];
+    
+    console.log('CommentSidebar: Processing blocks:', blocks.length);
+    blocks.forEach((block, blockIndex) => {
+      console.log(`Block ${blockIndex} (${block.id}) has ${block.annotations?.length || 0} annotations:`, block.annotations);
+      block.annotations?.forEach(annotation => {
+        // Skip resolved comments if we're only showing unresolved
+        if (activeTab === 'unresolved' && annotation.resolved) return;
+        
+        allComments.push({
+          annotation,
+          blockIndex,
+          blockContent: block.content
+        });
+      });
+    });
+    
+    console.log('CommentSidebar: Total comments found:', allComments.length);
+
+    // Group by category
+    const grouped: Record<CommentCategory, GroupedComment[]> = {
+      'overall-analysis': [],
+      'tone': [],
+      'clarity': [],
+      'strengths': [],
+      'areas-for-improvement': [],
+      'paragraph-quality': [],
+      'grammar': []
+    };
+
+    allComments.forEach(comment => {
+      const category = determineCommentCategory(comment.annotation);
+      grouped[category].push(comment);
+    });
+
+    return grouped;
+  }, [blocks, activeTab]);
 
   const toggleCategoryExpansion = (category: CommentCategory) => {
     const newExpanded = new Set(expandedCategories);
@@ -203,17 +210,28 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
   const totalUnresolvedComments = Object.values(groupedComments).flat().length;
 
   return (
-    <div className={cn("w-80 h-full border-l border-gray-200 bg-white", className)}>
-      <div className="p-4 border-b border-gray-200">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold flex items-center gap-2">
-            <MessageSquare className="h-5 w-5" />
+    <div className={cn("w-64 sm:w-72 max-w-sm h-full border-l border-gray-200 bg-white flex-shrink-0", className)}>
+      <div className="p-3 border-b border-gray-200">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-base font-semibold flex items-center gap-2">
+            <MessageSquare className="h-4 w-4" />
             Comments
+            {totalUnresolvedComments > 0 && (
+              <Badge variant="destructive" className="ml-1 text-xs">
+                {totalUnresolvedComments}
+              </Badge>
+            )}
           </h3>
-          {totalUnresolvedComments > 0 && (
-            <Badge variant="destructive" className="ml-1">
-              {totalUnresolvedComments}
-            </Badge>
+          {onHideSidebar && (
+            <Button
+              onClick={onHideSidebar}
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              title="Hide comments"
+            >
+              <SidebarClose className="h-4 w-4" />
+            </Button>
           )}
         </div>
         
@@ -238,7 +256,7 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
                 return (
                   <Card key={category} className="overflow-hidden border-2 border-indigo-200 shadow-md">
                     <CardHeader 
-                      className="py-3 px-4 cursor-pointer hover:bg-indigo-25 bg-indigo-25"
+                      className="py-2 px-3 cursor-pointer hover:bg-indigo-25 bg-indigo-25"
                       onClick={() => toggleCategoryExpansion(category)}
                     >
                       <CardTitle className="flex items-center justify-between text-sm">
@@ -259,12 +277,12 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
                     
                     {isExpanded && (
                       <CardContent className="p-0">
-                        <div className="space-y-2 p-4 pt-0">
+                        <div className="space-y-2 p-3 pt-0">
                           {comments.map(({ annotation, blockIndex, blockContent }) => (
                             <div
                               key={annotation.id}
                               className={cn(
-                                "p-3 rounded-lg border-l-4 cursor-pointer transition-all duration-200",
+                                "p-2 rounded-lg border-l-4 cursor-pointer transition-all duration-200",
                                 getCategoryColor(category),
                                 selectedAnnotationId === annotation.id && "ring-2 ring-indigo-500 ring-opacity-50",
                                 annotation.resolved && "opacity-60"
@@ -324,10 +342,10 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
                                 </div>
                               </div>
                               
-                              <p className="text-sm text-gray-700 mb-2">{annotation.content}</p>
+                              <p className="text-xs text-gray-700 mb-2 leading-relaxed">{annotation.content}</p>
                               
                               {annotation.targetText && (
-                                <div className="mt-2 p-2 bg-white rounded border text-xs text-gray-600">
+                                <div className="mt-2 p-2 bg-white rounded border text-xs text-gray-600 leading-relaxed">
                                   <strong>Context:</strong> "{annotation.targetText}"
                                 </div>
                               )}
@@ -362,7 +380,7 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
             return (
               <Card key={category} className="overflow-hidden">
                 <CardHeader 
-                  className="py-3 px-4 cursor-pointer hover:bg-gray-50"
+                  className="py-2 px-3 cursor-pointer hover:bg-gray-50"
                   onClick={() => toggleCategoryExpansion(categoryKey)}
                 >
                   <CardTitle className="flex items-center justify-between text-sm">
@@ -383,12 +401,12 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
                 
                 {isExpanded && (
                   <CardContent className="p-0">
-                    <div className="space-y-2 p-4 pt-0">
+                    <div className="space-y-2 p-3 pt-0">
                       {comments.map(({ annotation, blockIndex, blockContent }) => (
                         <div
                           key={annotation.id}
                           className={cn(
-                            "p-3 rounded-lg border-l-4 cursor-pointer transition-all duration-200",
+                            "p-2 rounded-lg border-l-4 cursor-pointer transition-all duration-200",
                             getCategoryColor(categoryKey),
                             selectedAnnotationId === annotation.id && "ring-2 ring-blue-500 ring-opacity-50",
                             annotation.resolved && "opacity-60"
@@ -448,10 +466,10 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
                             </div>
                           </div>
                           
-                          <p className="text-sm text-gray-700 mb-2">{annotation.content}</p>
+                          <p className="text-xs text-gray-700 mb-2 leading-relaxed">{annotation.content}</p>
                           
                           {annotation.targetText && (
-                            <div className="mt-2 p-2 bg-white rounded border text-xs text-gray-600">
+                            <div className="mt-2 p-2 bg-white rounded border text-xs text-gray-600 leading-relaxed">
                               <strong>Context:</strong> "{annotation.targetText}"
                             </div>
                           )}

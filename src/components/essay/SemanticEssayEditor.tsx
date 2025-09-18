@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { 
   FileText, 
@@ -32,14 +33,26 @@ import {
   FileDown,
   FileText as FileTextIcon,
   CheckSquare,
-  Sidebar,
-  SidebarClose
+  Sidebar
 } from 'lucide-react';
+
+interface EssayPrompt {
+  id: string;
+  prompt: string;
+  prompt_number?: string;
+  is_required?: boolean;
+  word_limit?: string;
+  has_draft?: boolean;
+  draft_status?: 'draft' | 'review' | 'final' | 'submitted';
+}
 
 interface SemanticEssayEditorProps {
   essayId: string;
   title: string;
   prompt?: string;
+  prompts?: EssayPrompt[];
+  selectedPromptId?: string;
+  onPromptChange?: (promptId: string) => void;
   wordLimit?: number;
   initialContent?: string;
   onTitleChange?: (newTitle: string) => void;
@@ -51,6 +64,9 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
   essayId,
   title,
   prompt,
+  prompts = [],
+  selectedPromptId,
+  onPromptChange,
   wordLimit = 650,
   initialContent = '',
   onTitleChange,
@@ -352,6 +368,15 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
     });
   };
 
+  // Calculate word count from document blocks
+  const getCurrentWordCount = () => {
+    if (!document) return 0;
+    return document.blocks.reduce((total, block) => {
+      const words = block.content.split(' ').filter(word => word.trim().length > 0);
+      return total + words.length;
+    }, 0);
+  };
+
   // Get document statistics
   const getDocumentStats = () => {
     if (!document) return null;
@@ -449,7 +474,91 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
               {/* Header */}
               <div className="flex items-center justify-between">
                 <div>
-                  <h1 className="text-2xl font-bold">{document.title}</h1>
+                  {/* Prompt Selection Dropdown */}
+                  {prompts.length > 0 ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-3">
+                        <Select value={selectedPromptId || ''} onValueChange={onPromptChange || (() => {})}>
+                          <SelectTrigger className="w-full max-w-md bg-white border-gray-300 shadow-sm">
+                            <SelectValue placeholder="Select a prompt">
+                              {(() => {
+                                const selectedPrompt = prompts.find(p => p.id === selectedPromptId);
+                                return selectedPrompt ? (
+                                  <div className="flex items-center space-x-2">
+                                    <span className="truncate font-semibold text-lg">
+                                      {selectedPrompt.prompt_number ? `Prompt ${selectedPrompt.prompt_number}` : 'Custom Prompt'}
+                                    </span>
+                                    {selectedPrompt.is_required && (
+                                      <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">
+                                        Required
+                                      </Badge>
+                                    )}
+                                    {selectedPrompt.has_draft && (
+                                      <Badge variant="outline" className={`text-xs ${
+                                        selectedPrompt.draft_status === 'draft' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                                        selectedPrompt.draft_status === 'review' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                        selectedPrompt.draft_status === 'final' ? 'bg-green-50 text-green-700 border-green-200' :
+                                        'bg-gray-50 text-gray-700 border-gray-200'
+                                      }`}>
+                                        {selectedPrompt.draft_status || 'Draft'}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="font-semibold text-lg">{document.title}</span>
+                                );
+                              })()}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {prompts.map((prompt) => (
+                              <SelectItem key={prompt.id} value={prompt.id}>
+                                <div className="flex items-center space-x-2 w-full">
+                                  <span className="flex-1 truncate font-medium">
+                                    {prompt.prompt_number ? `Prompt ${prompt.prompt_number}` : 'Custom Prompt'}
+                                  </span>
+                                  <div className="flex items-center space-x-1 ml-2">
+                                    {prompt.is_required && (
+                                      <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">
+                                        Required
+                                      </Badge>
+                                    )}
+                                    {prompt.has_draft && (
+                                      <Badge variant="outline" className={`text-xs ${
+                                        prompt.draft_status === 'draft' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                                        prompt.draft_status === 'review' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                        prompt.draft_status === 'final' ? 'bg-green-50 text-green-700 border-green-200' :
+                                        'bg-gray-50 text-gray-700 border-gray-200'
+                                      }`}>
+                                        {prompt.draft_status || 'Draft'}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      {/* Required Essay Breakdown */}
+                      {(() => {
+                        const requiredPrompts = prompts.filter(p => p.is_required);
+                        const requiredWithDrafts = requiredPrompts.filter(p => p.has_draft);
+                        const requiredBreakdown = `${requiredWithDrafts.length}/${requiredPrompts.length} required`;
+                        
+                        return requiredPrompts.length > 0 && (
+                          <div className="flex items-center space-x-2 text-sm text-gray-500">
+                            <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">
+                              {requiredBreakdown}
+                            </Badge>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  ) : (
+                    <h1 className="text-2xl font-bold">{document.title}</h1>
+                  )}
                   <div className="flex items-center gap-2 text-sm text-gray-500">
                     {stats && (stats.toneComments > 0 || stats.clarityComments > 0 || stats.strengthsComments > 0 || stats.weaknessesComments > 0) && (
                       <>
@@ -499,26 +608,6 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                 </div>
                 
                 <div className="flex gap-2">
-                  <Button
-                    onClick={() => setShowCommentSidebar(!showCommentSidebar)}
-                    variant="outline"
-                    className={cn(
-                      "border-purple-200 hover:bg-purple-50",
-                      showCommentSidebar && "bg-purple-100 text-purple-700"
-                    )}
-                  >
-                    {showCommentSidebar ? (
-                      <SidebarClose className="h-4 w-4 mr-2" />
-                    ) : (
-                      <Sidebar className="h-4 w-4 mr-2" />
-                    )}
-                    Comments
-                    {stats && stats.unresolvedComments > 0 && (
-                      <Badge variant="destructive" className="ml-2 h-5 w-5 p-0 text-xs">
-                        {stats.unresolvedComments}
-                      </Badge>
-                    )}
-                  </Button>
                   <Button 
                     onClick={generateAIComments} 
                     disabled={isGeneratingAIComments}
@@ -589,7 +678,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                   <div className="mt-4 md:mt-6 pt-4 border-t border-gray-100">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-600">
-                        Word limit: {wordLimit || document.metadata.wordLimit || 650} words
+                        Word Limit: {getCurrentWordCount()}/{wordLimit || document.metadata.wordLimit || 650}
                       </span>
                     </div>
                   </div>
@@ -602,11 +691,13 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                   documentId={document.id}
                   essayId={essayId}
                   title={document.title}
+                  wordLimit={wordLimit}
                   onDocumentChange={handleDocumentChange}
                   onAnnotationSelect={handleAnnotationSelect}
                   onSaveStatusChange={handleSaveStatusChange}
                   showCommentSidebar={showCommentSidebar}
                   selectedAnnotationId={selectedAnnotation?.id}
+                  onHideSidebar={() => setShowCommentSidebar(false)}
                 />
               </div>
             </div>

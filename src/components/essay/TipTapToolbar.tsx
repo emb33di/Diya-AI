@@ -221,11 +221,6 @@ const TipTapToolbar: React.FC<TipTapToolbarProps> = ({
           <Bot className="h-4 w-4" />
         </ToolbarButton>
       )}
-
-      {/* Word count display */}
-      <div className="ml-auto text-xs text-gray-500 px-2">
-        {editor.storage.characterCount?.words?.() || 0} words
-      </div>
     </div>
   );
 };

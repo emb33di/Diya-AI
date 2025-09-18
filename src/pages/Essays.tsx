@@ -1022,6 +1022,102 @@ const Essays = () => {
                           }
                           return undefined;
                         })()}
+                        prompts={essayPrompts.map(prompt => {
+                          // Find if there's a draft for this prompt
+                          const associatedEssay = essays.find(e => e.promptNumber === prompt.prompt_number);
+                          const associatedNewEssay = newEssays.find(e => 
+                            (e.title === associatedEssay?.title || 
+                            (e.school_name === associatedEssay?.schoolName && e.title.includes(associatedEssay?.promptNumber || ''))) &&
+                            !e.prompt_text
+                          );
+                          
+                          return {
+                            id: prompt.id,
+                            prompt: prompt.prompt,
+                            prompt_number: prompt.prompt_number,
+                            is_required: prompt.selection_type === 'required',
+                            word_limit: prompt.word_limit,
+                            has_draft: !!(associatedEssay || associatedNewEssay),
+                            draft_status: associatedNewEssay ? associatedNewEssay.status : associatedEssay?.status
+                          };
+                        })}
+                        selectedPromptId={(() => {
+                          const essay = newEssays.find(e => e.id === selectedNewEssayId);
+                          return essay?.prompt_id || undefined;
+                        })()}
+                        onPromptChange={async (promptId) => {
+                          // Handle prompt change - find or create essay for the new prompt
+                          const newPrompt = essayPrompts.find(p => p.id === promptId);
+                          if (!newPrompt) return;
+
+                          // Find if there's already an essay for this prompt
+                          const existingEssay = essays.find(e => e.promptNumber === newPrompt.prompt_number);
+                          const existingNewEssay = newEssays.find(e => 
+                            (e.title === existingEssay?.title || 
+                            (e.school_name === existingEssay?.schoolName && e.title.includes(existingEssay?.promptNumber || ''))) &&
+                            !e.prompt_text
+                          );
+
+                          if (existingNewEssay) {
+                            // If there's already a new essay for this prompt, select it
+                            persistEssaySelection(existingNewEssay.id);
+                            setSelectedEssay(null);
+                          } else if (existingEssay) {
+                            // If there's an old essay, create a new one and select it
+                            const essayData: CreateEssayData = {
+                              title: existingEssay.title,
+                              school_name: selectedSchool || '',
+                              prompt_id: newPrompt.id,
+                              initial_content: ''
+                            };
+
+                            try {
+                              const newEssay = await EssayService.createEssay(essayData);
+                              setNewEssays(prev => [...prev, newEssay]);
+                              persistEssaySelection(newEssay.id);
+                              setSelectedEssay(null);
+                              
+                              toast({
+                                title: "Success",
+                                description: `Switched to ${newPrompt.prompt_number ? `Prompt ${newPrompt.prompt_number}` : 'Custom Prompt'}`
+                              });
+                            } catch (error) {
+                              console.error('Error creating essay:', error);
+                              toast({
+                                title: "Error",
+                                description: "Failed to switch prompt. Please try again.",
+                                variant: "destructive"
+                              });
+                            }
+                          } else {
+                            // Create a new essay for this prompt
+                            const essayData: CreateEssayData = {
+                              title: newPrompt.title || `${selectedSchool} - Prompt ${newPrompt.prompt_number}`,
+                              school_name: selectedSchool || '',
+                              prompt_id: newPrompt.id,
+                              initial_content: ''
+                            };
+
+                            try {
+                              const newEssay = await EssayService.createEssay(essayData);
+                              setNewEssays(prev => [...prev, newEssay]);
+                              persistEssaySelection(newEssay.id);
+                              setSelectedEssay(null);
+                              
+                              toast({
+                                title: "Success",
+                                description: `Created new essay for ${newPrompt.prompt_number ? `Prompt ${newPrompt.prompt_number}` : 'Custom Prompt'}`
+                              });
+                            } catch (error) {
+                              console.error('Error creating essay:', error);
+                              toast({
+                                title: "Error",
+                                description: "Failed to create essay. Please try again.",
+                                variant: "destructive"
+                              });
+                            }
+                          }
+                        }}
                         wordLimit={650}
                       />
                     ) : (
@@ -1091,253 +1187,9 @@ const Essays = () => {
 
         <div className="container mx-auto px-6 py-6">
 
-          <div className="grid grid-cols-12 gap-6 h-[calc(100vh-200px)]">
-            {/* Left Sidebar - Essay List */}
-            <div className="col-span-3 space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-foreground">Essays</h2>
-                <div className="flex items-center space-x-2">
-                  <Badge variant="outline" className="text-xs">
-                    {essays.length} total
-                  </Badge>
-                  <Plus className="h-4 w-4 text-muted-foreground" />
-                </div>
-              </div>
-              
-              <div className="space-y-3 max-h-full overflow-y-auto">
-
-                {/* Custom Essays Section */}
-                {newEssays.filter(essay => essay.prompt_text && !essay.prompt_id).length > 0 && (
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-medium text-muted-foreground px-2">Custom Essays ({newEssays.filter(essay => essay.prompt_text && !essay.prompt_id).length})</h3>
-                    {newEssays.filter(essay => essay.prompt_text && !essay.prompt_id).map((essay, index) => {
-                      const isActive = selectedNewEssayId === essay.id;
-                      
-                      return (
-                        <Card 
-                          key={essay.id} 
-                          className={`cursor-pointer transition-all duration-200 hover:shadow-md hover:scale-[1.02] animate-fade-in ${isActive ? 'bg-primary/10 shadow-md' : 'bg-card hover:bg-accent/50'}`} 
-                          style={{ animationDelay: `${index * 50}ms` }}
-                          onClick={() => {
-                            persistEssaySelection(essay.id);
-                            setSelectedEssay(null);
-                          }}
-                        >
-                          <CardContent className="p-4">
-                            <div className="space-y-3">
-                              <div className="flex items-start justify-between">
-                                <h3 className="text-sm font-medium leading-tight text-foreground line-clamp-2">
-                                  {essay.title}
-                                </h3>
-                                <div className="flex items-center space-x-2 ml-2 flex-shrink-0">
-                                  <Badge className={`${getStatusColor(essay.status)} text-xs`}>
-                                    <div className="flex items-center space-x-1">
-                                      {getStatusIcon(essay.status)}
-                                      <span className="capitalize">{essay.status.replace('_', ' ')}</span>
-                                    </div>
-                                  </Badge>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-                                    onClick={(e) => openDeleteDialog(essay, e)}
-                                    title="Delete essay"
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                              </div>
-                              
-                              {/* Show custom prompt if available */}
-                              {essay.prompt_text && (
-                                <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
-                                  <div className="font-medium mb-1">Prompt:</div>
-                                  <div className="line-clamp-2">{essay.prompt_text}</div>
-                                </div>
-                              )}
-                              
-                              <div className="space-y-2">
-                                <div className="flex justify-between text-xs text-muted-foreground">
-                                  <span>
-                                    {essay.word_limit ? `${essay.word_count}/${essay.word_limit} words` : `${essay.word_count} words`}
-                                  </span>
-                                  <span>{new Date(essay.updated_at).toLocaleDateString()}</span>
-                                </div>
-                                
-                                {/* Progress bar */}
-                                {essay.word_limit && (
-                                  <div className="w-full bg-muted rounded-full h-1.5">
-                                    <div className="bg-primary h-1.5 rounded-full transition-all duration-300" style={{
-                                      width: `${Math.min(essay.word_count / parseInt(essay.word_limit) * 100, 100)}%`
-                                    }} />
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Essay Prompts Section */}
-                {essays.length > 0 && (() => {
-                  const { requiredPrompts, optionalPrompts } = categorizePrompts(essayPrompts);
-                  
-                  return (
-                    <div className="space-y-4">
-                      {/* Required Essays Section */}
-                      {requiredPrompts.length > 0 && (
-                        <div className="space-y-2">
-                          <h3 className="text-sm font-medium text-red-600 px-2 flex items-center space-x-2">
-                            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                            <span>Required Essays ({requiredPrompts.length})</span>
-                          </h3>
-                          {requiredPrompts.map((prompt, index) => {
-                            const essay = essays.find(e => e.promptNumber === prompt.prompt_number);
-                            if (!essay) return null;
-                            
-                            const associatedNewEssay = newEssays.find(e => 
-                              (e.title === essay.title || 
-                              (e.school_name === essay.schoolName && e.title.includes(essay.promptNumber || ''))) &&
-                              !e.prompt_text
-                            );
-                            
-                            const isActive = selectedNewEssayId && associatedNewEssay && selectedNewEssayId === associatedNewEssay.id;
-                            
-                            return (
-                              <Card 
-                                key={essay.id} 
-                                className={`cursor-pointer transition-all duration-200 hover:shadow-md hover:scale-[1.02] animate-fade-in ${isActive ? 'bg-primary/10 shadow-md' : 'bg-card hover:bg-accent/50'}`} 
-                                style={{ animationDelay: `${index * 50}ms` }}
-                                onClick={() => handleEssaySelect(essay)}
-                              >
-                                <CardContent className="p-4">
-                                  <div className="space-y-3">
-                                    <div className="flex items-start justify-between">
-                                      <h3 className="text-sm font-medium leading-tight text-foreground line-clamp-2">
-                                        {essay.title}
-                                      </h3>
-                                      <Badge className={`${getStatusColor(associatedNewEssay ? associatedNewEssay.status : essay.status)} text-xs ml-2 flex-shrink-0`}>
-                                        <div className="flex items-center space-x-1">
-                                          {getStatusIcon(associatedNewEssay ? associatedNewEssay.status : essay.status)}
-                                          <span className="capitalize">{(associatedNewEssay ? associatedNewEssay.status : essay.status).replace('_', ' ')}</span>
-                                        </div>
-                                      </Badge>
-                                    </div>
-                                    
-                                    <div className="space-y-2">
-                                      <div className="flex justify-between text-xs text-muted-foreground">
-                                        <span>
-                                          {associatedNewEssay ? `${associatedNewEssay.word_count}/${essay.wordLimit} words` : `${essay.wordCount}/${essay.wordLimit} words`}
-                                        </span>
-                                        <span>{associatedNewEssay ? new Date(associatedNewEssay.updated_at).toLocaleDateString() : essay.lastEdited}</span>
-                                      </div>
-                                      
-                                      <div className="w-full bg-muted rounded-full h-1.5">
-                                        <div className="bg-primary h-1.5 rounded-full transition-all duration-300" style={{
-                                          width: `${Math.min((associatedNewEssay ? associatedNewEssay.word_count : essay.wordCount) / essay.wordLimit * 100, 100)}%`
-                                        }} />
-                                      </div>
-                                    
-                                      {essay.feedback > 0 && <div className="flex items-center space-x-1 text-xs text-accent">
-                                          <MessageSquare className="h-3 w-3" />
-                                          <span>{essay.feedback} feedback</span>
-                                        </div>}
-                                    </div>
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            );
-                          })}
-                        </div>
-                      )}
-                      
-                      {/* Optional Essays Section */}
-                      {optionalPrompts.length > 0 && (
-                        <div className="space-y-2">
-                          <h3 className="text-sm font-medium text-blue-600 px-2 flex items-center space-x-2">
-                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                            <span>{getSelectionText(optionalPrompts)} ({optionalPrompts.length} prompts)</span>
-                          </h3>
-                          {optionalPrompts.map((prompt, index) => {
-                            const essay = essays.find(e => e.promptNumber === prompt.prompt_number);
-                            if (!essay) return null;
-                            
-                            const associatedNewEssay = newEssays.find(e => 
-                              (e.title === essay.title || 
-                              (e.school_name === essay.schoolName && e.title.includes(essay.promptNumber || ''))) &&
-                              !e.prompt_text
-                            );
-                            
-                            const isActive = selectedNewEssayId && associatedNewEssay && selectedNewEssayId === associatedNewEssay.id;
-                            
-                            return (
-                              <Card 
-                                key={essay.id} 
-                                className={`cursor-pointer transition-all duration-200 hover:shadow-md hover:scale-[1.02] animate-fade-in ${isActive ? 'bg-primary/10 shadow-md' : 'bg-card hover:bg-accent/50'}`} 
-                                style={{ animationDelay: `${index * 50}ms` }}
-                                onClick={() => handleEssaySelect(essay)}
-                              >
-                                <CardContent className="p-4">
-                                  <div className="space-y-3">
-                                    <div className="flex items-start justify-between">
-                                      <h3 className="text-sm font-medium leading-tight text-foreground line-clamp-2">
-                                        {essay.title}
-                                      </h3>
-                                      <Badge className={`${getStatusColor(associatedNewEssay ? associatedNewEssay.status : essay.status)} text-xs ml-2 flex-shrink-0`}>
-                                        <div className="flex items-center space-x-1">
-                                          {getStatusIcon(associatedNewEssay ? associatedNewEssay.status : essay.status)}
-                                          <span className="capitalize">{(associatedNewEssay ? associatedNewEssay.status : essay.status).replace('_', ' ')}</span>
-                                        </div>
-                                      </Badge>
-                                    </div>
-                                    
-                                    <div className="space-y-2">
-                                      <div className="flex justify-between text-xs text-muted-foreground">
-                                        <span>
-                                          {associatedNewEssay ? `${associatedNewEssay.word_count}/${essay.wordLimit} words` : `${essay.wordCount}/${essay.wordLimit} words`}
-                                        </span>
-                                        <span>{associatedNewEssay ? new Date(associatedNewEssay.updated_at).toLocaleDateString() : essay.lastEdited}</span>
-                                      </div>
-                                      
-                                      <div className="w-full bg-muted rounded-full h-1.5">
-                                        <div className="bg-primary h-1.5 rounded-full transition-all duration-300" style={{
-                                          width: `${Math.min((associatedNewEssay ? associatedNewEssay.word_count : essay.wordCount) / essay.wordLimit * 100, 100)}%`
-                                        }} />
-                                      </div>
-                                    
-                                      {essay.feedback > 0 && <div className="flex items-center space-x-1 text-xs text-accent">
-                                          <MessageSquare className="h-3 w-3" />
-                                          <span>{essay.feedback} feedback</span>
-                                        </div>}
-                                    </div>
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-
-                {/* Empty State */}
-                {newEssays.length === 0 && essays.length === 0 && (
-                  <Card className="p-8 text-center bg-muted/30">
-                    <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-                    <p className="text-sm text-muted-foreground">
-                      {selectedSchool ? 'No essays found for this school' : 'Select a school to see essays'}
-                    </p>
-                  </Card>
-                )}
-              </div>
-            </div>
-
-            {/* Center - Essay Editor */}
-            <div className="col-span-9">
+          <div className="w-full h-[calc(100vh-200px)]">
+            {/* Essay Editor */}
+            <div className="w-full h-full">
               {selectedNewEssayId ? (
                 <SemanticEssayEditor 
                   essayId={selectedNewEssayId}
@@ -1355,6 +1207,102 @@ const Essays = () => {
                     }
                     return undefined;
                   })()}
+                  prompts={essayPrompts.map(prompt => {
+                    // Find if there's a draft for this prompt
+                    const associatedEssay = essays.find(e => e.promptNumber === prompt.prompt_number);
+                    const associatedNewEssay = newEssays.find(e => 
+                      (e.title === associatedEssay?.title || 
+                      (e.school_name === associatedEssay?.schoolName && e.title.includes(associatedEssay?.promptNumber || ''))) &&
+                      !e.prompt_text
+                    );
+                    
+                    return {
+                      id: prompt.id,
+                      prompt: prompt.prompt,
+                      prompt_number: prompt.prompt_number,
+                      is_required: prompt.selection_type === 'required',
+                      word_limit: prompt.word_limit,
+                      has_draft: !!(associatedEssay || associatedNewEssay),
+                      draft_status: associatedNewEssay ? associatedNewEssay.status : associatedEssay?.status
+                    };
+                  })}
+                  selectedPromptId={(() => {
+                    const essay = newEssays.find(e => e.id === selectedNewEssayId);
+                    return essay?.prompt_id || undefined;
+                  })()}
+                  onPromptChange={async (promptId) => {
+                    // Handle prompt change - find or create essay for the new prompt
+                    const newPrompt = essayPrompts.find(p => p.id === promptId);
+                    if (!newPrompt) return;
+
+                    // Find if there's already an essay for this prompt
+                    const existingEssay = essays.find(e => e.promptNumber === newPrompt.prompt_number);
+                    const existingNewEssay = newEssays.find(e => 
+                      (e.title === existingEssay?.title || 
+                      (e.school_name === existingEssay?.schoolName && e.title.includes(existingEssay?.promptNumber || ''))) &&
+                      !e.prompt_text
+                    );
+
+                    if (existingNewEssay) {
+                      // If there's already a new essay for this prompt, select it
+                      persistEssaySelection(existingNewEssay.id);
+                      setSelectedEssay(null);
+                    } else if (existingEssay) {
+                      // If there's an old essay, create a new one and select it
+                      const essayData: CreateEssayData = {
+                        title: existingEssay.title,
+                        school_name: selectedSchool || '',
+                        prompt_id: newPrompt.id,
+                        initial_content: ''
+                      };
+
+                      try {
+                        const newEssay = await EssayService.createEssay(essayData);
+                        setNewEssays(prev => [...prev, newEssay]);
+                        persistEssaySelection(newEssay.id);
+                        setSelectedEssay(null);
+                        
+                        toast({
+                          title: "Success",
+                          description: `Switched to ${newPrompt.prompt_number ? `Prompt ${newPrompt.prompt_number}` : 'Custom Prompt'}`
+                        });
+                      } catch (error) {
+                        console.error('Error creating essay:', error);
+                        toast({
+                          title: "Error",
+                          description: "Failed to switch prompt. Please try again.",
+                          variant: "destructive"
+                        });
+                      }
+                    } else {
+                      // Create a new essay for this prompt
+                      const essayData: CreateEssayData = {
+                        title: newPrompt.title || `${selectedSchool} - Prompt ${newPrompt.prompt_number}`,
+                        school_name: selectedSchool || '',
+                        prompt_id: newPrompt.id,
+                        initial_content: ''
+                      };
+
+                      try {
+                        const newEssay = await EssayService.createEssay(essayData);
+                        setNewEssays(prev => [...prev, newEssay]);
+                        persistEssaySelection(newEssay.id);
+                        setSelectedEssay(null);
+                        
+                        toast({
+                          title: "Success",
+                          description: `Created new essay for ${newPrompt.prompt_number ? `Prompt ${newPrompt.prompt_number}` : 'Custom Prompt'}`
+                        });
+                      } catch (error) {
+                        console.error('Error creating essay:', error);
+                        toast({
+                          title: "Error",
+                          description: "Failed to create essay. Please try again.",
+                          variant: "destructive"
+                        });
+                      }
+                    }
+                  }}
                   wordLimit={(() => {
                     const essay = newEssays.find(e => e.id === selectedNewEssayId);
                     if (essay?.word_limit && essay.word_limit !== 'No limit') {
@@ -1412,9 +1360,9 @@ const Essays = () => {
                     <div className="p-4 bg-primary/10 rounded-full mb-6">
                       <PenTool className="h-12 w-12 text-primary" />
                     </div>
-                    <h3 className="text-xl font-semibold mb-3">Select an Essay</h3>
+                    <h3 className="text-xl font-semibold mb-3">Select a School</h3>
                     <p className="text-muted-foreground max-w-md">
-                      Choose an essay from the list to start writing, or select a school to see available prompts
+                      Choose a school from the dropdown above to see available essay prompts and start writing
                     </p>
                   </CardContent>
                 </Card>
