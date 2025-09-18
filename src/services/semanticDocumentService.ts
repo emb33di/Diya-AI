@@ -588,6 +588,93 @@ export class SemanticDocumentService {
   }
 
   /**
+   * Generate grammar comments for semantic blocks
+   */
+  async generateGrammarComments(request: AICommentRequest): Promise<AICommentResponse> {
+    const startTime = Date.now();
+    
+    try {
+      // Get the current user's session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('User not authenticated');
+      }
+
+      // Call the grammar agent edge function
+      const { data, error } = await supabase.functions.invoke('ai_agent_grammar_spelling', {
+        body: {
+          essayContent: request.blocks.map(b => b.content).join('\n\n'),
+          essayPrompt: request.context?.prompt
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        }
+      });
+
+      if (error) {
+        throw new Error(`Grammar Agent error: ${error.message}`);
+      }
+
+      // Convert grammar agent comments to semantic format
+      const grammarComments = this.convertGrammarCommentsToSemantic(data.comments || [], request.blocks);
+
+      // Store grammar comments in database if any were generated
+      if (grammarComments.length > 0) {
+        const annotationsToInsert = grammarComments.map(comment => ({
+          id: crypto.randomUUID(),
+          document_id: request.documentId,
+          block_id: comment.targetBlockId,
+          type: comment.type,
+          author: 'ai',
+          content: comment.comment,
+          target_text: comment.targetText,
+          resolved: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          metadata: {
+            confidence: comment.confidence,
+            agentType: 'grammar',
+            ...comment.metadata
+          }
+        }));
+
+        const { error: insertError } = await supabase
+          .from('semantic_annotations')
+          .insert(annotationsToInsert);
+
+        if (insertError) {
+          console.error('Error storing grammar comments:', insertError);
+          throw new Error('Failed to store grammar comments');
+        }
+      }
+
+      return {
+        success: true,
+        comments: grammarComments,
+        message: `Generated ${grammarComments.length} grammar suggestions`,
+        metadata: {
+          processingTime: Date.now() - startTime,
+          blocksAnalyzed: request.blocks.length,
+          commentsGenerated: grammarComments.length
+        }
+      };
+    } catch (error) {
+      console.error('Error generating grammar comments:', error);
+      return {
+        success: false,
+        comments: [],
+        message: error instanceof Error ? error.message : 'Unknown error',
+        metadata: {
+          processingTime: Date.now() - startTime,
+          blocksAnalyzed: request.blocks.length,
+          commentsGenerated: 0
+        }
+      };
+    }
+  }
+
+  /**
    * Generate AI comments for semantic blocks
    */
   async generateAIComments(request: AICommentRequest): Promise<AICommentResponse> {
@@ -636,6 +723,101 @@ export class SemanticDocumentService {
         }
       };
     }
+  }
+
+  /**
+   * Convert grammar agent comments to semantic format
+   */
+  private convertGrammarCommentsToSemantic(
+    grammarComments: any[], 
+    blocks: DocumentBlock[]
+  ): SemanticComment[] {
+    const semanticComments: SemanticComment[] = [];
+
+    for (const grammarComment of grammarComments) {
+      // Find the best matching block for this grammar comment
+      const targetBlock = this.findBestMatchingBlockForGrammar(grammarComment, blocks);
+      if (!targetBlock) continue;
+
+      // Extract target text from the comment
+      const targetText = grammarComment.anchor_text || grammarComment.target_text || 
+                        this.extractTargetTextFromGrammarComment(grammarComment, targetBlock.content);
+
+      const semanticComment: SemanticComment = {
+        targetBlockId: targetBlock.id,
+        targetText: targetText,
+        comment: grammarComment.comment_text || grammarComment.commentText || grammarComment.comment,
+        type: 'suggestion', // Grammar comments are typically suggestions
+        confidence: grammarComment.confidence_score || grammarComment.confidenceScore || 0.9,
+        metadata: {
+          agentType: 'grammar',
+          category: grammarComment.comment_category || 'inline',
+          subcategory: grammarComment.comment_subcategory || 'grammar',
+          commentNature: 'improvement',
+          grammarType: grammarComment.grammar_type || 'general'
+        }
+      };
+
+      semanticComments.push(semanticComment);
+    }
+
+    return semanticComments;
+  }
+
+  /**
+   * Find the best matching block for a grammar comment
+   */
+  private findBestMatchingBlockForGrammar(grammarComment: any, blocks: DocumentBlock[]): DocumentBlock | null {
+    // If comment has text selection info, use that
+    if (grammarComment.text_selection) {
+      const selection = grammarComment.text_selection;
+      if (selection.start && typeof selection.start.pos === 'number') {
+        let currentPos = 0;
+        for (const block of blocks.sort((a, b) => a.position - b.position)) {
+          const blockEnd = currentPos + block.content.length;
+          if (selection.start.pos >= currentPos && selection.start.pos <= blockEnd) {
+            return block;
+          }
+          currentPos = blockEnd + 2; // Account for paragraph breaks
+        }
+      }
+    }
+
+    // Fallback: find block containing the target text
+    if (grammarComment.anchor_text || grammarComment.target_text) {
+      const targetText = grammarComment.anchor_text || grammarComment.target_text;
+      for (const block of blocks) {
+        if (block.content.includes(targetText)) {
+          return block;
+        }
+      }
+    }
+
+    // Last resort: return first non-empty block
+    return blocks.find(block => block.content.trim().length > 0) || blocks[0] || null;
+  }
+
+  /**
+   * Extract target text from grammar comment
+   */
+  private extractTargetTextFromGrammarComment(grammarComment: any, blockContent: string): string {
+    // Try to extract from comment text patterns
+    const commentText = grammarComment.comment_text || grammarComment.commentText || grammarComment.comment || '';
+    
+    // Look for quoted text in the comment
+    const quotedMatch = commentText.match(/"([^"]+)"/);
+    if (quotedMatch) {
+      return quotedMatch[1];
+    }
+
+    // Look for text after "Change" or "Replace"
+    const changeMatch = commentText.match(/(?:Change|Replace)\s+"?([^"]+)"?/i);
+    if (changeMatch) {
+      return changeMatch[1];
+    }
+
+    // Return first few words of block as fallback
+    return blockContent.split(' ').slice(0, 5).join(' ') + '...';
   }
 
   /**

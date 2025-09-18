@@ -96,14 +96,27 @@ export interface BlockMetadata {
 }
 
 /**
+ * Comment categories for the sidebar organization
+ */
+export type CommentCategory = 
+  | 'overall-analysis'
+  | 'tone'
+  | 'clarity'
+  | 'strengths'
+  | 'areas-for-improvement'
+  | 'paragraph-quality'
+  | 'grammar';
+
+/**
  * Annotation-level metadata
  */
 export interface AnnotationMetadata {
   confidence?: number; // For AI-generated annotations
-  agentType?: 'big-picture' | 'paragraph' | 'weaknesses' | 'strengths' | 'tone' | 'clarity';
+  agentType?: 'big-picture' | 'paragraph' | 'weaknesses' | 'strengths' | 'tone' | 'clarity' | 'grammar';
   category?: 'overall' | 'inline';
-  subcategory?: 'opening' | 'body' | 'conclusion' | 'opening-sentence' | 'transition' | 'paragraph-specific' | 'paragraph-quality' | 'final-sentence';
-  commentNature?: 'strength' | 'weakness' | 'suggestion';
+  subcategory?: 'opening' | 'body' | 'conclusion' | 'opening-sentence' | 'transition' | 'paragraph-specific' | 'paragraph-quality' | 'final-sentence' | 'grammar';
+  commentNature?: 'strength' | 'weakness' | 'suggestion' | 'improvement';
+  commentCategory?: CommentCategory; // New field for sidebar categorization
 }
 
 /**

@@ -13,11 +13,14 @@ import { ExportService } from '@/services/exportService';
 import { usePageVisibility } from '@/hooks/usePageVisibility';
 import SemanticEditor from './SemanticEditor';
 import CommentOverlay from './CommentOverlay';
+import AICommentsLoadingPane, { AI_COMMENTS_LOADING_STEPS } from './AICommentsLoadingPane';
+import GrammarLoadingPane, { GRAMMAR_LOADING_STEPS } from './GrammarLoadingPane';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { cn } from '@/lib/utils';
 import { 
   FileText, 
   MessageSquare, 
@@ -27,7 +30,10 @@ import {
   CheckCircle,
   AlertCircle,
   FileDown,
-  FileText as FileTextIcon
+  FileText as FileTextIcon,
+  CheckSquare,
+  Sidebar,
+  SidebarClose
 } from 'lucide-react';
 
 interface SemanticEssayEditorProps {
@@ -53,9 +59,14 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
 }) => {
   const [document, setDocument] = useState<SemanticDocument | null>(null);
   const [selectedAnnotation, setSelectedAnnotation] = useState<Annotation | null>(null);
+  const [showCommentSidebar, setShowCommentSidebar] = useState(true);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isGeneratingAIComments, setIsGeneratingAIComments] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(0);
+  const [isGeneratingGrammar, setIsGeneratingGrammar] = useState(false);
+  const [grammarLoadingStep, setGrammarLoadingStep] = useState(0);
   const [migrationStatus, setMigrationStatus] = useState<{
     isMigrating: boolean;
     progress: number;
@@ -223,7 +234,19 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
   const generateAIComments = async () => {
     if (!document) return;
 
+    setIsGeneratingAIComments(true);
+    setLoadingStep(0);
+
     try {
+      // Simulate loading steps
+      const stepDurations = [1000, 2000, 1500, 500]; // Duration for each step in ms
+      
+      // Step through each loading phase
+      for (let i = 0; i < AI_COMMENTS_LOADING_STEPS.length; i++) {
+        setLoadingStep(i);
+        await new Promise(resolve => setTimeout(resolve, stepDurations[i]));
+      }
+
       const response = await semanticDocumentService.generateAIComments({
         documentId: document.id,
         blocks: document.blocks,
@@ -240,8 +263,64 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
           setDocument(updatedDocument);
         }
       }
+
+      // Mark as complete
+      setLoadingStep(AI_COMMENTS_LOADING_STEPS.length);
     } catch (error) {
       console.error('Failed to generate AI comments:', error);
+    } finally {
+      // Reset after a short delay to show completion
+      setTimeout(() => {
+        setIsGeneratingAIComments(false);
+        setLoadingStep(0);
+      }, 1000);
+    }
+  };
+
+  // Generate grammar comments
+  const generateGrammarComments = async () => {
+    if (!document) return;
+
+    setIsGeneratingGrammar(true);
+    setGrammarLoadingStep(0);
+
+    try {
+      // Simulate loading steps
+      const stepDurations = [800, 1200, 600]; // Duration for each step in ms
+      
+      // Step through each loading phase
+      for (let i = 0; i < GRAMMAR_LOADING_STEPS.length; i++) {
+        setGrammarLoadingStep(i);
+        await new Promise(resolve => setTimeout(resolve, stepDurations[i]));
+      }
+
+      const response = await semanticDocumentService.generateGrammarComments({
+        documentId: document.id,
+        blocks: document.blocks,
+        context: {
+          prompt: document.metadata.prompt,
+          wordLimit: document.metadata.wordLimit
+        }
+      });
+
+      if (response.success) {
+        // Reload document to get updated comments
+        const updatedDocument = await semanticDocumentService.loadDocument(document.id);
+        if (updatedDocument) {
+          setDocument(updatedDocument);
+        }
+      }
+
+      // Mark as complete
+      setGrammarLoadingStep(GRAMMAR_LOADING_STEPS.length);
+    } catch (error) {
+      console.error('Failed to generate grammar comments:', error);
+    } finally {
+      // Reset after a short delay to show completion
+      setTimeout(() => {
+        setIsGeneratingGrammar(false);
+        setGrammarLoadingStep(0);
+      }, 1000);
     }
   };
 
@@ -362,24 +441,8 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
 
   return (
     <div className={`semantic-essay-editor ${className}`}>
-      <Tabs defaultValue="editor" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="editor" className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            Editor
-          </TabsTrigger>
-          <TabsTrigger value="comments" className="flex items-center gap-2">
-            <MessageSquare className="h-4 w-4" />
-            Comments
-            {stats && stats.unresolvedComments > 0 && (
-              <Badge variant="destructive" className="ml-1 h-5 w-5 p-0 text-xs">
-                {stats.unresolvedComments}
-              </Badge>
-            )}
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="editor" className="mt-6">
+      <div className="w-full">
+        <div className="mt-6">
           <div className="flex gap-6">
             {/* Main Content Area */}
             <div className="flex-1 space-y-4">
@@ -436,9 +499,42 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                 </div>
                 
                 <div className="flex gap-2">
-                  <Button onClick={generateAIComments} variant="outline">
+                  <Button
+                    onClick={() => setShowCommentSidebar(!showCommentSidebar)}
+                    variant="outline"
+                    className={cn(
+                      "border-purple-200 hover:bg-purple-50",
+                      showCommentSidebar && "bg-purple-100 text-purple-700"
+                    )}
+                  >
+                    {showCommentSidebar ? (
+                      <SidebarClose className="h-4 w-4 mr-2" />
+                    ) : (
+                      <Sidebar className="h-4 w-4 mr-2" />
+                    )}
+                    Comments
+                    {stats && stats.unresolvedComments > 0 && (
+                      <Badge variant="destructive" className="ml-2 h-5 w-5 p-0 text-xs">
+                        {stats.unresolvedComments}
+                      </Badge>
+                    )}
+                  </Button>
+                  <Button 
+                    onClick={generateAIComments} 
+                    disabled={isGeneratingAIComments}
+                    variant="outline"
+                  >
                     <Sparkles className="h-4 w-4 mr-2" />
                     AI Comments
+                  </Button>
+                  <Button 
+                    onClick={generateGrammarComments} 
+                    disabled={isGeneratingGrammar}
+                    variant="outline"
+                    className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                  >
+                    <CheckSquare className="h-4 w-4 mr-2" />
+                    Grammar Check
                   </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -482,7 +578,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                         </div>
                       </h3>
                       <div className="prose prose-gray max-w-none">
-                        <p className="text-gray-700 leading-relaxed text-base md:text-lg m-0">
+                        <p className="text-gray-700 leading-relaxed m-0" style={{ fontFamily: 'Times New Roman, serif', fontSize: '16px' }}>
                           {prompt || document.metadata.prompt}
                         </p>
                       </div>
@@ -501,156 +597,44 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
               )}
 
               {/* Editor */}
-              <SemanticEditor
-                documentId={document.id}
-                essayId={essayId}
-                title={document.title}
-                onDocumentChange={handleDocumentChange}
-                onAnnotationSelect={handleAnnotationSelect}
-                onSaveStatusChange={handleSaveStatusChange}
-              />
-            </div>
-            
-            {/* Diya Tips Sidebar */}
-            <div className="w-80 flex-shrink-0">
-              <div className="sticky top-6">
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg flex items-center gap-2 text-orange-600">
-                      <Sparkles className="h-5 w-5" />
-                      Diya Tips
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="space-y-4 text-sm">
-                      <div>
-                        <h4 className="font-semibold text-gray-900 mb-2">How Blocks Work</h4>
-                        <p className="text-gray-600 mb-3">
-                          Blocks are flexible content units - not just paragraphs! They help you get targeted AI feedback.
-                        </p>
-                      </div>
-                      
-                      <div>
-                        <h5 className="font-medium text-gray-800 mb-2">Blocks can be:</h5>
-                        <ul className="space-y-1 text-gray-600">
-                          <li>• A single sentence or transition</li>
-                          <li>• A traditional paragraph</li>
-                          <li>• Multiple paragraphs grouped together</li>
-                          <li>• A specific section for targeted feedback</li>
-                        </ul>
-                      </div>
-                      
-                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-                        <h5 className="font-medium text-orange-900 mb-2">💡 Pro Tips:</h5>
-                        <ul className="space-y-1 text-sm text-orange-800">
-                          <li><strong>First draft:</strong> Use paragraphs as blocks for general feedback</li>
-                          <li><strong>Later revisions:</strong> Break into smaller blocks for specific AI comments</li>
-                          <li><strong>Targeted feedback:</strong> Create blocks around specific ideas you want the AI to focus on</li>
-                        </ul>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+              <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-8 min-h-[600px]">
+                <SemanticEditor
+                  documentId={document.id}
+                  essayId={essayId}
+                  title={document.title}
+                  onDocumentChange={handleDocumentChange}
+                  onAnnotationSelect={handleAnnotationSelect}
+                  onSaveStatusChange={handleSaveStatusChange}
+                  showCommentSidebar={showCommentSidebar}
+                  selectedAnnotationId={selectedAnnotation?.id}
+                />
               </div>
             </div>
           </div>
-        </TabsContent>
+        </div>
+      </div>
 
-        <TabsContent value="comments" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MessageSquare className="h-5 w-5" />
-                All Comments
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {document.blocks.map(block => (
-                  <div key={block.id} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-medium text-sm text-gray-600">
-                        Block {block.position + 1} ({block.type})
-                      </h4>
-                      <Badge variant="outline">
-                        {block.annotations.length} comments
-                      </Badge>
-                    </div>
-                    
-                    <div className="text-sm text-gray-500 mb-3 line-clamp-2">
-                      {block.content.substring(0, 100)}...
-                    </div>
-                    
-                    {block.annotations.length > 0 ? (
-                      <div className="space-y-2">
-                        {block.annotations.map(annotation => (
-                          <div
-                            key={annotation.id}
-                            className={`p-3 rounded-lg border-l-4 ${
-                              // Use agent type for color coding if available, otherwise fall back to comment type
-                              annotation.metadata?.agentType === 'tone' ? 'border-l-orange-500 bg-orange-50' :
-                              annotation.metadata?.agentType === 'clarity' ? 'border-l-blue-500 bg-blue-50' :
-                              annotation.metadata?.agentType === 'strengths' ? 'border-l-green-500 bg-green-50' :
-                              annotation.metadata?.agentType === 'weaknesses' ? 'border-l-red-500 bg-red-50' :
-                              annotation.type === 'suggestion' ? 'border-l-green-500 bg-green-50' :
-                              annotation.type === 'critique' ? 'border-l-red-500 bg-red-50' :
-                              annotation.type === 'praise' ? 'border-l-purple-500 bg-purple-50' :
-                              annotation.type === 'question' ? 'border-l-yellow-500 bg-yellow-50' :
-                              'border-l-blue-500 bg-blue-50'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <Badge variant="secondary" className="text-xs">
-                                  {annotation.type}
-                                </Badge>
-                                {annotation.metadata?.agentType && (
-                                  <Badge 
-                                    variant="outline" 
-                                    className={`text-xs ${
-                                      annotation.metadata.agentType === 'tone' ? 'border-orange-300 text-orange-700' :
-                                      annotation.metadata.agentType === 'clarity' ? 'border-blue-300 text-blue-700' :
-                                      annotation.metadata.agentType === 'strengths' ? 'border-green-300 text-green-700' :
-                                      annotation.metadata.agentType === 'weaknesses' ? 'border-red-300 text-red-700' :
-                                      'border-gray-300 text-gray-700'
-                                    }`}
-                                  >
-                                    {annotation.metadata.agentType}
-                                  </Badge>
-                                )}
-                                <Badge variant="outline" className="text-xs">
-                                  {annotation.author === 'ai' ? 'AI' : 'User'}
-                                </Badge>
-                                {annotation.resolved && (
-                                  <Badge variant="outline" className="text-xs">
-                                    <CheckCircle className="h-3 w-3 mr-1" />
-                                    Resolved
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                            
-                            <p className="mt-2 text-sm">{annotation.content}</p>
-                            
-                            {annotation.targetText && (
-                              <div className="mt-2 p-2 bg-white rounded border text-xs text-gray-600">
-                                <strong>Target:</strong> "{annotation.targetText}"
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-gray-400 italic">No comments yet</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+      {/* AI Comments Loading Pane */}
+      <AICommentsLoadingPane
+        isVisible={isGeneratingAIComments}
+        steps={AI_COMMENTS_LOADING_STEPS}
+        currentStepIndex={loadingStep}
+        onComplete={() => {
+          setIsGeneratingAIComments(false);
+          setLoadingStep(0);
+        }}
+      />
 
-      </Tabs>
+      {/* Grammar Loading Pane */}
+      <GrammarLoadingPane
+        isVisible={isGeneratingGrammar}
+        steps={GRAMMAR_LOADING_STEPS}
+        currentStepIndex={grammarLoadingStep}
+        onComplete={() => {
+          setIsGeneratingGrammar(false);
+          setGrammarLoadingStep(0);
+        }}
+      />
     </div>
   );
 };

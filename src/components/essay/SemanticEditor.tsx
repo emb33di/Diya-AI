@@ -28,8 +28,12 @@ import {
   Sparkles,
   User,
   Bot,
-  Copy
+  Copy,
+  CheckSquare
 } from 'lucide-react';
+import AICommentsLoadingPane, { AI_COMMENTS_LOADING_STEPS } from './AICommentsLoadingPane';
+import GrammarLoadingPane, { GRAMMAR_LOADING_STEPS } from './GrammarLoadingPane';
+import CommentSidebar from './CommentSidebar';
 
 interface CleanSemanticEditorProps {
   documentId?: string;
@@ -39,6 +43,8 @@ interface CleanSemanticEditorProps {
   onDocumentChange?: (document: SemanticDocument) => void;
   onAnnotationSelect?: (annotation: Annotation | null) => void;
   onSaveStatusChange?: (isAutoSaving: boolean, lastSaved: Date | null) => void;
+  showCommentSidebar?: boolean;
+  selectedAnnotationId?: string;
   className?: string;
 }
 
@@ -50,6 +56,8 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
   onDocumentChange,
   onAnnotationSelect,
   onSaveStatusChange,
+  showCommentSidebar = false,
+  selectedAnnotationId,
   className = ''
 }) => {
   // Simple, clean state management
@@ -75,6 +83,9 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
   const [newCommentText, setNewCommentText] = useState<string>('');
   const [newCommentType, setNewCommentType] = useState<AnnotationType>('suggestion');
   const [isGeneratingAIComments, setIsGeneratingAIComments] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(0);
+  const [isGeneratingGrammar, setIsGeneratingGrammar] = useState(false);
+  const [grammarLoadingStep, setGrammarLoadingStep] = useState(0);
 
   // Refs for textarea management
   const textareaRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
@@ -325,7 +336,18 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
   // Generate AI comments for all blocks
   const generateAIComments = useCallback(async () => {
     setIsGeneratingAIComments(true);
+    setLoadingStep(0);
+
     try {
+      // Simulate loading steps
+      const stepDurations = [1000, 2000, 1500, 500]; // Duration for each step in ms
+      
+      // Step through each loading phase
+      for (let i = 0; i < AI_COMMENTS_LOADING_STEPS.length; i++) {
+        setLoadingStep(i);
+        await new Promise(resolve => setTimeout(resolve, stepDurations[i]));
+      }
+
       const response = await semanticDocumentService.generateAIComments({
         documentId: state.document.id,
         blocks: state.document.blocks,
@@ -370,10 +392,90 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
           };
         });
       }
+
+      // Mark as complete
+      setLoadingStep(AI_COMMENTS_LOADING_STEPS.length);
     } catch (error) {
       console.error('Failed to generate AI comments:', error);
     } finally {
-      setIsGeneratingAIComments(false);
+      // Reset after a short delay to show completion
+      setTimeout(() => {
+        setIsGeneratingAIComments(false);
+        setLoadingStep(0);
+      }, 1000);
+    }
+  }, [state.document]);
+
+  // Generate grammar comments for all blocks
+  const generateGrammarComments = useCallback(async () => {
+    setIsGeneratingGrammar(true);
+    setGrammarLoadingStep(0);
+
+    try {
+      // Simulate loading steps
+      const stepDurations = [800, 1200, 600]; // Duration for each step in ms
+      
+      // Step through each loading phase
+      for (let i = 0; i < GRAMMAR_LOADING_STEPS.length; i++) {
+        setGrammarLoadingStep(i);
+        await new Promise(resolve => setTimeout(resolve, stepDurations[i]));
+      }
+
+      const response = await semanticDocumentService.generateGrammarComments({
+        documentId: state.document.id,
+        blocks: state.document.blocks,
+        context: {
+          prompt: state.document.metadata.prompt,
+          wordLimit: state.document.metadata.wordLimit
+        }
+      });
+
+      if (response.success && response.comments.length > 0) {
+        // Add the grammar comments as annotations to the appropriate blocks
+        setState(prev => {
+          const updatedBlocks = prev.document.blocks.map(block => {
+            const blockComments = response.comments.filter(c => c.targetBlockId === block.id);
+            // Convert SemanticComment to Annotation format
+            const annotations = blockComments.map(comment => ({
+              id: crypto.randomUUID(),
+              type: comment.type,
+              author: 'ai' as const,
+              content: comment.comment,
+              targetBlockId: comment.targetBlockId,
+              targetText: comment.targetText,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              resolved: false,
+              metadata: comment.metadata
+            }));
+            return {
+              ...block,
+              annotations: [...block.annotations, ...annotations]
+            };
+          });
+
+          return {
+            ...prev,
+            document: {
+              ...prev.document,
+              blocks: updatedBlocks,
+              updatedAt: new Date()
+            },
+            pendingChanges: true
+          };
+        });
+      }
+
+      // Mark as complete
+      setGrammarLoadingStep(GRAMMAR_LOADING_STEPS.length);
+    } catch (error) {
+      console.error('Failed to generate grammar comments:', error);
+    } finally {
+      // Reset after a short delay to show completion
+      setTimeout(() => {
+        setIsGeneratingGrammar(false);
+        setGrammarLoadingStep(0);
+      }, 1000);
     }
   }, [state.document]);
 
@@ -473,8 +575,8 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
             onKeyDown={(e) => handleKeyDown(e, block.id)}
             className="min-h-[2.5rem] resize-none border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500"
             style={{
-              fontFamily: 'Times New Roman',
-              fontSize: '12pt',
+              fontFamily: 'Times New Roman, serif',
+              fontSize: '16px',
               lineHeight: '1.6',
             }}
             placeholder={block.position === 0 ? "Start writing here..." : ""}
@@ -484,8 +586,8 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
             className="min-h-[2.5rem] cursor-text p-2 rounded hover:bg-gray-50 transition-colors"
             onClick={() => startEditingBlock(block.id)}
             style={{
-              fontFamily: 'Times New Roman',
-              fontSize: '12pt',
+              fontFamily: 'Times New Roman, serif',
+              fontSize: '16px',
               lineHeight: '1.6',
             }}
           >
@@ -497,65 +599,12 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
           </div>
         )}
 
-        {/* Block Annotations */}
-        {block.annotations.length > 0 && (
-          <div className="mt-2 space-y-2">
-            {block.annotations.map(annotation => (
-              <div
-                key={annotation.id}
-                className={`p-3 rounded-lg border-l-4 ${
-                  annotation.type === 'suggestion' ? 'border-l-green-500 bg-green-50' :
-                  annotation.type === 'critique' ? 'border-l-red-500 bg-red-50' :
-                  annotation.type === 'praise' ? 'border-l-purple-500 bg-purple-50' :
-                  annotation.type === 'question' ? 'border-l-yellow-500 bg-yellow-50' :
-                  'border-l-blue-500 bg-blue-50'
-                }`}
-                onClick={() => onAnnotationSelect?.(annotation)}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    {annotation.author === 'ai' ? (
-                      <Bot className="h-4 w-4" />
-                    ) : (
-                      <User className="h-4 w-4" />
-                    )}
-                    <Badge variant="outline" className="text-xs">
-                      {annotation.type}
-                    </Badge>
-                    {annotation.resolved && (
-                      <Badge variant="outline" className="text-xs">
-                        Resolved
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {!annotation.resolved && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          resolveAnnotation(annotation.id);
-                        }}
-                      >
-                        <CheckCircle className="h-4 w-4" />
-                      </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteAnnotation(annotation.id);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-                <p className="text-sm">{annotation.content}</p>
-              </div>
-            ))}
+        {/* Comment indicators (for blocks with comments) */}
+        {block.annotations.length > 0 && !showCommentSidebar && (
+          <div className="mt-2">
+            <Badge variant="outline" className="text-xs">
+              {block.annotations.length} comment{block.annotations.length !== 1 ? 's' : ''}
+            </Badge>
           </div>
         )}
       </div>
@@ -563,74 +612,82 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
   };
 
   return (
-    <div className={`clean-semantic-editor ${className}`}>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold">{title}</h2>
-        <div className="flex items-center gap-4">
-          <Button
-            onClick={generateAIComments}
-            disabled={isGeneratingAIComments}
-            variant="outline"
-          >
-            <Sparkles className="h-4 w-4 mr-2" />
-            {isGeneratingAIComments ? 'Generating...' : 'AI Comments'}
-          </Button>
-          <div className="flex items-center gap-2 text-sm text-gray-500">
-            {isAutoSaving && (
-              <span className="flex items-center gap-1">
-                <div className="h-2 w-2 bg-blue-500 rounded-full animate-pulse" />
-                Saving...
-              </span>
-            )}
-            {lastSaved && (
-              <span>
-                Saved {lastSaved.toLocaleTimeString()}
-              </span>
-            )}
-          </div>
+    <div className={`clean-semantic-editor ${className} ${showCommentSidebar ? 'flex' : ''}`}>
+      {/* Main Editor Area */}
+      <div className={`${showCommentSidebar ? 'flex-1 pr-6' : 'w-full'}`}>
+        {/* Editor Content */}
+        <div className="relative pl-12">
+          {state.document.blocks.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-500 mb-4">No content yet. Start writing!</p>
+              <Button onClick={() => addNewBlock()}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add First Block
+              </Button>
+            </div>
+          ) : (
+            <>
+              {/* Render all blocks */}
+              {state.document.blocks
+                .sort((a, b) => a.position - b.position)
+                .map(renderBlock)}
+
+              {/* Add new block at the end */}
+              <div className="mt-4">
+                <Button
+                  variant="ghost"
+                  onClick={() => addNewBlock()}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add new paragraph
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Status Bar */}
+        <div className="mt-6 pt-4 border-t text-sm text-gray-500 flex justify-between">
+          <span>{state.document.blocks.length} blocks</span>
+          <span>
+            {state.document.blocks.reduce((total, block) => total + block.content.split(' ').filter(w => w.length > 0).length, 0)} words
+          </span>
         </div>
       </div>
 
-      {/* Editor Content */}
-      <div className="relative pl-12">
-        {state.document.blocks.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-gray-500 mb-4">No content yet. Start writing!</p>
-            <Button onClick={() => addNewBlock()}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add First Block
-            </Button>
-          </div>
-        ) : (
-          <>
-            {/* Render all blocks */}
-            {state.document.blocks
-              .sort((a, b) => a.position - b.position)
-              .map(renderBlock)}
+      {/* Comment Sidebar */}
+      {showCommentSidebar && (
+        <CommentSidebar
+          blocks={state.document.blocks}
+          onAnnotationResolve={resolveAnnotation}
+          onAnnotationDelete={deleteAnnotation}
+          onAnnotationSelect={onAnnotationSelect}
+          selectedAnnotationId={selectedAnnotationId}
+        />
+      )}
 
-            {/* Add new block at the end */}
-            <div className="mt-4">
-              <Button
-                variant="ghost"
-                onClick={() => addNewBlock()}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add new paragraph
-              </Button>
-            </div>
-          </>
-        )}
-      </div>
+      {/* AI Comments Loading Pane */}
+      <AICommentsLoadingPane
+        isVisible={isGeneratingAIComments}
+        steps={AI_COMMENTS_LOADING_STEPS}
+        currentStepIndex={loadingStep}
+        onComplete={() => {
+          setIsGeneratingAIComments(false);
+          setLoadingStep(0);
+        }}
+      />
 
-      {/* Status Bar */}
-      <div className="mt-6 pt-4 border-t text-sm text-gray-500 flex justify-between">
-        <span>{state.document.blocks.length} blocks</span>
-        <span>
-          {state.document.blocks.reduce((total, block) => total + block.content.split(' ').filter(w => w.length > 0).length, 0)} words
-        </span>
-      </div>
+      {/* Grammar Loading Pane */}
+      <GrammarLoadingPane
+        isVisible={isGeneratingGrammar}
+        steps={GRAMMAR_LOADING_STEPS}
+        currentStepIndex={grammarLoadingStep}
+        onComplete={() => {
+          setIsGeneratingGrammar(false);
+          setGrammarLoadingStep(0);
+        }}
+      />
     </div>
   );
 };

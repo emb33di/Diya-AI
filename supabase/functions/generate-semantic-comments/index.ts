@@ -24,10 +24,11 @@ interface SemanticComment {
   type: 'suggestion' | 'critique' | 'praise' | 'question' | 'comment';
   confidence: number;
   metadata?: {
-    agentType?: 'tone' | 'clarity' | 'strengths' | 'weaknesses' | 'paragraph' | 'big-picture';
+    agentType?: 'tone' | 'clarity' | 'strengths' | 'weaknesses' | 'paragraph' | 'big-picture' | 'grammar';
     category?: 'overall' | 'inline';
-    subcategory?: 'opening' | 'body' | 'conclusion' | 'opening-sentence' | 'transition' | 'paragraph-specific' | 'paragraph-quality' | 'final-sentence';
+    subcategory?: 'opening' | 'body' | 'conclusion' | 'opening-sentence' | 'transition' | 'paragraph-specific' | 'paragraph-quality' | 'final-sentence' | 'grammar';
     commentNature?: 'strength' | 'weakness' | 'suggestion';
+    commentCategory?: 'overall-analysis' | 'tone' | 'clarity' | 'strengths' | 'areas-for-improvement' | 'paragraph-quality' | 'grammar';
   };
 }
 
@@ -186,7 +187,10 @@ serve(async (req) => {
       error: error instanceof Error ? error.message : 'Unknown error'
     }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      },
     });
   }
 });
@@ -212,11 +216,12 @@ async function generateSpecializedSemanticComments(
 
   try {
     // Call specialized agents in parallel
-    const [toneResult, clarityResult, strengthsResult, weaknessesResult] = await Promise.allSettled([
+    const [toneResult, clarityResult, strengthsResult, weaknessesResult, bigPictureResult] = await Promise.allSettled([
       callSemanticToneAgent(blocks, context),
       callSemanticClarityAgent(blocks, context),
       callSemanticStrengthsAgent(blocks, context),
-      callSemanticWeaknessesAgent(blocks, context)
+      callSemanticWeaknessesAgent(blocks, context),
+      callSemanticBigPictureAgent(blocks, context)
     ]);
 
     // Process tone agent results
@@ -253,6 +258,15 @@ async function generateSpecializedSemanticComments(
       console.log(`Weaknesses agent: ${weaknessesComments.length} comments`);
     } else {
       console.error('Weaknesses agent failed:', weaknessesResult.status === 'rejected' ? weaknessesResult.reason : weaknessesResult.value.error);
+    }
+
+    // Process big-picture agent results
+    if (bigPictureResult.status === 'fulfilled' && bigPictureResult.value.success) {
+      const bigPictureComments = convertAgentCommentsToSemantic(bigPictureResult.value.comments, blocks, 'big-picture');
+      allComments.push(...bigPictureComments);
+      console.log(`Big-picture agent: ${bigPictureComments.length} comments`);
+    } else {
+      console.error('Big-picture agent failed:', bigPictureResult.status === 'rejected' ? bigPictureResult.reason : bigPictureResult.value.error);
     }
 
     console.log(`Total semantic comments generated: ${allComments.length}`);
@@ -367,12 +381,38 @@ async function callSemanticWeaknessesAgent(blocks: DocumentBlock[], context: any
 }
 
 /**
+ * Call big-picture agent adapted for semantic blocks
+ */
+async function callSemanticBigPictureAgent(blocks: DocumentBlock[], context: any): Promise<any> {
+  const essayContent = blocks.map(b => b.content).join('\n\n');
+  
+  const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/generate-essay-comments-orchestrator`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
+    },
+    body: JSON.stringify({
+      essayContent,
+      essayPrompt: context.prompt,
+      agentTypes: ['big-picture']
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Big-picture agent error: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
+/**
  * Convert agent comments to semantic format
  */
 function convertAgentCommentsToSemantic(
   agentComments: any[], 
   blocks: DocumentBlock[], 
-  agentType: 'tone' | 'clarity' | 'strengths' | 'weaknesses'
+  agentType: 'tone' | 'clarity' | 'strengths' | 'weaknesses' | 'big-picture'
 ): SemanticComment[] {
   const semanticComments: SemanticComment[] = [];
 
@@ -390,6 +430,9 @@ function convertAgentCommentsToSemantic(
 
     // Map comment nature
     const commentNature = mapCommentNature(agentComment, agentType);
+    
+    // Map comment category for sidebar organization
+    const commentCategory = mapCommentCategory(agentType, agentComment);
 
     const semanticComment: SemanticComment = {
       targetBlockId: targetBlock.id,
@@ -401,7 +444,8 @@ function convertAgentCommentsToSemantic(
         agentType: agentType,
         category: agentComment.comment_category || agentComment.commentCategory || 'inline',
         subcategory: agentComment.comment_subcategory || agentComment.commentSubcategory || 'paragraph-specific',
-        commentNature: commentNature
+        commentNature: commentNature,
+        commentCategory: commentCategory
       }
     };
 
@@ -531,5 +575,36 @@ function mapCommentNature(agentComment: any, agentType: string): 'strength' | 'w
     case 'tone':
     case 'clarity': return 'suggestion';
     default: return 'suggestion';
+  }
+}
+
+/**
+ * Map comment category for sidebar organization
+ */
+function mapCommentCategory(
+  agentType: string, 
+  agentComment: any
+): 'overall-analysis' | 'tone' | 'clarity' | 'strengths' | 'areas-for-improvement' | 'paragraph-quality' | 'grammar' {
+  // Check if comment has explicit category
+  const explicitCategory = agentComment.comment_category_sidebar || agentComment.commentCategorySidebar;
+  if (explicitCategory) {
+    return explicitCategory;
+  }
+
+  // Map based on agent type
+  switch (agentType) {
+    case 'big-picture': return 'overall-analysis';
+    case 'tone': return 'tone';
+    case 'clarity': return 'clarity';
+    case 'strengths': return 'strengths';
+    case 'weaknesses': return 'areas-for-improvement';
+    case 'paragraph': return 'paragraph-quality';
+    case 'grammar': return 'grammar';
+    default: 
+      // Fallback based on comment nature
+      const commentNature = agentComment.comment_nature || agentComment.commentNature;
+      if (commentNature === 'strength') return 'strengths';
+      if (commentNature === 'weakness') return 'areas-for-improvement';
+      return 'clarity'; // Default fallback
   }
 }
