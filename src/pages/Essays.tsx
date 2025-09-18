@@ -17,6 +17,7 @@ import { CreateEssayModal } from "@/components/essay/CreateEssayModal";
 import { DeleteEssayDialog } from "@/components/essay/DeleteEssayDialog";
 import { EssayService, CreateEssayData } from "@/services/essayService";
 import { useIsMobile } from "@/hooks/use-mobile";
+import PromptDropdown from "@/components/essay/PromptDropdown";
 
 interface School {
   id: string;
@@ -84,7 +85,12 @@ const Essays = () => {
     const optionalPrompts: EssayPrompt[] = [];
     
     prompts.forEach(prompt => {
-      if (prompt.selection_type === 'required') {
+      // A prompt is truly required only if both selection_type and prompt_selection_type are 'required'
+      // If prompt_selection_type is 'choose_one', 'choose_two', etc., it's optional
+      const isTrulyRequired = prompt.selection_type === 'required' && 
+                             prompt.prompt_selection_type === 'required';
+      
+      if (isTrulyRequired) {
         requiredPrompts.push(prompt);
       } else {
         optionalPrompts.push(prompt);
@@ -98,19 +104,19 @@ const Essays = () => {
   const getSelectionText = (prompts: EssayPrompt[]) => {
     if (prompts.length === 0) return '';
     
-    // Get the how_many value from the first prompt (they should all be the same for a school)
-    const howMany = prompts[0]?.how_many || 'one';
+    // Get the prompt_selection_type from the first prompt (they should all be the same for a school)
+    const promptSelectionType = prompts[0]?.prompt_selection_type || 'choose_one';
     
-    // Parse the selection type to determine the format
-    const selectionType = prompts[0]?.selection_type || 'choose_one';
-    
-    if (selectionType === 'choose_one') {
+    if (promptSelectionType === 'choose_one') {
       return `Choose 1 of ${prompts.length}`;
-    } else if (selectionType.startsWith('choose_')) {
-      const number = selectionType.split('_')[1];
+    } else if (promptSelectionType.startsWith('choose_')) {
+      const number = promptSelectionType.split('_')[1];
       return `Choose ${number} of ${prompts.length}`;
+    } else if (promptSelectionType === 'required') {
+      // This shouldn't happen for optional prompts, but just in case
+      return `All ${prompts.length} required`;
     } else {
-      return `Choose ${howMany} of ${prompts.length}`;
+      return `Choose from ${prompts.length} options`;
     }
   };
   const [schools, setSchools] = useState<School[]>([]);
@@ -139,6 +145,7 @@ const Essays = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [essayToDelete, setEssayToDelete] = useState<any>(null);
   const [deletingEssay, setDeletingEssay] = useState(false);
+  const [selectedPromptId, setSelectedPromptId] = useState<string | undefined>(undefined);
   const { toast } = useToast();
 
   // Mobile-specific state management
@@ -581,6 +588,7 @@ const Essays = () => {
     setSelectedSchool(schoolName);
     setSelectedEssay(null);
     setEssayContent('');
+    setSelectedPromptId(undefined); // Clear prompt selection when school changes
     persistEssaySelection(null); // Clear essay selection when school changes
     
     // Clear application system state when switching to a different school
@@ -599,6 +607,22 @@ const Essays = () => {
     
     // Persist to localStorage
     localStorage.setItem('essays_selected_school', schoolName);
+  };
+
+  // Handle prompt selection from dropdown
+  const handlePromptChange = async (promptId: string) => {
+    setSelectedPromptId(promptId);
+    
+    // Find the prompt and create/select the corresponding essay
+    const prompt = essayPrompts.find(p => p.id === promptId);
+    if (!prompt) return;
+
+    // Find the corresponding essay
+    const essay = essays.find(e => e.promptNumber === prompt.prompt_number);
+    if (!essay) return;
+
+    // Use the existing essay selection logic
+    await handleEssaySelect(essay);
   };
   const handleEssaySelect = async (essay: Essay) => {
     // Mobile navigation: move to editor step and set selected prompt
@@ -1035,10 +1059,12 @@ const Essays = () => {
                             id: prompt.id,
                             prompt: prompt.prompt,
                             prompt_number: prompt.prompt_number,
-                            is_required: prompt.selection_type === 'required',
+                            is_required: prompt.selection_type === 'required' && prompt.prompt_selection_type === 'required',
                             word_limit: prompt.word_limit,
                             has_draft: !!(associatedEssay || associatedNewEssay),
-                            draft_status: associatedNewEssay ? associatedNewEssay.status : associatedEssay?.status
+                            draft_status: associatedNewEssay ? associatedNewEssay.status : associatedEssay?.status,
+                            prompt_selection_type: prompt.prompt_selection_type,
+                            how_many: prompt.how_many
                           };
                         })}
                         selectedPromptId={(() => {
@@ -1123,7 +1149,7 @@ const Essays = () => {
                     ) : (
                       <Textarea 
                         placeholder="Start writing your essay here..." 
-                        className="h-full w-full resize-none border-0 rounded-none focus:ring-0 text-base leading-relaxed p-4 bg-background" 
+                        className="h-full w-full resize-none border-0 rounded-none focus:ring-0 text-lg leading-relaxed p-4 bg-background" 
                         value={essayContent} 
                         onChange={e => handleEssayContentChange(e.target.value)} 
                         autoFocus
@@ -1220,10 +1246,12 @@ const Essays = () => {
                       id: prompt.id,
                       prompt: prompt.prompt,
                       prompt_number: prompt.prompt_number,
-                      is_required: prompt.selection_type === 'required',
+                      is_required: prompt.selection_type === 'required' && prompt.prompt_selection_type === 'required',
                       word_limit: prompt.word_limit,
                       has_draft: !!(associatedEssay || associatedNewEssay),
-                      draft_status: associatedNewEssay ? associatedNewEssay.status : associatedEssay?.status
+                      draft_status: associatedNewEssay ? associatedNewEssay.status : associatedEssay?.status,
+                      prompt_selection_type: prompt.prompt_selection_type,
+                      how_many: prompt.how_many
                     };
                   })}
                   selectedPromptId={(() => {
@@ -1351,9 +1379,49 @@ const Essays = () => {
                   </CardHeader>
                   
                   <CardContent className="p-0 h-full">
-                    <Textarea placeholder="Start writing your essay here..." className="h-full min-h-[500px] resize-none border-0 rounded-none focus:ring-0 text-base leading-relaxed p-6" value={essayContent} onChange={e => handleEssayContentChange(e.target.value)} />
+                    <Textarea placeholder="Start writing your essay here..." className="h-full min-h-[500px] resize-none border-0 rounded-none focus:ring-0 text-lg leading-relaxed p-6" value={essayContent} onChange={e => handleEssayContentChange(e.target.value)} />
                   </CardContent>
                 </Card>
+              ) : selectedSchool ? (
+                // Show prompt dropdown when school is selected but no essay is chosen
+                <div className="h-full overflow-y-auto p-6">
+                  {essayPrompts.length > 0 ? (
+                    <PromptDropdown
+                      prompts={essayPrompts.map(prompt => {
+                        // Find if there's a draft for this prompt
+                        const associatedEssay = essays.find(e => e.promptNumber === prompt.prompt_number);
+                        const associatedNewEssay = newEssays.find(e => 
+                          (e.title === associatedEssay?.title || 
+                          (e.school_name === associatedEssay?.schoolName && e.title.includes(associatedEssay?.promptNumber || ''))) &&
+                          !e.prompt_text
+                        );
+                        
+                        return {
+                          id: prompt.id,
+                          prompt: prompt.prompt,
+                          prompt_number: prompt.prompt_number,
+                          is_required: prompt.selection_type === 'required' && prompt.prompt_selection_type === 'required',
+                          word_limit: prompt.word_limit,
+                          has_draft: !!(associatedEssay || associatedNewEssay),
+                          draft_status: associatedNewEssay ? associatedNewEssay.status : associatedEssay?.status,
+                          prompt_selection_type: prompt.prompt_selection_type,
+                          how_many: prompt.how_many
+                        };
+                      })}
+                      selectedPromptId={selectedPromptId}
+                      onPromptChange={handlePromptChange}
+                      className="max-w-4xl mx-auto"
+                    />
+                  ) : (
+                    <Card className="p-8 text-center bg-muted/30 max-w-2xl mx-auto">
+                      <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">No Essay Prompts Found</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {selectedSchool === 'Common Application' ? 'No Common App prompts found' : 'No essay prompts found for this school'}
+                      </p>
+                    </Card>
+                  )}
+                </div>
               ) : (
                 <Card className="h-full shadow-sm bg-gradient-to-br from-muted/30 to-muted/10">
                   <CardContent className="p-12 text-center h-full flex flex-col items-center justify-center">

@@ -44,6 +44,8 @@ interface EssayPrompt {
   word_limit?: string;
   has_draft?: boolean;
   draft_status?: 'draft' | 'review' | 'final' | 'submitted';
+  prompt_selection_type?: string;
+  how_many?: string;
 }
 
 interface SemanticEssayEditorProps {
@@ -474,84 +476,162 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
               {/* Header */}
               <div className="flex items-center justify-between">
                 <div>
-                  {/* Prompt Selection Dropdown */}
+                  {/* Prompt Selection */}
                   {prompts.length > 0 ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center space-x-3">
-                        <Select value={selectedPromptId || ''} onValueChange={onPromptChange || (() => {})}>
-                          <SelectTrigger className="w-full max-w-md bg-white border-gray-300 shadow-sm">
-                            <SelectValue placeholder="Select a prompt">
-                              {(() => {
-                                const selectedPrompt = prompts.find(p => p.id === selectedPromptId);
-                                return selectedPrompt ? (
-                                  <div className="flex items-center space-x-2">
-                                    <span className="truncate font-semibold text-lg">
-                                      {selectedPrompt.prompt_number ? `Prompt ${selectedPrompt.prompt_number}` : 'Custom Prompt'}
-                                    </span>
-                                    {selectedPrompt.is_required && (
-                                      <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">
-                                        Required
-                                      </Badge>
-                                    )}
-                                    {selectedPrompt.has_draft && (
-                                      <Badge variant="outline" className={`text-xs ${
-                                        selectedPrompt.draft_status === 'draft' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                                        selectedPrompt.draft_status === 'review' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                                        selectedPrompt.draft_status === 'final' ? 'bg-green-50 text-green-700 border-green-200' :
-                                        'bg-gray-50 text-gray-700 border-gray-200'
-                                      }`}>
-                                        {selectedPrompt.draft_status || 'Draft'}
-                                      </Badge>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <span className="font-semibold text-lg">{document.title}</span>
-                                );
-                              })()}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {prompts.map((prompt) => (
-                              <SelectItem key={prompt.id} value={prompt.id}>
-                                <div className="flex items-center space-x-2 w-full">
-                                  <span className="flex-1 truncate font-medium">
-                                    {prompt.prompt_number ? `Prompt ${prompt.prompt_number}` : 'Custom Prompt'}
-                                  </span>
-                                  <div className="flex items-center space-x-1 ml-2">
-                                    {prompt.is_required && (
-                                      <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">
-                                        Required
-                                      </Badge>
-                                    )}
-                                    {prompt.has_draft && (
-                                      <Badge variant="outline" className={`text-xs ${
-                                        prompt.draft_status === 'draft' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                                        prompt.draft_status === 'review' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                                        prompt.draft_status === 'final' ? 'bg-green-50 text-green-700 border-green-200' :
-                                        'bg-gray-50 text-gray-700 border-gray-200'
-                                      }`}>
-                                        {prompt.draft_status || 'Draft'}
-                                      </Badge>
-                                    )}
-                                  </div>
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      {/* Required Essay Breakdown */}
+                    <div className="space-y-4">
+                      {/* Categorize prompts */}
                       {(() => {
                         const requiredPrompts = prompts.filter(p => p.is_required);
-                        const requiredWithDrafts = requiredPrompts.filter(p => p.has_draft);
-                        const requiredBreakdown = `${requiredWithDrafts.length}/${requiredPrompts.length} required`;
+                        const optionalPrompts = prompts.filter(p => !p.is_required);
                         
-                        return requiredPrompts.length > 0 && (
-                          <div className="flex items-center space-x-2 text-sm text-gray-500">
-                            <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">
-                              {requiredBreakdown}
-                            </Badge>
+                        // Get selection text for optional prompts
+                        const getSelectionText = (prompts: EssayPrompt[]) => {
+                          if (prompts.length === 0) return '';
+                          
+                          const promptSelectionType = prompts[0]?.prompt_selection_type || 'choose_one';
+                          const howMany = prompts[0]?.how_many || '1';
+                          
+                          if (promptSelectionType === 'choose_one') {
+                            return `Choose 1 of ${prompts.length}`;
+                          } else if (promptSelectionType.startsWith('choose_')) {
+                            const number = promptSelectionType.split('_')[1];
+                            return `Choose ${number} of ${prompts.length}`;
+                          } else {
+                            return `Choose ${howMany} of ${prompts.length}`;
+                          }
+                        };
+                        
+                        // Get status color for draft status
+                        const getStatusColor = (status?: string) => {
+                          switch (status) {
+                            case 'draft': return 'bg-yellow-50 text-yellow-700 border-yellow-200';
+                            case 'review': return 'bg-blue-50 text-blue-700 border-blue-200';
+                            case 'final': return 'bg-green-50 text-green-700 border-green-200';
+                            case 'submitted': return 'bg-gray-50 text-gray-700 border-gray-200';
+                            default: return 'bg-gray-50 text-gray-700 border-gray-200';
+                          }
+                        };
+                        
+                        return (
+                          <div className="space-y-4">
+                            {/* Headers Row */}
+                            <div className="flex space-x-4">
+                              {requiredPrompts.length > 0 && (
+                                <div className="flex-1">
+                                  <h4 className="text-sm font-medium text-red-600 flex items-center space-x-2">
+                                    <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                                    <span className="whitespace-nowrap">Required ({requiredPrompts.length})</span>
+                                  </h4>
+                                </div>
+                              )}
+                              {optionalPrompts.length > 0 && (
+                                <div className="flex-1">
+                                  <h4 className="text-sm font-medium text-blue-600 flex items-center space-x-2">
+                                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                    <span className="whitespace-nowrap">{getSelectionText(optionalPrompts)} ({optionalPrompts.length} prompts)</span>
+                                  </h4>
+                                </div>
+                              )}
+                            </div>
+                            
+                            {/* Dropdowns Row */}
+                            <div className="flex space-x-4">
+                              {/* Required Essays Dropdown */}
+                              {requiredPrompts.length > 0 && (
+                                <div className="flex-1">
+                                  <Select 
+                                    value={requiredPrompts.find(p => p.id === selectedPromptId)?.id || ''} 
+                                    onValueChange={onPromptChange || (() => {})}
+                                  >
+                                    <SelectTrigger className="w-full bg-white border-gray-300 shadow-sm">
+                                      <SelectValue placeholder="Select required prompt">
+                                        {(() => {
+                                          const selectedPrompt = requiredPrompts.find(p => p.id === selectedPromptId);
+                                          return selectedPrompt ? (
+                                            <div className="flex items-center space-x-2">
+                                              <span className="truncate font-medium">
+                                                {selectedPrompt.prompt_number ? `Prompt ${selectedPrompt.prompt_number}` : 'Custom Prompt'}
+                                              </span>
+                                              {selectedPrompt.has_draft && (
+                                                <Badge variant="outline" className={`text-xs ${getStatusColor(selectedPrompt.draft_status)}`}>
+                                                  {selectedPrompt.draft_status || 'Draft'}
+                                                </Badge>
+                                              )}
+                                            </div>
+                                          ) : null;
+                                        })()}
+                                      </SelectValue>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {requiredPrompts.map((prompt) => (
+                                        <SelectItem key={prompt.id} value={prompt.id}>
+                                          <div className="flex items-center space-x-2 w-full">
+                                            <span className="flex-1 truncate">
+                                              {prompt.prompt_number ? `Prompt ${prompt.prompt_number}` : 'Custom Prompt'}
+                                            </span>
+                                            <div className="flex items-center space-x-1 ml-2">
+                                              {prompt.has_draft && (
+                                                <Badge variant="outline" className={`text-xs ${getStatusColor(prompt.draft_status)}`}>
+                                                  {prompt.draft_status || 'Draft'}
+                                                </Badge>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              )}
+                              
+                              {/* Optional Essays Dropdown */}
+                              {optionalPrompts.length > 0 && (
+                                <div className="flex-1">
+                                  <Select 
+                                    value={optionalPrompts.find(p => p.id === selectedPromptId)?.id || ''} 
+                                    onValueChange={onPromptChange || (() => {})}
+                                  >
+                                    <SelectTrigger className="w-full bg-white border-gray-300 shadow-sm">
+                                      <SelectValue placeholder={`Select from ${getSelectionText(optionalPrompts)}`}>
+                                        {(() => {
+                                          const selectedPrompt = optionalPrompts.find(p => p.id === selectedPromptId);
+                                          return selectedPrompt ? (
+                                            <div className="flex items-center space-x-2">
+                                              <span className="truncate font-medium">
+                                                {selectedPrompt.prompt_number ? `Prompt ${selectedPrompt.prompt_number}` : 'Custom Prompt'}
+                                              </span>
+                                              {selectedPrompt.has_draft && (
+                                                <Badge variant="outline" className={`text-xs ${getStatusColor(selectedPrompt.draft_status)}`}>
+                                                  {selectedPrompt.draft_status || 'Draft'}
+                                                </Badge>
+                                              )}
+                                            </div>
+                                          ) : null;
+                                        })()}
+                                      </SelectValue>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {optionalPrompts.map((prompt) => (
+                                        <SelectItem key={prompt.id} value={prompt.id}>
+                                          <div className="flex items-center space-x-2 w-full">
+                                            <span className="flex-1 truncate">
+                                              {prompt.prompt_number ? `Prompt ${prompt.prompt_number}` : 'Custom Prompt'}
+                                            </span>
+                                            <div className="flex items-center space-x-1 ml-2">
+                                              {prompt.has_draft && (
+                                                <Badge variant="outline" className={`text-xs ${getStatusColor(prompt.draft_status)}`}>
+                                                  {prompt.draft_status || 'Draft'}
+                                                </Badge>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         );
                       })()}
@@ -607,43 +687,6 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                   </div>
                 </div>
                 
-                <div className="flex gap-2">
-                  <Button 
-                    onClick={generateAIComments} 
-                    disabled={isGeneratingAIComments}
-                    variant="outline"
-                  >
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    AI Comments
-                  </Button>
-                  <Button 
-                    onClick={generateGrammarComments} 
-                    disabled={isGeneratingGrammar}
-                    variant="outline"
-                    className="border-blue-200 text-blue-700 hover:bg-blue-50"
-                  >
-                    <CheckSquare className="h-4 w-4 mr-2" />
-                    Grammar Check
-                  </Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline">
-                        <FileDown className="h-4 w-4 mr-2" />
-                        Export
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={exportAsDOCX}>
-                        <FileTextIcon className="h-4 w-4 mr-2" />
-                        Export as DOCX
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={exportAsPDF}>
-                        <FileText className="h-4 w-4 mr-2" />
-                        Export as PDF
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
               </div>
 
               {/* Prompt Section */}
@@ -667,19 +710,60 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                         </div>
                       </h3>
                       <div className="prose prose-gray max-w-none">
-                        <p className="text-gray-700 leading-relaxed m-0" style={{ fontFamily: 'Times New Roman, serif', fontSize: '16px' }}>
+                        <p className="text-gray-700 leading-relaxed m-0 text-lg" style={{ fontFamily: 'Times New Roman, serif' }}>
                           {prompt || document.metadata.prompt}
                         </p>
                       </div>
                     </div>
                   </div>
                   
-                  {/* Word limit reminder */}
+                  {/* Word limit reminder and action buttons */}
                   <div className="mt-4 md:mt-6 pt-4 border-t border-gray-100">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">
                         Word Limit: {getCurrentWordCount()}/{wordLimit || document.metadata.wordLimit || 650}
                       </span>
+                      
+                      {/* Action Buttons */}
+                      <div className="flex gap-2">
+                        <Button 
+                          onClick={generateAIComments} 
+                          disabled={isGeneratingAIComments}
+                          variant="outline"
+                          size="sm"
+                        >
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          AI Comments
+                        </Button>
+                        <Button 
+                          onClick={generateGrammarComments} 
+                          disabled={isGeneratingGrammar}
+                          variant="outline"
+                          size="sm"
+                          className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                        >
+                          <CheckSquare className="h-4 w-4 mr-2" />
+                          Grammar Check
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm">
+                              <FileDown className="h-4 w-4 mr-2" />
+                              Export
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={exportAsDOCX}>
+                              <FileTextIcon className="h-4 w-4 mr-2" />
+                              Export as DOCX
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={exportAsPDF}>
+                              <FileText className="h-4 w-4 mr-2" />
+                              Export as PDF
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -196,20 +196,6 @@ const TipTapToolbar: React.FC<TipTapToolbarProps> = ({
         <Quote className="h-4 w-4" />
       </ToolbarButton>
 
-      <Separator orientation="vertical" className="h-6 mx-2" />
-
-      {/* New Paragraph Button */}
-      <ToolbarButton
-        onClick={() => {
-          // Create a new paragraph using TipTap's built-in command
-          editor.chain().focus().splitBlock().run()
-        }}
-        title="New Paragraph (Create new paragraph)"
-      >
-        <Plus className="h-4 w-4" />
-      </ToolbarButton>
-
-      <Separator orientation="vertical" className="h-6 mx-2" />
 
       {/* AI Feedback Button */}
       {onAIFeedback && (

@@ -753,21 +753,27 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
             }}
             onBlur={() => finishEditingBlock(block.id)}
             onKeyDown={(e) => handleKeyDown(e, block.id)}
-            className="min-h-[2.5rem] resize-none border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500"
+            onFocus={(e) => {
+              // If the block is empty, set cursor to the beginning
+              if (!block.content || block.content.trim() === '') {
+                setTimeout(() => {
+                  e.target.setSelectionRange(0, 0);
+                }, 0);
+              }
+            }}
+            className="min-h-[2.5rem] resize-none border-none shadow-none focus-visible:ring-0 text-lg"
             style={{
               fontFamily: 'Times New Roman, serif',
-              fontSize: '16px',
               lineHeight: '1.6',
             }}
             placeholder={block.position === 0 ? "Start writing here..." : ""}
           />
         ) : (
           <div
-            className="min-h-[2.5rem] cursor-text p-2 rounded hover:bg-gray-50 transition-colors"
+            className="min-h-[2.5rem] cursor-text p-2 rounded hover:bg-gray-50 transition-colors text-lg"
             onClick={() => startEditingBlock(block.id)}
             style={{
               fontFamily: 'Times New Roman, serif',
-              fontSize: '16px',
               lineHeight: '1.6',
             }}
           >
@@ -804,17 +810,6 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
             .sort((a, b) => a.position - b.position)
             .map(renderBlock)}
 
-          {/* Add new block at the end */}
-          <div className="mt-4">
-            <Button
-              variant="ghost"
-              onClick={() => addNewBlock()}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add new paragraph
-            </Button>
-          </div>
         </div>
       </div>
 
