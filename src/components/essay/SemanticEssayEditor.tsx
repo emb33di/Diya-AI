@@ -10,6 +10,7 @@ import { SemanticDocument, Annotation } from '@/types/semanticDocument';
 import { semanticDocumentService } from '@/services/semanticDocumentService';
 import { migrationUtils } from '@/utils/migrationUtils';
 import { ExportService } from '@/services/exportService';
+import { usePageVisibility } from '@/hooks/usePageVisibility';
 import SemanticEditor from './SemanticEditor';
 import CommentOverlay from './CommentOverlay';
 import { Button } from '@/components/ui/button';
@@ -64,6 +65,24 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
     progress: 0,
     message: ''
   });
+
+  // Reload document when page becomes visible (handles tab switches, etc.)
+  const handlePageVisible = async () => {
+    if (document && essayId) {
+      try {
+        console.log('Page became visible, refreshing document data...');
+        const refreshedDocument = await semanticDocumentService.loadDocumentByEssayId(essayId);
+        if (refreshedDocument && refreshedDocument.updatedAt > document.updatedAt) {
+          console.log('Document was updated externally, refreshing...');
+          setDocument(refreshedDocument);
+        }
+      } catch (error) {
+        console.warn('Failed to refresh document on page visibility:', error);
+      }
+    }
+  };
+
+  usePageVisibility(handlePageVisible);
 
   // Load or create document on mount
   useEffect(() => {
@@ -283,7 +302,14 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
     };
   };
 
+  // Debug logging for loading states (only log when there are issues)
   if (isLoading || migrationStatus.isMigrating) {
+    console.log('SemanticEssayEditor render - isLoading:', isLoading, 'isMigrating:', migrationStatus.isMigrating, 'document:', !!document);
+  }
+  
+
+  if (isLoading || migrationStatus.isMigrating) {
+    console.log('Showing loading screen due to:', { isLoading, isMigrating: migrationStatus.isMigrating, message: migrationStatus.message });
     return (
       <div className={`semantic-essay-editor ${className}`}>
         <Card>
@@ -362,7 +388,6 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                 <div>
                   <h1 className="text-2xl font-bold">{document.title}</h1>
                   <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <span>{stats?.totalBlocks} blocks • {stats?.totalComments} comments</span>
                     {stats && (stats.toneComments > 0 || stats.clarityComments > 0 || stats.strengthsComments > 0 || stats.weaknessesComments > 0) && (
                       <>
                         <span>•</span>
@@ -400,11 +425,11 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                       <>
                         <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                         <span>Saved {lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        <span className="text-xs text-green-600 ml-1 font-medium">(Instant Save)</span>
                       </>
                     ) : (
                       <>
-                        <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
-                        <span>Auto-saves enabled</span>
+                        <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
                       </>
                     )}
                   </div>

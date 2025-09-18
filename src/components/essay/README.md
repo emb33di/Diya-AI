@@ -1,51 +1,15 @@
-# ⚠️ DEPRECATED: Enhanced Essay Editor
+# 📝 Essay Editor System
 
-**This system has been replaced by the Semantic Essay Editor**
+## ✅ Current System: Semantic Essay Editor
 
-## 🔄 Migration Complete!
+The essay editing system is built on a modern semantic document architecture that provides stable, Google Docs-like commenting experience.
 
-The Enhanced Essay Editor has been replaced with a new semantic document architecture that solves fundamental positioning issues. The old system had these problems:
+### 🏗️ Architecture:
 
-### ❌ Problems with Old System:
-
-1. **Position Instability** - Comments would drift when content changed
-2. **AI-Document Mismatch** - AI thinks in blocks, editor used positions
-3. **Complex Architecture** - Multiple conflicting positioning systems
-4. **"Off by a bit" Errors** - Comments frequently appeared in wrong locations
-5. **Performance Issues** - Complex calculations on every keystroke
-
-### ✅ New Semantic Editor:
-
-#### Migration completed automatically:
-
-```tsx
-// Old (DEPRECATED):
-<EnhancedEssayEditor 
-  essayId={selectedNewEssayId}
-  title={title}
-  prompt={prompt}
-  wordLimit={650}
-/>
-
-// New (CURRENT):
-<SemanticEssayEditor 
-  essayId={selectedNewEssayId}
-  title={title}
-  prompt={prompt}
-  wordLimit={650}
-  onContentChange={handleContentChange} // Optional
-/>
-```
-
-#### New Features:
-
-1. **Stable Comment Positioning** - Comments never drift from their targets
-2. **Block-Based Architecture** - Semantic content blocks instead of positions
-3. **Google Docs-like UX** - Floating comment bubbles with proper alignment
-4. **AI-First Design** - Aligns with how AI analyzes content naturally
-5. **Automatic Migration** - Converts legacy comments automatically
-6. **Better Performance** - No complex position calculations
-7. **Tabbed Interface** - Editor, Comments, Analytics, and Settings tabs
+- **Semantic Document Blocks** - Content organized in stable, identifiable blocks
+- **Block-Based Comments** - Comments anchored to semantic blocks, not fragile positions
+- **AI-First Design** - Aligns with how AI analyzes content naturally
+- **Real-time Sync** - Automatic saving and live updates
 
 ### 🎨 Comment Types & Colors:
 
@@ -54,11 +18,25 @@ The Enhanced Essay Editor has been replaced with a new semantic document archite
 - **Praise** (Purple) - What's working well
 - **Question** (Yellow) - Questions about content
 
+### 🚀 Usage:
+
+```tsx
+<SemanticEssayEditor 
+  essayId={essayId}
+  title={title}
+  prompt={prompt}
+  wordLimit={650}
+  onContentChange={handleContentChange} // Optional
+/>
+```
+
 ### 🔧 Technical Details:
 
-- **TipTap Extension** - Handles text selection and highlighting
-- **Supabase Integration** - Real-time comment storage
+- **Block-Based Architecture** - Semantic content blocks instead of positions
+- **Google Docs-like UX** - Floating comment bubbles with proper alignment
+- **Supabase Integration** - Real-time comment storage and sync
 - **Row Level Security** - Users only see their own essay comments
+- **AI Comment Generation** - Multi-agent system for comprehensive feedback
 - **Performance Optimized** - Indexed queries and efficient updates
 
 ### 🚧 Next Steps (Phase 2):

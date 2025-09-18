@@ -1,6 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
 import { EssayVersionService } from './essayVersionService';
-import { EssayParagraph, AIInput, AICommentOutput, ContextualAICommentResponse } from '@/types/contextualAnchoring';
 
 export interface AICommentRequest {
   essayId: string;
@@ -124,41 +123,6 @@ export class AICommentService {
     }
   }
 
-  /**
-   * Generate AI comments using the legacy single agent (for backward compatibility)
-   */
-  static async generateLegacyAIComments(request: AICommentRequest): Promise<AICommentResponse> {
-    try {
-      // Get the current user's session
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        throw new Error('User not authenticated');
-      }
-
-      // Call the legacy Big Picture Agent Edge Function
-      const { data, error } = await supabase.functions.invoke('generate-essay-comments', {
-        body: {
-          essayId: request.essayId,
-          essayContent: request.essayContent,
-          essayPrompt: request.essayPrompt,
-          userId: request.userId
-        },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        }
-      });
-
-      if (error) {
-        throw new Error(`Edge Function error: ${error.message}`);
-      }
-
-      return data as AICommentResponse;
-    } catch (error) {
-      console.error('Error generating legacy AI comments:', error);
-      throw new Error(`Failed to generate legacy AI comments: ${error.message}`);
-    }
-  }
 
   /**
    * Generate AI comments and automatically save them to the database
@@ -467,137 +431,7 @@ export class AICommentService {
     }
   }
 
-  /**
-   * NEW: Generate AI comments using the Contextual Anchoring system
-   * This method uses paragraph IDs for robust comment positioning
-   */
-  static async generateContextualAIComments(
-    essayId: string,
-    essayContent: string,
-    essayPrompt?: string,
-    essayTitle?: string
-  ): Promise<ContextualAICommentResponse> {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        throw new Error('User not authenticated');
-      }
 
-      // Parse the essay content into structured paragraphs with IDs
-      const paragraphs = this.parseEssayIntoParagraphs(essayContent);
-      
-      // Create the structured input for the AI
-      const aiInput: AIInput = {
-        documentId: essayId,
-        content: paragraphs
-      };
-
-      // Call the new contextual anchoring edge function
-      const { data, error } = await supabase.functions.invoke('generate-essay-comments-contextual', {
-        body: {
-          essayId,
-          essayContent: aiInput,
-          essayPrompt,
-          essayTitle,
-          userId: session.user.id
-        },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        }
-      });
-
-      if (error) {
-        throw new Error(`Edge Function error: ${error.message}`);
-      }
-
-      return data as ContextualAICommentResponse;
-    } catch (error) {
-      console.error('Error generating contextual AI comments:', error);
-      throw new Error(`Failed to generate contextual AI comments: ${error.message}`);
-    }
-  }
-
-  /**
-   * Parse essay content into structured paragraphs with unique IDs
-   * This is the pre-processing step that creates paragraph IDs
-   */
-  static parseEssayIntoParagraphs(essayContent: string): EssayParagraph[] {
-    try {
-      // Remove HTML tags and split into paragraphs
-      const textContent = essayContent.replace(/<[^>]*>/g, '');
-      
-      // Split by double newlines or paragraph breaks
-      const rawParagraphs = textContent
-        .split(/\n\s*\n/)
-        .map(p => p.trim())
-        .filter(p => p.length > 0);
-
-      // Generate unique IDs for each paragraph
-      const paragraphs: EssayParagraph[] = rawParagraphs.map((text, index) => ({
-        paragraphId: `para_${Date.now()}_${index}`,
-        text: text
-      }));
-
-      console.log(`Parsed essay into ${paragraphs.length} paragraphs with IDs:`, 
-        paragraphs.map(p => ({ id: p.paragraphId, preview: p.text.substring(0, 50) + '...' })));
-
-      return paragraphs;
-    } catch (error) {
-      console.error('Error parsing essay into paragraphs:', error);
-      throw new Error('Failed to parse essay content into structured paragraphs');
-    }
-  }
-
-  /**
-   * Validate AI comment output to ensure it conforms to the expected structure
-   */
-  static validateAICommentOutput(comments: any[]): AICommentOutput[] {
-    try {
-      if (!Array.isArray(comments)) {
-        throw new Error('AI response must be an array of comments');
-      }
-
-      return comments.map((comment, index) => {
-        // Validate required fields
-        if (!comment.comment || typeof comment.comment !== 'string') {
-          throw new Error(`Comment ${index}: missing or invalid 'comment' field`);
-        }
-        if (!comment.paragraphId || typeof comment.paragraphId !== 'string') {
-          throw new Error(`Comment ${index}: missing or invalid 'paragraphId' field`);
-        }
-        if (!comment.anchorText || typeof comment.anchorText !== 'string') {
-          throw new Error(`Comment ${index}: missing or invalid 'anchorText' field`);
-        }
-
-        // Validate comment type
-        const validTypes = ['suggestion', 'critique', 'praise', 'question'];
-        if (!validTypes.includes(comment.commentType)) {
-          throw new Error(`Comment ${index}: invalid commentType '${comment.commentType}'`);
-        }
-
-        // Validate confidence score
-        if (typeof comment.confidenceScore !== 'number' || 
-            comment.confidenceScore < 0 || comment.confidenceScore > 1) {
-          throw new Error(`Comment ${index}: invalid confidenceScore '${comment.confidenceScore}'`);
-        }
-
-        return {
-          comment: comment.comment,
-          paragraphId: comment.paragraphId,
-          anchorText: comment.anchorText,
-          commentType: comment.commentType,
-          confidenceScore: comment.confidenceScore,
-          commentCategory: comment.commentCategory || 'inline',
-          commentSubcategory: comment.commentSubcategory || 'paragraph-specific',
-          agentType: comment.agentType
-        } as AICommentOutput;
-      });
-    } catch (error) {
-      console.error('Error validating AI comment output:', error);
-      throw new Error(`AI comment validation failed: ${error.message}`);
-    }
-  }
 
   /**
    * Validate anchor text against current essay content
