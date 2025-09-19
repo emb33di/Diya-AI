@@ -263,7 +263,9 @@ serve(async (req) => {
 });
 
 /**
- * Generate specialized semantic comments using existing edge functions
+ * Generate specialized semantic comments using individual agents in chronological order
+ * Order: 1) weaknesses, 2) strengths (with weaknesses context), 3) tone (with cumulative context), 
+ *        4) clarity (with cumulative context), 5) big-picture (with all context)
  */
 async function generateSpecializedSemanticComments(
   blocks: DocumentBlock[], 
@@ -282,60 +284,87 @@ async function generateSpecializedSemanticComments(
     .join('\n\n');
 
   const allComments: SemanticComment[] = [];
+  let cumulativeContext = '';
 
   try {
-    // Call specialized agents in parallel
-    const [toneResult, clarityResult, strengthsResult, weaknessesResult, bigPictureResult] = await Promise.allSettled([
-      callSemanticToneAgent(blocks, context),
-      callSemanticClarityAgent(blocks, context),
-      callSemanticStrengthsAgent(blocks, context, documentId, userId),
-      callSemanticWeaknessesAgent(blocks, context, documentId, userId),
-      callSemanticBigPictureAgent(blocks, context, documentId, userId)
-    ]);
-
-    // Process tone agent results
-    if (toneResult.status === 'fulfilled' && toneResult.value.success) {
-      const toneComments = convertAgentCommentsToSemantic(toneResult.value.comments, blocks, 'tone');
-      allComments.push(...toneComments);
-      console.log(`Tone agent: ${toneComments.length} comments`);
-    } else {
-      console.error('Tone agent failed:', toneResult.status === 'rejected' ? toneResult.reason : toneResult.value.error);
-    }
-
-    // Process clarity agent results
-    if (clarityResult.status === 'fulfilled' && clarityResult.value.success) {
-      const clarityComments = convertAgentCommentsToSemantic(clarityResult.value.comments, blocks, 'clarity');
-      allComments.push(...clarityComments);
-      console.log(`Clarity agent: ${clarityComments.length} comments`);
-    } else {
-      console.error('Clarity agent failed:', clarityResult.status === 'rejected' ? clarityResult.reason : clarityResult.value.error);
-    }
-
-    // Process strengths agent results
-    if (strengthsResult.status === 'fulfilled' && strengthsResult.value.success) {
-      const strengthsComments = convertAgentCommentsToSemantic(strengthsResult.value.comments, blocks, 'strengths');
-      allComments.push(...strengthsComments);
-      console.log(`Strengths agent: ${strengthsComments.length} comments`);
-    } else {
-      console.error('Strengths agent failed:', strengthsResult.status === 'rejected' ? strengthsResult.reason : strengthsResult.value.error);
-    }
-
-    // Process weaknesses agent results
-    if (weaknessesResult.status === 'fulfilled' && weaknessesResult.value.success) {
-      const weaknessesComments = convertAgentCommentsToSemantic(weaknessesResult.value.comments, blocks, 'weaknesses');
+    // Step 1: Call weaknesses agent first
+    console.log('Step 1: Calling weaknesses agent...');
+    const weaknessesResult = await callSemanticWeaknessesAgent(blocks, context);
+    let weaknessesComments: SemanticComment[] = [];
+    
+    if (weaknessesResult.success) {
+      weaknessesComments = convertAgentCommentsToSemantic(weaknessesResult.comments, blocks, 'weaknesses');
       allComments.push(...weaknessesComments);
       console.log(`Weaknesses agent: ${weaknessesComments.length} comments`);
+      
+      // Build context for next agent
+      const weaknessContext = weaknessesComments.map(c => `WEAKNESS: ${c.comment}`).join('\n');
+      cumulativeContext += `WEAKNESSES IDENTIFIED:\n${weaknessContext}\n\n`;
     } else {
-      console.error('Weaknesses agent failed:', weaknessesResult.status === 'rejected' ? weaknessesResult.reason : weaknessesResult.value.error);
+      console.error('Weaknesses agent failed:', weaknessesResult.error);
     }
 
-    // Process big-picture agent results
-    if (bigPictureResult.status === 'fulfilled' && bigPictureResult.value.success) {
-      const bigPictureComments = convertAgentCommentsToSemantic(bigPictureResult.value.comments, blocks, 'big-picture');
+    // Step 2: Call strengths agent with weaknesses context
+    console.log('Step 2: Calling strengths agent with weaknesses context...');
+    const strengthsResult = await callSemanticStrengthsAgent(blocks, context, cumulativeContext);
+    let strengthsComments: SemanticComment[] = [];
+    
+    if (strengthsResult.success) {
+      strengthsComments = convertAgentCommentsToSemantic(strengthsResult.comments, blocks, 'strengths');
+      allComments.push(...strengthsComments);
+      console.log(`Strengths agent: ${strengthsComments.length} comments`);
+      
+      // Add to cumulative context
+      const strengthContext = strengthsComments.map(c => `STRENGTH: ${c.comment}`).join('\n');
+      cumulativeContext += `STRENGTHS IDENTIFIED:\n${strengthContext}\n\n`;
+    } else {
+      console.error('Strengths agent failed:', strengthsResult.error);
+    }
+
+    // Step 3: Call tone agent with cumulative context
+    console.log('Step 3: Calling tone agent with cumulative context...');
+    const toneResult = await callSemanticToneAgent(blocks, context, cumulativeContext);
+    let toneComments: SemanticComment[] = [];
+    
+    if (toneResult.success) {
+      toneComments = convertAgentCommentsToSemantic(toneResult.comments, blocks, 'tone');
+      allComments.push(...toneComments);
+      console.log(`Tone agent: ${toneComments.length} comments`);
+      
+      // Add to cumulative context
+      const toneContext = toneComments.map(c => `TONE: ${c.comment}`).join('\n');
+      cumulativeContext += `TONE ANALYSIS:\n${toneContext}\n\n`;
+    } else {
+      console.error('Tone agent failed:', toneResult.error);
+    }
+
+    // Step 4: Call clarity agent with cumulative context
+    console.log('Step 4: Calling clarity agent with cumulative context...');
+    const clarityResult = await callSemanticClarityAgent(blocks, context, cumulativeContext);
+    let clarityComments: SemanticComment[] = [];
+    
+    if (clarityResult.success) {
+      clarityComments = convertAgentCommentsToSemantic(clarityResult.comments, blocks, 'clarity');
+      allComments.push(...clarityComments);
+      console.log(`Clarity agent: ${clarityComments.length} comments`);
+      
+      // Add to cumulative context
+      const clarityContext = clarityComments.map(c => `CLARITY: ${c.comment}`).join('\n');
+      cumulativeContext += `CLARITY ANALYSIS:\n${clarityContext}\n\n`;
+    } else {
+      console.error('Clarity agent failed:', clarityResult.error);
+    }
+
+    // Step 5: Call big-picture agent with all cumulative context
+    console.log('Step 5: Calling big-picture agent with full cumulative context...');
+    const bigPictureResult = await callSemanticBigPictureAgent(blocks, context, cumulativeContext);
+    
+    if (bigPictureResult.success) {
+      const bigPictureComments = convertAgentCommentsToSemantic(bigPictureResult.comments, blocks, 'big-picture');
       allComments.push(...bigPictureComments);
       console.log(`Big-picture agent: ${bigPictureComments.length} comments`);
     } else {
-      console.error('Big-picture agent failed:', bigPictureResult.status === 'rejected' ? bigPictureResult.reason : bigPictureResult.value.error);
+      console.error('Big-picture agent failed:', bigPictureResult.error);
     }
 
     console.log(`Total semantic comments generated: ${allComments.length}`);
@@ -350,7 +379,7 @@ async function generateSpecializedSemanticComments(
 /**
  * Call tone agent adapted for semantic blocks
  */
-async function callSemanticToneAgent(blocks: DocumentBlock[], context: any): Promise<any> {
+async function callSemanticToneAgent(blocks: DocumentBlock[], context: any, cumulativeContext?: string): Promise<any> {
   const essayContent = blocks.map(b => b.content).join('\n\n');
   
   const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/ai_agent_tone`, {
@@ -361,7 +390,8 @@ async function callSemanticToneAgent(blocks: DocumentBlock[], context: any): Pro
     },
     body: JSON.stringify({
       essayContent,
-      essayPrompt: context.prompt
+      essayPrompt: context.prompt,
+      cumulativeContext
     })
   });
 
@@ -375,7 +405,7 @@ async function callSemanticToneAgent(blocks: DocumentBlock[], context: any): Pro
 /**
  * Call clarity agent adapted for semantic blocks
  */
-async function callSemanticClarityAgent(blocks: DocumentBlock[], context: any): Promise<any> {
+async function callSemanticClarityAgent(blocks: DocumentBlock[], context: any, cumulativeContext?: string): Promise<any> {
   const essayContent = blocks.map(b => b.content).join('\n\n');
   
   const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/ai_agent_clarity`, {
@@ -386,7 +416,8 @@ async function callSemanticClarityAgent(blocks: DocumentBlock[], context: any): 
     },
     body: JSON.stringify({
       essayContent,
-      essayPrompt: context.prompt
+      essayPrompt: context.prompt,
+      cumulativeContext
     })
   });
 
@@ -400,21 +431,19 @@ async function callSemanticClarityAgent(blocks: DocumentBlock[], context: any): 
 /**
  * Call strengths agent adapted for semantic blocks
  */
-async function callSemanticStrengthsAgent(blocks: DocumentBlock[], context: any, documentId?: string, userId?: string): Promise<any> {
+async function callSemanticStrengthsAgent(blocks: DocumentBlock[], context: any, cumulativeContext?: string): Promise<any> {
   const essayContent = blocks.map(b => b.content).join('\n\n');
   
-  const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/generate-essay-comments-orchestrator`, {
+  const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/ai_agent_strengths`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
     },
     body: JSON.stringify({
-      essayId: documentId || 'semantic-document',
       essayContent,
       essayPrompt: context.prompt,
-      userId: userId || 'semantic-user',
-      agentTypes: ['strengths']
+      weaknessesContext: cumulativeContext
     })
   });
 
@@ -428,21 +457,18 @@ async function callSemanticStrengthsAgent(blocks: DocumentBlock[], context: any,
 /**
  * Call weaknesses agent adapted for semantic blocks
  */
-async function callSemanticWeaknessesAgent(blocks: DocumentBlock[], context: any, documentId?: string, userId?: string): Promise<any> {
+async function callSemanticWeaknessesAgent(blocks: DocumentBlock[], context: any): Promise<any> {
   const essayContent = blocks.map(b => b.content).join('\n\n');
   
-  const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/generate-essay-comments-orchestrator`, {
+  const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/ai_agent_weaknesses`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
     },
     body: JSON.stringify({
-      essayId: documentId || 'semantic-document',
       essayContent,
-      essayPrompt: context.prompt,
-      userId: userId || 'semantic-user',
-      agentTypes: ['weaknesses']
+      essayPrompt: context.prompt
     })
   });
 
@@ -456,21 +482,19 @@ async function callSemanticWeaknessesAgent(blocks: DocumentBlock[], context: any
 /**
  * Call big-picture agent adapted for semantic blocks
  */
-async function callSemanticBigPictureAgent(blocks: DocumentBlock[], context: any, documentId?: string, userId?: string): Promise<any> {
+async function callSemanticBigPictureAgent(blocks: DocumentBlock[], context: any, cumulativeContext?: string): Promise<any> {
   const essayContent = blocks.map(b => b.content).join('\n\n');
   
-  const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/generate-essay-comments-orchestrator`, {
+  const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/ai_agent_big_picture`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
     },
     body: JSON.stringify({
-      essayId: documentId || 'semantic-document',
       essayContent,
       essayPrompt: context.prompt,
-      userId: userId || 'semantic-user',
-      agentTypes: ['big-picture']
+      cumulativeContext
     })
   });
 

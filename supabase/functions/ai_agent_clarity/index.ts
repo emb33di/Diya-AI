@@ -6,6 +6,7 @@ import { corsHeaders } from '../_shared/cors.ts'
 interface ClarityAgentRequest {
   essayContent: string;
   essayPrompt?: string;
+  cumulativeContext?: string;
 }
 
 interface ClarityComment {
@@ -44,6 +45,9 @@ ESSAY PROMPT:
 ESSAY CONTENT:
 {content}
 
+CUMULATIVE CONTEXT FROM PREVIOUS AGENTS:
+{cumulativeContext}
+
 CRITICAL GUIDANCE:
 - Focus ONLY on clarity, conciseness, and precision - NOT grammar, spelling, or punctuation
 - Identify run-on sentences that should be broken up
@@ -54,6 +58,8 @@ CRITICAL GUIDANCE:
 - Do NOT comment on grammar, spelling, or punctuation errors
 - Do NOT comment on content, structure, or style choices
 - Be specific about what text needs clarification
+- Consider the cumulative context to avoid conflicting comments with other agents
+- Focus specifically on clarity and conciseness, not areas already covered by other agents
 
 ANALYSIS AREAS:
 - Run-on sentences that need to be split
@@ -97,7 +103,7 @@ RESPONSE FORMAT (JSON only):
 
 Remember: Focus ONLY on clarity, conciseness, and precision. Do NOT address grammar, spelling, punctuation, content, or style.`
 
-async function analyzeClarity(essayContent: string, essayPrompt?: string): Promise<ClarityAgentResponse> {
+async function analyzeClarity(essayContent: string, essayPrompt?: string, cumulativeContext?: string): Promise<ClarityAgentResponse> {
   if (!GEMINI_API_KEY) {
     return {
       success: false,
@@ -109,6 +115,7 @@ async function analyzeClarity(essayContent: string, essayPrompt?: string): Promi
   const formattedPrompt = CLARITY_PROMPT
     .replace('{prompt}', essayPrompt || 'No specific prompt provided')
     .replace('{content}', essayContent)
+    .replace('{cumulativeContext}', cumulativeContext || 'No previous context provided')
 
   const requestBody = {
     contents: [{
@@ -211,7 +218,7 @@ serve(async (req) => {
 
   try {
     // Parse request body
-    const { essayContent, essayPrompt }: ClarityAgentRequest = await req.json()
+    const { essayContent, essayPrompt, cumulativeContext }: ClarityAgentRequest = await req.json()
 
     // Validate required fields
     if (!essayContent) {
@@ -246,7 +253,7 @@ serve(async (req) => {
     console.log(`Analyzing clarity for essay content (${essayContent.length} characters)`)
     
     // Analyze clarity
-    const result = await analyzeClarity(essayContent, essayPrompt)
+    const result = await analyzeClarity(essayContent, essayPrompt, cumulativeContext)
     
     const response: ClarityAgentResponse = {
       success: result.success,

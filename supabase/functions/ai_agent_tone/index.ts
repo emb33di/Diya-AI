@@ -6,6 +6,7 @@ import { corsHeaders } from '../_shared/cors.ts'
 interface ToneAgentRequest {
   essayContent: string;
   essayPrompt?: string;
+  cumulativeContext?: string;
 }
 
 interface ToneComment {
@@ -40,6 +41,9 @@ ESSAY PROMPT:
 ESSAY CONTENT:
 {content}
 
+CUMULATIVE CONTEXT FROM PREVIOUS AGENTS:
+{cumulativeContext}
+
 CRITICAL GUIDANCE:
 - Focus ONLY on personal voice, authenticity, and tone - not grammar, structure, or content
 - Identify where the writer's unique personality and voice come through strongly
@@ -48,6 +52,8 @@ CRITICAL GUIDANCE:
 - Consider how the tone aligns with college admissions expectations
 - Be encouraging and constructive in your feedback
 - Focus on helping the student develop their authentic voice
+- Consider the cumulative context to avoid conflicting comments with other agents
+- Focus specifically on tone and voice, not areas already covered by other agents
 
 ANALYSIS AREAS:
 - Personal voice authenticity and uniqueness
@@ -87,7 +93,7 @@ RESPONSE FORMAT (JSON only):
 
 Remember: Focus on authenticity, personal voice, and tone. Be encouraging and help the student develop their unique voice for college admissions.`
 
-async function analyzeTone(essayContent: string, essayPrompt?: string): Promise<ToneAgentResponse> {
+async function analyzeTone(essayContent: string, essayPrompt?: string, cumulativeContext?: string): Promise<ToneAgentResponse> {
   if (!GEMINI_API_KEY) {
     return {
       success: false,
@@ -99,6 +105,7 @@ async function analyzeTone(essayContent: string, essayPrompt?: string): Promise<
   const formattedPrompt = TONE_PROMPT
     .replace('{prompt}', essayPrompt || 'No specific prompt provided')
     .replace('{content}', essayContent)
+    .replace('{cumulativeContext}', cumulativeContext || 'No previous context provided')
 
   const requestBody = {
     contents: [{
@@ -196,7 +203,7 @@ serve(async (req) => {
 
   try {
     // Parse request body
-    const { essayContent, essayPrompt }: ToneAgentRequest = await req.json()
+    const { essayContent, essayPrompt, cumulativeContext }: ToneAgentRequest = await req.json()
 
     // Validate required fields
     if (!essayContent) {
@@ -231,7 +238,7 @@ serve(async (req) => {
     console.log(`Analyzing tone for essay content (${essayContent.length} characters)`)
     
     // Analyze tone
-    const result = await analyzeTone(essayContent, essayPrompt)
+    const result = await analyzeTone(essayContent, essayPrompt, cumulativeContext)
     
     const response: ToneAgentResponse = {
       success: result.success,

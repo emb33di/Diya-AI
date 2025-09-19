@@ -191,7 +191,7 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
   const getCategoryTitle = (category: CommentCategory) => {
     switch (category) {
       case 'overall-analysis':
-        return 'Overall Analysis';
+        return 'Big-Picture';
       case 'tone':
         return 'Tone';
       case 'clarity':
@@ -199,7 +199,7 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
       case 'strengths':
         return 'Strengths';
       case 'areas-for-improvement':
-        return 'Areas for Improvement';
+        return 'Weaknesses';
       case 'paragraph-quality':
         return 'Paragraph Quality';
       case 'grammar':
