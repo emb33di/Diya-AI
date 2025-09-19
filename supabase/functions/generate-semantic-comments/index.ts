@@ -8,6 +8,178 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+// Context optimization utilities
+interface OptimizedSemanticComment {
+  id?: string;
+  comment: string;
+  agent_type: string;
+  comment_nature?: string;
+  confidence_score?: number;
+}
+
+class ContextOptimizer {
+  private static readonly CHARS_PER_TOKEN = 4;
+  private static readonly TOKEN_LIMITS = {
+    context: 800,
+    total: 3000
+  };
+
+  static estimateTokens(text: string): number {
+    return Math.ceil(text.length / this.CHARS_PER_TOKEN);
+  }
+
+  static truncateToTokens(text: string, maxTokens: number): string {
+    const currentTokens = this.estimateTokens(text);
+    if (currentTokens <= maxTokens) return text;
+    
+    const ratio = maxTokens / currentTokens;
+    const truncateLength = Math.floor(text.length * ratio * 0.95);
+    return text.substring(0, truncateLength) + "\n\n[Context truncated for length]";
+  }
+
+  static summarizeComments(comments: OptimizedSemanticComment[], maxTokens: number = 400): string {
+    if (!comments || comments.length === 0) {
+      return "No previous agent context available";
+    }
+
+    // Group by agent type
+    const grouped: Record<string, OptimizedSemanticComment[]> = {};
+    comments.forEach(comment => {
+      const type = comment.agent_type || 'unknown';
+      if (!grouped[type]) grouped[type] = [];
+      grouped[type].push(comment);
+    });
+    
+    // Create condensed summary
+    const summaryParts: string[] = [];
+    Object.entries(grouped).forEach(([agentType, commentList]) => {
+      const keyPoints = commentList
+        .slice(0, 2)
+        .map(c => this.extractKeyPoint(c.comment))
+        .filter(point => point.length > 0);
+      
+      if (keyPoints.length > 0) {
+        summaryParts.push(`${agentType.toUpperCase()}: ${keyPoints.join('; ')}`);
+      }
+    });
+
+    let summary = summaryParts.join('\n');
+    
+    // Truncate if needed
+    if (this.estimateTokens(summary) > maxTokens) {
+      summary = this.truncateToTokens(summary, maxTokens);
+    }
+
+    return summary;
+  }
+
+  private static extractKeyPoint(comment: string): string {
+    if (!comment) return '';
+    
+    let cleaned = comment
+      .replace(/^(You should|Consider|Try to|The essay|This paragraph)/i, '')
+      .replace(/^[,.\s]+/, '')
+      .trim();
+    
+    const firstSentence = cleaned.split('.')[0];
+    if (firstSentence.length <= 50) {
+      return firstSentence;
+    }
+    
+    return cleaned.substring(0, 50).trim() + '...';
+  }
+
+  static createAgentSpecificContext(
+    comments: OptimizedSemanticComment[], 
+    targetAgent: string,
+    maxTokens: number = 600
+  ): string {
+    const relevanceMap: Record<string, string[]> = {
+      'strengths': ['weaknesses'], // Strengths agent needs weaknesses context
+      'tone': ['weaknesses', 'strengths'],
+      'clarity': ['weaknesses'],
+      'big-picture': ['weaknesses', 'strengths', 'tone', 'clarity']
+    };
+
+    const relevantTypes = relevanceMap[targetAgent] || [];
+    
+    if (relevantTypes.length === 0) {
+      return `No context needed for ${targetAgent} agent`;
+    }
+
+    const relevantComments = comments.filter(c => 
+      relevantTypes.includes(c.agent_type)
+    );
+
+    return this.summarizeComments(relevantComments, maxTokens);
+  }
+}
+
+// API retry manager
+class APIRetryManager {
+  private static readonly DEFAULT_RETRIES = 3;
+  private static readonly BASE_DELAY = 1000;
+  private static readonly MAX_DELAY = 30000;
+
+  static async withRetry<T>(
+    apiCall: () => Promise<T>,
+    agentType: string = 'unknown',
+    maxRetries: number = this.DEFAULT_RETRIES
+  ): Promise<T> {
+    let lastError: Error;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🔄 ${agentType} agent attempt ${attempt}/${maxRetries}`);
+        const result = await apiCall();
+        
+        if (attempt > 1) {
+          console.log(`✅ ${agentType} agent succeeded on attempt ${attempt}`);
+        }
+        
+        return result;
+        
+      } catch (error: any) {
+        lastError = error;
+        
+        const isRetryable = this.isRetryableError(error);
+        
+        if (!isRetryable || attempt === maxRetries) {
+          console.error(`❌ ${agentType} agent failed permanently:`, error.message);
+          throw error;
+        }
+
+        const delay = Math.min(
+          this.BASE_DELAY * Math.pow(2, attempt - 1),
+          this.MAX_DELAY
+        );
+        
+        console.warn(`⚠️ ${agentType} agent failed (attempt ${attempt}), retrying in ${delay}ms:`, error.message);
+        await this.sleep(delay);
+      }
+    }
+
+    throw lastError!;
+  }
+
+  private static isRetryableError(error: any): boolean {
+    const message = error.message?.toLowerCase() || '';
+    
+    return (
+      message.includes('503') ||
+      message.includes('overloaded') ||
+      message.includes('429') ||
+      message.includes('500') ||
+      message.includes('timeout') ||
+      message.includes('network')
+    );
+  }
+
+  private static sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+}
+
 // Initialize Supabase client
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',
@@ -245,10 +417,20 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in generate-semantic-comments:', error);
+    console.error('Full error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+      cause: error.cause
+    });
     
     return new Response(JSON.stringify({
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: `Internal server error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      debug: {
+        errorName: error.name,
+        errorMessage: error.message
+      }
     }), {
       status: 500,
       headers: { 
@@ -281,12 +463,15 @@ async function generateSpecializedSemanticComments(
     .join('\n\n');
 
   const allComments: SemanticComment[] = [];
-  let cumulativeContext = '';
+  const collectedComments: OptimizedSemanticComment[] = [];
 
   try {
     // Step 1: Call weaknesses agent first
     console.log('Step 1: Calling weaknesses agent...');
-    const weaknessesResult = await callSemanticWeaknessesAgent(blocks, context);
+    const weaknessesResult = await APIRetryManager.withRetry(
+      () => callSemanticWeaknessesAgent(blocks, context),
+      'weaknesses'
+    );
     let weaknessesComments: SemanticComment[] = [];
     
     if (weaknessesResult.success) {
@@ -294,16 +479,27 @@ async function generateSpecializedSemanticComments(
       allComments.push(...weaknessesComments);
       console.log(`Weaknesses agent: ${weaknessesComments.length} comments`);
       
-      // Build context for next agent
-      const weaknessContext = weaknessesComments.map(c => `WEAKNESS: ${c.comment}`).join('\n');
-      cumulativeContext += `WEAKNESSES IDENTIFIED:\n${weaknessContext}\n\n`;
+      // Collect for optimized context
+      weaknessesComments.forEach(c => {
+        collectedComments.push({
+          comment: c.comment,
+          agent_type: 'weaknesses',
+          comment_nature: 'weakness'
+        });
+      });
     } else {
       console.error('Weaknesses agent failed:', weaknessesResult.error);
     }
 
-    // Step 2: Call strengths agent with weaknesses context
-    console.log('Step 2: Calling strengths agent with weaknesses context...');
-    const strengthsResult = await callSemanticStrengthsAgent(blocks, context, cumulativeContext);
+    // Step 2: Call strengths agent with optimized context
+    console.log('Step 2: Calling strengths agent with optimized context...');
+    const strengthsContext = ContextOptimizer.createAgentSpecificContext(collectedComments, 'strengths', 400);
+    console.log(`Strengths context size: ${ContextOptimizer.estimateTokens(strengthsContext)} tokens`);
+    
+    const strengthsResult = await APIRetryManager.withRetry(
+      () => callSemanticStrengthsAgent(blocks, context, strengthsContext),
+      'strengths'
+    );
     let strengthsComments: SemanticComment[] = [];
     
     if (strengthsResult.success) {
@@ -311,16 +507,27 @@ async function generateSpecializedSemanticComments(
       allComments.push(...strengthsComments);
       console.log(`Strengths agent: ${strengthsComments.length} comments`);
       
-      // Add to cumulative context
-      const strengthContext = strengthsComments.map(c => `STRENGTH: ${c.comment}`).join('\n');
-      cumulativeContext += `STRENGTHS IDENTIFIED:\n${strengthContext}\n\n`;
+      // Collect for optimized context
+      strengthsComments.forEach(c => {
+        collectedComments.push({
+          comment: c.comment,
+          agent_type: 'strengths',
+          comment_nature: 'strength'
+        });
+      });
     } else {
       console.error('Strengths agent failed:', strengthsResult.error);
     }
 
-    // Step 3: Call tone agent with cumulative context
-    console.log('Step 3: Calling tone agent with cumulative context...');
-    const toneResult = await callSemanticToneAgent(blocks, context, cumulativeContext);
+    // Step 3: Call tone agent with optimized context
+    console.log('Step 3: Calling tone agent with optimized context...');
+    const toneContext = ContextOptimizer.createAgentSpecificContext(collectedComments, 'tone', 400);
+    console.log(`Tone context size: ${ContextOptimizer.estimateTokens(toneContext)} tokens`);
+    
+    const toneResult = await APIRetryManager.withRetry(
+      () => callSemanticToneAgent(blocks, context, toneContext),
+      'tone'
+    );
     let toneComments: SemanticComment[] = [];
     
     if (toneResult.success) {
@@ -328,16 +535,27 @@ async function generateSpecializedSemanticComments(
       allComments.push(...toneComments);
       console.log(`Tone agent: ${toneComments.length} comments`);
       
-      // Add to cumulative context
-      const toneContext = toneComments.map(c => `TONE: ${c.comment}`).join('\n');
-      cumulativeContext += `TONE ANALYSIS:\n${toneContext}\n\n`;
+      // Collect for optimized context
+      toneComments.forEach(c => {
+        collectedComments.push({
+          comment: c.comment,
+          agent_type: 'tone',
+          comment_nature: 'suggestion'
+        });
+      });
     } else {
       console.error('Tone agent failed:', toneResult.error);
     }
 
-    // Step 4: Call clarity agent with cumulative context
-    console.log('Step 4: Calling clarity agent with cumulative context...');
-    const clarityResult = await callSemanticClarityAgent(blocks, context, cumulativeContext);
+    // Step 4: Call clarity agent with optimized context
+    console.log('Step 4: Calling clarity agent with optimized context...');
+    const clarityContext = ContextOptimizer.createAgentSpecificContext(collectedComments, 'clarity', 400);
+    console.log(`Clarity context size: ${ContextOptimizer.estimateTokens(clarityContext)} tokens`);
+    
+    const clarityResult = await APIRetryManager.withRetry(
+      () => callSemanticClarityAgent(blocks, context, clarityContext),
+      'clarity'
+    );
     let clarityComments: SemanticComment[] = [];
     
     if (clarityResult.success) {
@@ -345,16 +563,27 @@ async function generateSpecializedSemanticComments(
       allComments.push(...clarityComments);
       console.log(`Clarity agent: ${clarityComments.length} comments`);
       
-      // Add to cumulative context
-      const clarityContext = clarityComments.map(c => `CLARITY: ${c.comment}`).join('\n');
-      cumulativeContext += `CLARITY ANALYSIS:\n${clarityContext}\n\n`;
+      // Collect for optimized context
+      clarityComments.forEach(c => {
+        collectedComments.push({
+          comment: c.comment,
+          agent_type: 'clarity',
+          comment_nature: 'weakness'
+        });
+      });
     } else {
       console.error('Clarity agent failed:', clarityResult.error);
     }
 
-    // Step 5: Call big-picture agent with all cumulative context
-    console.log('Step 5: Calling big-picture agent with full cumulative context...');
-    const bigPictureResult = await callSemanticBigPictureAgent(blocks, context, cumulativeContext);
+    // Step 5: Call big-picture agent with optimized cumulative context
+    console.log('Step 5: Calling big-picture agent with optimized context...');
+    const bigPictureContext = ContextOptimizer.createAgentSpecificContext(collectedComments, 'big-picture', 600);
+    console.log(`Big-picture context size: ${ContextOptimizer.estimateTokens(bigPictureContext)} tokens`);
+    
+    const bigPictureResult = await APIRetryManager.withRetry(
+      () => callSemanticBigPictureAgent(blocks, context, bigPictureContext),
+      'big-picture'
+    );
     
     if (bigPictureResult.success) {
       const bigPictureComments = convertAgentCommentsToSemantic(bigPictureResult.comments, blocks, 'big-picture');
@@ -369,6 +598,18 @@ async function generateSpecializedSemanticComments(
 
   } catch (error) {
     console.error('Error generating specialized semantic comments:', error);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+    
+    // Return partial results if we have any comments
+    if (allComments.length > 0) {
+      console.log(`Returning ${allComments.length} partial comments despite error`);
+      return allComments;
+    }
+    
     throw error;
   }
 }

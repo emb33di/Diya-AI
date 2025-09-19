@@ -645,52 +645,6 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                   ) : (
                     <h1 className="text-2xl font-bold">{document.title}</h1>
                   )}
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
-                    {stats && (stats.toneComments > 0 || stats.clarityComments > 0 || stats.strengthsComments > 0 || stats.weaknessesComments > 0) && (
-                      <>
-                        <span>•</span>
-                        <div className="flex gap-1">
-                          {stats.toneComments > 0 && (
-                            <Badge variant="outline" className="text-xs border-orange-300 text-orange-700">
-                              {stats.toneComments} tone
-                            </Badge>
-                          )}
-                          {stats.clarityComments > 0 && (
-                            <Badge variant="outline" className="text-xs border-blue-300 text-blue-700">
-                              {stats.clarityComments} clarity
-                            </Badge>
-                          )}
-                          {stats.strengthsComments > 0 && (
-                            <Badge variant="outline" className="text-xs border-green-300 text-green-700">
-                              {stats.strengthsComments} strengths
-                            </Badge>
-                          )}
-                          {stats.weaknessesComments > 0 && (
-                            <Badge variant="outline" className="text-xs border-red-300 text-red-700">
-                              {stats.weaknessesComments} improvements
-                            </Badge>
-                          )}
-                        </div>
-                      </>
-                    )}
-                    <span>•</span>
-                    {isAutoSaving ? (
-                      <>
-                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                        <span>Saving...</span>
-                      </>
-                    ) : lastSaved ? (
-                      <>
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                        <span>Saved {lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                        <span className="text-xs text-green-600 ml-1 font-medium">(Instant Save)</span>
-                      </>
-                    ) : (
-                      <>
-                        <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                      </>
-                    )}
-                  </div>
                 </div>
                 
               </div>
@@ -710,7 +664,24 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                     
                     <div className="flex-1">
                       <h3 className="text-base md:text-lg font-semibold text-gray-800 mb-3 flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0">
-                        <span>Essay Prompt</span>
+                        <div className="flex items-center gap-2">
+                          <span>Essay Prompt</span>
+                          {(lastSaved || isAutoSaving) && (
+                            <div className="flex items-center gap-1 text-xs text-gray-500">
+                              {isAutoSaving ? (
+                                <>
+                                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                                  <span>Saving...</span>
+                                </>
+                              ) : lastSaved ? (
+                                <>
+                                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                  <span>Saved {lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                </>
+                              ) : null}
+                            </div>
+                          )}
+                        </div>
                         <div className="sm:ml-2 px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full self-start">
                           Required
                         </div>

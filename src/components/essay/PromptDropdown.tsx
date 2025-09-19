@@ -21,13 +21,17 @@ interface PromptDropdownProps {
   selectedPromptId?: string;
   onPromptChange: (promptId: string) => void;
   className?: string;
+  lastSaved?: Date;
+  isAutoSaving?: boolean;
 }
 
 const PromptDropdown: React.FC<PromptDropdownProps> = ({
   prompts,
   selectedPromptId,
   onPromptChange,
-  className = ''
+  className = '',
+  lastSaved,
+  isAutoSaving
 }) => {
   const selectedPrompt = prompts.find(p => p.id === selectedPromptId);
   

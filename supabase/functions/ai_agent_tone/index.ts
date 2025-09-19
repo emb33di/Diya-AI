@@ -28,6 +28,20 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
+// Token management utilities
+function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 4);
+}
+
+function truncateToTokens(text: string, maxTokens: number): string {
+  const currentTokens = estimateTokens(text);
+  if (currentTokens <= maxTokens) return text;
+  
+  const ratio = maxTokens / currentTokens;
+  const truncateLength = Math.floor(text.length * ratio * 0.95);
+  return text.substring(0, truncateLength) + "\n\n[Context truncated for length]";
+}
+
 // Google Gemini API configuration
 const GEMINI_API_KEY = Deno.env.get('GOOGLE_API_KEY')
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent'
@@ -102,10 +116,17 @@ async function analyzeTone(essayContent: string, essayPrompt?: string, cumulativ
     }
   }
 
+  // Optimize context to prevent token overload
+  const optimizedContext = cumulativeContext ? 
+    truncateToTokens(cumulativeContext, 800) : 
+    'No previous context provided';
+  
+  console.log(`Tone agent context: ${estimateTokens(optimizedContext)} tokens`);
+  
   const formattedPrompt = TONE_PROMPT
     .replace('{prompt}', essayPrompt || 'No specific prompt provided')
     .replace('{content}', essayContent)
-    .replace('{cumulativeContext}', cumulativeContext || 'No previous context provided')
+    .replace('{cumulativeContext}', optimizedContext)
 
   const requestBody = {
     contents: [{

@@ -146,6 +146,8 @@ const Essays = () => {
   const [essayToDelete, setEssayToDelete] = useState<any>(null);
   const [deletingEssay, setDeletingEssay] = useState(false);
   const [selectedPromptId, setSelectedPromptId] = useState<string | undefined>(undefined);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
   const { toast } = useToast();
 
   // Mobile-specific state management
@@ -692,6 +694,10 @@ const Essays = () => {
   const handleEssayContentChange = async (content: string) => {
     setEssayContent(content);
     if (!selectedEssay) return;
+    
+    // Set auto-saving state
+    setIsAutoSaving(true);
+    
     try {
       // Find the prompt for this essay
       const prompt = essayPrompts.find(p => p.prompt_number === selectedEssay.promptNumber);
@@ -705,6 +711,9 @@ const Essays = () => {
         wordCount: content.split(' ').length,
         status: 'draft'
       } : essay));
+      
+      // Update saved timestamp
+      setLastSaved(new Date());
     } catch (error) {
       console.error('Error saving essay content:', error);
       toast({
@@ -712,6 +721,8 @@ const Essays = () => {
         description: "Failed to save essay content.",
         variant: "destructive"
       });
+    } finally {
+      setIsAutoSaving(false);
     }
   };
   const getStatusColor = (status: string) => {
@@ -1157,19 +1168,6 @@ const Essays = () => {
                             }
                           }
                         }}
-                        wordLimit={(() => {
-                          const essay = newEssays.find(e => e.id === selectedNewEssayId);
-                          const selectedPrompt = essayPrompts.find(p => p.id === essay?.prompt_id);
-                          
-                          // Use prompt's word limit first, then essay's, then default
-                          if (selectedPrompt?.word_limit && selectedPrompt.word_limit !== 'No limit') {
-                            return parseInt(selectedPrompt.word_limit);
-                          }
-                          if (essay?.word_limit && essay.word_limit !== 'No limit') {
-                            return parseInt(essay.word_limit);
-                          }
-                          return 650; // Default word limit
-                        })()}
                       />
                     ) : (
                       <Textarea 
@@ -1369,19 +1367,6 @@ const Essays = () => {
                       }
                     }
                   }}
-                  wordLimit={(() => {
-                    const essay = newEssays.find(e => e.id === selectedNewEssayId);
-                    const selectedPrompt = essayPrompts.find(p => p.id === essay?.prompt_id);
-                    
-                    // Use prompt's word limit first, then essay's, then default
-                    if (selectedPrompt?.word_limit && selectedPrompt.word_limit !== 'No limit') {
-                      return parseInt(selectedPrompt.word_limit);
-                    }
-                    if (essay?.word_limit && essay.word_limit !== 'No limit') {
-                      return parseInt(essay.word_limit);
-                    }
-                    return 650; // Default word limit
-                  })()}
                 />
               ) : selectedEssay ? (
                 <Card className="h-full shadow-sm bg-card">
@@ -1455,6 +1440,8 @@ const Essays = () => {
                       selectedPromptId={selectedPromptId}
                       onPromptChange={handlePromptChange}
                       className="max-w-4xl mx-auto"
+                      lastSaved={lastSaved}
+                      isAutoSaving={isAutoSaving}
                     />
                   ) : (
                     <Card className="p-8 text-center bg-muted/30 max-w-2xl mx-auto">
