@@ -726,9 +726,16 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                   {/* Word limit reminder and action buttons */}
                   <div className="mt-4 md:mt-6 pt-4 border-t border-gray-100">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">
-                        Word Limit: {getCurrentWordCount()}/{wordLimit || document.metadata.wordLimit || 650}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-sm ${getCurrentWordCount() > (wordLimit || document.metadata.wordLimit || 650) ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
+                          Word Limit: {getCurrentWordCount()}/{wordLimit || document.metadata.wordLimit || 650}
+                        </span>
+                        {getCurrentWordCount() > (wordLimit || document.metadata.wordLimit || 650) && (
+                          <span className="text-xs text-red-500 font-medium bg-red-50 px-2 py-1 rounded">
+                            Needs cutting!
+                          </span>
+                        )}
+                      </div>
                       
                       {/* Action Buttons */}
                       <div className="flex gap-2">
