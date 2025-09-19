@@ -15,6 +15,7 @@ interface ToneComment {
   comment_category: 'overall';
   agent_type: 'tone';
   confidence_score: number;
+  quality_score: number;
 }
 
 interface ToneAgentResponse {
@@ -77,30 +78,40 @@ ANALYSIS AREAS:
 - Voice consistency throughout the essay
 - Connection between voice and admissions impact
 
+SCORING AND FEEDBACK INSTRUCTIONS:
+For each comment, you must:
+1. Provide a quality_score from 1-10 rating how well the student executed this aspect of voice/tone
+2. If quality_score < 8: Provide constructive feedback with specific suggestions for improvement
+3. If quality_score >= 8: Focus on praise and reinforcement, avoid suggesting changes
+
+For scores < 8, format improvement suggestions as: "Instead of saying X, you could phrase it as Y to have your voice shine through more."
+For scores >= 8, focus on what they did well and encourage them to continue in that direction.
+
 INSTRUCTIONS:
 Generate 2-3 comments focusing on tone and personal voice. Each comment should be specific and actionable, helping the student understand how to strengthen their authentic voice.
 
 IMPORTANT: Classify each comment correctly:
 - "strength" = Where the writer's authentic voice shines through strongly
 - "weakness" = Where the writing becomes generic, clichéd, or loses personal touch
-- "suggestion" = Actionable advice for improving voice authenticity
 
 RESPONSE FORMAT (JSON only):
 {
   "comments": [
     {
-      "comment_text": "[Specific feedback about personal voice - identify strengths or areas where voice could be stronger. Be encouraging and constructive.]",
-      "comment_nature": "[strength/weakness/suggestion - choose based on actual content]",
+      "comment_text": "[Specific feedback about personal voice. Include quality score assessment and conditional feedback based on score. If score < 8, provide improvement suggestions. If score >= 8, focus on praise.]",
+      "comment_nature": "[strength/weakness - choose based on actual content]",
       "comment_category": "overall", 
       "agent_type": "tone",
-      "confidence_score": 0.85
+      "confidence_score": 0.85,
+      "quality_score": 7
     },
     {
-      "comment_text": "[Another specific comment about voice authenticity or tone. Focus on actionable advice for strengthening personal voice.]",
-      "comment_nature": "[strength/weakness/suggestion - choose based on actual content]",
+      "comment_text": "[Another specific comment about voice authenticity or tone. Include quality score assessment and conditional feedback based on score.]",
+      "comment_nature": "[strength/weakness - choose based on actual content]",
       "comment_category": "overall",
       "agent_type": "tone", 
-      "confidence_score": 0.80
+      "confidence_score": 0.80,
+      "quality_score": 9
     }
   ]
 }
@@ -192,12 +203,18 @@ async function analyzeTone(essayContent: string, essayPrompt?: string, cumulativ
         ? Math.max(0, Math.min(1, comment.confidence_score))
         : 0.8;
 
+      // Validate quality score
+      const qualityScore = typeof comment.quality_score === 'number' 
+        ? Math.max(1, Math.min(10, comment.quality_score))
+        : 5;
+
       return {
         comment_text: comment.comment_text || 'No comment text provided',
         comment_nature: commentNature,
         comment_category: 'overall',
         agent_type: 'tone',
-        confidence_score: confidenceScore
+        confidence_score: confidenceScore,
+        quality_score: qualityScore
       };
     })
 

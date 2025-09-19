@@ -317,12 +317,14 @@ serve(async (req) => {
       });
     }
 
-    // Check if AI comments already exist for this document
+    // Check if unresolved AI comments already exist for this document (excluding grammar comments)
     const { data: existingComments } = await supabase
       .from('semantic_annotations')
       .select('*')
       .eq('document_id', documentId)
-      .eq('author', 'ai');
+      .eq('author', 'ai')
+      .neq('metadata->agentType', 'grammar')
+      .eq('resolved', false);
 
     if (existingComments && existingComments.length > 0) {
       // Convert existing comments to semantic format
@@ -338,7 +340,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         success: true,
         comments: semanticComments,
-        message: `Found ${semanticComments.length} existing AI comments`,
+        message: `Found ${semanticComments.length} unresolved AI comments. Please resolve or delete existing comments before generating new ones.`,
         metadata: {
           processingTime: 0,
           blocksAnalyzed: blocks.length,

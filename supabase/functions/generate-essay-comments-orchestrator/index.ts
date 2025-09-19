@@ -72,6 +72,8 @@ interface AIComment {
   priorityLevel?: 'high' | 'medium' | 'low';
   editorialDecision?: 'approve' | 'revise' | 'reject';
   impactAssessment?: 'admissions_boost' | 'neutral' | 'admissions_hurt';
+  // Quality score for big picture agent (1-100 scale)
+  qualityScore?: number;
 }
 
 interface AgentResponse {
@@ -1290,7 +1292,8 @@ async function callAgent(prompt: string, essayContent: string, essayPrompt?: str
         confidenceScore: comment.confidenceScore || 0.5,
         commentCategory: comment.commentCategory || (agentType === 'big-picture' || agentType === 'weaknesses' || agentType === 'strengths' ? 'overall' : 'inline'),
         commentSubcategory: commentSubcategory,
-        agentType
+        agentType,
+        qualityScore: comment.qualityScore // Include quality score for big picture agent
       };
     })
 
@@ -1907,7 +1910,8 @@ async function saveCommentsToDatabase(essayId: string, userId: string, comments:
       organization_category: validOrganizationCategory,
       reconciliation_source: comment.reconciliationSource || 'none',
       reconciliation_type: comment.reconciliationType,
-      original_source: comment.originalSource
+      original_source: comment.originalSource,
+      quality_score: comment.qualityScore // Store quality score for big picture agent
     }
   })
 
@@ -2004,6 +2008,46 @@ serve(async (req) => {
         }),
         {
           status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    // Check for unresolved AI comments (excluding grammar comments)
+    console.log(`Checking for unresolved AI comments for essay ${essayId}`)
+    const { data: unresolvedComments, error: unresolvedError } = await supabase
+      .from('essay_comments')
+      .select('id, agent_type')
+      .eq('essay_id', essayId)
+      .eq('user_id', userId)
+      .eq('ai_generated', true)
+      .eq('resolved', false)
+      .neq('agent_type', 'grammar_spelling')
+
+    if (unresolvedError) {
+      console.error('Error checking for unresolved comments:', unresolvedError)
+    } else if (unresolvedComments && unresolvedComments.length > 0) {
+      console.log(`Found ${unresolvedComments.length} unresolved AI comments. Blocking generation.`)
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: `You have ${unresolvedComments.length} unresolved AI comments. Please resolve or delete existing comments before generating new ones.`,
+          comments: [],
+          unresolvedCount: unresolvedComments.length,
+          agentResults: {
+            weaknesses: { success: false, comments: [] },
+            strengths: { success: false, comments: [] },
+            reconciliation: { success: false, comments: [] },
+            tone: { success: false, comments: [] },
+            clarity: { success: false, comments: [] },
+            grammarSpelling: { success: false, comments: [] },
+            paragraph: { success: false, comments: [] },
+            changeDetection: { success: false, comments: [] },
+            editorChief: { success: false, comments: [] }
+          }
+        }),
+        {
+          status: 409, // Conflict status code
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )

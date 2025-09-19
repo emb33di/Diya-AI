@@ -67,6 +67,8 @@ export interface Comment {
   user_feedback_helpful?: boolean | null;
   // New fields for enhanced comment system
   comment_nature?: 'strength' | 'weakness' | 'combined' | 'neutral';
+  // Quality score for big picture agent (1-100 scale)
+  quality_score?: number;
   comment_quality_score?: number;
   is_duplicate?: boolean;
   duplicate_of_comment_id?: string;

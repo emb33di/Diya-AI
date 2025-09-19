@@ -31,6 +31,7 @@ import {
   Copy,
   CheckSquare
 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import AICommentsLoadingPane, { AI_COMMENTS_LOADING_STEPS } from './AICommentsLoadingPane';
 import GrammarLoadingPane, { GRAMMAR_LOADING_STEPS } from './GrammarLoadingPane';
 import CommentSidebar from './CommentSidebar';
@@ -91,6 +92,9 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
   const [loadingStep, setLoadingStep] = useState(0);
   const [isGeneratingGrammar, setIsGeneratingGrammar] = useState(false);
   const [grammarLoadingStep, setGrammarLoadingStep] = useState(0);
+
+  // Toast for user feedback
+  const { toast } = useToast();
 
   // Refs for textarea management
   const textareaRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
@@ -319,6 +323,113 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
       navigator.clipboard.writeText(block.content);
     }
   }, [state.document.blocks]);
+
+  // Detect paragraphs in pasted text
+  const detectParagraphs = useCallback((text: string): string[] => {
+    // Use the same logic as ParagraphComparisonService for consistency
+    const processedText = text
+      .replace(/\r\n/g, '\n') // Normalize line endings
+      .replace(/\r/g, '\n') // Handle old Mac line endings
+      .trim();
+    
+    // Split by double newlines (paragraph breaks)
+    const paragraphs = processedText
+      .split(/\n\s*\n/) // Split on double newlines with optional whitespace
+      .map(p => p.trim()) // Remove leading/trailing whitespace
+      .filter(p => p.length > 0); // Remove empty paragraphs
+    
+    // If no double newlines found, try single newlines for shorter content
+    if (paragraphs.length === 1 && processedText.includes('\n')) {
+      const singleLineParagraphs = processedText
+        .split(/\n/)
+        .map(p => p.trim())
+        .filter(p => p.length > 0);
+      
+      // Only split if we have multiple non-empty lines and they're substantial
+      if (singleLineParagraphs.length > 1) {
+        // Check if lines are substantial (not just single words or very short)
+        const substantialLines = singleLineParagraphs.filter(line => 
+          line.length > 10 || line.split(' ').length > 2
+        );
+        
+        if (substantialLines.length > 1) {
+          return singleLineParagraphs;
+        }
+      }
+    }
+    
+    return paragraphs;
+  }, []);
+
+  // Insert multiple blocks from pasted content
+  const insertMultipleBlocks = useCallback((currentBlockId: string, paragraphs: string[]) => {
+    const currentBlock = state.document.blocks.find(b => b.id === currentBlockId);
+    if (!currentBlock) return;
+
+    const insertPosition = currentBlock.position;
+    const cursorPosition = textareaRefs.current[currentBlockId]?.selectionStart || 0;
+    const currentContent = currentBlock.content;
+    
+    // Split current content at cursor position
+    const textBeforeCursor = currentContent.substring(0, cursorPosition);
+    const textAfterCursor = currentContent.substring(cursorPosition);
+    
+    // Update current block with text before cursor + first paragraph
+    const firstParagraph = paragraphs[0];
+    updateBlockContent(currentBlockId, textBeforeCursor + firstParagraph);
+    
+    // Insert remaining paragraphs as new blocks
+    const remainingParagraphs = paragraphs.slice(1);
+    remainingParagraphs.forEach((paragraph, index) => {
+      const newBlock = addNewBlock(insertPosition + index + 1);
+      updateBlockContent(newBlock.id, paragraph);
+    });
+    
+    // If there was text after cursor, add it to the last new block
+    if (textAfterCursor) {
+      const lastNewBlock = state.document.blocks.find(b => b.position === insertPosition + remainingParagraphs.length);
+      if (lastNewBlock) {
+        updateBlockContent(lastNewBlock.id, lastNewBlock.content + textAfterCursor);
+      }
+    }
+    
+    // Focus on the last inserted block
+    const lastBlock = state.document.blocks.find(b => b.position === insertPosition + remainingParagraphs.length);
+    if (lastBlock) {
+      setTimeout(() => {
+        startEditingBlock(lastBlock.id);
+        const textarea = textareaRefs.current[lastBlock.id];
+        if (textarea) {
+          // Set cursor to end of content
+          const endPosition = lastBlock.content.length;
+          textarea.setSelectionRange(endPosition, endPosition);
+          textarea.focus();
+        }
+      }, 50);
+    }
+  }, [state.document.blocks, addNewBlock, updateBlockContent, startEditingBlock]);
+
+  // Handle paste events
+  const handlePaste = useCallback((e: React.ClipboardEvent, blockId: string) => {
+    const pastedText = e.clipboardData.getData('text/plain');
+    
+    if (!pastedText.trim()) return;
+    
+    // Detect if content has multiple paragraphs
+    const paragraphs = detectParagraphs(pastedText);
+    
+    if (paragraphs.length > 1) {
+      e.preventDefault(); // Prevent default paste behavior
+      insertMultipleBlocks(blockId, paragraphs);
+      
+      // Show user feedback
+      toast({
+        title: "Content Auto-Split",
+        description: `Pasted content automatically split into ${paragraphs.length} blocks for better organization.`,
+        duration: 3000,
+      });
+    }
+  }, [detectParagraphs, insertMultipleBlocks]);
 
   // Handle keyboard shortcuts
   const handleKeyDown = useCallback((e: React.KeyboardEvent, blockId: string) => {
@@ -818,6 +929,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
             }}
             onBlur={() => finishEditingBlock(block.id)}
             onKeyDown={(e) => handleKeyDown(e, block.id)}
+            onPaste={(e) => handlePaste(e, block.id)}
             onFocus={(e) => {
               // If the block is empty, set cursor to the beginning
               if (!block.content || block.content.trim() === '') {

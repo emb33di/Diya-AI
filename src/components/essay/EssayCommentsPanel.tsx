@@ -164,14 +164,18 @@ const RelevantTextDisplay: React.FC<{
   
   // Get the score value and type for display
   const getScoreInfo = (comment: Comment) => {
-    if (comment.opening_sentence_score !== undefined && comment.opening_sentence_score_color) {
-      return { score: comment.opening_sentence_score, type: 'Opening Sentence', color: comment.opening_sentence_score_color };
+    // Big picture agent quality score (1-100 scale)
+    if (comment.quality_score !== undefined && comment.agent_type === 'big-picture') {
+      const color = comment.quality_score >= 80 ? 'green' : comment.quality_score >= 60 ? 'yellow' : 'red';
+      return { score: comment.quality_score, type: 'Overall Essay', color, maxScore: 100 };
+    } else if (comment.opening_sentence_score !== undefined && comment.opening_sentence_score_color) {
+      return { score: comment.opening_sentence_score, type: 'Opening Sentence', color: comment.opening_sentence_score_color, maxScore: 10 };
     } else if (comment.transition_score !== undefined && comment.transition_score_color) {
-      return { score: comment.transition_score, type: 'Transition', color: comment.transition_score_color };
+      return { score: comment.transition_score, type: 'Transition', color: comment.transition_score_color, maxScore: 10 };
     } else if (comment.paragraph_quality_score !== undefined && comment.paragraph_quality_score_color) {
-      return { score: comment.paragraph_quality_score, type: 'Paragraph Quality', color: comment.paragraph_quality_score_color };
+      return { score: comment.paragraph_quality_score, type: 'Paragraph Quality', color: comment.paragraph_quality_score_color, maxScore: 10 };
     } else if (comment.final_sentence_score !== undefined && comment.final_sentence_score_color) {
-      return { score: comment.final_sentence_score, type: 'Final Sentence', color: comment.final_sentence_score_color };
+      return { score: comment.final_sentence_score, type: 'Final Sentence', color: comment.final_sentence_score_color, maxScore: 10 };
     }
     return null;
   };
@@ -203,7 +207,7 @@ const RelevantTextDisplay: React.FC<{
                     'bg-gray-100 text-gray-800'
                   }`}
                 >
-                  {scoreInfo.score}/10
+                  {scoreInfo.score}/{scoreInfo.maxScore || 10}
                 </Badge>
               </div>
             )}

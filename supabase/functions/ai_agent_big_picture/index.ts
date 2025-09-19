@@ -8,6 +8,7 @@ interface BigPictureComment {
   agent_type: 'big-picture';
   anchor_text?: string;
   confidence_score: number;
+  quality_score: number;
 }
 
 interface BigPictureAgentResponse {
@@ -63,6 +64,15 @@ CRITICAL GUIDANCE:
 - Generate ONE comprehensive comment aiming for 75 words max
 - Consider all previous agent feedback to provide holistic perspective
 
+SCORING AND FEEDBACK INSTRUCTIONS:
+For your comment, you must:
+1. Provide a quality_score from 1-100 rating how well the student addressed the essay prompt and overall strategic effectiveness
+2. If quality_score < 80: Provide constructive feedback with specific suggestions for improvement
+3. If quality_score >= 80: Focus on praise and reinforcement, avoid suggesting changes
+
+For scores < 80, format improvement suggestions as: "Instead of X, you could Y to better address the prompt and strengthen your overall argument."
+For scores >= 80, focus on what they did well and encourage them to continue in that direction.
+
 INSTRUCTIONS:
 Provide exactly ONE comprehensive overall comment that synthesizes the strategic assessment of the essay, taking into account the previous agent feedback.
 
@@ -78,12 +88,13 @@ RESPONSE FORMAT (JSON only):
 {
   "comments": [
     {
-      "comment_text": "[Comprehensive strategic assessment of the essay - maximum 75 words - that synthesizes strengths and areas for improvement while considering previous agent feedback]",
+      "comment_text": "[Comprehensive strategic assessment of the essay - maximum 75 words - that synthesizes strengths and areas for improvement while considering previous agent feedback. Include quality score assessment and conditional feedback based on score. If score < 80, provide improvement suggestions. If score >= 80, focus on praise.]",
       "comment_nature": "suggestion",
       "comment_category": "overall",
       "agent_type": "big-picture",
       "anchor_text": "representative text from the essay (if applicable)",
-      "confidence_score": 0.85
+      "confidence_score": 0.85,
+      "quality_score": 75
     }
   ]
 }
@@ -162,9 +173,38 @@ async function analyzeBigPicture(essayContent: string, essayPrompt?: string, cum
       throw new Error('Invalid comment structure in AI response')
     }
 
+    // Validate and format comments
+    const comments: BigPictureComment[] = parsedResponse.comments.map((comment: any) => {
+      // Validate confidence score
+      const confidenceScore = typeof comment.confidence_score === 'number' 
+        ? Math.max(0, Math.min(1, comment.confidence_score))
+        : 0.8;
+
+      // Validate quality score
+      const qualityScore = typeof comment.quality_score === 'number' 
+        ? Math.max(1, Math.min(100, comment.quality_score))
+        : 50;
+
+      // Validate comment nature
+      const validNatures = ['suggestion', 'critique', 'praise', 'question'];
+      const commentNature = validNatures.includes(comment.comment_nature) 
+        ? comment.comment_nature 
+        : 'suggestion';
+
+      return {
+        comment_text: comment.comment_text || 'No comment text provided',
+        comment_nature: commentNature,
+        comment_category: 'overall',
+        agent_type: 'big-picture',
+        anchor_text: comment.anchor_text || undefined,
+        confidence_score: confidenceScore,
+        quality_score: qualityScore
+      };
+    });
+
     return {
       success: true,
-      comments: parsedResponse.comments
+      comments
     }
 
   } catch (error) {

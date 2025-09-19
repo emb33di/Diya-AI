@@ -317,6 +317,25 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
                                   )}
                                 </div>
                                 
+                                {/* Big Picture Score Display */}
+                                {annotation.metadata?.agentType === 'big-picture' && annotation.metadata?.qualityScore && (
+                                  <div className="mt-2 mb-2">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-medium text-gray-600">Overall Essay Score:</span>
+                                      <Badge 
+                                        variant="secondary" 
+                                        className={`text-sm font-bold ${
+                                          annotation.metadata.qualityScore >= 80 ? 'bg-green-100 text-green-800' :
+                                          annotation.metadata.qualityScore >= 60 ? 'bg-yellow-100 text-yellow-800' :
+                                          'bg-red-100 text-red-800'
+                                        }`}
+                                      >
+                                        {annotation.metadata.qualityScore}/100
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                )}
+                                
                                 <div className="flex items-center gap-1">
                                   {!annotation.resolved && onAnnotationResolve && (
                                     <Button

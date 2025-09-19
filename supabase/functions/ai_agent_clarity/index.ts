@@ -19,6 +19,7 @@ interface ClarityComment {
     end: number;
   };
   confidence_score: number;
+  quality_score: number;
 }
 
 interface ClarityAgentResponse {
@@ -84,6 +85,15 @@ ANALYSIS AREAS:
 - Passive voice that weakens clarity
 - Redundant expressions
 
+SCORING AND FEEDBACK INSTRUCTIONS:
+For each comment, you must:
+1. Provide a quality_score from 1-10 rating how clear and concise the identified text is
+2. If quality_score < 8: Provide constructive feedback with specific suggestions for improvement
+3. If quality_score >= 8: Focus on praise and reinforcement, avoid suggesting changes
+
+For scores < 8, format improvement suggestions formatted as: "Instead of saying X, you could phrase it as Y to make it clearer and more direct."
+For scores >= 8, focus on what they did well and encourage them to continue in that direction.
+
 INSTRUCTIONS:
 Generate 2-4 comments focusing on clarity and conciseness. Each comment should identify specific text and suggest how to make it clearer and more precise.
 
@@ -91,7 +101,7 @@ RESPONSE FORMAT (JSON only):
 {
   "comments": [
     {
-      "comment_text": "[Specific suggestion for making the identified text clearer and more concise. Focus on precision and directness.]",
+      "comment_text": "[Specific suggestion for making the identified text clearer and more concise. Include quality score assessment and conditional feedback based on score. If score < 8, provide improvement suggestions. If score >= 8, focus on praise.]",
       "comment_nature": "weakness",
       "comment_category": "inline",
       "agent_type": "clarity",
@@ -99,10 +109,11 @@ RESPONSE FORMAT (JSON only):
         "start": 150,
         "end": 200
       },
-      "confidence_score": 0.85
+      "confidence_score": 0.85,
+      "quality_score": 6
     },
     {
-      "comment_text": "[Another specific clarity suggestion with precise positioning.]",
+      "comment_text": "[Another specific clarity suggestion with precise positioning. Include quality score assessment and conditional feedback based on score.]",
       "comment_nature": "weakness", 
       "comment_category": "inline",
       "agent_type": "clarity",
@@ -110,7 +121,8 @@ RESPONSE FORMAT (JSON only):
         "start": 300,
         "end": 350
       },
-      "confidence_score": 0.80
+      "confidence_score": 0.80,
+      "quality_score": 9
     }
   ]
 }
@@ -196,6 +208,11 @@ async function analyzeClarity(essayContent: string, essayPrompt?: string, cumula
         ? Math.max(0, Math.min(1, comment.confidence_score))
         : 0.8;
 
+      // Validate quality score
+      const qualityScore = typeof comment.quality_score === 'number' 
+        ? Math.max(1, Math.min(10, comment.quality_score))
+        : 5;
+
       // Validate text selection
       const textSelection = comment.text_selection && 
         typeof comment.text_selection.start === 'number' && 
@@ -212,7 +229,8 @@ async function analyzeClarity(essayContent: string, essayPrompt?: string, cumula
         comment_category: 'inline',
         agent_type: 'clarity',
         text_selection: textSelection,
-        confidence_score: confidenceScore
+        confidence_score: confidenceScore,
+        quality_score: qualityScore
       };
     })
 
