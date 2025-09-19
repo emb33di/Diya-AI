@@ -67,10 +67,7 @@ interface AICommentResponse {
   };
 }
 
-// Initialize Supabase client
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+// Supabase client already initialized above
 
 // Note: This function now uses specialized agents instead of a single generic prompt
 
