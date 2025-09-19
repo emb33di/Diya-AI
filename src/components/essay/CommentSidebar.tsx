@@ -353,7 +353,7 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
                               
                               {annotation.targetText && (
                                 <div className="mt-2 p-2 bg-white rounded border text-xs text-gray-600 leading-relaxed break-words overflow-wrap-anywhere">
-                                  <strong>Context:</strong> "{annotation.targetText}"
+                                  <strong>{annotation.metadata?.agentType === 'grammar' ? 'Need to fix:' : 'Context:'}</strong> "{annotation.targetText}"
                                 </div>
                               )}
                             </div>
@@ -484,15 +484,9 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
                           
                           {annotation.targetText && (
                             <div className="mt-2 p-2 bg-white rounded border text-xs text-gray-600 leading-relaxed break-words overflow-wrap-anywhere">
-                              <strong>Context:</strong> "{annotation.targetText}"
+                              <strong>{annotation.metadata?.agentType === 'grammar' ? 'Need to fix:' : 'Context:'}</strong> "{annotation.targetText}"
                             </div>
                           )}
-                          
-                          <div className="mt-2 text-xs text-gray-500">
-                            <div className="break-words overflow-wrap-anywhere">
-                              <strong>From:</strong> {blockContent.substring(0, 60)}...
-                            </div>
-                          </div>
                         </div>
                       ))}
                     </div>

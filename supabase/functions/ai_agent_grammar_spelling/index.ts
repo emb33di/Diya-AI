@@ -6,6 +6,9 @@ import { corsHeaders } from '../_shared/cors.ts'
 interface GrammarSpellingAgentRequest {
   essayContent: string;
   essayPrompt?: string;
+  blockId?: string;
+  blockIndex?: number;
+  totalBlocks?: number;
 }
 
 interface GrammarSpellingComment {
@@ -14,8 +17,8 @@ interface GrammarSpellingComment {
   comment_category: 'inline';
   agent_type: 'grammar_spelling';
   text_selection: {
-    start: number;
-    end: number;
+    start: { pos: number; path: number[] };
+    end: { pos: number; path: number[] };
   };
   confidence_score: number;
 }
@@ -41,8 +44,10 @@ const GRAMMAR_SPELLING_PROMPT = `You are an expert grammar and spelling checker 
 ESSAY PROMPT:
 {prompt}
 
-ESSAY CONTENT:
+BLOCK CONTENT:
 {content}
+
+{blockContext}
 
 CRITICAL GUIDANCE:
 - Focus ONLY on mechanical errors: grammar, punctuation, and spelling
@@ -65,40 +70,48 @@ ANALYSIS AREAS:
 - Sentence fragments
 - Double negatives
 
+NEEDED vs NICE-TO-HAVE CRITERIA:
+- NEEDED: Errors that significantly impact clarity, meaning, or correctness
+- NEEDED: Errors that would be marked wrong in formal writing/grammar tests
+- NEEDED: Errors that could confuse readers or change meaning
+- NICE-TO-HAVE: Minor stylistic preferences, optional punctuation, informal vs formal tone
+- NICE-TO-HAVE: Regional spelling differences (e.g., "color" vs "colour")
+- NICE-TO-HAVE: Optional comma usage that doesn't affect meaning
+
 INSTRUCTIONS:
-Generate 2-4 comments focusing on mechanical errors. Each comment should identify a specific error and provide the correction.
+Generate comments ONLY for NEEDED mechanical errors. Do not generate comments for nice-to-have suggestions. If no significant errors exist, return an empty comments array. Each comment should identify a specific error and provide the correction.
+
+IMPORTANT: For each comment, you MUST:
+1. Quote the exact text containing the error in your comment_text
+2. Provide accurate text_selection positions for the specific text with the error
+3. Be specific about what needs to be changed
 
 RESPONSE FORMAT (JSON only):
 {
   "comments": [
     {
-      "comment_text": "[Specific correction for the identified grammar, punctuation, or spelling error. Be direct and clear about the mistake and fix.]",
+      "comment_text": "Change \"their going\" to \"they're going\" - this is a contraction error.",
       "comment_nature": "weakness",
       "comment_category": "inline",
       "agent_type": "grammar_spelling",
       "text_selection": {
-        "start": 150,
-        "end": 200
+        "start": { "pos": 150, "path": [0] },
+        "end": { "pos": 162, "path": [0] }
       },
       "confidence_score": 0.90
-    },
-    {
-      "comment_text": "[Another specific mechanical error correction with precise positioning.]",
-      "comment_nature": "weakness",
-      "comment_category": "inline", 
-      "agent_type": "grammar_spelling",
-      "text_selection": {
-        "start": 300,
-        "end": 350
-      },
-      "confidence_score": 0.85
     }
   ]
 }
 
-Remember: Focus ONLY on mechanical errors - grammar, punctuation, and spelling. Do NOT address style, content, structure, or word choice.`
+Remember: Focus ONLY on NEEDED mechanical errors - grammar, punctuation, and spelling. Do NOT address style, content, structure, or word choice. Do NOT generate comments for nice-to-have suggestions.`
 
-async function analyzeGrammarSpelling(essayContent: string, essayPrompt?: string): Promise<GrammarSpellingAgentResponse> {
+async function analyzeGrammarSpelling(
+  essayContent: string, 
+  essayPrompt?: string, 
+  blockId?: string, 
+  blockIndex?: number, 
+  totalBlocks?: number
+): Promise<GrammarSpellingAgentResponse> {
   if (!GEMINI_API_KEY) {
     return {
       success: false,
@@ -107,9 +120,15 @@ async function analyzeGrammarSpelling(essayContent: string, essayPrompt?: string
     }
   }
 
+  // Create block context if this is a block-specific analysis
+  const blockContext = blockId && blockIndex !== undefined && totalBlocks !== undefined
+    ? `\nBLOCK CONTEXT:\nThis is block ${blockIndex + 1} of ${totalBlocks} blocks in the essay. Focus on mechanical errors within this specific block only.`
+    : '';
+
   const formattedPrompt = GRAMMAR_SPELLING_PROMPT
     .replace('{prompt}', essayPrompt || 'No specific prompt provided')
     .replace('{content}', essayContent)
+    .replace('{blockContext}', blockContext)
 
   const requestBody = {
     contents: [{
@@ -121,7 +140,7 @@ async function analyzeGrammarSpelling(essayContent: string, essayPrompt?: string
       temperature: 0.2, // Lower temperature for more consistent grammar checking
       topK: 40,
       topP: 0.95,
-      maxOutputTokens: 1024,
+      maxOutputTokens: 2048, // Increased to allow for more comments
     }
   }
 
@@ -171,13 +190,24 @@ async function analyzeGrammarSpelling(essayContent: string, essayPrompt?: string
 
       // Validate text selection
       const textSelection = comment.text_selection && 
-        typeof comment.text_selection.start === 'number' && 
-        typeof comment.text_selection.end === 'number'
+        comment.text_selection.start && 
+        comment.text_selection.end &&
+        typeof comment.text_selection.start.pos === 'number' && 
+        typeof comment.text_selection.end.pos === 'number'
         ? {
-            start: Math.max(0, comment.text_selection.start),
-            end: Math.min(essayContent.length, comment.text_selection.end)
+            start: { 
+              pos: Math.max(0, comment.text_selection.start.pos),
+              path: comment.text_selection.start.path || [0]
+            },
+            end: { 
+              pos: Math.min(essayContent.length, comment.text_selection.end.pos),
+              path: comment.text_selection.end.path || [0]
+            }
           }
-        : { start: 0, end: 0 };
+        : { 
+            start: { pos: 0, path: [0] }, 
+            end: { pos: 0, path: [0] } 
+          };
 
       return {
         comment_text: comment.comment_text || 'No comment text provided',
@@ -212,7 +242,7 @@ serve(async (req) => {
 
   try {
     // Parse request body
-    const { essayContent, essayPrompt }: GrammarSpellingAgentRequest = await req.json()
+    const { essayContent, essayPrompt, blockId, blockIndex, totalBlocks }: GrammarSpellingAgentRequest = await req.json()
 
     // Validate required fields
     if (!essayContent) {
@@ -230,7 +260,7 @@ serve(async (req) => {
     }
 
     // Validate essay content length
-    if (essayContent.length < 50) {
+    if (essayContent.length < 10) {
       return new Response(
         JSON.stringify({
           success: false,
@@ -245,9 +275,12 @@ serve(async (req) => {
     }
 
     console.log(`Analyzing grammar and spelling for essay content (${essayContent.length} characters)`)
+    if (blockId) {
+      console.log(`Block-specific analysis for block ${blockIndex + 1} of ${totalBlocks}`)
+    }
     
     // Analyze grammar and spelling
-    const result = await analyzeGrammarSpelling(essayContent, essayPrompt)
+    const result = await analyzeGrammarSpelling(essayContent, essayPrompt, blockId, blockIndex, totalBlocks)
     
     const response: GrammarSpellingAgentResponse = {
       success: result.success,

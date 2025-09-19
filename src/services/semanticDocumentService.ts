@@ -755,7 +755,7 @@ export class SemanticDocumentService {
   }
 
   /**
-   * Generate grammar comments for semantic blocks
+   * Generate grammar comments for semantic blocks (block by block analysis)
    */
   async generateGrammarComments(request: AICommentRequest): Promise<AICommentResponse> {
     const startTime = Date.now();
@@ -768,23 +768,58 @@ export class SemanticDocumentService {
         throw new Error('User not authenticated');
       }
 
-      // Call the grammar agent edge function
-      const { data, error } = await supabase.functions.invoke('ai_agent_grammar_spelling', {
-        body: {
-          essayContent: request.blocks.map(b => b.content).join('\n\n'),
-          essayPrompt: request.context?.prompt
-        },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        }
-      });
+      const allGrammarComments: any[] = [];
+      const totalBlocks = request.blocks.length;
 
-      if (error) {
-        throw new Error(`Grammar Agent error: ${error.message}`);
+      // Process each block individually for comprehensive grammar analysis
+      for (let blockIndex = 0; blockIndex < request.blocks.length; blockIndex++) {
+        const block = request.blocks[blockIndex];
+        
+        // Skip empty blocks
+        if (!block.content || block.content.trim().length < 10) {
+          continue;
+        }
+
+        console.log(`Analyzing grammar for block ${blockIndex + 1}/${totalBlocks}: ${block.id}`);
+
+        try {
+          // Call the grammar agent edge function for this specific block
+          const { data, error } = await supabase.functions.invoke('ai_agent_grammar_spelling', {
+            body: {
+              essayContent: block.content,
+              essayPrompt: request.context?.prompt,
+              blockId: block.id,
+              blockIndex: blockIndex,
+              totalBlocks: totalBlocks
+            },
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            }
+          });
+
+          if (error) {
+            console.error(`Grammar Agent error for block ${blockIndex + 1}:`, error);
+            continue; // Continue with other blocks even if one fails
+          }
+
+          // Add block context to comments
+          const blockComments = (data.comments || []).map((comment: any) => ({
+            ...comment,
+            blockId: block.id,
+            blockIndex: blockIndex
+          }));
+
+          allGrammarComments.push(...blockComments);
+          console.log(`Found ${blockComments.length} grammar issues in block ${blockIndex + 1}`);
+
+        } catch (blockError) {
+          console.error(`Error analyzing block ${blockIndex + 1}:`, blockError);
+          continue; // Continue with other blocks
+        }
       }
 
       // Convert grammar agent comments to semantic format
-      const grammarComments = this.convertGrammarCommentsToSemantic(data.comments || [], request.blocks);
+      const grammarComments = this.convertGrammarCommentsToSemantic(allGrammarComments, request.blocks);
 
       // Store grammar comments in database if any were generated
       if (grammarComments.length > 0) {
@@ -819,10 +854,10 @@ export class SemanticDocumentService {
       return {
         success: true,
         comments: grammarComments,
-        message: `Generated ${grammarComments.length} grammar suggestions`,
+        message: `Generated ${grammarComments.length} grammar suggestions across ${totalBlocks} blocks`,
         metadata: {
           processingTime: Date.now() - startTime,
-          blocksAnalyzed: request.blocks.length,
+          blocksAnalyzed: totalBlocks,
           commentsGenerated: grammarComments.length
         }
       };
@@ -935,7 +970,19 @@ export class SemanticDocumentService {
    * Find the best matching block for a grammar comment
    */
   private findBestMatchingBlockForGrammar(grammarComment: any, blocks: DocumentBlock[]): DocumentBlock | null {
-    // If comment has text selection info, use that
+    // Strategy 1: Use blockId if available (from block-by-block processing)
+    if (grammarComment.blockId) {
+      const block = blocks.find(b => b.id === grammarComment.blockId);
+      if (block) return block;
+    }
+
+    // Strategy 2: Use blockIndex if available
+    if (grammarComment.blockIndex !== null && grammarComment.blockIndex !== undefined) {
+      const block = blocks[grammarComment.blockIndex];
+      if (block) return block;
+    }
+
+    // Strategy 3: If comment has text selection info, use that
     if (grammarComment.text_selection) {
       const selection = grammarComment.text_selection;
       if (selection.start && typeof selection.start.pos === 'number') {
@@ -950,7 +997,7 @@ export class SemanticDocumentService {
       }
     }
 
-    // Fallback: find block containing the target text
+    // Strategy 4: Find block containing the target text
     if (grammarComment.anchor_text || grammarComment.target_text) {
       const targetText = grammarComment.anchor_text || grammarComment.target_text;
       for (const block of blocks) {
@@ -960,7 +1007,7 @@ export class SemanticDocumentService {
       }
     }
 
-    // Last resort: return first non-empty block
+    // Strategy 5: Last resort: return first non-empty block
     return blocks.find(block => block.content.trim().length > 0) || blocks[0] || null;
   }
 
@@ -981,6 +1028,31 @@ export class SemanticDocumentService {
     const changeMatch = commentText.match(/(?:Change|Replace)\s+"?([^"]+)"?/i);
     if (changeMatch) {
       return changeMatch[1];
+    }
+
+    // Look for text after "should be" or "should read"
+    const shouldBeMatch = commentText.match(/(?:should be|should read)\s+"?([^"]+)"?/i);
+    if (shouldBeMatch) {
+      return shouldBeMatch[1];
+    }
+
+    // Look for text after "correct to"
+    const correctMatch = commentText.match(/(?:correct to)\s+"?([^"]+)"?/i);
+    if (correctMatch) {
+      return correctMatch[1];
+    }
+
+    // If we have text selection, try to extract the actual text from the block
+    if (grammarComment.text_selection && 
+        grammarComment.text_selection.start && 
+        grammarComment.text_selection.end &&
+        typeof grammarComment.text_selection.start.pos === 'number' && 
+        typeof grammarComment.text_selection.end.pos === 'number') {
+      const start = grammarComment.text_selection.start.pos;
+      const end = grammarComment.text_selection.end.pos;
+      if (start >= 0 && end <= blockContent.length && start < end) {
+        return blockContent.substring(start, end);
+      }
     }
 
     // Return first few words of block as fallback
