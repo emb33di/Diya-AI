@@ -957,7 +957,7 @@ const Essays = () => {
                   <Card className="p-8 text-center bg-muted/30">
                     <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
                     <p className="text-sm text-muted-foreground">
-                      {selectedSchool === 'Common Application' ? 'No Common App prompts found' : 'No essay prompts found for this school'}
+                      {selectedSchool === 'Common Application' ? 'No Common App prompts found' : 'No essay prompts found for this school, add a new one!'}
                     </p>
                   </Card>
                 )}
@@ -1461,7 +1461,7 @@ const Essays = () => {
                       <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                       <h3 className="text-lg font-semibold mb-2">No Essay Prompts Found</h3>
                       <p className="text-sm text-muted-foreground">
-                        {selectedSchool === 'Common Application' ? 'No Common App prompts found' : 'No essay prompts found for this school'}
+                        {selectedSchool === 'Common Application' ? 'No Common App prompts found' : 'No essay prompts found for this school, add a new one!'}
                       </p>
                     </Card>
                   )}

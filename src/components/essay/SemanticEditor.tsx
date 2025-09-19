@@ -802,7 +802,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
   return (
     <div className={`clean-semantic-editor ${className} ${showCommentSidebar ? 'flex' : ''}`}>
       {/* Main Editor Area */}
-      <div className={`${showCommentSidebar ? 'flex-1 pr-4' : 'w-full'}`}>
+      <div className={`${showCommentSidebar ? 'w-2/3 pr-4' : 'w-full'}`}>
         {/* Editor Content */}
         <div className="relative pl-12">
           {/* Render all blocks */}

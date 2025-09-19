@@ -144,16 +144,28 @@ export class SemanticDocumentService {
       console.log('Found', allDocs?.length || 0, 'total documents');
       
       // Filter client-side to find the document with matching essayId
-      const matchingDoc = allDocs?.find(doc => 
+      // Sort by updated_at descending to get the most recent document
+      const matchingDocs = allDocs?.filter(doc => 
         doc.metadata && doc.metadata.essayId === essayId
-      );
+      ).sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+      
+      const matchingDoc = matchingDocs?.[0]; // Get the most recent document
 
       if (!matchingDoc) {
         console.log('No document found for essay ID:', essayId);
         return null;
       }
 
-      console.log('Found matching document:', matchingDoc.id, 'for essay:', essayId);
+      console.log(`Found ${matchingDocs?.length || 0} documents for essay ${essayId}, using most recent:`, matchingDoc.id, 'updated at:', matchingDoc.updated_at);
+
+      // Clean up duplicate documents if there are multiple
+      if (matchingDocs && matchingDocs.length > 1) {
+        console.log(`Found ${matchingDocs.length} duplicate documents, cleaning up...`);
+        const cleanupResult = await this.cleanupDuplicateDocuments(essayId);
+        if (cleanupResult.success && cleanupResult.deletedCount > 0) {
+          console.log(`Cleaned up ${cleanupResult.deletedCount} duplicate documents`);
+        }
+      }
 
       // Load associated annotations (non-blocking - if it fails, we still return the document)
       let annotations: Annotation[] = [];
@@ -187,6 +199,76 @@ export class SemanticDocumentService {
     } catch (error) {
       console.error('Error in loadDocumentByEssayId:', error);
       return null;
+    }
+  }
+
+  /**
+   * Clean up duplicate documents for an essay (keep only the most recent one)
+   */
+  async cleanupDuplicateDocuments(essayId: string): Promise<{
+    success: boolean;
+    deletedCount: number;
+    errors: string[];
+  }> {
+    try {
+      console.log(`Cleaning up duplicate documents for essay: ${essayId}`);
+      
+      // Get all documents for this essay
+      const { data: allDocs, error } = await supabase
+        .from('semantic_documents')
+        .select('*');
+
+      if (error) {
+        return {
+          success: false,
+          deletedCount: 0,
+          errors: [`Failed to fetch documents: ${error.message}`]
+        };
+      }
+
+      const matchingDocs = allDocs?.filter(doc => 
+        doc.metadata && doc.metadata.essayId === essayId
+      ).sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+
+      if (!matchingDocs || matchingDocs.length <= 1) {
+        return {
+          success: true,
+          deletedCount: 0,
+          errors: []
+        };
+      }
+
+      // Keep the most recent document, delete the rest
+      const docsToDelete = matchingDocs.slice(1);
+      const deleteIds = docsToDelete.map(doc => doc.id);
+
+      console.log(`Found ${matchingDocs.length} duplicate documents, deleting ${docsToDelete.length} older ones`);
+
+      const { error: deleteError } = await supabase
+        .from('semantic_documents')
+        .delete()
+        .in('id', deleteIds);
+
+      if (deleteError) {
+        return {
+          success: false,
+          deletedCount: 0,
+          errors: [`Failed to delete duplicate documents: ${deleteError.message}`]
+        };
+      }
+
+      return {
+        success: true,
+        deletedCount: docsToDelete.length,
+        errors: []
+      };
+
+    } catch (error) {
+      return {
+        success: false,
+        deletedCount: 0,
+        errors: [error instanceof Error ? error.message : 'Unknown error']
+      };
     }
   }
 
