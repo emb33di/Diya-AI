@@ -1,5 +1,17 @@
 /* Semantic Editor Inline Highlighting Styles */
 
+/* Comment Sidebar Text Handling */
+.comment-sidebar {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.comment-content {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  hyphens: auto;
+}
+
 .inline-highlight {
   position: relative;
   border-radius: 2px;

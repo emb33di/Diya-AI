@@ -426,40 +426,12 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
         }
       });
 
-      if (response.success && response.comments.length > 0) {
-        // Add the AI comments as annotations to the appropriate blocks
-        setState(prev => {
-          const updatedBlocks = prev.document.blocks.map(block => {
-            const blockComments = response.comments.filter(c => c.targetBlockId === block.id);
-            // Convert SemanticComment to Annotation format
-            const annotations = blockComments.map(comment => ({
-              id: crypto.randomUUID(),
-              type: comment.type,
-              author: 'ai' as const,
-              content: comment.comment,
-              targetBlockId: comment.targetBlockId,
-              targetText: comment.targetText,
-              createdAt: new Date(),
-              updatedAt: new Date(),
-              resolved: false,
-              metadata: comment.metadata
-            }));
-            return {
-              ...block,
-              annotations: [...block.annotations, ...annotations]
-            };
-          });
-
-          return {
-            ...prev,
-            document: {
-              ...prev.document,
-              blocks: updatedBlocks,
-              updatedAt: new Date()
-            },
-            pendingChanges: true
-          };
-        });
+      if (response.success) {
+        // Reload document to get updated comments from database
+        const updatedDocument = await semanticDocumentService.loadDocument(state.document.id);
+        if (updatedDocument) {
+          setState(prev => ({ ...prev, document: updatedDocument }));
+        }
       }
 
       // Mark as complete
@@ -499,40 +471,12 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
         }
       });
 
-      if (response.success && response.comments.length > 0) {
-        // Add the grammar comments as annotations to the appropriate blocks
-        setState(prev => {
-          const updatedBlocks = prev.document.blocks.map(block => {
-            const blockComments = response.comments.filter(c => c.targetBlockId === block.id);
-            // Convert SemanticComment to Annotation format
-            const annotations = blockComments.map(comment => ({
-              id: crypto.randomUUID(),
-              type: comment.type,
-              author: 'ai' as const,
-              content: comment.comment,
-              targetBlockId: comment.targetBlockId,
-              targetText: comment.targetText,
-              createdAt: new Date(),
-              updatedAt: new Date(),
-              resolved: false,
-              metadata: comment.metadata
-            }));
-            return {
-              ...block,
-              annotations: [...block.annotations, ...annotations]
-            };
-          });
-
-          return {
-            ...prev,
-            document: {
-              ...prev.document,
-              blocks: updatedBlocks,
-              updatedAt: new Date()
-            },
-            pendingChanges: true
-          };
-        });
+      if (response.success) {
+        // Reload document to get updated comments from database
+        const updatedDocument = await semanticDocumentService.loadDocument(state.document.id);
+        if (updatedDocument) {
+          setState(prev => ({ ...prev, document: updatedDocument }));
+        }
       }
 
       // Mark as complete
@@ -921,9 +865,9 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
   };
 
   return (
-    <div className={`clean-semantic-editor ${className} ${showCommentSidebar ? 'flex' : ''}`}>
+    <div className={`clean-semantic-editor ${className} ${showCommentSidebar ? 'flex h-full' : 'h-full'}`}>
       {/* Main Editor Area */}
-      <div className={`${showCommentSidebar ? 'w-2/3 pr-4' : 'w-full'}`}>
+      <div className={`${showCommentSidebar ? 'flex-1 min-w-0 pr-4' : 'w-full'}`}>
         {/* Editor Content */}
         <div className="relative pl-12">
           {/* Render all blocks */}

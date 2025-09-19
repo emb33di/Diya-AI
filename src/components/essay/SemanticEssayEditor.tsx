@@ -765,7 +765,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
               )}
 
               {/* Editor */}
-              <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-8 min-h-[600px]">
+              <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-8 min-h-[600px] h-full">
                 <SemanticEditor
                   documentId={document.id}
                   essayId={essayId}

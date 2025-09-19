@@ -210,8 +210,8 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
   const totalUnresolvedComments = Object.values(groupedComments).flat().length;
 
   return (
-    <div className={cn("flex-1 min-w-64 h-full border-l border-gray-200 bg-white flex-shrink-0", className)}>
-      <div className="p-3 border-b border-gray-200">
+    <div className={cn("flex-1 min-w-64 max-w-96 h-full border-l border-gray-200 bg-white flex-shrink-0 flex flex-col comment-sidebar", className)}>
+      <div className="p-3 border-b border-gray-200 flex-shrink-0">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-base font-semibold flex items-center gap-2">
             <MessageSquare className="h-4 w-4" />
@@ -243,8 +243,8 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
         </Tabs>
       </div>
 
-      <ScrollArea className="flex-1 h-[calc(100vh-200px)]">
-        <div className="space-y-4">
+      <ScrollArea className="flex-1 h-full max-h-[calc(100vh-300px)]">
+        <div className="space-y-4 p-2">
           {/* Overall Analysis Section - Always at top */}
           {groupedComments['overall-analysis'].length > 0 && (
             <>
@@ -282,7 +282,7 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
                             <div
                               key={annotation.id}
                               className={cn(
-                                "p-2 rounded-lg border-l-4 cursor-pointer transition-all duration-200",
+                                "p-2 rounded-lg border-l-4 cursor-pointer transition-all duration-200 overflow-hidden",
                                 getCategoryColor(category),
                                 selectedAnnotationId === annotation.id && "ring-2 ring-indigo-500 ring-opacity-50",
                                 annotation.resolved && "opacity-60"
@@ -349,10 +349,10 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
                                 </div>
                               </div>
                               
-                              <p className="text-xs text-gray-700 mb-2 leading-relaxed">{annotation.content}</p>
+                              <p className="text-xs text-gray-700 mb-2 leading-relaxed break-words overflow-wrap-anywhere comment-content">{annotation.content}</p>
                               
                               {annotation.targetText && (
-                                <div className="mt-2 p-2 bg-white rounded border text-xs text-gray-600 leading-relaxed">
+                                <div className="mt-2 p-2 bg-white rounded border text-xs text-gray-600 leading-relaxed break-words overflow-wrap-anywhere">
                                   <strong>Context:</strong> "{annotation.targetText}"
                                 </div>
                               )}
@@ -413,7 +413,7 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
                         <div
                           key={annotation.id}
                           className={cn(
-                            "p-2 rounded-lg border-l-4 cursor-pointer transition-all duration-200",
+                            "p-2 rounded-lg border-l-4 cursor-pointer transition-all duration-200 overflow-hidden",
                             getCategoryColor(categoryKey),
                             selectedAnnotationId === annotation.id && "ring-2 ring-blue-500 ring-opacity-50",
                             annotation.resolved && "opacity-60"
@@ -480,16 +480,16 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
                             </div>
                           </div>
                           
-                          <p className="text-xs text-gray-700 mb-2 leading-relaxed">{annotation.content}</p>
+                          <p className="text-xs text-gray-700 mb-2 leading-relaxed break-words overflow-wrap-anywhere comment-content">{annotation.content}</p>
                           
                           {annotation.targetText && (
-                            <div className="mt-2 p-2 bg-white rounded border text-xs text-gray-600 leading-relaxed">
+                            <div className="mt-2 p-2 bg-white rounded border text-xs text-gray-600 leading-relaxed break-words overflow-wrap-anywhere">
                               <strong>Context:</strong> "{annotation.targetText}"
                             </div>
                           )}
                           
                           <div className="mt-2 text-xs text-gray-500">
-                            <div className="truncate">
+                            <div className="break-words overflow-wrap-anywhere">
                               <strong>From:</strong> {blockContent.substring(0, 60)}...
                             </div>
                           </div>
