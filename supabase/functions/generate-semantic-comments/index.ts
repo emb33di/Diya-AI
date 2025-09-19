@@ -589,10 +589,107 @@ function extractTargetTextFromComment(agentComment: any, blockContent: string): 
     return anchorText;
   }
 
-  // Try to extract a meaningful snippet from the block
-  const words = blockContent.split(' ');
-  if (words.length > 10) {
-    return words.slice(0, 10).join(' ') + '...';
+  // Try to intelligently extract the relevant text based on the comment content
+  const commentText = agentComment.comment_text || agentComment.commentText || agentComment.comment || '';
+  
+  // Look for quoted text in the comment (e.g., "'To bridge our divide' is a bit wordy")
+  const quotedTextMatch = commentText.match(/['"]([^'"]+)['"]/);
+  if (quotedTextMatch && quotedTextMatch[1]) {
+    const quotedText = quotedTextMatch[1];
+    // Check if this quoted text exists in the block content
+    if (blockContent.toLowerCase().includes(quotedText.toLowerCase())) {
+      return quotedText;
+    }
+  }
+  
+  // Look for text patterns that suggest specific phrases (e.g., "Consider replacing X with Y")
+  const replacePatterns = [
+    /consider replacing ['"]([^'"]+)['"] with/i,
+    /instead of ['"]([^'"]+)['"],/i,
+    /the phrase ['"]([^'"]+)['"]/i,
+    /['"]([^'"]+)['"] could be/i,
+    /['"]([^'"]+)['"] is/i
+  ];
+  
+  for (const pattern of replacePatterns) {
+    const match = commentText.match(pattern);
+    if (match && match[1]) {
+      const suggestedText = match[1];
+      if (blockContent.toLowerCase().includes(suggestedText.toLowerCase())) {
+        return suggestedText;
+      }
+    }
+  }
+  
+  // Look for specific words or phrases mentioned in the comment
+  const words = commentText.split(' ');
+  for (let i = 0; i < words.length - 1; i++) {
+    const phrase = words.slice(i, i + 3).join(' ').replace(/[.,!?;:]/g, '');
+    if (phrase.length > 3 && blockContent.toLowerCase().includes(phrase.toLowerCase())) {
+      return phrase;
+    }
+  }
+  
+  // If comment mentions specific categories, try to find relevant text
+  if (commentText.toLowerCase().includes('opening') || commentText.toLowerCase().includes('beginning')) {
+    const sentences = blockContent.split(/[.!?]+/);
+    if (sentences[0]) {
+      return sentences[0].trim() + '.';
+    }
+  }
+  
+  if (commentText.toLowerCase().includes('concluding') || commentText.toLowerCase().includes('ending')) {
+    const sentences = blockContent.split(/[.!?]+/);
+    const lastSentence = sentences[sentences.length - 1];
+    if (lastSentence && lastSentence.trim()) {
+      return lastSentence.trim() + '.';
+    }
+  }
+  
+  // For transition comments, look for transitional phrases
+  if (commentText.toLowerCase().includes('transition')) {
+    const transitionWords = ['however', 'therefore', 'furthermore', 'moreover', 'additionally', 'consequently', 'to bridge', 'to resolve'];
+    for (const word of transitionWords) {
+      const index = blockContent.toLowerCase().indexOf(word.toLowerCase());
+      if (index !== -1) {
+        // Extract the sentence containing the transition
+        const beforeText = blockContent.substring(0, index);
+        const afterText = blockContent.substring(index);
+        const sentenceEnd = afterText.indexOf('.') !== -1 ? afterText.indexOf('.') + 1 : Math.min(50, afterText.length);
+        return afterText.substring(0, sentenceEnd);
+      }
+    }
+  }
+
+  // Fallback: Try to find the most relevant sentence based on comment keywords
+  const sentences = blockContent.split(/[.!?]+/).filter(s => s.trim().length > 0);
+  const commentWords = commentText.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+  
+  let bestSentence = '';
+  let bestScore = 0;
+  
+  for (const sentence of sentences) {
+    let score = 0;
+    const sentenceLower = sentence.toLowerCase();
+    for (const word of commentWords) {
+      if (sentenceLower.includes(word)) {
+        score++;
+      }
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      bestSentence = sentence.trim();
+    }
+  }
+  
+  if (bestSentence && bestScore > 0) {
+    return bestSentence + '.';
+  }
+
+  // Final fallback: Use first sentence or first 50 characters
+  const firstSentence = blockContent.split(/[.!?]+/)[0];
+  if (firstSentence && firstSentence.length > 10) {
+    return firstSentence.trim() + '.';
   }
   
   return blockContent.substring(0, 50) + '...';

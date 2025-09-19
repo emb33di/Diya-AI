@@ -287,7 +287,14 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
                                 selectedAnnotationId === annotation.id && "ring-2 ring-indigo-500 ring-opacity-50",
                                 annotation.resolved && "opacity-60"
                               )}
-                              onClick={() => onAnnotationSelect?.(annotation)}
+                              onClick={() => {
+                                console.log('CommentSidebar: Comment clicked, calling onAnnotationSelect with:', {
+                                  annotationId: annotation.id,
+                                  annotationType: typeof annotation.id,
+                                  annotation: annotation
+                                });
+                                onAnnotationSelect?.(annotation);
+                              }}
                             >
                               <div className="flex items-start justify-between mb-2">
                                 <div className="flex items-center gap-2 flex-wrap">
@@ -411,7 +418,14 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
                             selectedAnnotationId === annotation.id && "ring-2 ring-blue-500 ring-opacity-50",
                             annotation.resolved && "opacity-60"
                           )}
-                          onClick={() => onAnnotationSelect?.(annotation)}
+                          onClick={() => {
+                            console.log('CommentSidebar: Comment clicked (other categories), calling onAnnotationSelect with:', {
+                              annotationId: annotation.id,
+                              annotationType: typeof annotation.id,
+                              annotation: annotation
+                            });
+                            onAnnotationSelect?.(annotation);
+                          }}
                         >
                           <div className="flex items-start justify-between mb-2">
                             <div className="flex items-center gap-2 flex-wrap">

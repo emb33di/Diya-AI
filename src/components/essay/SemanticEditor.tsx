@@ -590,13 +590,71 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
       return text;
     }
 
+    console.log('renderHighlightedText called with:', {
+      text: text.substring(0, 100) + '...',
+      annotationsCount: annotations.length,
+      annotations: annotations.map(a => ({ id: a.id, targetText: a.targetText, resolved: a.resolved })),
+      selectedAnnotationId
+    });
+
     // Create highlight segments for annotations with targetText
     const segments: Array<{ start: number; end: number; annotation: Annotation }> = [];
     
     annotations.forEach(annotation => {
+      console.log(`Processing annotation ${annotation.id}:`, {
+        targetText: annotation.targetText,
+        resolved: annotation.resolved,
+        hasTargetText: !!annotation.targetText
+      });
+
       if (annotation.targetText && !annotation.resolved) {
+        // Debug: Show the actual text we're searching in
+        console.log(`Block text (first 200 chars): "${text.substring(0, 200)}"`);
+        console.log(`Target text: "${annotation.targetText}"`);
+        console.log(`Target text length: ${annotation.targetText.length}`);
+        
         // Find all occurrences of the target text (in case it appears multiple times)
         let index = text.indexOf(annotation.targetText);
+        console.log(`Looking for "${annotation.targetText}" in text, found at index:`, index);
+        
+        // If exact match fails, try intelligent fuzzy matching
+        if (index === -1) {
+          console.log('Exact match failed, trying intelligent fuzzy matching...');
+          
+          // Try to find quoted text that might be the actual target
+          const quotedTextMatch = annotation.content.match(/['"]([^'"]+)['"]/);
+          if (quotedTextMatch && quotedTextMatch[1]) {
+            const quotedText = quotedTextMatch[1];
+            console.log(`Found quoted text in comment: "${quotedText}"`);
+            index = text.indexOf(quotedText);
+            if (index !== -1) {
+              annotation.targetText = quotedText;
+              console.log(`Successfully matched quoted text: "${quotedText}"`);
+            }
+          }
+          
+          // If still no match, try to find a partial match by removing the "..." if present
+          if (index === -1) {
+            let cleanTargetText = annotation.targetText;
+            if (cleanTargetText.endsWith('...')) {
+              cleanTargetText = cleanTargetText.slice(0, -3);
+              console.log(`Trying without "...": "${cleanTargetText}"`);
+              index = text.indexOf(cleanTargetText);
+            }
+            
+            // If still no match, try first few words
+            if (index === -1) {
+              const words = cleanTargetText.split(' ').slice(0, 5).join(' ');
+              console.log(`Trying first 5 words: "${words}"`);
+              index = text.indexOf(words);
+              if (index !== -1) {
+                // Update the target text to what we actually found
+                annotation.targetText = words;
+              }
+            }
+          }
+        }
+        
         let searchStart = 0;
         
         while (index !== -1) {
@@ -604,6 +662,12 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
             start: index,
             end: index + annotation.targetText.length,
             annotation
+          });
+          
+          console.log(`Added segment for annotation ${annotation.id}:`, {
+            start: index,
+            end: index + annotation.targetText.length,
+            text: text.substring(index, index + annotation.targetText.length)
           });
           
           // Look for next occurrence
@@ -624,22 +688,67 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
       return b.end - a.end; // Longer segments first
     });
 
-    // Remove overlapping segments (keep the first/longest one)
+    // Handle overlapping segments more intelligently
     const nonOverlappingSegments: typeof segments = [];
+    
     for (const segment of segments) {
-      const hasOverlap = nonOverlappingSegments.some(existing => 
+      const overlappingSegments = nonOverlappingSegments.filter(existing => 
         (segment.start < existing.end && segment.end > existing.start)
       );
       
-      if (!hasOverlap) {
+      if (overlappingSegments.length === 0) {
+        // No overlap, add the segment
         nonOverlappingSegments.push(segment);
+      } else {
+        // Handle overlap - prefer the selected annotation or the most specific one
+        const isCurrentSelected = selectedAnnotationId === segment.annotation.id;
+        const hasSelectedOverlap = overlappingSegments.some(existing => 
+          selectedAnnotationId === existing.annotation.id
+        );
+        
+        if (isCurrentSelected && !hasSelectedOverlap) {
+          // Current segment is selected and no existing selected overlap, replace overlapping segments
+          // Remove overlapping segments
+          overlappingSegments.forEach(overlapping => {
+            const index = nonOverlappingSegments.indexOf(overlapping);
+            if (index > -1) nonOverlappingSegments.splice(index, 1);
+          });
+          nonOverlappingSegments.push(segment);
+        } else if (!hasSelectedOverlap && !isCurrentSelected) {
+          // Neither current nor existing segments are selected, prefer the shorter/more specific one
+          const shortestOverlap = overlappingSegments.reduce((shortest, current) => 
+            (current.end - current.start) < (shortest.end - shortest.start) ? current : shortest
+          );
+          
+          if ((segment.end - segment.start) < (shortestOverlap.end - shortestOverlap.start)) {
+            // Current segment is shorter, replace the longest overlapping one
+            const index = nonOverlappingSegments.indexOf(shortestOverlap);
+            if (index > -1) nonOverlappingSegments.splice(index, 1);
+            nonOverlappingSegments.push(segment);
+          }
+          // Otherwise keep the existing shorter segment
+        }
+        // If existing segment is selected, keep it and skip current segment
       }
     }
+    
+    console.log(`Overlap processing: ${segments.length} segments → ${nonOverlappingSegments.length} segments`, {
+      original: segments.map(s => ({ id: s.annotation.id, text: s.annotation.targetText, start: s.start, end: s.end })),
+      filtered: nonOverlappingSegments.map(s => ({ id: s.annotation.id, text: s.annotation.targetText, start: s.start, end: s.end }))
+    });
 
     // If no segments to highlight, return plain text
     if (nonOverlappingSegments.length === 0) {
+      console.log('No segments to highlight, returning plain text');
       return text;
     }
+
+    console.log('Building highlighted text with segments:', nonOverlappingSegments.map(s => ({
+      start: s.start,
+      end: s.end,
+      annotationId: s.annotation.id,
+      targetText: s.annotation.targetText
+    })));
 
     // Build the highlighted text
     const parts: React.ReactNode[] = [];
@@ -659,12 +768,24 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
       const isSelected = selectedAnnotationId === segment.annotation.id;
       const highlightClass = `inline-highlight ${getHighlightClass(segment.annotation)} ${isSelected ? 'selected' : ''}`;
       
+      console.log(`Creating highlight span for annotation ${segment.annotation.id}:`, {
+        isSelected,
+        highlightClass,
+        selectedAnnotationId,
+        annotationId: segment.annotation.id,
+        idsMatch: selectedAnnotationId === segment.annotation.id,
+        selectedType: typeof selectedAnnotationId,
+        annotationType: typeof segment.annotation.id,
+        segmentText: text.substring(segment.start, segment.end)
+      });
+      
       parts.push(
         <span
           key={`highlight-${segment.annotation.id}`}
           className={highlightClass}
           onClick={(e) => {
             e.stopPropagation();
+            console.log('Highlight clicked, calling onAnnotationSelect with:', segment.annotation);
             onAnnotationSelect?.(segment.annotation);
           }}
           title={`${segment.annotation.type}: ${segment.annotation.content}`}

@@ -239,6 +239,12 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
 
   // Handle annotation selection
   const handleAnnotationSelect = (annotation: Annotation | null) => {
+    console.log('SemanticEssayEditor: handleAnnotationSelect called with:', {
+      annotation,
+      annotationId: annotation?.id,
+      annotationType: typeof annotation?.id,
+      previousSelectedId: selectedAnnotation?.id
+    });
     setSelectedAnnotation(annotation);
   };
 
@@ -745,6 +751,17 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                           <CheckSquare className="h-4 w-4 mr-2" />
                           Grammar Check
                         </Button>
+                        {!showCommentSidebar && (
+                          <Button 
+                            onClick={() => setShowCommentSidebar(true)}
+                            variant="outline"
+                            size="sm"
+                            className="border-green-200 text-green-700 hover:bg-green-50"
+                          >
+                            <Sidebar className="h-4 w-4 mr-2" />
+                            Show Comments
+                          </Button>
+                        )}
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="outline" size="sm">
