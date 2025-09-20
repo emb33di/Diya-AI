@@ -16,6 +16,7 @@ interface GrammarLoadingPaneProps {
   currentStepIndex: number;
   onComplete?: () => void;
   className?: string;
+  noErrorsFound?: boolean;
 }
 
 const GrammarLoadingPane: React.FC<GrammarLoadingPaneProps> = ({
@@ -23,7 +24,8 @@ const GrammarLoadingPane: React.FC<GrammarLoadingPaneProps> = ({
   steps,
   currentStepIndex,
   onComplete,
-  className
+  className,
+  noErrorsFound = false
 }) => {
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
 
@@ -72,11 +74,16 @@ const GrammarLoadingPane: React.FC<GrammarLoadingPaneProps> = ({
             )}
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            {currentStepIndex >= steps.length ? "Grammar Check Complete! ✨" : "Diya is checking your grammar ✨"}
+            {currentStepIndex >= steps.length 
+              ? (noErrorsFound ? "Great job! No grammar errors found! 🎉" : "Grammar Check Complete! ✨")
+              : "Diya is checking your grammar ✨"
+            }
           </h2>
           <p className="text-gray-600 mb-2">
             {currentStepIndex >= steps.length 
-              ? "Your writing has been polished and refined!" 
+              ? (noErrorsFound 
+                  ? "Your writing is grammatically perfect! Keep up the excellent work!" 
+                  : "Your writing has been polished and refined!")
               : "AI is scanning for grammar, spelling, and writing mechanics"
             }
           </p>

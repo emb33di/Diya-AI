@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   Annotation, 
   DocumentBlock, 
@@ -57,6 +57,7 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
     new Set(['overall-analysis', 'tone', 'clarity', 'strengths', 'areas-for-improvement', 'paragraph-quality', 'grammar'])
   );
   const [activeTab, setActiveTab] = useState<'all' | 'unresolved'>('unresolved');
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   // Determine comment category based on annotation metadata and type
   const determineCommentCategory = (annotation: Annotation): CommentCategory => {
@@ -139,6 +140,45 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
 
     return grouped;
   }, [blocks, activeTab]);
+
+  // Scroll to selected comment when selectedAnnotationId changes
+  useEffect(() => {
+    if (selectedAnnotationId && scrollAreaRef.current) {
+      // Find the comment element with the selected annotation ID
+      const commentElement = scrollAreaRef.current.querySelector(`[data-annotation-id="${selectedAnnotationId}"]`);
+      
+      if (commentElement) {
+        // Ensure the category is expanded
+        const category = determineCommentCategory(
+          groupedComments['overall-analysis'].concat(
+            Object.values(groupedComments).flat()
+          ).find(c => c.annotation.id === selectedAnnotationId)?.annotation || 
+          { type: 'suggestion', metadata: {} } as Annotation
+        );
+        
+        if (!expandedCategories.has(category)) {
+          setExpandedCategories(prev => new Set([...prev, category]));
+        }
+        
+        // Scroll within the ScrollArea only, not the entire page
+        setTimeout(() => {
+          const scrollContainer = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+          if (scrollContainer && commentElement) {
+            const containerRect = scrollContainer.getBoundingClientRect();
+            const elementRect = commentElement.getBoundingClientRect();
+            
+            // Calculate the scroll position to bring the element to the top of the container
+            const scrollTop = scrollContainer.scrollTop + (elementRect.top - containerRect.top);
+            
+            scrollContainer.scrollTo({
+              top: scrollTop,
+              behavior: 'smooth'
+            });
+          }
+        }, 100);
+      }
+    }
+  }, [selectedAnnotationId, expandedCategories, groupedComments]);
 
   const toggleCategoryExpansion = (category: CommentCategory) => {
     const newExpanded = new Set(expandedCategories);
@@ -243,7 +283,7 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
         </Tabs>
       </div>
 
-      <ScrollArea className="flex-1 h-full max-h-[calc(100vh-300px)]">
+      <ScrollArea ref={scrollAreaRef} className="flex-1 h-full max-h-[calc(100vh-300px)]">
         <div className="space-y-4 p-2">
           {/* Overall Analysis Section - Always at top */}
           {groupedComments['overall-analysis'].length > 0 && (
@@ -281,6 +321,7 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
                           {comments.map(({ annotation, blockIndex, blockContent }) => (
                             <div
                               key={annotation.id}
+                              data-annotation-id={annotation.id}
                               className={cn(
                                 "p-2 rounded-lg border-l-4 cursor-pointer transition-all duration-200 overflow-hidden",
                                 getCategoryColor(category),
@@ -320,19 +361,16 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
                                 {/* Big Picture Score Display */}
                                 {annotation.metadata?.agentType === 'big-picture' && annotation.metadata?.qualityScore && (
                                   <div className="mt-2 mb-2">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-xs font-medium text-gray-600">Overall Essay Score:</span>
-                                      <Badge 
-                                        variant="secondary" 
-                                        className={`text-sm font-bold ${
-                                          annotation.metadata.qualityScore >= 80 ? 'bg-green-100 text-green-800' :
-                                          annotation.metadata.qualityScore >= 60 ? 'bg-yellow-100 text-yellow-800' :
-                                          'bg-red-100 text-red-800'
-                                        }`}
-                                      >
-                                        {annotation.metadata.qualityScore}/100
-                                      </Badge>
-                                    </div>
+                                    <Badge 
+                                      variant="secondary" 
+                                      className={`text-sm font-bold min-w-[60px] whitespace-nowrap ${
+                                        annotation.metadata.qualityScore >= 80 ? 'bg-green-100 text-green-800' :
+                                        annotation.metadata.qualityScore >= 60 ? 'bg-yellow-100 text-yellow-800' :
+                                        'bg-red-100 text-red-800'
+                                      }`}
+                                    >
+                                      {annotation.metadata.qualityScore}/100
+                                    </Badge>
                                   </div>
                                 )}
                                 
@@ -431,6 +469,7 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
                       {comments.map(({ annotation, blockIndex, blockContent }) => (
                         <div
                           key={annotation.id}
+                          data-annotation-id={annotation.id}
                           className={cn(
                             "p-2 rounded-lg border-l-4 cursor-pointer transition-all duration-200 overflow-hidden",
                             getCategoryColor(categoryKey),

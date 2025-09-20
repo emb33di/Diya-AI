@@ -230,7 +230,7 @@ const DiyaScoreReport: React.FC<DiyaScoreReportProps> = ({
                 className="px-6 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
               >
                 <MessageSquare className="h-4 w-4 mr-2" />
-                See Diya's Comments
+                Refresh to See Comments
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </div>

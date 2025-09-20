@@ -92,6 +92,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
   const [loadingStep, setLoadingStep] = useState(0);
   const [isGeneratingGrammar, setIsGeneratingGrammar] = useState(false);
   const [grammarLoadingStep, setGrammarLoadingStep] = useState(0);
+  const [noGrammarErrorsFound, setNoGrammarErrorsFound] = useState(false);
 
   // Toast for user feedback
   const { toast } = useToast();
@@ -519,6 +520,16 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     setLoadingStep(0);
 
     try {
+      // Start AI generation in parallel with loading animation
+      const aiGenerationPromise = semanticDocumentService.generateAIComments({
+        documentId: state.document.id,
+        blocks: state.document.blocks,
+        context: {
+          prompt: state.document.metadata.prompt,
+          wordLimit: state.document.metadata.wordLimit
+        }
+      });
+
       // Simulate loading steps - Total: 30 seconds
       const stepDurations = [8000, 12000, 8000, 2000]; // Duration for each step in ms
       
@@ -528,16 +539,13 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
         await new Promise(resolve => setTimeout(resolve, stepDurations[i]));
       }
 
-      const response = await semanticDocumentService.generateAIComments({
-        documentId: state.document.id,
-        blocks: state.document.blocks,
-        context: {
-          prompt: state.document.metadata.prompt,
-          wordLimit: state.document.metadata.wordLimit
-        }
-      });
+      // Wait for AI generation to complete
+      const response = await aiGenerationPromise;
 
       if (response.success) {
+        // Add a small delay to ensure database insert is complete
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
         // Reload document to get updated comments from database
         const updatedDocument = await semanticDocumentService.loadDocument(state.document.id);
         if (updatedDocument) {
@@ -564,6 +572,16 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     setGrammarLoadingStep(0);
 
     try {
+      // Start grammar generation in parallel with loading animation
+      const grammarGenerationPromise = semanticDocumentService.generateGrammarComments({
+        documentId: state.document.id,
+        blocks: state.document.blocks,
+        context: {
+          prompt: state.document.metadata.prompt,
+          wordLimit: state.document.metadata.wordLimit
+        }
+      });
+
       // Simulate loading steps - Total: 15 seconds
       const stepDurations = [5000, 8000, 2000]; // Duration for each step in ms
       
@@ -573,16 +591,17 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
         await new Promise(resolve => setTimeout(resolve, stepDurations[i]));
       }
 
-      const response = await semanticDocumentService.generateGrammarComments({
-        documentId: state.document.id,
-        blocks: state.document.blocks,
-        context: {
-          prompt: state.document.metadata.prompt,
-          wordLimit: state.document.metadata.wordLimit
-        }
-      });
+      // Wait for grammar generation to complete
+      const response = await grammarGenerationPromise;
 
       if (response.success) {
+        // Check if no grammar comments were generated
+        const hasGrammarComments = response.comments && response.comments.length > 0;
+        setNoGrammarErrorsFound(!hasGrammarComments);
+        
+        // Add a small delay to ensure database insert is complete
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
         // Reload document to get updated comments from database
         const updatedDocument = await semanticDocumentService.loadDocument(state.document.id);
         if (updatedDocument) {
@@ -1018,9 +1037,11 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
         isVisible={isGeneratingGrammar}
         steps={GRAMMAR_LOADING_STEPS}
         currentStepIndex={grammarLoadingStep}
+        noErrorsFound={noGrammarErrorsFound}
         onComplete={() => {
           setIsGeneratingGrammar(false);
           setGrammarLoadingStep(0);
+          setNoGrammarErrorsFound(false); // Reset for next time
         }}
       />
     </div>

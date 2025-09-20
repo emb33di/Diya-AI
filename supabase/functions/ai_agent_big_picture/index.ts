@@ -65,13 +65,28 @@ CRITICAL GUIDANCE:
 - Consider all previous agent feedback to provide holistic perspective
 
 SCORING AND FEEDBACK INSTRUCTIONS:
-For your comment, you must:
-1. Provide a quality_score from 1-100 rating how well the student addressed the essay prompt and overall strategic effectiveness of this as a college application essay. Do not give a rating that is a mutliple of 5. 
-2. If quality_score < 80: Provide constructive feedback with specific suggestions for improvement
-3. If quality_score >= 80: Focus on praise and reinforcement, avoid suggesting changes
+You must provide a quality_score from 1-100 based on these STRICT criteria:
 
-For scores < 80, format improvement suggestions as: "Instead of X, you could Y to better address the prompt and strengthen your overall argument."
-For scores >= 80, focus on what they did well and encourage them to continue in that direction.
+SCORING RUBRIC (Be HONEST and RIGOROUS):
+- 90-100: Exceptional essay that stands out significantly. Compelling narrative, unique insights, perfect prompt alignment, memorable voice. Would impress any admissions officer.
+- 80-89: Strong essay with clear strengths. Good storytelling, solid prompt response, authentic voice. Above average but not exceptional.
+- 70-79: Competent essay that meets basic requirements. Adequate storytelling and prompt response but lacks standout elements. Average quality.
+- 60-69: Below average essay with notable weaknesses. Weak narrative, poor prompt alignment, or generic content. Needs significant improvement.
+- 50-59: Poor essay with major issues. Confusing narrative, doesn't address prompt effectively, or lacks authenticity.
+- 1-49: Very poor essay with fundamental problems. Major structural issues, completely off-topic, or incoherent.
+
+CRITICAL SCORING GUIDELINES:
+- Most essays should score 60-75 (average to slightly above average)
+- Only truly exceptional essays deserve 80+
+- Be HONEST - mediocre essays should get 60-65, not 75+
+- Consider: Does this essay stand out from thousands of others?
+- Ask: Would an admissions officer remember this essay?
+- Default to lower scores when in doubt
+
+FEEDBACK REQUIREMENTS:
+- If quality_score < 70: Provide specific, actionable improvement suggestions
+- If quality_score >= 70: Focus on strengths while noting areas for enhancement
+- If quality_score >= 80: Emphasize what makes this essay exceptional
 
 INSTRUCTIONS:
 Provide exactly ONE comprehensive overall comment that synthesizes the strategic assessment of the essay, taking into account the previous agent feedback.
@@ -88,13 +103,13 @@ RESPONSE FORMAT (JSON only):
 {
   "comments": [
     {
-      "comment_text": "[Comprehensive strategic assessment of the essay - maximum 75 words - that synthesizes strengths and areas for improvement while considering previous agent feedback. Include quality score assessment and conditional feedback based on score. If score < 80, provide improvement suggestions. If score >= 80, focus on praise.]",
+      "comment_text": "[Comprehensive strategic assessment of the essay - maximum 75 words - that synthesizes strengths and areas for improvement while considering previous agent feedback. Include quality score assessment and conditional feedback based on score. If score < 70, provide improvement suggestions. If score >= 70, focus on strengths.]",
       "comment_nature": "suggestion",
       "comment_category": "overall",
       "agent_type": "big-picture",
       "anchor_text": "representative text from the essay (if applicable)",
       "confidence_score": 0.85,
-      "quality_score": 75
+      "quality_score": 65
     }
   ]
 }
