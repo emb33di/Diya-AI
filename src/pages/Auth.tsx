@@ -130,7 +130,11 @@ const Auth = () => {
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <Link to="/" className="inline-block mb-8">
-              {/* Empty link for navigation */}
+              <img 
+                src="/DiyaLogo White.svg" 
+                alt="Diya Logo" 
+                className="h-24 w-24 mx-auto" 
+              />
             </Link>
           </div>
 

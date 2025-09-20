@@ -49,7 +49,7 @@ const FAQSection = () => {
     <section id="faq" className="py-12 sm:py-16 md:py-20 lg:py-24 px-4 sm:px-6">
       <div className="max-w-4xl lg:max-w-5xl mx-auto">
         <div ref={headerRef} className={`text-center mb-12 sm:mb-16 md:mb-20 scroll-fade-in ${headerVisible ? 'animate' : ''}`}>
-          <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-foreground font-inter mb-4 sm:mb-6 leading-tight gold-shimmer">
+          <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-foreground font-inter mb-4 sm:mb-6 leading-tight" style={{color: '#D07D00'}}>
             Frequently Asked Questions
           </h2>
           <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed px-2">

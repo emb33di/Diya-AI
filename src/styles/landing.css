@@ -246,15 +246,7 @@
     color: hsl(0 0% 100%) !important;
   }
 
-  /* Headings - only for landing page */
-  .landing-page h1, 
-  .landing-page h2, 
-  .landing-page h3, 
-  .landing-page h4, 
-  .landing-page h5, 
-  .landing-page h6 {
-    color: hsl(0 0% 100%) !important;
-  }
+  /* Headings - only for landing page - removed override to allow custom colors */
 
   /* Paragraphs and body text - only for landing page */
   .landing-page p, 

@@ -250,7 +250,7 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
   const totalUnresolvedComments = Object.values(groupedComments).flat().length;
 
   return (
-    <div className={cn("flex-1 min-w-64 max-w-96 h-full border-l border-gray-200 bg-white flex-shrink-0 flex flex-col comment-sidebar", className)}>
+    <div className={cn("flex-1 min-w-64 max-w-96 h-full max-h-screen border border-gray-300 bg-white flex-shrink-0 flex flex-col comment-sidebar", className)}>
       <div className="p-3 border-b border-gray-200 flex-shrink-0">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-base font-semibold flex items-center gap-2">
@@ -283,8 +283,8 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
         </Tabs>
       </div>
 
-      <ScrollArea ref={scrollAreaRef} className="flex-1 h-full max-h-[calc(100vh-300px)]">
-        <div className="space-y-4 p-2">
+      <ScrollArea ref={scrollAreaRef} className="flex-1 h-[calc(100vh-200px)]">
+        <div className="space-y-4 p-2 pb-4">
           {/* Overall Analysis Section - Always at top */}
           {groupedComments['overall-analysis'].length > 0 && (
             <>

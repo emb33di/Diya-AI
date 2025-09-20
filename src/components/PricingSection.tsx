@@ -15,7 +15,7 @@ const PricingSection = () => {
       <div className="max-w-6xl mx-auto">
         {/* Section Header */}
         <div ref={headerRef} className={`text-center mb-8 sm:mb-12 scroll-fade-in ${headerVisible ? 'animate' : ''}`}>
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold mb-4 leading-tight gold-shimmer">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold mb-4 leading-tight" style={{color: '#D07D00'}}>
             The Best Admissions Guidance, At An Affordable Price
           </h2>
           <p className="text-sm sm:text-base md:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
@@ -24,7 +24,7 @@ const PricingSection = () => {
         </div>
 
         {/* Pricing Cards */}
-        <div className="grid md:grid-cols-3 gap-6 lg:gap-8 max-w-6xl mx-auto">
+        <div className="grid md:grid-cols-2 gap-6 lg:gap-8 max-w-4xl mx-auto justify-items-center">
           {/* Free Plan */}
           <div ref={cardRef1} className={`rounded-2xl sm:rounded-3xl border border-primary/20 p-6 sm:p-8 hover:border-primary/40 hover:shadow-[0_0_40px_hsl(var(--primary)/0.2)] transition-all duration-300 scroll-scale-in ${card1Visible ? 'animate' : ''} flex flex-col`}>
             <div className="text-center mb-6">
@@ -124,8 +124,8 @@ const PricingSection = () => {
             </Button>
           </div>
 
-          {/* Expert Plan */}
-          <div ref={cardRef3} className={`rounded-2xl sm:rounded-3xl border border-primary/20 p-6 sm:p-8 hover:border-primary/40 hover:shadow-[0_0_40px_hsl(var(--primary)/0.2)] transition-all duration-300 scroll-scale-in ${card3Visible ? 'animate' : ''} flex flex-col`}>
+          {/* Expert Plan - Temporarily commented out */}
+          {/* <div ref={cardRef3} className={`rounded-2xl sm:rounded-3xl border border-primary/20 p-6 sm:p-8 hover:border-primary/40 hover:shadow-[0_0_40px_hsl(var(--primary)/0.2)] transition-all duration-300 scroll-scale-in ${card3Visible ? 'animate' : ''} flex flex-col`}>
             <div className="text-center mb-6">
               <h3 className="text-xl sm:text-2xl font-bold text-foreground mb-2">
                 Expert
@@ -164,7 +164,7 @@ const PricingSection = () => {
             >
               Upgrade to Expert
             </Button>
-          </div>
+          </div> */}
         </div>
       </div>
     </section>

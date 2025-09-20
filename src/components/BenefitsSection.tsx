@@ -9,7 +9,7 @@ const BenefitsSection = () => {
       <div className="max-w-7xl mx-auto">
         {/* Section Header */}
         <div ref={headerRef} className={`text-center mb-12 sm:mb-16 md:mb-20 scroll-fade-in ${headerVisible ? 'animate' : ''}`}>
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold mb-4 leading-tight gold-shimmer">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold mb-4 leading-tight" style={{color: '#D07D00'}}>
             Why Diya is the right fit for you?
           </h2>
         </div>

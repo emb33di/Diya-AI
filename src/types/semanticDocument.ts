@@ -117,6 +117,7 @@ export interface AnnotationMetadata {
   subcategory?: 'opening' | 'body' | 'conclusion' | 'opening-sentence' | 'transition' | 'paragraph-specific' | 'paragraph-quality' | 'final-sentence' | 'grammar';
   commentNature?: 'strength' | 'weakness' | 'suggestion' | 'improvement';
   commentCategory?: CommentCategory; // New field for sidebar categorization
+  qualityScore?: number; // Quality score for big-picture agent (1-100)
 }
 
 /**

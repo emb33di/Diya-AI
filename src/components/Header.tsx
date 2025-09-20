@@ -144,7 +144,7 @@ const Header = () => {
       <div className="container mx-auto flex h-20 items-center justify-between px-6">
         <Link to={loading ? "/" : (isAuthenticated ? "/dashboard" : "/")} className="flex items-center space-x-2">
           <img 
-            src={location.pathname === "/" ? "/DiyaLogo White.svg" : "/DiyaLogo.svg"} 
+            src={location.pathname === "/" || location.pathname === "/auth" ? "/DiyaLogo White.svg" : "/DiyaLogo.svg"} 
             alt="Diya Logo" 
             className="h-24 w-24" 
           />
@@ -427,8 +427,8 @@ const Header = () => {
                 <DropdownMenuItem 
                   onClick={async () => {
                     await supabase.auth.signOut();
-                    // Redirect to landing page after sign out
-                    navigate('/', { replace: true });
+                    // Redirect to auth page after sign out
+                    navigate('/auth', { replace: true });
                   }}
                   className="flex items-center space-x-2 text-red-600 focus:text-red-600"
                 >
