@@ -293,8 +293,8 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
     setLoadingStep(0);
 
     try {
-      // Simulate loading steps
-      const stepDurations = [1000, 2000, 1500, 500]; // Duration for each step in ms
+      // Simulate loading steps - Total: 30 seconds
+      const stepDurations = [8000, 12000, 8000, 2000]; // Duration for each step in ms
       
       // Step through each loading phase
       for (let i = 0; i < AI_COMMENTS_LOADING_STEPS.length; i++) {
@@ -347,8 +347,8 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
     setGrammarLoadingStep(0);
 
     try {
-      // Simulate loading steps
-      const stepDurations = [800, 1200, 600]; // Duration for each step in ms
+      // Simulate loading steps - Total: 15 seconds
+      const stepDurations = [5000, 8000, 2000]; // Duration for each step in ms
       
       // Step through each loading phase
       for (let i = 0; i < GRAMMAR_LOADING_STEPS.length; i++) {

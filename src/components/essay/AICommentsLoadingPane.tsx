@@ -82,7 +82,7 @@ const AICommentsLoadingPane: React.FC<AICommentsLoadingPaneProps> = ({
           </p>
           {currentStepIndex < steps.length && (
             <p className="text-sm text-purple-600 font-medium">
-              ⏱️ This usually takes 30-60 seconds
+              ⏱️ This usually takes about 30 seconds
             </p>
           )}
         </div>

@@ -471,7 +471,7 @@ async function generateSpecializedSemanticComments(
     // Step 1: Call weaknesses agent first
     console.log('Step 1: Calling weaknesses agent...');
     const weaknessesResult = await APIRetryManager.withRetry(
-      () => callSemanticWeaknessesAgent(blocks, context),
+      () => callSemanticWeaknessesAgent(blocks, context, userId),
       'weaknesses'
     );
     let weaknessesComments: SemanticComment[] = [];
@@ -499,7 +499,7 @@ async function generateSpecializedSemanticComments(
     console.log(`Strengths context size: ${ContextOptimizer.estimateTokens(strengthsContext)} tokens`);
     
     const strengthsResult = await APIRetryManager.withRetry(
-      () => callSemanticStrengthsAgent(blocks, context, strengthsContext),
+      () => callSemanticStrengthsAgent(blocks, context, strengthsContext, userId),
       'strengths'
     );
     let strengthsComments: SemanticComment[] = [];
@@ -583,7 +583,7 @@ async function generateSpecializedSemanticComments(
     console.log(`Big-picture context size: ${ContextOptimizer.estimateTokens(bigPictureContext)} tokens`);
     
     const bigPictureResult = await APIRetryManager.withRetry(
-      () => callSemanticBigPictureAgent(blocks, context, bigPictureContext),
+      () => callSemanticBigPictureAgent(blocks, context, bigPictureContext, userId),
       'big-picture'
     );
     
@@ -670,11 +670,27 @@ async function callSemanticClarityAgent(blocks: DocumentBlock[], context: any, c
 
 /**
  * Call strengths agent adapted for semantic blocks
+ * Routes to MBA-specific agent if user is applying to MBA programs
  */
-async function callSemanticStrengthsAgent(blocks: DocumentBlock[], context: any, cumulativeContext?: string): Promise<any> {
+async function callSemanticStrengthsAgent(blocks: DocumentBlock[], context: any, cumulativeContext?: string, userId?: string): Promise<any> {
   const essayContent = blocks.map(b => b.content).join('\n\n');
   
-  const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/ai_agent_strengths`, {
+  // Determine which agent to use based on user's program type
+  let agentEndpoint = 'ai_agent_strengths'; // Default to regular agent
+  
+  if (userId) {
+    const programType = await getUserProgramType(userId);
+    if (programType === 'MBA') {
+      agentEndpoint = 'ai_agent_strengths_mba';
+      console.log('Routing to MBA-specific strengths agent');
+    } else {
+      console.log('Routing to regular strengths agent for program type:', programType);
+    }
+  } else {
+    console.log('No userId provided, using default strengths agent');
+  }
+  
+  const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/${agentEndpoint}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -696,11 +712,27 @@ async function callSemanticStrengthsAgent(blocks: DocumentBlock[], context: any,
 
 /**
  * Call weaknesses agent adapted for semantic blocks
+ * Routes to MBA-specific agent if user is applying to MBA programs
  */
-async function callSemanticWeaknessesAgent(blocks: DocumentBlock[], context: any): Promise<any> {
+async function callSemanticWeaknessesAgent(blocks: DocumentBlock[], context: any, userId?: string): Promise<any> {
   const essayContent = blocks.map(b => b.content).join('\n\n');
   
-  const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/ai_agent_weaknesses`, {
+  // Determine which agent to use based on user's program type
+  let agentEndpoint = 'ai_agent_weaknesses'; // Default to regular agent
+  
+  if (userId) {
+    const programType = await getUserProgramType(userId);
+    if (programType === 'MBA') {
+      agentEndpoint = 'ai_agent_weaknesses_mba';
+      console.log('Routing to MBA-specific weaknesses agent');
+    } else {
+      console.log('Routing to regular weaknesses agent for program type:', programType);
+    }
+  } else {
+    console.log('No userId provided, using default weaknesses agent');
+  }
+  
+  const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/${agentEndpoint}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -720,12 +752,51 @@ async function callSemanticWeaknessesAgent(blocks: DocumentBlock[], context: any
 }
 
 /**
- * Call big-picture agent adapted for semantic blocks
+ * Get user's program type from their profile
  */
-async function callSemanticBigPictureAgent(blocks: DocumentBlock[], context: any, cumulativeContext?: string): Promise<any> {
+async function getUserProgramType(userId: string): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('applying_to')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error fetching user program type:', error);
+      return null;
+    }
+
+    return data?.applying_to || null;
+  } catch (error) {
+    console.error('Error in getUserProgramType:', error);
+    return null;
+  }
+}
+
+/**
+ * Call big-picture agent adapted for semantic blocks
+ * Routes to MBA-specific agent if user is applying to MBA programs
+ */
+async function callSemanticBigPictureAgent(blocks: DocumentBlock[], context: any, cumulativeContext?: string, userId?: string): Promise<any> {
   const essayContent = blocks.map(b => b.content).join('\n\n');
   
-  const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/ai_agent_big_picture`, {
+  // Determine which agent to use based on user's program type
+  let agentEndpoint = 'ai_agent_big_picture'; // Default to regular agent
+  
+  if (userId) {
+    const programType = await getUserProgramType(userId);
+    if (programType === 'MBA') {
+      agentEndpoint = 'ai_agent_big_picture_mba';
+      console.log('Routing to MBA-specific big picture agent');
+    } else {
+      console.log('Routing to regular big picture agent for program type:', programType);
+    }
+  } else {
+    console.log('No userId provided, using default big picture agent');
+  }
+  
+  const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/${agentEndpoint}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

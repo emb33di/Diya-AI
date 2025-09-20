@@ -82,7 +82,7 @@ const GrammarLoadingPane: React.FC<GrammarLoadingPaneProps> = ({
           </p>
           {currentStepIndex < steps.length && (
             <p className="text-sm text-blue-600 font-medium">
-              ⏱️ This usually takes 15-30 seconds
+              ⏱️ This usually takes about 15 seconds
             </p>
           )}
         </div>
