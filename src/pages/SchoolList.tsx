@@ -616,7 +616,11 @@ const SchoolList = () => {
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
                 <p className="text-red-500 mb-4">{error}</p>
-                <Button onClick={() => window.location.reload()}>
+                <Button onClick={() => {
+                  setError(null);
+                  setLoading(true);
+                  loadSchools();
+                }}>
                   Try Again
                 </Button>
               </div>
@@ -761,7 +765,7 @@ const SchoolList = () => {
       onClose={() => setIsArchiveModalOpen(false)}
       onSchoolRestored={() => {
         // Refresh the school list when a school is restored
-        window.location.reload();
+        loadSchools();
       }}
     />
 

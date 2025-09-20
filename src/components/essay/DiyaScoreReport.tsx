@@ -146,7 +146,7 @@ const DiyaScoreReport: React.FC<DiyaScoreReportProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-4xl bg-white shadow-2xl border-0">
+      <Card className="w-full max-w-4xl shadow-2xl border-0" style={{ backgroundColor: '#F4EDE2' }}>
         <CardHeader className="text-center pb-6">
           <div className="flex items-center justify-center space-x-3 mb-4">
             <div className="p-3 bg-gradient-to-br from-blue-50 to-purple-50 rounded-full">

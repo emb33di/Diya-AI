@@ -12,88 +12,98 @@ export class ScoreReportService {
    */
   static async getAgentScores(essayId: string): Promise<AgentScores> {
     try {
-      // First, get the semantic document for this essay
-      const { data: document, error: docError } = await supabase
-        .from('semantic_documents')
-        .select('id')
-        .eq('metadata->>essayId', essayId)
-        .single();
-
-      if (docError || !document) {
-        console.error('Error fetching semantic document:', docError);
-        return {};
-      }
-
-      // Get semantic annotations with quality scores
-      const { data: annotations, error } = await supabase
-        .from('semantic_annotations')
-        .select('metadata, created_at')
-        .eq('document_id', document.id)
-        .eq('author', 'ai')
-        .in('metadata->>agentType', ['big-picture', 'tone', 'clarity'])
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching semantic annotations:', error);
-        return {};
-      }
-
-      console.log('Raw annotations from database:', annotations);
-      const scores: AgentScores = {};
-
-      // Group annotations by agent type and get the most recent score for each
-      const agentGroups = annotations?.reduce((acc, annotation) => {
-        const agentType = annotation.metadata?.agentType;
-        if (agentType && ['big-picture', 'tone', 'clarity'].includes(agentType)) {
-          if (!acc[agentType]) {
-            acc[agentType] = [];
-          }
-          acc[agentType].push(annotation);
-        }
-        return acc;
-      }, {} as Record<string, any[]>) || {};
-
-      // Extract scores for each agent type
-      Object.entries(agentGroups).forEach(([agentType, agentAnnotations]) => {
-        if (agentAnnotations.length > 0) {
-          const latestAnnotation = agentAnnotations[0];
-          const score = latestAnnotation.metadata?.qualityScore;
-          
-          console.log(`Agent ${agentType}:`, { score, annotation: latestAnnotation });
-          
-          if (score !== null && score !== undefined) {
-            switch (agentType) {
-              case 'big-picture':
-                scores.bigPicture = score;
-                break;
-              case 'tone':
-                scores.tone = score;
-                break;
-              case 'clarity':
-                scores.clarity = score;
-                break;
-            }
-          } else {
-            // If no quality score found, provide a default based on agent type
-            console.warn(`No quality score found for ${agentType} agent, using default`);
-            switch (agentType) {
-              case 'big-picture':
-                scores.bigPicture = 75; // Default score
-                break;
-              case 'tone':
-                scores.tone = 7; // Default score
-                break;
-              case 'clarity':
-                scores.clarity = 6; // Default score
-                break;
-            }
-          }
-        }
+      // Add timeout to prevent hanging requests
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout')), 10000); // 10 second timeout
       });
 
-      console.log('Final scores:', scores);
+      const fetchPromise = async (): Promise<AgentScores> => {
+        // First, get the semantic document for this essay
+        const { data: document, error: docError } = await supabase
+          .from('semantic_documents')
+          .select('id')
+          .eq('metadata->>essayId', essayId)
+          .single();
 
-      return scores;
+        if (docError || !document) {
+          console.error('Error fetching semantic document:', docError);
+          return {};
+        }
+
+        // Get semantic annotations with quality scores
+        const { data: annotations, error } = await supabase
+          .from('semantic_annotations')
+          .select('metadata, created_at')
+          .eq('document_id', document.id)
+          .eq('author', 'ai')
+          .in('metadata->>agentType', ['big-picture', 'tone', 'clarity'])
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching semantic annotations:', error);
+          return {};
+        }
+
+        console.log('Raw annotations from database:', annotations);
+        const scores: AgentScores = {};
+
+        // Group annotations by agent type and get the most recent score for each
+        const agentGroups = annotations?.reduce((acc, annotation) => {
+          const agentType = annotation.metadata?.agentType;
+          if (agentType && ['big-picture', 'tone', 'clarity'].includes(agentType)) {
+            if (!acc[agentType]) {
+              acc[agentType] = [];
+            }
+            acc[agentType].push(annotation);
+          }
+          return acc;
+        }, {} as Record<string, any[]>) || {};
+
+        // Extract scores for each agent type
+        Object.entries(agentGroups).forEach(([agentType, agentAnnotations]) => {
+          if (agentAnnotations.length > 0) {
+            const latestAnnotation = agentAnnotations[0];
+            const score = latestAnnotation.metadata?.qualityScore;
+            
+            console.log(`Agent ${agentType}:`, { score, annotation: latestAnnotation });
+            
+            if (score !== null && score !== undefined) {
+              switch (agentType) {
+                case 'big-picture':
+                  scores.bigPicture = score;
+                  break;
+                case 'tone':
+                  scores.tone = score;
+                  break;
+                case 'clarity':
+                  scores.clarity = score;
+                  break;
+              }
+            } else {
+              // If no quality score found, provide a default based on agent type
+              console.warn(`No quality score found for ${agentType} agent, using default`);
+              switch (agentType) {
+                case 'big-picture':
+                  scores.bigPicture = 75; // Default score
+                  break;
+                case 'tone':
+                  scores.tone = 7; // Default score
+                  break;
+                case 'clarity':
+                  scores.clarity = 6; // Default score
+                  break;
+              }
+            }
+          }
+        });
+
+        console.log('Final scores:', scores);
+
+        return scores;
+      };
+
+      // Race between fetch and timeout
+      return Promise.race([fetchPromise(), timeoutPromise]);
     } catch (error) {
       console.error('Error fetching agent scores:', error);
       return {};

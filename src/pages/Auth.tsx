@@ -124,7 +124,7 @@ const Auth = () => {
   };
 
   return (
-    <div className="landing-page min-h-screen bg-background relative">
+    <div className="landing-page min-h-screen bg-black relative">
       <StarryBackground />
       <div className="p-4 min-h-screen flex items-center justify-center relative z-10">
         <div className="w-full max-w-md">

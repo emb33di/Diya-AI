@@ -183,54 +183,78 @@ const Essays = () => {
         const displayName = getUserDisplayName(profile, user, 'Student');
         setUserName(displayName);
 
-        // Fetch onboarding transcript
-        const {
-          data: conversations
-        } = await supabase.from('conversation_metadata').select('transcript').eq('user_id', user.id).order('created_at', {
-          ascending: false
-        }).limit(1);
-        if (conversations && conversations.length > 0) {
-          setOnboardingTranscript(conversations[0].transcript || '');
-        }
+        // Fetch school recommendations with timeout and retry logic
+        const fetchSchools = async (retries = 3): Promise<School[]> => {
+          try {
+            const {
+              data: recommendations,
+              error
+            } = await supabase.from('school_recommendations').select('*').eq('student_id', user.id).order('created_at', {
+              ascending: false
+            });
+            
+            if (error) {
+              throw error;
+            }
+            
+            const transformedSchools: School[] = recommendations.map(rec => ({
+              id: rec.id,
+              name: rec.school,
+              category: rec.category as 'reach' | 'target' | 'safety',
+              acceptanceRate: rec.acceptance_rate || 'N/A',
+              ranking: rec.school_ranking || 'N/A',
+              applicationDeadline: rec.first_round_deadline || 'TBD',
+              notes: rec.notes || rec.student_thesis || 'No notes available'
+            }));
+            
+            // Add Common Application as a school option for undergraduate students
+            const userProgramType = await getUserProgramType();
+            if (userProgramType === 'Undergraduate') {
+              transformedSchools.unshift({
+                id: 'common-app',
+                name: 'Common Application',
+                category: 'target',
+                acceptanceRate: 'N/A',
+                ranking: 'N/A',
+                applicationDeadline: 'TBD',
+                notes: 'Required for all undergraduate applications'
+              });
+            }
+            
+            return transformedSchools;
+          } catch (error) {
+            console.error(`Error fetching schools (attempt ${4 - retries}):`, error);
+            if (retries > 1) {
+              // Wait before retry
+              await new Promise(resolve => setTimeout(resolve, 1000 * (4 - retries)));
+              return fetchSchools(retries - 1);
+            }
+            throw error;
+          }
+        };
 
-        // Fetch school recommendations
-        const {
-          data: recommendations,
-          error
-        } = await supabase.from('school_recommendations').select('*').eq('student_id', user.id).order('created_at', {
-          ascending: false
-        });
-        if (error) {
-          console.error('Error fetching schools:', error);
-          return;
-        }
-        const transformedSchools: School[] = recommendations.map(rec => ({
-          id: rec.id,
-          name: rec.school,
-          category: rec.category as 'reach' | 'target' | 'safety',
-          acceptanceRate: rec.acceptance_rate || 'N/A',
-          ranking: rec.school_ranking || 'N/A',
-          applicationDeadline: rec.first_round_deadline || 'TBD',
-          notes: rec.notes || rec.student_thesis || 'No notes available'
-        }));
-        
-        // Add Common Application as a school option for undergraduate students
-        const userProgramType = await getUserProgramType();
-        if (userProgramType === 'Undergraduate') {
-          transformedSchools.unshift({
-            id: 'common-app',
-            name: 'Common Application',
-            category: 'target',
-            acceptanceRate: 'N/A',
-            ranking: 'N/A',
-            applicationDeadline: 'TBD',
-            notes: 'Required for all undergraduate applications'
-          });
+        const schools = await fetchSchools();
+        setSchools(schools);
+
+        // Fetch onboarding transcript separately to avoid blocking
+        try {
+          const {
+            data: conversations
+          } = await supabase.from('conversation_metadata').select('transcript').eq('user_id', user.id).order('created_at', {
+            ascending: false
+          }).limit(1);
+          if (conversations && conversations.length > 0) {
+            setOnboardingTranscript(conversations[0].transcript || '');
+          }
+        } catch (error) {
+          console.error('Error fetching onboarding transcript:', error);
+          // Don't block the main flow for this
         }
         
-        setSchools(transformedSchools);
       } catch (error) {
         console.error('Error fetching data:', error);
+        // Set empty schools array to prevent UI crashes
+        setSchools([]);
       } finally {
         setLoading(false);
       }
@@ -981,7 +1005,7 @@ const Essays = () => {
             <>
               {!showMobileEditor ? (
                 <div className="h-full flex flex-col">
-                  <div className="flex items-center p-4 border-b bg-background/95 backdrop-blur">
+                  <div className="flex items-center p-4 border-b bg-transparent backdrop-blur border-border/50">
                     <Button 
                       variant="ghost" 
                       size="sm" 
@@ -1030,7 +1054,7 @@ const Essays = () => {
                 </div>
               ) : (
                 <div className="fixed inset-0 z-50 bg-background flex flex-col">
-                  <div className="flex items-center justify-between p-3 border-b bg-background/95 backdrop-blur">
+                  <div className="flex items-center justify-between p-3 border-b bg-transparent backdrop-blur border-border/50">
                     <Button 
                       variant="ghost" 
                       size="sm"
@@ -1194,7 +1218,7 @@ const Essays = () => {
     <ProfileCompletionGuard pageName="Essays">
       <GradientBackground>
         {/* Header */}
-        <div className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+        <div className="sticky top-0 z-40 bg-transparent backdrop-blur supports-[backdrop-filter]:bg-transparent border-b border-border/50">
           <div className="container mx-auto px-6 py-4">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
@@ -1232,11 +1256,11 @@ const Essays = () => {
           </div>
         </div>
 
-        <div className="container mx-auto px-6 py-6">
+        <div className="container mx-auto px-6 py-6 min-h-full bg-transparent">
 
-          <div className="w-full h-[calc(100vh-200px)]">
+          <div className="w-full min-h-[calc(100vh-200px)]">
             {/* Essay Editor */}
-            <div className="w-full h-full">
+            <div className="w-full min-h-full">
               {selectedNewEssayId ? (
                 <SemanticEssayEditor 
                   essayId={selectedNewEssayId}
@@ -1367,7 +1391,7 @@ const Essays = () => {
                   }}
                 />
               ) : selectedEssay ? (
-                <Card className="h-full shadow-sm bg-card">
+                <Card className="min-h-full shadow-sm bg-card">
                   <CardHeader className="border-b bg-muted/30">
                     <div className="space-y-3">
                       <CardTitle className="flex items-center space-x-3">
@@ -1405,13 +1429,13 @@ const Essays = () => {
                     </div>
                   </CardHeader>
                   
-                  <CardContent className="p-0 h-full">
+                  <CardContent className="p-0 min-h-full">
                     <Textarea placeholder="Start writing your essay here..." className="h-full min-h-[500px] resize-none border-0 rounded-none focus:ring-0 text-lg leading-relaxed p-6" value={essayContent} onChange={e => handleEssayContentChange(e.target.value)} />
                   </CardContent>
                 </Card>
               ) : selectedSchool ? (
                 // Show prompt dropdown when school is selected but no essay is chosen
-                <div className="h-full overflow-y-auto p-6">
+                <div className="min-h-full overflow-y-auto p-6">
                   {essayPrompts.length > 0 ? (
                     <PromptDropdown
                       prompts={essayPrompts.map(prompt => {
@@ -1452,8 +1476,8 @@ const Essays = () => {
                   )}
                 </div>
               ) : (
-                <Card className="h-full shadow-sm bg-gradient-to-br from-muted/30 to-muted/10">
-                  <CardContent className="p-12 text-center h-full flex flex-col items-center justify-center">
+                <Card className="min-h-full shadow-sm bg-gradient-to-br from-muted/30 to-muted/10">
+                  <CardContent className="p-12 text-center min-h-full flex flex-col items-center justify-center">
                     <div className="p-4 bg-primary/10 rounded-full mb-6">
                       <PenTool className="h-12 w-12 text-primary" />
                     </div>
@@ -1469,27 +1493,27 @@ const Essays = () => {
           </div>
 
         </div>
+
+        {/* Custom Essay Creation Modal */}
+        <CreateEssayModal
+          isOpen={showCreateEssayModal}
+          onClose={() => setShowCreateEssayModal(false)}
+          onEssayCreated={handleCustomEssayCreated}
+          selectedSchool={selectedSchool}
+        />
+
+        {/* Delete Essay Confirmation Dialog */}
+        <DeleteEssayDialog
+          isOpen={showDeleteDialog}
+          onClose={() => {
+            setShowDeleteDialog(false);
+            setEssayToDelete(null);
+          }}
+          onConfirm={handleDeleteEssay}
+          essayTitle={essayToDelete?.title || ''}
+          isDeleting={deletingEssay}
+        />
       </GradientBackground>
-
-      {/* Custom Essay Creation Modal */}
-      <CreateEssayModal
-        isOpen={showCreateEssayModal}
-        onClose={() => setShowCreateEssayModal(false)}
-        onEssayCreated={handleCustomEssayCreated}
-        selectedSchool={selectedSchool}
-      />
-
-      {/* Delete Essay Confirmation Dialog */}
-      <DeleteEssayDialog
-        isOpen={showDeleteDialog}
-        onClose={() => {
-          setShowDeleteDialog(false);
-          setEssayToDelete(null);
-        }}
-        onConfirm={handleDeleteEssay}
-        essayTitle={essayToDelete?.title || ''}
-        isDeleting={deletingEssay}
-      />
     </ProfileCompletionGuard>
     </OnboardingGuard>;
 };

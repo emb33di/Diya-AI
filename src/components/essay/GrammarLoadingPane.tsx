@@ -58,7 +58,7 @@ const GrammarLoadingPane: React.FC<GrammarLoadingPaneProps> = ({
       "transition-all duration-300 ease-in-out",
       className
     )}>
-      <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 animate-in fade-in-0 zoom-in-95 duration-300">
+      <div className="rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 animate-in fade-in-0 zoom-in-95 duration-300" style={{ backgroundColor: '#F4EDE2' }}>
         {/* Header */}
         <div className="text-center mb-8">
           <div className={cn(

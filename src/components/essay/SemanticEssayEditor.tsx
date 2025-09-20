@@ -229,8 +229,13 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
 
   // Handle score report actions
   const handleViewComments = () => {
-    // Refresh the page to show the comments
-    window.location.reload();
+    // Force a re-render to show the comments
+    setShowComments(true);
+    // Optionally scroll to comments section
+    const commentsElement = document.querySelector('.comment-sidebar');
+    if (commentsElement) {
+      commentsElement.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   const handleCloseScoreReport = () => {
@@ -270,19 +275,36 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
     if (!essayId) return;
     
     try {
-      // Use the ScoreReportService to get scores from semantic annotations
-      const scores = await ScoreReportService.getAgentScores(essayId);
+      // Use the ScoreReportService to get scores from semantic annotations with timeout
+      const scores = await Promise.race([
+        ScoreReportService.getAgentScores(essayId),
+        new Promise<AgentScores>((_, reject) => 
+          setTimeout(() => reject(new Error('Score fetch timeout')), 8000)
+        )
+      ]);
       
       if (scores.bigPicture !== undefined) {
         setBigPictureScore(scores.bigPicture);
         setHasAIComments(true);
       } else {
         // Check if there are any AI comments at all using semantic annotations
-        const hasComments = await ScoreReportService.hasAIComments(essayId);
-        setHasAIComments(hasComments);
+        try {
+          const hasComments = await Promise.race([
+            ScoreReportService.hasAIComments(essayId),
+            new Promise<boolean>((_, reject) => 
+              setTimeout(() => reject(new Error('Comments check timeout')), 5000)
+            )
+          ]);
+          setHasAIComments(hasComments);
+        } catch (commentError) {
+          console.error('Error checking AI comments:', commentError);
+          setHasAIComments(false);
+        }
       }
     } catch (error) {
       console.error('Error fetching big picture score:', error);
+      // Don't set hasAIComments to true if there's an error
+      setHasAIComments(false);
     }
   };
 
@@ -481,7 +503,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
     console.log('Showing loading screen due to:', { isLoading, isMigrating: migrationStatus.isMigrating, message: migrationStatus.message });
     return (
       <div className={`semantic-essay-editor ${className}`}>
-        <Card>
+        <Card style={{ backgroundColor: '#F4EDE2' }}>
           <CardContent className="p-8 text-center">
             <div className="space-y-4">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
@@ -704,25 +726,6 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                   )}
                 </div>
                 
-                {/* Essay Score Display */}
-                {hasAIComments && bigPictureScore !== null && (
-                  <div className="flex items-center space-x-2 ml-4">
-                    <div className="flex items-center space-x-2">
-                      <Star className="h-4 w-4 text-yellow-500" />
-                      <span className="text-sm font-medium text-gray-600">Essay Score:</span>
-                      <Badge 
-                        variant="secondary" 
-                        className={`text-sm font-bold ${
-                          bigPictureScore >= 80 ? 'bg-green-100 text-green-800' :
-                          bigPictureScore >= 60 ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-red-100 text-red-800'
-                        }`}
-                      >
-                        {bigPictureScore}/100
-                      </Badge>
-                    </div>
-                  </div>
-                )}
                 
               </div>
 

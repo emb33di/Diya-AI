@@ -13,5 +13,17 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     storage: localStorage,
     persistSession: true,
     autoRefreshToken: true,
-  }
+  },
+  db: {
+    schema: 'public',
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'diya-ai-app',
+    },
+  },
+  realtime: {
+    // Disable realtime to reduce connection overhead
+    enabled: false,
+  },
 });

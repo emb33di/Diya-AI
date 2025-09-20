@@ -20,7 +20,7 @@ export const useOnboardingStatus = () => {
       // Get user with timeout
       const userResult = await Promise.race([
         supabase.auth.getUser(),
-        createTimeoutPromise(8000) // 8 second timeout
+        createTimeoutPromise(15000) // 15 second timeout
       ]) as Awaited<ReturnType<typeof supabase.auth.getUser>>;
       
       const { data: { user } } = userResult;
@@ -37,7 +37,7 @@ export const useOnboardingStatus = () => {
           .select('onboarding_complete')
           .eq('user_id', user.id)
           .maybeSingle(),
-        createTimeoutPromise(5000) // 5 second timeout
+        createTimeoutPromise(15000) // 15 second timeout
       ]);
 
       const { data: profile, error } = profileResult as any;
@@ -85,7 +85,7 @@ export const useOnboardingStatus = () => {
       // Get user with timeout
       const userResult = await Promise.race([
         supabase.auth.getUser(),
-        createTimeoutPromise(8000) // 8 second timeout
+        createTimeoutPromise(15000) // 15 second timeout
       ]) as Awaited<ReturnType<typeof supabase.auth.getUser>>;
       
       const { data: { user } } = userResult;
@@ -97,7 +97,7 @@ export const useOnboardingStatus = () => {
           .from('profiles')
           .update({ onboarding_complete: true })
           .eq('user_id', user.id),
-        createTimeoutPromise(5000) // 5 second timeout
+        createTimeoutPromise(15000) // 15 second timeout
       ]);
 
       const { error } = updateResult as any;

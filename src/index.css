@@ -255,6 +255,7 @@
 
   body {
     @apply text-foreground;
+    background-color: #F4EDE2; /* Match GradientBackground cream color */
   }
 }
 

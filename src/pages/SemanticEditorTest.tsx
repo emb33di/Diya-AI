@@ -1,8 +1,10 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
 const SemanticEditorTest = () => {
+  const navigate = useNavigate();
   return (
     <div className="min-h-screen bg-background p-8">
       <div className="max-w-4xl mx-auto">
@@ -36,10 +38,10 @@ const SemanticEditorTest = () => {
             </div>
 
             <div className="flex gap-4">
-              <Button onClick={() => window.location.href = '/essays'}>
+              <Button onClick={() => navigate('/essays')}>
                 Go to Essays Page
               </Button>
-              <Button variant="outline" onClick={() => window.location.href = '/'}>
+              <Button variant="outline" onClick={() => navigate('/')}>
                 Back to Home
               </Button>
             </div>

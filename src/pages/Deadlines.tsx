@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +17,7 @@ import {
 } from "@/services/deadlineService";
 
 const Deadlines = () => {
+  const navigate = useNavigate();
   const [deadlines, setDeadlines] = useState<UserDeadline[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -481,7 +483,7 @@ const Deadlines = () => {
                   }
                 </p>
                 {deadlines.length === 0 && (
-                  <Button onClick={() => window.location.href = '/schools'}>
+                  <Button onClick={() => navigate('/schools')}>
                     Add Schools
                   </Button>
                 )}

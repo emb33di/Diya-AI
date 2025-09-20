@@ -84,7 +84,7 @@ export const useAuth = () => {
               .select('id, full_name, onboarding_complete')
               .eq('user_id', user.id)
               .maybeSingle(),
-            createTimeoutPromise(5000) // 5 second timeout per request
+            createTimeoutPromise(15000) // 15 second timeout per request
           ]),
           Promise.race([
             supabase
@@ -92,7 +92,7 @@ export const useAuth = () => {
               .select('preferred_name, email_address')
               .eq('user_id', user.id)
               .maybeSingle(),
-            createTimeoutPromise(5000) // 5 second timeout per request
+            createTimeoutPromise(15000) // 15 second timeout per request
           ])
         ]);
 
@@ -190,7 +190,7 @@ export const useAuth = () => {
         const sessionResult = await retryWithBackoff(async () => {
           return await Promise.race([
             supabase.auth.getSession(),
-            createTimeoutPromise(10000) // 10 second timeout for initial session
+            createTimeoutPromise(20000) // 20 second timeout for initial session
           ]);
         });
         

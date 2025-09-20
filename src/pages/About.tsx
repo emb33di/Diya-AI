@@ -33,7 +33,7 @@ const About = () => {
   ];
 
   return (
-    <div className="landing-page min-h-screen bg-background">
+    <div className="landing-page min-h-screen bg-black">
       <div className="bg-gradient-to-br from-background via-primary/5 to-secondary/10 p-4 min-h-screen">
       <div className="container mx-auto px-6 py-16 flex flex-col items-center justify-center min-h-[calc(100vh-4rem)]">
         {/* Header Section */}

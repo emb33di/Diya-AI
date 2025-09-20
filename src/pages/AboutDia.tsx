@@ -5,7 +5,7 @@ import { Sparkles, Brain, MessageCircle, Clock, Users, BookOpen, Target, Heart, 
 import { Link } from "react-router-dom";
 import "@/styles/landing.css";
 const AboutDiya = () => {
-  return <div className="landing-page min-h-screen bg-background">
+  return <div className="landing-page min-h-screen bg-black">
     <div className="bg-gradient-to-br from-background via-primary/5 to-secondary/10 p-4 min-h-screen">
 
       <div className="container mx-auto px-4 py-16">

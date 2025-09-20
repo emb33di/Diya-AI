@@ -14,20 +14,19 @@ interface GradientBackgroundProps {
 const GradientBackground: React.FC<GradientBackgroundProps> = ({
   children,
   className,
-  fromColor = '#EFA536',
+  fromColor = '#FFC160',
   toColor = '#FFFFFF',
   viaColor,
   gradientType = 'radial',
   direction = 'center'
 }) => {
-  const gradientStyle = gradientType === 'radial' 
-    ? `radial-gradient(circle at ${direction}, ${fromColor}, ${viaColor ? `${viaColor}, ` : ''}${toColor})`
-    : `linear-gradient(${direction}, ${fromColor}, ${viaColor ? `${viaColor}, ` : ''}${toColor})`;
-
   return (
     <div 
-      className={cn('min-h-screen', className)}
-      style={{ background: gradientStyle }}
+      className={cn('min-h-screen w-full', className)}
+      style={{ 
+        backgroundColor: '#F4EDE2',
+        minHeight: '100vh'
+      }}
     >
       {children}
     </div>

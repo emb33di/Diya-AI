@@ -127,7 +127,7 @@ const Dashboard = () => {
               <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
               <h2 className="text-xl font-semibold mb-2">Authentication Error</h2>
               <p className="text-muted-foreground mb-4">{authError}</p>
-              <Button onClick={() => window.location.reload()}>Try Again</Button>
+              <Button onClick={() => navigate('/dashboard', { replace: true })}>Try Again</Button>
             </div>
           </div>
         </GradientBackground>
@@ -144,7 +144,7 @@ const Dashboard = () => {
               <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
               <h2 className="text-xl font-semibold mb-2">Error loading dashboard</h2>
               <p className="text-muted-foreground mb-4">{error}</p>
-              <Button onClick={() => window.location.reload()}>Try Again</Button>
+              <Button onClick={() => navigate('/dashboard', { replace: true })}>Try Again</Button>
             </div>
           </div>
         </GradientBackground>

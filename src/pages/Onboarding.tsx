@@ -1694,7 +1694,7 @@ const Onboarding = () => {
         {/* Loading Modal Overlay */}
         {showLoadingModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <Card className="w-full max-w-md relative">
+            <Card className="w-full max-w-md relative" style={{ backgroundColor: '#F4EDE2' }}>
               <CardHeader className="text-center">
                 <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
                   <Loader2 className="w-8 h-8 text-primary animate-spin" />
@@ -1728,7 +1728,7 @@ const Onboarding = () => {
         {/* Completion Popup Overlay */}
         {showCompletionPopup && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <Card className="w-full max-w-2xl relative">
+            <Card className="w-full max-w-2xl relative" style={{ backgroundColor: '#F4EDE2' }}>
               {/* Close button */}
               <Button variant="ghost" size="sm" className="absolute top-2 right-2 h-8 w-8 p-0" onClick={() => {
                 setShowCompletionPopup(false);
@@ -1751,7 +1751,7 @@ const Onboarding = () => {
                       Thank you for completing your 15-minute onboarding session with Diya! Your profile has been updated and your school recommendations are ready.
                     </p>
                     <div className="flex flex-col sm:flex-row gap-3 justify-center w-full">
-                      <Button size="lg" className="flex-1 sm:flex-initial" onClick={() => window.location.href = '/schools'}>
+                      <Button size="lg" className="flex-1 sm:flex-initial" onClick={() => navigate('/schools')}>
                         View School Recommendations
                       </Button>
                     </div>
@@ -1780,7 +1780,7 @@ const Onboarding = () => {
                       }}>
                         Complete Onboarding
                       </Button>
-                      <Button size="lg" variant="outline" className="flex-1 sm:flex-initial" onClick={() => window.location.href = '/dashboard'}>
+                      <Button size="lg" variant="outline" className="flex-1 sm:flex-initial" onClick={() => navigate('/dashboard')}>
                         Continue Later
                       </Button>
                     </div>
@@ -1794,7 +1794,7 @@ const Onboarding = () => {
         {/* Info Modal */}
         {showInfoModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <Card className="w-full max-w-2xl relative">
+            <Card className="w-full max-w-2xl relative" style={{ backgroundColor: '#F4EDE2' }}>
               {/* Close button */}
               <Button variant="ghost" size="sm" className="absolute top-2 right-2 h-8 w-8 p-0" onClick={() => setShowInfoModal(false)}>
                 <X className="h-4 w-4" />
