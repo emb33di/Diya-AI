@@ -44,8 +44,11 @@ export const useDashboardData = () => {
     error: null,
   });
 
+  // Extract user ID to prevent unnecessary re-fetches when user object changes
+  const userId = user?.id;
+
   useEffect(() => {
-    if (!user) {
+    if (!userId) {
       setData(prev => ({ ...prev, loading: false }));
       return;
     }
@@ -168,13 +171,13 @@ export const useDashboardData = () => {
       }
     };
 
-    fetchDashboardData(user.id);
+    fetchDashboardData(userId);
 
     // Cleanup function to prevent state updates after unmount
     return () => {
       isMounted = false;
     };
-  }, [user]);
+  }, [userId]);
 
   return data;
 };

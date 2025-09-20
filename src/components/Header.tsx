@@ -175,8 +175,8 @@ const Header = () => {
                 to="/onboarding" 
                 className={`text-sm font-medium transition-colors px-3 py-1 ${
                   isActive('/onboarding') 
-                    ? 'text-primary border border-primary/50 bg-primary/10 rounded-full' 
-                    : 'text-muted-foreground hover:text-primary'
+                    ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
+                    : 'text-black hover:text-black'
                 }`}
               >
                 Onboarding
@@ -190,8 +190,8 @@ const Header = () => {
                     onClick={(e) => handleNavigation('/dashboard', e)}
                     className={`text-sm font-medium transition-colors px-3 py-1 ${
                       isActive('/dashboard') 
-                        ? 'text-primary border border-primary/50 bg-primary/10 rounded-full' 
-                        : 'text-muted-foreground hover:text-primary'
+                        ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
+                        : 'text-black hover:text-black'
                     } ${
                       onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/dashboard')
                         ? 'opacity-60 cursor-not-allowed' : ''
@@ -215,8 +215,8 @@ const Header = () => {
                     onClick={(e) => handleNavigation('/schools', e)}
                     className={`text-sm font-medium transition-colors px-3 py-1 ${
                       isActive('/schools') 
-                        ? 'text-primary border border-primary/50 bg-primary/10 rounded-full' 
-                        : 'text-muted-foreground hover:text-primary'
+                        ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
+                        : 'text-black hover:text-black'
                     } ${
                       onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/schools')
                         ? 'opacity-60 cursor-not-allowed' : ''
@@ -240,8 +240,8 @@ const Header = () => {
                     onClick={(e) => handleNavigation('/resume', e)}
                     className={`text-sm font-medium transition-colors px-3 py-1 ${
                       isActive('/resume') 
-                        ? 'text-primary border border-primary/50 bg-primary/10 rounded-full' 
-                        : 'text-muted-foreground hover:text-primary'
+                        ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
+                        : 'text-black hover:text-black'
                     } ${
                       onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/resume')
                         ? 'opacity-60 cursor-not-allowed' : ''
@@ -265,8 +265,8 @@ const Header = () => {
                     onClick={(e) => handleNavigation('/essays', e)}
                     className={`text-sm font-medium transition-colors px-3 py-1 ${
                       isActive('/essays') 
-                        ? 'text-primary border border-primary/50 bg-primary/10 rounded-full' 
-                        : 'text-muted-foreground hover:text-primary'
+                        ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
+                        : 'text-black hover:text-black'
                     } ${
                       onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/essays')
                         ? 'opacity-60 cursor-not-allowed' : ''
@@ -290,8 +290,8 @@ const Header = () => {
                     onClick={(e) => handleNavigation('/lor', e)}
                     className={`text-sm font-medium transition-colors px-3 py-1 ${
                       isActive('/lor') 
-                        ? 'text-primary border border-primary/50 bg-primary/10 rounded-full' 
-                        : 'text-muted-foreground hover:text-primary'
+                        ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
+                        : 'text-black hover:text-black'
                     } ${
                       onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/lor')
                         ? 'opacity-60 cursor-not-allowed' : ''
@@ -315,8 +315,8 @@ const Header = () => {
                     onClick={(e) => handleNavigation('/deadlines', e)}
                     className={`text-sm font-medium transition-colors px-3 py-1 ${
                       isActive('/deadlines') 
-                        ? 'text-primary border border-primary/50 bg-primary/10 rounded-full' 
-                        : 'text-muted-foreground hover:text-primary'
+                        ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
+                        : 'text-black hover:text-black'
                     } ${
                       onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/deadlines')
                         ? 'opacity-60 cursor-not-allowed' : ''
@@ -353,7 +353,7 @@ const Header = () => {
                       navigate('/#features');
                     }
                   }} 
-                  className="h-12 px-4 text-base font-medium text-white/90 hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/10"
+                  className="h-12 px-4 text-base font-medium text-black hover:text-black transition-colors duration-200 rounded-lg hover:bg-gray-100"
                 >
                   About Diya
                 </button>
@@ -368,7 +368,7 @@ const Header = () => {
                       navigate('/#programs');
                     }
                   }} 
-                  className="h-12 px-4 text-base font-medium text-white/90 hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/10"
+                  className="h-12 px-4 text-base font-medium text-black hover:text-black transition-colors duration-200 rounded-lg hover:bg-gray-100"
                 >
                   Students
                 </button>
@@ -383,7 +383,7 @@ const Header = () => {
                       navigate('/#pricing');
                     }
                   }} 
-                  className="h-12 px-4 text-base font-medium text-white/90 hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/10"
+                  className="h-12 px-4 text-base font-medium text-black hover:text-black transition-colors duration-200 rounded-lg hover:bg-gray-100"
                 >
                   Pricing
                 </button>
@@ -398,7 +398,7 @@ const Header = () => {
                       navigate('/#founder');
                     }
                   }} 
-                  className="h-12 px-4 text-base font-medium text-white/90 hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/10"
+                  className="h-12 px-4 text-base font-medium text-black hover:text-black transition-colors duration-200 rounded-lg hover:bg-gray-100"
                 >
                   Team
                 </button>
@@ -413,7 +413,7 @@ const Header = () => {
                       navigate('/#faq');
                     }
                   }} 
-                  className="h-12 px-4 text-base font-medium text-white/90 hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/10"
+                  className="h-12 px-4 text-base font-medium text-black hover:text-black transition-colors duration-200 rounded-lg hover:bg-gray-100"
                 >
                   FAQs
                 </button>

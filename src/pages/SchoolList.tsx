@@ -98,54 +98,54 @@ const SchoolList = () => {
   }, [contextMenu.visible]);
 
   // Fetch school recommendations from Supabase
-  useEffect(() => {
-    const fetchSchoolRecommendationsData = async () => {
-      try {
-        setLoading(true);
-        
-        // Get current user
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          setError("User not authenticated");
-          return;
-        }
-
-        // Fetch school recommendations with timeout handling
-        const { data: recommendations, error } = await fetchSchoolRecommendations(user.id);
-
-        if (error) {
-          console.error('Error fetching school recommendations:', error);
-          setError(error);
-          return;
-        }
-
-        // Transform the data to match the UI format
-        const transformedSchools: School[] = recommendations.map((rec, index) => ({
-          id: rec.id,
-          name: rec.school,
-          location: capitalizeSchoolType(rec.school_type), // Capitalize school type
-          category: rec.category as 'reach' | 'target' | 'safety',
-          acceptanceRate: rec.acceptance_rate || 'N/A',
-          ranking: rec.school_ranking || 'N/A',
-          applicationDeadline: rec.first_round_deadline || 'TBD',
-          earlyActionDeadline: rec.early_action_deadline || 'N/A',
-          earlyDecision1Deadline: rec.early_decision_1_deadline || 'N/A',
-          earlyDecision2Deadline: rec.early_decision_2_deadline || 'N/A',
-          regularDecisionDeadline: rec.regular_decision_deadline || 'N/A',
-          notes: rec.notes || rec.student_thesis || 'No notes available'
-        }));
-
-        console.log('Fetched recommendations:', recommendations);
-        console.log('Transformed schools:', transformedSchools);
-        setSchools(transformedSchools);
-      } catch (err) {
-        console.error('Error fetching school recommendations:', err);
-        setError("Failed to load school recommendations");
-      } finally {
-        setLoading(false);
+  const fetchSchoolRecommendationsData = async () => {
+    try {
+      setLoading(true);
+      
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setError("User not authenticated");
+        return;
       }
-    };
 
+      // Fetch school recommendations with timeout handling
+      const { data: recommendations, error } = await fetchSchoolRecommendations(user.id);
+
+      if (error) {
+        console.error('Error fetching school recommendations:', error);
+        setError(error);
+        return;
+      }
+
+      // Transform the data to match the UI format
+      const transformedSchools: School[] = recommendations.map((rec, index) => ({
+        id: rec.id,
+        name: rec.school,
+        location: capitalizeSchoolType(rec.school_type), // Capitalize school type
+        category: rec.category as 'reach' | 'target' | 'safety',
+        acceptanceRate: rec.acceptance_rate || 'N/A',
+        ranking: rec.school_ranking || 'N/A',
+        applicationDeadline: rec.first_round_deadline || 'TBD',
+        earlyActionDeadline: rec.early_action_deadline || 'N/A',
+        earlyDecision1Deadline: rec.early_decision_1_deadline || 'N/A',
+        earlyDecision2Deadline: rec.early_decision_2_deadline || 'N/A',
+        regularDecisionDeadline: rec.regular_decision_deadline || 'N/A',
+        notes: rec.notes || rec.student_thesis || 'No notes available'
+      }));
+
+      console.log('Fetched recommendations:', recommendations);
+      console.log('Transformed schools:', transformedSchools);
+      setSchools(transformedSchools);
+    } catch (err) {
+      console.error('Error fetching school recommendations:', err);
+      setError("Failed to load school recommendations");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchSchoolRecommendationsData();
   }, []);
 
@@ -619,7 +619,7 @@ const SchoolList = () => {
                 <Button onClick={() => {
                   setError(null);
                   setLoading(true);
-                  loadSchools();
+                  fetchSchoolRecommendationsData();
                 }}>
                   Try Again
                 </Button>
@@ -765,7 +765,7 @@ const SchoolList = () => {
       onClose={() => setIsArchiveModalOpen(false)}
       onSchoolRestored={() => {
         // Refresh the school list when a school is restored
-        loadSchools();
+        fetchSchoolRecommendationsData();
       }}
     />
 
