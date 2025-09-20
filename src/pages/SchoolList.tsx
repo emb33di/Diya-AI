@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import OnboardingGuard from "@/components/OnboardingGuard";
 import ProfileCompletionGuard from "@/components/ProfileCompletionGuard";
+import GradientBackground from "@/components/GradientBackground";
 import { supabase } from "@/integrations/supabase/client";
 import AddSchoolModal from "@/components/AddSchoolModal";
 import ArchiveModal from "@/components/ArchiveModal";
@@ -593,7 +594,7 @@ const SchoolList = () => {
   if (loading) {
     return (
       <OnboardingGuard pageName="Schools">
-        <div className="min-h-screen bg-background">
+        <GradientBackground>
           <main className="container mx-auto px-6 py-8">
             <div className="flex items-center justify-center h-64">
               <div className="flex items-center space-x-2">
@@ -602,7 +603,7 @@ const SchoolList = () => {
               </div>
             </div>
           </main>
-        </div>
+        </GradientBackground>
       </OnboardingGuard>
     );
   }
@@ -610,7 +611,7 @@ const SchoolList = () => {
   if (error) {
     return (
       <OnboardingGuard pageName="Schools">
-        <div className="min-h-screen bg-background">
+        <GradientBackground>
           <main className="container mx-auto px-6 py-8">
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
@@ -621,7 +622,7 @@ const SchoolList = () => {
               </div>
             </div>
           </main>
-        </div>
+        </GradientBackground>
       </OnboardingGuard>
     );
   }
@@ -636,8 +637,7 @@ const SchoolList = () => {
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        <div className="min-h-screen bg-background">
-          <div className="bg-gradient-to-br from-background via-primary/5 to-secondary/10 p-4 min-h-screen">
+        <GradientBackground>
           <main className="container mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -709,8 +709,7 @@ const SchoolList = () => {
           </div>
         </div>
       </main>
-      </div>
-    </div>
+        </GradientBackground>
 
         {/* Drag Overlay */}
         <DragOverlay>

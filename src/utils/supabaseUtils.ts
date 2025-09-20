@@ -54,20 +54,6 @@ export const fetchSchoolRecommendations = async (userId: string) => {
   );
 };
 
-/**
- * Fetch conversation history with timeout
- */
-export const fetchConversationHistory = async (userId: string) => {
-  return fetchWithTimeout(
-    supabase
-      .from('conversation_tracking')
-      .select('*')
-      .eq('user_id', userId)
-      .order('conversation_ended_at', { ascending: false }),
-    8000,
-    'Failed to load conversation history'
-  );
-};
 
 /**
  * Fetch conversation metadata with timeout

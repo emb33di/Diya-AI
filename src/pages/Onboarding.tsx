@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Mic, MicOff, User, Sparkles, CheckCircle, MessageSquare, Target, Lightbulb, Heart, BookOpen, Briefcase, Trophy, Users, GraduationCap, DollarSign, X, Loader2, Clock, Info, Pause, Play, Lock } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import Header from '@/components/Header';
+import GradientBackground from '@/components/GradientBackground';
 import { supabase } from '@/integrations/supabase/client';
 import { ElevenLabsAPI } from '@/utils/elevenLabsAPI';
 import { ConversationStorage } from '@/utils/conversationStorage';
@@ -1093,7 +1094,7 @@ const Onboarding = () => {
             // Do not proceed to recommendations without metadata/transcript
             toast({
               title: "Metadata Unavailable",
-              description: "We couldn't retrieve your conversation transcript. Please try again later from Conversation History.",
+              description: "We couldn't retrieve your conversation transcript. Please try again later.",
               variant: "destructive"
             });
             setShowLoadingModal(false);
@@ -1240,18 +1241,19 @@ const Onboarding = () => {
   // Show loading state while checking onboarding status
   if (onboardingLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
+      <GradientBackground>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading...</p>
+          </div>
         </div>
-      </div>
+      </GradientBackground>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="bg-gradient-to-br from-background via-primary/5 to-secondary/10 p-4 min-h-screen">
+    <GradientBackground>
         {expandedView && (
           <div className="h-screen flex flex-col p-2 md:p-4">
             {(sessionStarted || cumulativeSessionTime > 0) && (
@@ -1534,7 +1536,7 @@ const Onboarding = () => {
                       <>
                         <h3 className="text-lg font-medium">Conversation Completed</h3>
                         <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                          Your conversation with Diya has been completed. You can start a new conversation or view your history.
+                          Your conversation with Diya has been completed. You can start a new conversation.
                         </p>
                         <Button onClick={() => {
                           setShowCompletionPopup(false);
@@ -1752,9 +1754,6 @@ const Onboarding = () => {
                       <Button size="lg" className="flex-1 sm:flex-initial" onClick={() => window.location.href = '/schools'}>
                         View School Recommendations
                       </Button>
-                      <Button size="lg" variant="outline" className="flex-1 sm:flex-initial" onClick={() => window.location.href = '/conversation-history'}>
-                        View Conversation History
-                      </Button>
                     </div>
                   </>
                 ) : (
@@ -1917,8 +1916,7 @@ const Onboarding = () => {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+    </GradientBackground>
   );
 };
 export default Onboarding;

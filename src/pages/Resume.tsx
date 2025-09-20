@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import OnboardingGuard from "@/components/OnboardingGuard";
 import ProfileCompletionGuard from "@/components/ProfileCompletionGuard";
+import GradientBackground from "@/components/GradientBackground";
 import EnhancedLoadingPane from "@/components/EnhancedLoadingPane";
 import MobileResponsiveWrapper from "@/components/MobileResponsiveWrapper";
 import ResumeComparisonView from "@/components/ResumeComparisonView";
@@ -368,8 +369,7 @@ const Resume = () => {
   return (
     <OnboardingGuard pageName="Resume">
       <ProfileCompletionGuard pageName="Resume">
-        <div className="min-h-screen bg-background">
-        <div className="bg-gradient-to-br from-background via-primary/5 to-secondary/10 min-h-screen">
+        <GradientBackground>
           <MobileResponsiveWrapper>
             <main className="container mx-auto">
             {/* Header */}
@@ -532,8 +532,6 @@ const Resume = () => {
             </Tabs>
             </main>
           </MobileResponsiveWrapper>
-        </div>
-      </div>
 
       {/* Resume Analysis Modal */}
       <Dialog open={!!viewingResume} onOpenChange={handleCloseView}>
@@ -653,6 +651,7 @@ const Resume = () => {
         showCancelButton={true}
         realTimeProgress={true}
       />
+        </GradientBackground>
       </ProfileCompletionGuard>
     </OnboardingGuard>
   );

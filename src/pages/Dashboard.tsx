@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress";
 import OnboardingGuard from "@/components/OnboardingGuard";
 import ProfileCompletionGuard from "@/components/ProfileCompletionGuard";
+import GradientBackground from "@/components/GradientBackground";
 import { useAuth } from "@/hooks/useAuth";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { useProfileCompletion } from "@/hooks/useProfileCompletion";
@@ -103,14 +104,16 @@ const Dashboard = () => {
   if (authLoading || loading || profileLoading) {
     return (
       <OnboardingGuard pageName="Dashboard">
-        <div className="min-h-screen bg-background flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">
-              {authLoading ? 'Loading authentication...' : profileLoading ? 'Calculating profile completion...' : 'Loading your dashboard...'}
-            </p>
+        <GradientBackground>
+          <div className="flex items-center justify-center min-h-screen">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-muted-foreground">
+                {authLoading ? 'Loading authentication...' : profileLoading ? 'Calculating profile completion...' : 'Loading your dashboard...'}
+              </p>
+            </div>
           </div>
-        </div>
+        </GradientBackground>
       </OnboardingGuard>
     );
   }
@@ -118,14 +121,16 @@ const Dashboard = () => {
   if (authError) {
     return (
       <OnboardingGuard pageName="Dashboard">
-        <div className="min-h-screen bg-background flex items-center justify-center">
-          <div className="text-center">
-            <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Authentication Error</h2>
-            <p className="text-muted-foreground mb-4">{authError}</p>
-            <Button onClick={() => window.location.reload()}>Try Again</Button>
+        <GradientBackground>
+          <div className="flex items-center justify-center min-h-screen">
+            <div className="text-center">
+              <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+              <h2 className="text-xl font-semibold mb-2">Authentication Error</h2>
+              <p className="text-muted-foreground mb-4">{authError}</p>
+              <Button onClick={() => window.location.reload()}>Try Again</Button>
+            </div>
           </div>
-        </div>
+        </GradientBackground>
       </OnboardingGuard>
     );
   }
@@ -133,14 +138,16 @@ const Dashboard = () => {
   if (error) {
     return (
       <OnboardingGuard pageName="Dashboard">
-        <div className="min-h-screen bg-background flex items-center justify-center">
-          <div className="text-center">
-            <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Error loading dashboard</h2>
-            <p className="text-muted-foreground mb-4">{error}</p>
-            <Button onClick={() => window.location.reload()}>Try Again</Button>
+        <GradientBackground>
+          <div className="flex items-center justify-center min-h-screen">
+            <div className="text-center">
+              <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+              <h2 className="text-xl font-semibold mb-2">Error loading dashboard</h2>
+              <p className="text-muted-foreground mb-4">{error}</p>
+              <Button onClick={() => window.location.reload()}>Try Again</Button>
+            </div>
           </div>
-        </div>
+        </GradientBackground>
       </OnboardingGuard>
     );
   }
@@ -148,8 +155,7 @@ const Dashboard = () => {
   return (
     <OnboardingGuard pageName="Dashboard">
       <ProfileCompletionGuard pageName="Dashboard">
-        <div className="min-h-screen bg-background">
-          <div className="bg-gradient-to-br from-background via-primary/5 to-secondary/10 p-4 min-h-screen">
+        <GradientBackground>
           <main className="container mx-auto px-6 py-8">
         {/* Welcome Section */}
         <div className="mb-8">
@@ -308,8 +314,7 @@ const Dashboard = () => {
           </div>
         </div>
         </main>
-        </div>
-      </div>
+        </GradientBackground>
       </ProfileCompletionGuard>
     </OnboardingGuard>
   );

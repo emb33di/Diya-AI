@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/components/ui/use-toast";
 import OnboardingGuard from "@/components/OnboardingGuard";
 import ProfileCompletionGuard from "@/components/ProfileCompletionGuard";
+import GradientBackground from "@/components/GradientBackground";
 import { EssayPromptService, EssayPrompt, EssayPromptSelection } from "@/services/essayPromptService";
 import { supabase } from "@/integrations/supabase/client";
 import { getUserDisplayName, fetchUserProfileData } from "@/utils/userNameUtils";
@@ -756,7 +757,7 @@ const Essays = () => {
   if (loading) {
     return <OnboardingGuard pageName="Essays">
       <ProfileCompletionGuard pageName="Essays">
-        <div className="min-h-screen bg-background">
+        <GradientBackground>
           <main className="container mx-auto px-6 py-8">
             <div className="flex items-center justify-center h-64">
               <div className="flex items-center space-x-2">
@@ -765,7 +766,7 @@ const Essays = () => {
               </div>
             </div>
           </main>
-        </div>
+        </GradientBackground>
       </ProfileCompletionGuard>
       </OnboardingGuard>;
   }
@@ -773,8 +774,7 @@ const Essays = () => {
   if (isMobile) {
     return <OnboardingGuard pageName="Essays">
       <ProfileCompletionGuard pageName="Essays">
-        <div className="min-h-screen bg-background">
-        <div className="bg-gradient-to-br from-background via-primary/5 to-secondary/10 min-h-screen">
+        <GradientBackground>
           
           {/* Mobile Step 1: School Selection */}
           {mobileStep === 'school' && (
@@ -1184,8 +1184,7 @@ const Essays = () => {
             </>
           )}
 
-        </div>
-      </div>
+        </GradientBackground>
       </ProfileCompletionGuard>
     </OnboardingGuard>;
   }
@@ -1193,8 +1192,7 @@ const Essays = () => {
   // Desktop UI (unchanged)
   return <OnboardingGuard pageName="Essays">
     <ProfileCompletionGuard pageName="Essays">
-      <div className="min-h-screen bg-background">
-        <div className="bg-gradient-to-br from-background via-primary/5 to-secondary/10 p-4 min-h-screen">
+      <GradientBackground>
         {/* Header */}
         <div className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
           <div className="container mx-auto px-6 py-4">
@@ -1471,8 +1469,7 @@ const Essays = () => {
           </div>
 
         </div>
-        </div>
-      </div>
+      </GradientBackground>
 
       {/* Custom Essay Creation Modal */}
       <CreateEssayModal

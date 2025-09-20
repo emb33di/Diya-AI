@@ -140,7 +140,7 @@ const Header = () => {
   };
   
   return (
-    <header className="sticky top-0 z-50 w-full backdrop-blur-md bg-white/5">
+    <header className="sticky top-0 z-50 w-full backdrop-blur-md bg-transparent">
       <div className="container mx-auto flex h-20 items-center justify-between px-6">
         <Link to={loading ? "/" : (isAuthenticated ? "/dashboard" : "/")} className="flex items-center space-x-2">
           <img 
@@ -151,14 +151,21 @@ const Header = () => {
         </Link>
         
         {isAuthenticated && (
-          <nav className="hidden md:flex items-center space-x-8">
+          <nav className={`hidden md:flex items-center space-x-8 px-4 py-2 rounded-full border transition-all duration-200 ${
+            location.pathname === '/onboarding' || location.pathname === '/dashboard' || 
+            location.pathname === '/schools' || location.pathname === '/resume' || 
+            location.pathname === '/essays' || location.pathname === '/lor' || 
+            location.pathname === '/deadlines'
+              ? 'border-primary/50' 
+              : 'border-gray-300/30'
+          }`}>
             {onboardingLoading ? (
-              <span className="text-sm font-medium text-gray-400">
+              <span className="text-sm font-medium text-gray-400 px-3 py-1">
                 Onboarding
               </span>
             ) : onboardingCompleted === true ? (
               <button 
-                className="text-sm font-medium transition-colors text-gray-400 cursor-not-allowed"
+                className="text-sm font-medium transition-colors text-gray-400 cursor-not-allowed px-3 py-1"
                 disabled
               >
                 Onboarding
@@ -166,9 +173,9 @@ const Header = () => {
             ) : (
               <Link 
                 to="/onboarding" 
-                className={`text-sm font-medium transition-colors ${
+                className={`text-sm font-medium transition-colors px-3 py-1 ${
                   isActive('/onboarding') 
-                    ? 'text-primary hover:text-primary' 
+                    ? 'text-primary border border-primary/50 bg-primary/10 rounded-full' 
                     : 'text-muted-foreground hover:text-primary'
                 }`}
               >
@@ -181,8 +188,10 @@ const Header = () => {
                   <Link 
                     to="/dashboard" 
                     onClick={(e) => handleNavigation('/dashboard', e)}
-                    className={`text-sm font-medium transition-colors hover:text-primary ${
-                      isActive('/dashboard') ? 'text-primary' : 'text-muted-foreground'
+                    className={`text-sm font-medium transition-colors px-3 py-1 ${
+                      isActive('/dashboard') 
+                        ? 'text-primary border border-primary/50 bg-primary/10 rounded-full' 
+                        : 'text-muted-foreground hover:text-primary'
                     } ${
                       onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/dashboard')
                         ? 'opacity-60 cursor-not-allowed' : ''
@@ -204,8 +213,10 @@ const Header = () => {
                   <Link 
                     to="/schools" 
                     onClick={(e) => handleNavigation('/schools', e)}
-                    className={`text-sm font-medium transition-colors hover:text-primary ${
-                      isActive('/schools') ? 'text-primary' : 'text-muted-foreground'
+                    className={`text-sm font-medium transition-colors px-3 py-1 ${
+                      isActive('/schools') 
+                        ? 'text-primary border border-primary/50 bg-primary/10 rounded-full' 
+                        : 'text-muted-foreground hover:text-primary'
                     } ${
                       onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/schools')
                         ? 'opacity-60 cursor-not-allowed' : ''
@@ -227,8 +238,10 @@ const Header = () => {
                   <Link 
                     to="/resume" 
                     onClick={(e) => handleNavigation('/resume', e)}
-                    className={`text-sm font-medium transition-colors hover:text-primary ${
-                      isActive('/resume') ? 'text-primary' : 'text-muted-foreground'
+                    className={`text-sm font-medium transition-colors px-3 py-1 ${
+                      isActive('/resume') 
+                        ? 'text-primary border border-primary/50 bg-primary/10 rounded-full' 
+                        : 'text-muted-foreground hover:text-primary'
                     } ${
                       onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/resume')
                         ? 'opacity-60 cursor-not-allowed' : ''
@@ -250,8 +263,10 @@ const Header = () => {
                   <Link 
                     to="/essays" 
                     onClick={(e) => handleNavigation('/essays', e)}
-                    className={`text-sm font-medium transition-colors hover:text-primary ${
-                      isActive('/essays') ? 'text-primary' : 'text-muted-foreground'
+                    className={`text-sm font-medium transition-colors px-3 py-1 ${
+                      isActive('/essays') 
+                        ? 'text-primary border border-primary/50 bg-primary/10 rounded-full' 
+                        : 'text-muted-foreground hover:text-primary'
                     } ${
                       onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/essays')
                         ? 'opacity-60 cursor-not-allowed' : ''
@@ -273,8 +288,10 @@ const Header = () => {
                   <Link 
                     to="/lor" 
                     onClick={(e) => handleNavigation('/lor', e)}
-                    className={`text-sm font-medium transition-colors hover:text-primary ${
-                      isActive('/lor') ? 'text-primary' : 'text-muted-foreground'
+                    className={`text-sm font-medium transition-colors px-3 py-1 ${
+                      isActive('/lor') 
+                        ? 'text-primary border border-primary/50 bg-primary/10 rounded-full' 
+                        : 'text-muted-foreground hover:text-primary'
                     } ${
                       onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/lor')
                         ? 'opacity-60 cursor-not-allowed' : ''
@@ -296,8 +313,10 @@ const Header = () => {
                   <Link 
                     to="/deadlines" 
                     onClick={(e) => handleNavigation('/deadlines', e)}
-                    className={`text-sm font-medium transition-colors hover:text-primary ${
-                      isActive('/deadlines') ? 'text-primary' : 'text-muted-foreground'
+                    className={`text-sm font-medium transition-colors px-3 py-1 ${
+                      isActive('/deadlines') 
+                        ? 'text-primary border border-primary/50 bg-primary/10 rounded-full' 
+                        : 'text-muted-foreground hover:text-primary'
                     } ${
                       onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/deadlines')
                         ? 'opacity-60 cursor-not-allowed' : ''

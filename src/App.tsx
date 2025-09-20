@@ -17,7 +17,6 @@ import About from "./pages/About";
 import AboutDiya from "./pages/AboutDia";
 import NotFound from "./pages/NotFound";
 import Onboarding from "./pages/Onboarding";
-import ConversationHistory from "./pages/ConversationHistory";
 import Resume from "./pages/Resume";
 import Signup from "./pages/Signup";
 import LOR from "./pages/LOR";
@@ -53,7 +52,6 @@ const App = () => (
           <Route path="/deadlines" element={<AuthenticationGuard><Deadlines /></AuthenticationGuard>} />
           <Route path="/profile" element={<AuthenticationGuard><Profile /></AuthenticationGuard>} />
           <Route path="/onboarding" element={<AuthenticationGuard><Onboarding /></AuthenticationGuard>} />
-          <Route path="/conversation-history" element={<AuthenticationGuard><ConversationHistory /></AuthenticationGuard>} />
           <Route path="/resume" element={<AuthenticationGuard><Resume /></AuthenticationGuard>} />
           <Route path="/lor" element={<AuthenticationGuard><LOR /></AuthenticationGuard>} />
 

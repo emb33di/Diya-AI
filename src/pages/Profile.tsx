@@ -18,6 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import OnboardingGuard from "@/components/OnboardingGuard";
+import GradientBackground from "@/components/GradientBackground";
 import { debugSupabase406, testCreateUserProfile } from "@/utils/debugSupabase";
 import { getValidApplyingToValues } from "@/utils/userProfileUtils";
 
@@ -1195,8 +1196,7 @@ export default function Profile() {
 
   return (
     <OnboardingGuard pageName="Profile">
-      <div className="min-h-screen bg-background">
-        <div className="bg-gradient-to-br from-background via-primary/5 to-secondary/10 p-4 min-h-screen">
+      <GradientBackground>
         <div className="container mx-auto py-8 max-w-4xl">
       <div className="mb-8">
         <h1 className="text-3xl font-bold">
@@ -2204,8 +2204,7 @@ export default function Profile() {
         </form>
       </Form>
       </div>
-      </div>
-    </div>
+        </GradientBackground>
     </OnboardingGuard>
   );
 }
