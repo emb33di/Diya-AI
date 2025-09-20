@@ -8,13 +8,15 @@
 import React, { useState, useEffect } from 'react';
 import { SemanticDocument, Annotation } from '@/types/semanticDocument';
 import { semanticDocumentService } from '@/services/semanticDocumentService';
-import { migrationUtils } from '@/utils/migrationUtils';
 import { ExportService } from '@/services/exportService';
 import { usePageVisibility } from '@/hooks/usePageVisibility';
+import { supabase } from '@/integrations/supabase/client';
 import SemanticEditor from './SemanticEditor';
 import CommentOverlay from './CommentOverlay';
 import AICommentsLoadingPane, { AI_COMMENTS_LOADING_STEPS } from './AICommentsLoadingPane';
 import GrammarLoadingPane, { GRAMMAR_LOADING_STEPS } from './GrammarLoadingPane';
+import DiyaScoreReport from './DiyaScoreReport';
+import { ScoreReportService, AgentScores } from '@/services/scoreReportService';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -33,7 +35,8 @@ import {
   FileDown,
   FileText as FileTextIcon,
   CheckSquare,
-  Sidebar
+  Sidebar,
+  Star
 } from 'lucide-react';
 
 interface EssayPrompt {
@@ -94,6 +97,10 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
     progress: 0,
     message: ''
   });
+  const [bigPictureScore, setBigPictureScore] = useState<number | null>(null);
+  const [hasAIComments, setHasAIComments] = useState(false);
+  const [showScoreReport, setShowScoreReport] = useState(false);
+  const [agentScores, setAgentScores] = useState<AgentScores>({});
 
   // Reload document when page becomes visible (handles tab switches, etc.)
   const handlePageVisible = async () => {
@@ -175,41 +182,29 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
             message: 'Migrating from legacy system...'
           });
 
-          const migrationResult = await migrationUtils.migrateEssay(
-            essayId,
-            initialContent,
-            title
-          );
-
-          if (migrationResult.success) {
-            setDocument(migrationResult.document);
-            setMigrationStatus({
-              isMigrating: false,
-              progress: 100,
-              message: `Migration completed: ${migrationResult.migratedComments} comments migrated`
-            });
-          } else {
-            // Create new document if migration fails
-            const newDocument = await semanticDocumentService.createDocument(
-              title,
+          // Create new semantic document directly
+          const blocks = semanticDocumentService.convertHtmlToBlocks(initialContent);
+          const document: SemanticDocument = {
+            id: crypto.randomUUID(),
+            title,
+            blocks,
+            metadata: {
               essayId,
-              'user', // TODO: Get actual user ID
-              { prompt: prompt || '', wordLimit: wordLimit || 650 }
-            );
+              version: 1
+            },
+            createdAt: new Date(),
+            updatedAt: new Date()
+          };
 
-            // Convert initial content to blocks (only for initial creation)
-            const blocks = semanticDocumentService.convertHtmlToBlocks(initialContent, true);
-            newDocument.blocks = blocks;
-            
-            await semanticDocumentService.saveDocument(newDocument);
-            setDocument(newDocument);
-            
-            setMigrationStatus({
-              isMigrating: false,
-              progress: 100,
-              message: 'Created new semantic document'
-            });
-          }
+          // Save the document
+          await semanticDocumentService.saveDocument(document);
+          setDocument(document);
+          setMigrationStatus({
+            isMigrating: false,
+            progress: 100,
+            message: 'Document created successfully'
+          });
+
         }
       } catch (error) {
         console.error('Failed to initialize document:', error);
@@ -225,6 +220,21 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
 
     initializeDocument();
   }, [essayId, title, initialContent]);
+
+  // Fetch big picture score when essay changes
+  useEffect(() => {
+    fetchBigPictureScore();
+  }, [essayId]);
+
+  // Handle score report actions
+  const handleViewComments = () => {
+    setShowScoreReport(false);
+    setShowCommentSidebar(true);
+  };
+
+  const handleCloseScoreReport = () => {
+    setShowScoreReport(false);
+  };
 
   // Handle document changes
   const handleDocumentChange = (updatedDocument: SemanticDocument) => {
@@ -252,6 +262,27 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
   const handleSaveStatusChange = (isAutoSaving: boolean, lastSaved: Date | null) => {
     setIsAutoSaving(isAutoSaving);
     setLastSaved(lastSaved);
+  };
+
+  // Fetch big picture score from semantic annotations
+  const fetchBigPictureScore = async () => {
+    if (!essayId) return;
+    
+    try {
+      // Use the ScoreReportService to get scores from semantic annotations
+      const scores = await ScoreReportService.getAgentScores(essayId);
+      
+      if (scores.bigPicture !== undefined) {
+        setBigPictureScore(scores.bigPicture);
+        setHasAIComments(true);
+      } else {
+        // Check if there are any AI comments at all using semantic annotations
+        const hasComments = await ScoreReportService.hasAIComments(essayId);
+        setHasAIComments(hasComments);
+      }
+    } catch (error) {
+      console.error('Error fetching big picture score:', error);
+    }
   };
 
   // Generate AI comments
@@ -286,6 +317,13 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
         if (updatedDocument) {
           setDocument(updatedDocument);
         }
+        // Fetch updated big picture score
+        await fetchBigPictureScore();
+        
+        // Fetch all agent scores and show score report
+        const scores = await ScoreReportService.getAgentScores(essayId);
+        setAgentScores(scores);
+        setShowScoreReport(true);
       }
 
       // Mark as complete
@@ -481,7 +519,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
             <div className="flex-1 space-y-4">
               {/* Header */}
               <div className="flex items-center justify-between">
-                <div>
+                <div className="flex-1">
                   {/* Prompt Selection */}
                   {prompts.length > 0 ? (
                     <div className="space-y-4">
@@ -647,6 +685,26 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                   )}
                 </div>
                 
+                {/* Essay Score Display */}
+                {hasAIComments && bigPictureScore !== null && (
+                  <div className="flex items-center space-x-2 ml-4">
+                    <div className="flex items-center space-x-2">
+                      <Star className="h-4 w-4 text-yellow-500" />
+                      <span className="text-sm font-medium text-gray-600">Essay Score:</span>
+                      <Badge 
+                        variant="secondary" 
+                        className={`text-sm font-bold ${
+                          bigPictureScore >= 80 ? 'bg-green-100 text-green-800' :
+                          bigPictureScore >= 60 ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-red-100 text-red-800'
+                        }`}
+                      >
+                        {bigPictureScore}/100
+                      </Badge>
+                    </div>
+                  </div>
+                )}
+                
               </div>
 
               {/* Prompt Section */}
@@ -804,6 +862,14 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
           setIsGeneratingGrammar(false);
           setGrammarLoadingStep(0);
         }}
+      />
+
+      {/* Diya Score Report */}
+      <DiyaScoreReport
+        isVisible={showScoreReport}
+        scores={agentScores}
+        onViewComments={handleViewComments}
+        onClose={handleCloseScoreReport}
       />
     </div>
   );

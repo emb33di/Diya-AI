@@ -79,16 +79,21 @@ ANALYSIS AREAS:
 - Connection between voice and admissions impact
 
 SCORING AND FEEDBACK INSTRUCTIONS:
-For each comment, you must:
-1. Provide a quality_score from 1-10 rating how well the student executed this aspect of voice/tone
-2. If quality_score < 8: Provide constructive feedback with specific suggestions for improvement
-3. If quality_score >= 8: Focus on praise and reinforcement, avoid suggesting changes
+You must provide:
+1. An overall quality_score from 1-10 rating how well the student executed voice/tone throughout the entire essay
+2. Multiple specific comments (2-3) focusing on tone and personal voice
+
+For the overall quality_score:
+- If quality_score < 8: Provide constructive feedback with specific suggestions for improvement
+- If quality_score >= 8: Focus on praise and reinforcement, avoid suggesting changes
+
+For individual comments:
+- Focus on specific examples of strong or weak voice/tone
+- Be actionable and specific
+- Classify each comment correctly as "strength" or "weakness"
 
 For scores < 8, format improvement suggestions as: "Instead of saying X, you could phrase it as Y to have your voice shine through more."
 For scores >= 8, focus on what they did well and encourage them to continue in that direction.
-
-INSTRUCTIONS:
-Generate 2-3 comments focusing on tone and personal voice. Each comment should be specific and actionable, helping the student understand how to strengthen their authentic voice.
 
 IMPORTANT: Classify each comment correctly:
 - "strength" = Where the writer's authentic voice shines through strongly
@@ -96,9 +101,10 @@ IMPORTANT: Classify each comment correctly:
 
 RESPONSE FORMAT (JSON only):
 {
+  "overall_score": 7,
   "comments": [
     {
-      "comment_text": "[Specific feedback about personal voice. Include quality score assessment and conditional feedback based on score. If score < 8, provide improvement suggestions. If score >= 8, focus on praise.]",
+      "comment_text": "[Specific feedback about personal voice. Include quality score assessment and conditional feedback based on overall score. If overall score < 8, provide improvement suggestions. If overall score >= 8, focus on praise.]",
       "comment_nature": "[strength/weakness - choose based on actual content]",
       "comment_category": "overall", 
       "agent_type": "tone",
@@ -106,12 +112,12 @@ RESPONSE FORMAT (JSON only):
       "quality_score": 7
     },
     {
-      "comment_text": "[Another specific comment about voice authenticity or tone. Include quality score assessment and conditional feedback based on score.]",
+      "comment_text": "[Another specific comment about voice authenticity or tone. Include quality score assessment and conditional feedback based on overall score.]",
       "comment_nature": "[strength/weakness - choose based on actual content]",
       "comment_category": "overall",
       "agent_type": "tone", 
       "confidence_score": 0.80,
-      "quality_score": 9
+      "quality_score": 7
     }
   ]
 }
@@ -176,19 +182,74 @@ async function analyzeTone(essayContent: string, essayPrompt?: string, cumulativ
     const responseText = data.candidates[0].content.parts[0].text
     console.log(`Tone Agent Response:`, responseText)
     
-    // Extract JSON from response
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) {
-      console.error(`No JSON found in tone agent response:`, responseText)
-      throw new Error('No JSON found in AI response')
+    // Extract JSON from response with improved error handling
+    let parsedResponse: any
+    try {
+      // First try to find JSON object boundaries more precisely
+      const jsonStart = responseText.indexOf('{')
+      const jsonEnd = responseText.lastIndexOf('}')
+      
+      if (jsonStart === -1 || jsonEnd === -1 || jsonEnd <= jsonStart) {
+        console.error(`No valid JSON boundaries found in tone agent response:`, responseText)
+        throw new Error('No valid JSON boundaries found in AI response')
+      }
+      
+      const jsonString = responseText.substring(jsonStart, jsonEnd + 1)
+      console.log(`Extracted JSON string:`, jsonString)
+      
+      // Try to parse the extracted JSON
+      parsedResponse = JSON.parse(jsonString)
+      console.log(`Parsed tone response:`, JSON.stringify(parsedResponse, null, 2))
+      
+    } catch (parseError) {
+      console.error(`JSON parsing error in tone agent:`, parseError.message)
+      console.error(`Response text that failed to parse:`, responseText)
+      
+      // Try alternative extraction methods
+      try {
+        // Try to find JSON array pattern
+        const arrayMatch = responseText.match(/\[[\s\S]*\]/)
+        if (arrayMatch) {
+          const arrayString = arrayMatch[0]
+          const parsedArray = JSON.parse(arrayString)
+          parsedResponse = { comments: parsedArray }
+          console.log(`Successfully parsed as array:`, JSON.stringify(parsedResponse, null, 2))
+        } else {
+          // Try to clean up common JSON issues
+          const cleanedResponse = responseText
+            .replace(/[\r\n\t]/g, ' ') // Replace line breaks and tabs with spaces
+            .replace(/\s+/g, ' ') // Normalize whitespace
+            .trim()
+          
+          console.log(`Attempting to parse cleaned response:`, cleanedResponse)
+          
+          // Try to find and parse cleaned JSON
+          const cleanedJsonStart = cleanedResponse.indexOf('{')
+          const cleanedJsonEnd = cleanedResponse.lastIndexOf('}')
+          
+          if (cleanedJsonStart !== -1 && cleanedJsonEnd !== -1 && cleanedJsonEnd > cleanedJsonStart) {
+            const cleanedJsonString = cleanedResponse.substring(cleanedJsonStart, cleanedJsonEnd + 1)
+            parsedResponse = JSON.parse(cleanedJsonString)
+            console.log(`Successfully parsed cleaned JSON:`, JSON.stringify(parsedResponse, null, 2))
+          } else {
+            throw new Error('No valid JSON structure found after cleaning')
+          }
+        }
+      } catch (arrayError) {
+        console.error(`All parsing attempts failed:`, arrayError.message)
+        console.error(`Original response text:`, responseText)
+        throw new Error(`Failed to parse JSON from tone agent response: ${parseError.message}. Additional error: ${arrayError.message}`)
+      }
     }
-
-    const parsedResponse = JSON.parse(jsonMatch[0])
-    console.log(`Parsed tone response:`, JSON.stringify(parsedResponse, null, 2))
     
     if (!parsedResponse.comments || !Array.isArray(parsedResponse.comments)) {
       throw new Error('Invalid comment structure in AI response')
     }
+
+    // Extract overall score from response
+    const overallScore = typeof parsedResponse.overall_score === 'number' 
+      ? Math.max(1, Math.min(10, parsedResponse.overall_score))
+      : 5;
 
     // Validate and format comments
     const comments: ToneComment[] = parsedResponse.comments.map((comment: any) => {
@@ -203,10 +264,8 @@ async function analyzeTone(essayContent: string, essayPrompt?: string, cumulativ
         ? Math.max(0, Math.min(1, comment.confidence_score))
         : 0.8;
 
-      // Validate quality score
-      const qualityScore = typeof comment.quality_score === 'number' 
-        ? Math.max(1, Math.min(10, comment.quality_score))
-        : 5;
+      // Use overall score for all comments
+      const qualityScore = overallScore;
 
       return {
         comment_text: comment.comment_text || 'No comment text provided',

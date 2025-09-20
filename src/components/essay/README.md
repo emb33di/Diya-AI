@@ -46,13 +46,12 @@ The essay editing system is built on a modern semantic document architecture tha
 3. **Progressive Enhancement** - Comments that adapt to writing quality
 4. **Advanced Features** - Sentiment analysis, style recommendations
 
-### 📁 Files Created:
+### 📁 Current Files:
 
-- `src/services/commentService.ts` - Database operations
-- `src/components/essay/extensions/CommentExtension.ts` - TipTap extension
-- `src/components/essay/CommentPanel.tsx` - Comment UI
-- `src/components/essay/CommentableTipTapEditor.tsx` - Editor with comments
-- `src/components/essay/EnhancedEssayEditor.tsx` - Complete solution
-- `supabase/migrations/20250905222056_create_essay_comments.sql` - Database schema
+- `src/services/semanticDocumentService.ts` - Semantic document operations
+- `src/components/essay/SemanticEditor.tsx` - Core semantic editor
+- `src/components/essay/SemanticEssayEditor.tsx` - Complete essay editor
+- `src/components/essay/CommentSidebar.tsx` - Comment management UI
+- `src/components/essay/CommentOverlay.tsx` - Comment display overlay
 
 The foundation is solid and ready for AI integration! 🎯

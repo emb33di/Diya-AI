@@ -784,7 +784,8 @@ function convertAgentCommentsToSemantic(
         category: agentComment.comment_category || agentComment.commentCategory || 'inline',
         subcategory: agentComment.comment_subcategory || agentComment.commentSubcategory || 'paragraph-specific',
         commentNature: commentNature,
-        commentCategory: commentCategory
+        commentCategory: commentCategory,
+        qualityScore: agentComment.quality_score || agentComment.qualityScore // Preserve quality score from agents
       }
     };
 

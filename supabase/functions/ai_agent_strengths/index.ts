@@ -49,10 +49,18 @@ CRITICAL GUIDANCE:
 - Each comment should be around 50 words
 - Identify specific text if possible for quotations
 
-INSTRUCTIONS:
-Generate 2-4 SHORT, SPECIFIC strength comments. Each comment should focus on ONE specific area of strength. Keep each comment concise (around 50 words) and actionable.
+QUALITY THRESHOLD REQUIREMENT:
+- ONLY provide strength comments if there are GENUINE, MEANINGFUL strengths worth highlighting
+- Do NOT provide generic praise or weak compliments
+- Do NOT provide comments just to fill a quota
+- If the essay lacks significant strengths, return an empty comments array
+- Only highlight strengths that would genuinely impress admissions officers
+- Avoid praising mediocre or average elements
 
-IDENTIFY SPECIFIC STRENGTHS:
+INSTRUCTIONS:
+Analyze the essay for genuine strengths. If you find meaningful strengths worth highlighting, generate 1-3 SHORT, SPECIFIC strength comments. If the essay lacks significant strengths, return an empty comments array.
+
+IDENTIFY SPECIFIC STRENGTHS (only comment if these are genuinely strong):
 - Strong opening hook or thesis statement
 - Compelling personal story or example
 - Clear argument structure and flow
@@ -72,17 +80,11 @@ RESPONSE FORMAT (JSON only):
       "agent_type": "strengths",
       "anchor_text": "specific text from the essay that demonstrates this strength (if applicable)",
       "confidence_score": 0.85
-    },
-    {
-      "comment_text": "[Another short, specific strength - around 50 words]",
-      "comment_nature": "strength",
-      "comment_category": "overall",
-      "agent_type": "strengths", 
-      "anchor_text": "another specific text from the essay (if applicable)",
-      "confidence_score": 0.80
     }
   ]
 }
+
+IMPORTANT: If the essay lacks genuine strengths worth highlighting, return: {"comments": []}
 
 Be encouraging and specific. Focus on strategic strengths that are working well for admissions success.`
 

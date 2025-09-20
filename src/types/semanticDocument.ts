@@ -214,33 +214,3 @@ export type SemanticEditorEvent =
   | { type: 'document-changed'; document: SemanticDocument }
   | { type: 'ai-comments-generated'; comments: Annotation[] };
 
-/**
- * Migration utilities for converting from old system
- */
-export interface LegacyComment {
-  id: string;
-  text_selection: {
-    start: { pos: number; path: number[] };
-    end: { pos: number; path: number[] };
-  };
-  anchor_text: string;
-  comment_text: string;
-  comment_type: string;
-  paragraph_id?: string;
-  paragraph_index?: number;
-  ai_generated: boolean;
-  resolved: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-/**
- * Migration result
- */
-export interface MigrationResult {
-  success: boolean;
-  document: SemanticDocument;
-  migratedComments: number;
-  failedComments: number;
-  errors: string[];
-}

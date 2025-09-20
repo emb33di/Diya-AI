@@ -167,15 +167,65 @@ async function analyzeGrammarSpelling(
     const responseText = data.candidates[0].content.parts[0].text
     console.log(`Grammar & Spelling Agent Response:`, responseText)
     
-    // Extract JSON from response
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) {
-      console.error(`No JSON found in grammar & spelling agent response:`, responseText)
-      throw new Error('No JSON found in AI response')
+    // Extract JSON from response with improved error handling
+    let parsedResponse: any
+    try {
+      // First try to find JSON object boundaries more precisely
+      const jsonStart = responseText.indexOf('{')
+      const jsonEnd = responseText.lastIndexOf('}')
+      
+      if (jsonStart === -1 || jsonEnd === -1 || jsonEnd <= jsonStart) {
+        console.error(`No valid JSON boundaries found in grammar & spelling agent response:`, responseText)
+        throw new Error('No valid JSON boundaries found in AI response')
+      }
+      
+      const jsonString = responseText.substring(jsonStart, jsonEnd + 1)
+      console.log(`Extracted JSON string:`, jsonString)
+      
+      // Try to parse the extracted JSON
+      parsedResponse = JSON.parse(jsonString)
+      console.log(`Parsed grammar & spelling response:`, JSON.stringify(parsedResponse, null, 2))
+      
+    } catch (parseError) {
+      console.error(`JSON parsing error in grammar & spelling agent:`, parseError.message)
+      console.error(`Response text that failed to parse:`, responseText)
+      
+      // Try alternative extraction methods
+      try {
+        // Try to find JSON array pattern
+        const arrayMatch = responseText.match(/\[[\s\S]*\]/)
+        if (arrayMatch) {
+          const arrayString = arrayMatch[0]
+          const parsedArray = JSON.parse(arrayString)
+          parsedResponse = { comments: parsedArray }
+          console.log(`Successfully parsed as array:`, JSON.stringify(parsedResponse, null, 2))
+        } else {
+          // Try to clean up common JSON issues
+          const cleanedResponse = responseText
+            .replace(/[\r\n\t]/g, ' ') // Replace line breaks and tabs with spaces
+            .replace(/\s+/g, ' ') // Normalize whitespace
+            .trim()
+          
+          console.log(`Attempting to parse cleaned response:`, cleanedResponse)
+          
+          // Try to find and parse cleaned JSON
+          const cleanedJsonStart = cleanedResponse.indexOf('{')
+          const cleanedJsonEnd = cleanedResponse.lastIndexOf('}')
+          
+          if (cleanedJsonStart !== -1 && cleanedJsonEnd !== -1 && cleanedJsonEnd > cleanedJsonStart) {
+            const cleanedJsonString = cleanedResponse.substring(cleanedJsonStart, cleanedJsonEnd + 1)
+            parsedResponse = JSON.parse(cleanedJsonString)
+            console.log(`Successfully parsed cleaned JSON:`, JSON.stringify(parsedResponse, null, 2))
+          } else {
+            throw new Error('No valid JSON structure found after cleaning')
+          }
+        }
+      } catch (arrayError) {
+        console.error(`All parsing attempts failed:`, arrayError.message)
+        console.error(`Original response text:`, responseText)
+        throw new Error(`Failed to parse JSON from grammar & spelling agent response: ${parseError.message}. Additional error: ${arrayError.message}`)
+      }
     }
-
-    const parsedResponse = JSON.parse(jsonMatch[0])
-    console.log(`Parsed grammar & spelling response:`, JSON.stringify(parsedResponse, null, 2))
     
     if (!parsedResponse.comments || !Array.isArray(parsedResponse.comments)) {
       throw new Error('Invalid comment structure in AI response')
