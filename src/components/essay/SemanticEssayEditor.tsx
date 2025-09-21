@@ -10,6 +10,7 @@ import { SemanticDocument, Annotation } from '@/types/semanticDocument';
 import { semanticDocumentService } from '@/services/semanticDocumentService';
 import { ExportService } from '@/services/exportService';
 import { usePageVisibility } from '@/hooks/usePageVisibility';
+import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import SemanticEditor from './SemanticEditor';
 import CommentOverlay from './CommentOverlay';
@@ -102,6 +103,9 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
   const [hasAIComments, setHasAIComments] = useState(false);
   const [showScoreReport, setShowScoreReport] = useState(false);
   const [agentScores, setAgentScores] = useState<AgentScores>({});
+
+  // Toast for user feedback
+  const { toast } = useToast();
 
   // Reload document when page becomes visible (handles tab switches, etc.)
   const handlePageVisible = async () => {
@@ -230,9 +234,9 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
   // Handle score report actions
   const handleViewComments = () => {
     // Force a re-render to show the comments
-    setShowComments(true);
+    setShowCommentSidebar(true);
     // Optionally scroll to comments section
-    const commentsElement = document.querySelector('.comment-sidebar');
+    const commentsElement = window.document.querySelector('.comment-sidebar');
     if (commentsElement) {
       commentsElement.scrollIntoView({ behavior: 'smooth' });
     }
@@ -431,28 +435,56 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
   const exportAsDOCX = async () => {
     if (!document) return;
 
-    const htmlContent = semanticDocumentService.convertBlocksToHtml(document.blocks);
-    
-    await ExportService.exportToDOCX({
-      title: document.title,
-      content: htmlContent,
-      prompt: prompt || document.metadata.prompt,
-      wordLimit: wordLimit || document.metadata.wordLimit
-    });
+    try {
+      const htmlContent = semanticDocumentService.convertBlocksToHtml(document.blocks);
+      
+      await ExportService.exportToDOCX({
+        title: document.title,
+        content: htmlContent,
+        prompt: prompt || document.metadata.prompt,
+        wordLimit: wordLimit || document.metadata.wordLimit
+      });
+      
+      toast({
+        title: "Export Successful",
+        description: "Your essay has been exported as a DOCX file.",
+      });
+    } catch (error) {
+      console.error('Export error:', error);
+      toast({
+        title: "Export Failed",
+        description: "There was an error exporting your essay. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Export document as PDF
   const exportAsPDF = async () => {
     if (!document) return;
 
-    const htmlContent = semanticDocumentService.convertBlocksToHtml(document.blocks);
-    
-    await ExportService.exportToPDF({
-      title: document.title,
-      content: htmlContent,
-      prompt: prompt || document.metadata.prompt,
-      wordLimit: wordLimit || document.metadata.wordLimit
-    });
+    try {
+      const htmlContent = semanticDocumentService.convertBlocksToHtml(document.blocks);
+      
+      await ExportService.exportToPDF({
+        title: document.title,
+        content: htmlContent,
+        prompt: prompt || document.metadata.prompt,
+        wordLimit: wordLimit || document.metadata.wordLimit
+      });
+      
+      toast({
+        title: "Export Successful",
+        description: "Your essay has been exported as a PDF file.",
+      });
+    } catch (error) {
+      console.error('Export error:', error);
+      toast({
+        title: "Export Failed",
+        description: "There was an error exporting your essay. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Calculate word count from document blocks
@@ -767,7 +799,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                         </div>
                       </h3>
                       <div className="prose prose-gray max-w-none">
-                        <p className="text-gray-700 leading-relaxed m-0 text-lg" style={{ fontFamily: 'Times New Roman, serif' }}>
+                        <p className="text-gray-700 leading-relaxed m-0 text-base" style={{ fontFamily: 'Arial, sans-serif' }}>
                           {prompt || document.metadata.prompt}
                         </p>
                       </div>

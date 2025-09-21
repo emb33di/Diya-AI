@@ -957,19 +957,19 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
                 }, 0);
               }
             }}
-            className="min-h-[2.5rem] resize-none border-none shadow-none focus-visible:ring-0 text-lg"
+            className="min-h-[2.5rem] resize-none border-none shadow-none focus-visible:ring-0 text-base"
             style={{
-              fontFamily: 'Times New Roman, serif',
+              fontFamily: 'Arial, sans-serif',
               lineHeight: '1.6',
             }}
             placeholder={block.position === 0 ? "Start writing here..." : ""}
           />
         ) : (
           <div
-            className="min-h-[2.5rem] cursor-text p-2 rounded hover:bg-gray-50 transition-colors text-lg"
+            className="min-h-[2.5rem] cursor-text p-2 rounded hover:bg-gray-50 transition-colors text-base"
             onClick={() => startEditingBlock(block.id)}
             style={{
-              fontFamily: 'Times New Roman, serif',
+              fontFamily: 'Arial, sans-serif',
               lineHeight: '1.6',
             }}
           >

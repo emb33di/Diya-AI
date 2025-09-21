@@ -1196,7 +1196,7 @@ const Essays = () => {
                     ) : (
                       <Textarea 
                         placeholder="Start writing your essay here..." 
-                        className="h-full w-full resize-none border-0 rounded-none focus:ring-0 text-lg leading-relaxed p-4 bg-background" 
+                        className="h-full w-full resize-none border-0 rounded-none focus:ring-0 text-base leading-relaxed p-4 bg-background" 
                         value={essayContent} 
                         onChange={e => handleEssayContentChange(e.target.value)} 
                         autoFocus
@@ -1430,7 +1430,7 @@ const Essays = () => {
                   </CardHeader>
                   
                   <CardContent className="p-0 min-h-full">
-                    <Textarea placeholder="Start writing your essay here..." className="h-full min-h-[500px] resize-none border-0 rounded-none focus:ring-0 text-lg leading-relaxed p-6" value={essayContent} onChange={e => handleEssayContentChange(e.target.value)} />
+                    <Textarea placeholder="Start writing your essay here..." className="h-full min-h-[500px] resize-none border-0 rounded-none focus:ring-0 text-base leading-relaxed p-6" value={essayContent} onChange={e => handleEssayContentChange(e.target.value)} />
                   </CardContent>
                 </Card>
               ) : selectedSchool ? (

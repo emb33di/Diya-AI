@@ -406,10 +406,10 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
                                 </div>
                               </div>
                               
-                              <p className="text-xs text-gray-700 mb-2 leading-relaxed break-words overflow-wrap-anywhere comment-content">{annotation.content}</p>
+                              <p className="text-base text-gray-700 mb-2 leading-relaxed break-words overflow-wrap-anywhere comment-content" style={{ fontFamily: 'Arial, sans-serif' }}>{annotation.content}</p>
                               
                               {annotation.targetText && (
-                                <div className="mt-2 p-2 bg-white rounded border text-xs text-gray-600 leading-relaxed break-words overflow-wrap-anywhere">
+                                <div className="mt-2 p-2 bg-white rounded border text-sm text-gray-600 leading-relaxed break-words overflow-wrap-anywhere" style={{ fontFamily: 'Arial, sans-serif' }}>
                                   <strong>{annotation.metadata?.agentType === 'grammar' ? 'Need to fix:' : 'Context:'}</strong> "{annotation.targetText}"
                                 </div>
                               )}
@@ -538,10 +538,10 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
                             </div>
                           </div>
                           
-                          <p className="text-xs text-gray-700 mb-2 leading-relaxed break-words overflow-wrap-anywhere comment-content">{annotation.content}</p>
+                          <p className="text-base text-gray-700 mb-2 leading-relaxed break-words overflow-wrap-anywhere comment-content" style={{ fontFamily: 'Arial, sans-serif' }}>{annotation.content}</p>
                           
                           {annotation.targetText && (
-                            <div className="mt-2 p-2 bg-white rounded border text-xs text-gray-600 leading-relaxed break-words overflow-wrap-anywhere">
+                            <div className="mt-2 p-2 bg-white rounded border text-sm text-gray-600 leading-relaxed break-words overflow-wrap-anywhere" style={{ fontFamily: 'Arial, sans-serif' }}>
                               <strong>{annotation.metadata?.agentType === 'grammar' ? 'Need to fix:' : 'Context:'}</strong> "{annotation.targetText}"
                             </div>
                           )}

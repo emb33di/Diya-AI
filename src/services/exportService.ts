@@ -23,14 +23,33 @@ export class ExportService {
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = html;
     
-    // Extract text content and clean up
-    let text = tempDiv.textContent || tempDiv.innerText || '';
+    // Extract text content while preserving paragraph structure
+    let text = '';
     
-    // Clean up extra whitespace and normalize line breaks
-    text = text.replace(/\s+/g, ' ').trim();
-    text = text.replace(/\n\s*\n/g, '\n\n'); // Double line breaks for paragraphs
+    // Process each element to preserve paragraph breaks
+    const elements = tempDiv.querySelectorAll('p, h1, h2, h3, h4, h5, h6, div, br');
     
-    return text;
+    if (elements.length > 0) {
+      elements.forEach((element, index) => {
+        const elementText = element.textContent?.trim() || '';
+        if (elementText) {
+          text += elementText;
+          // Add paragraph break after each element except the last one
+          if (index < elements.length - 1) {
+            text += '\n\n';
+          }
+        }
+      });
+    } else {
+      // Fallback to simple text extraction
+      text = tempDiv.textContent || tempDiv.innerText || '';
+    }
+    
+    // Clean up extra whitespace but preserve paragraph breaks
+    text = text.replace(/[ \t]+/g, ' '); // Replace multiple spaces/tabs with single space
+    text = text.replace(/\n\s*\n\s*\n/g, '\n\n'); // Remove excessive line breaks
+    
+    return text.trim();
   }
 
   /**
@@ -45,7 +64,8 @@ export class ExportService {
    * Export essay as DOCX with academic formatting
    */
   static async exportToDOCX(options: ExportOptions): Promise<void> {
-    const { title, content, prompt, wordLimit } = options;
+    try {
+      const { title, content, prompt, wordLimit } = options;
     
     // Convert HTML to plain text
     const plainText = this.htmlToPlainText(content);
@@ -61,13 +81,14 @@ export class ExportService {
           new TextRun({
             text: title,
             bold: true,
-            size: 24,
+            size: 32, // 16pt for title (docx uses half-points)
             font: 'Times New Roman'
           })
         ],
         alignment: AlignmentType.CENTER,
         spacing: {
-          after: 400, // Space after title
+          after: 480, // Space after title
+          line: 480, // Double line spacing
         }
       })
     );
@@ -80,13 +101,14 @@ export class ExportService {
             new TextRun({
               text: 'Essay Prompt:',
               bold: true,
-              size: 12,
+              size: 24, // 12pt (docx uses half-points)
               font: 'Times New Roman'
             })
           ],
           spacing: {
-            before: 200,
-            after: 200,
+            before: 240,
+            after: 120,
+            line: 480, // Double line spacing
           }
         })
       );
@@ -96,31 +118,34 @@ export class ExportService {
           children: [
             new TextRun({
               text: prompt,
-              size: 12,
+              size: 24, // 12pt (docx uses half-points)
               font: 'Times New Roman',
               italics: true
             })
           ],
           spacing: {
-            after: 400,
+            after: 480,
+            line: 480, // Double line spacing
           }
         })
       );
     }
     
     // Essay content
-    paragraphs.forEach(paragraph => {
+    paragraphs.forEach((paragraph, index) => {
       docSections.push(
         new Paragraph({
           children: [
             new TextRun({
               text: paragraph.trim(),
-              size: 12,
+              size: 24, // 12pt (docx uses half-points)
               font: 'Times New Roman'
             })
           ],
           spacing: {
             after: 240, // Double spacing (12pt * 2 = 24pt = 240 twips)
+            before: index === 0 ? 0 : 0, // No extra space before first paragraph
+            line: 480, // Double line spacing
           }
         })
       );
@@ -147,10 +172,19 @@ export class ExportService {
       );
     }
     
-    // Create document
+    // Create document with proper academic formatting
     const doc = new Document({
       sections: [{
-        properties: {},
+        properties: {
+          page: {
+            margin: {
+              top: 1000, // 1 inch top margin
+              right: 1000, // 1 inch right margin
+              bottom: 1000, // 1 inch bottom margin
+              left: 1000, // 1 inch left margin
+            },
+          },
+        },
         children: docSections,
       }],
       styles: {
@@ -163,6 +197,8 @@ export class ExportService {
             paragraph: {
               spacing: {
                 line: 480, // Double spacing (24pt * 2 = 48pt = 480 twips)
+                before: 0,
+                after: 0,
               },
             },
           },
@@ -171,8 +207,8 @@ export class ExportService {
     });
     
     // Generate and download
-    const buffer = await Packer.toBuffer(doc);
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    const arrayBuffer = await Packer.toArrayBuffer(doc);
+    const blob = new Blob([arrayBuffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
     const url = URL.createObjectURL(blob);
     
     const a = document.createElement('a');
@@ -182,13 +218,18 @@ export class ExportService {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error exporting DOCX:', error);
+      throw new Error('Failed to export DOCX file. Please try again.');
+    }
   }
 
   /**
    * Export essay as PDF with academic formatting
    */
   static async exportToPDF(options: ExportOptions): Promise<void> {
-    const { title, content, prompt, wordLimit } = options;
+    try {
+      const { title, content, prompt, wordLimit } = options;
     
     // Convert HTML to plain text
     const plainText = this.htmlToPlainText(content);
@@ -268,5 +309,9 @@ export class ExportService {
     
     // Download
     pdf.save(`${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`);
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+      throw new Error('Failed to export PDF file. Please try again.');
+    }
   }
 }

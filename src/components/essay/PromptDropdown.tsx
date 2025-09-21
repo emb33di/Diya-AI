@@ -200,7 +200,7 @@ const PromptDropdown: React.FC<PromptDropdownProps> = ({
           {selectedPrompt && (
             <div className="mt-6 pt-6 border-t border-gray-100">
               <div className="prose prose-gray max-w-none">
-                <p className="text-gray-700 leading-relaxed m-0 text-lg" style={{ fontFamily: 'Times New Roman, serif' }}>
+                <p className="text-gray-700 leading-relaxed m-0 text-base" style={{ fontFamily: 'Arial, sans-serif' }}>
                   {selectedPrompt.prompt}
                 </p>
               </div>

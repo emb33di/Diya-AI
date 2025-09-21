@@ -129,13 +129,13 @@ const CommentBubble: React.FC<CommentBubbleProps> = ({
             </div>
 
             {/* Content */}
-            <div className="text-sm mb-3">
+            <div className="text-base mb-3" style={{ fontFamily: 'Arial, sans-serif' }}>
               {annotation.content}
             </div>
 
             {/* Target Text */}
             {annotation.targetText && (
-              <div className="mb-3 p-2 bg-white/50 rounded text-xs">
+              <div className="mb-3 p-2 bg-white/50 rounded text-sm" style={{ fontFamily: 'Arial, sans-serif' }}>
                 <strong>Target:</strong> "{annotation.targetText}"
               </div>
             )}

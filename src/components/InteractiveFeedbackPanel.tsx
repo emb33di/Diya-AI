@@ -183,7 +183,7 @@ const InteractiveFeedbackPanel: React.FC<InteractiveFeedbackPanelProps> = ({
           </div>
 
           {/* Content */}
-          <p className="text-sm text-gray-700">{item.content}</p>
+          <p className="text-base text-gray-700" style={{ fontFamily: 'Arial, sans-serif' }}>{item.content}</p>
 
           {/* Actions */}
           <div className="flex items-center justify-between">
@@ -268,8 +268,8 @@ const InteractiveFeedbackPanel: React.FC<InteractiveFeedbackPanelProps> = ({
               <div className="flex items-start space-x-2">
                 <MessageSquare className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-blue-800 mb-1">Your Comment:</p>
-                  <p className="text-sm text-blue-700">{item.userComment}</p>
+                  <p className="text-base font-medium text-blue-800 mb-1" style={{ fontFamily: 'Arial, sans-serif' }}>Your Comment:</p>
+                  <p className="text-base text-blue-700" style={{ fontFamily: 'Arial, sans-serif' }}>{item.userComment}</p>
                 </div>
               </div>
             </div>
