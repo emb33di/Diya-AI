@@ -353,7 +353,7 @@ const Header = () => {
                       navigate('/#features');
                     }
                   }} 
-                  className="h-12 px-4 text-base font-medium text-black hover:text-black transition-colors duration-200 rounded-lg hover:bg-gray-100"
+                  className="h-12 px-4 text-base font-medium text-white hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/10"
                 >
                   About Diya
                 </button>
@@ -368,7 +368,7 @@ const Header = () => {
                       navigate('/#programs');
                     }
                   }} 
-                  className="h-12 px-4 text-base font-medium text-black hover:text-black transition-colors duration-200 rounded-lg hover:bg-gray-100"
+                  className="h-12 px-4 text-base font-medium text-white hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/10"
                 >
                   Students
                 </button>
@@ -383,7 +383,7 @@ const Header = () => {
                       navigate('/#pricing');
                     }
                   }} 
-                  className="h-12 px-4 text-base font-medium text-black hover:text-black transition-colors duration-200 rounded-lg hover:bg-gray-100"
+                  className="h-12 px-4 text-base font-medium text-white hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/10"
                 >
                   Pricing
                 </button>
@@ -398,7 +398,7 @@ const Header = () => {
                       navigate('/#founder');
                     }
                   }} 
-                  className="h-12 px-4 text-base font-medium text-black hover:text-black transition-colors duration-200 rounded-lg hover:bg-gray-100"
+                  className="h-12 px-4 text-base font-medium text-white hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/10"
                 >
                   Team
                 </button>
@@ -413,14 +413,14 @@ const Header = () => {
                       navigate('/#faq');
                     }
                   }} 
-                  className="h-12 px-4 text-base font-medium text-black hover:text-black transition-colors duration-200 rounded-lg hover:bg-gray-100"
+                  className="h-12 px-4 text-base font-medium text-white hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/10"
                 >
                   FAQs
                 </button>
                 </div>
               )}
               <Link to="/auth">
-                <Button size="lg" className="hover:shadow-[0_0_30px_hsl(var(--primary)/0.6)] transition-all duration-200 hover:bg-primary">
+                <Button size="lg" className="hover:shadow-[0_0_30px_hsl(var(--primary)/0.6)] transition-all duration-200 hover:bg-primary text-white">
                   Get Started
                 </Button>
               </Link>
