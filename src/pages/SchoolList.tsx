@@ -485,9 +485,9 @@ const SchoolList = () => {
         ref={setNodeRef}
         style={style}
         className={`shadow-md hover:shadow-lg transition-all duration-200 cursor-grab active:cursor-grabbing group hover:scale-[1.02] ${
-          school.category === 'reach' ? 'bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200/50' :
-          school.category === 'target' ? 'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200/50' :
-          'bg-gradient-to-br from-green-50 to-emerald-50 border-green-200/50'
+          school.category === 'reach' ? 'bg-gradient-to-br from-blue-100 to-indigo-100 border-blue-300/50' :
+          school.category === 'target' ? 'bg-gradient-to-br from-orange-100 to-amber-100 border-orange-300/50' :
+          'bg-gradient-to-br from-green-100 to-emerald-100 border-green-300/50'
         } ${isDragging ? 'shadow-2xl scale-105' : ''}`}
         {...attributes}
         {...listeners}
@@ -670,7 +670,7 @@ const SchoolList = () => {
           {/* Reach Schools */}
           <div>
             <div className="flex items-center space-x-2 mb-4">
-              <Star className="h-5 w-5 text-yellow-500" />
+              <Star className="h-5 w-5 text-blue-500" />
               <h2 className="text-xl font-semibold">Reach Schools</h2>
               <Badge variant="secondary">{reachSchools.length}</Badge>
             </div>
@@ -685,7 +685,7 @@ const SchoolList = () => {
           {/* Target Schools */}
           <div>
             <div className="flex items-center space-x-2 mb-4">
-              <Target className="h-5 w-5 text-blue-500" />
+              <Target className="h-5 w-5 text-orange-500" />
               <h2 className="text-xl font-semibold">Target Schools</h2>
               <Badge variant="secondary">{targetSchools.length}</Badge>
             </div>
