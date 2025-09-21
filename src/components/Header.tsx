@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useOnboardingStatus } from "@/hooks/useOnboardingStatus";
+import { useAuth } from "@/hooks/useAuth";
 import { useProfileCompletion } from "@/hooks/useProfileCompletion";
 import { getUserFirstName, fetchUserProfileData } from "@/utils/userNameUtils";
 import {
@@ -26,7 +26,7 @@ const Header = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [userFirstName, setUserFirstName] = useState<string>('');
-  const { onboardingCompleted, loading: onboardingLoading } = useOnboardingStatus();
+  const { onboardingCompleted, loading: onboardingLoading } = useAuth();
   const { completionPercentage, missingFields, loading: profileLoading } = useProfileCompletion();
   
   // Protected pages that require profile completion

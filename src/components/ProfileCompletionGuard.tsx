@@ -1,6 +1,6 @@
 import React from 'react';
 import { useProfileCompletion } from '@/hooks/useProfileCompletion';
-import { useOnboardingStatus } from '@/hooks/useOnboardingStatus';
+import { useAuth } from '@/hooks/useAuth';
 import ProfileCompletionLock from './ProfileCompletionLock';
 
 interface ProfileCompletionGuardProps {
@@ -12,7 +12,7 @@ const ProfileCompletionGuard: React.FC<ProfileCompletionGuardProps> = ({
   children, 
   pageName 
 }) => {
-  const { onboardingCompleted, loading: onboardingLoading } = useOnboardingStatus();
+  const { onboardingCompleted, loading: onboardingLoading } = useAuth();
   const { 
     completionPercentage, 
     missingFields, 

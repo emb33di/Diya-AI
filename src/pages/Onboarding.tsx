@@ -14,7 +14,7 @@ import { ElevenLabsAPI } from '@/utils/elevenLabsAPI';
 import { ConversationStorage } from '@/utils/conversationStorage';
 import { SchoolRecommendationService } from '@/services/schoolRecommendationService';
 import { useNavigate } from 'react-router-dom';
-import { useOnboardingStatus } from '@/hooks/useOnboardingStatus';
+import { useAuth } from '@/hooks/useAuth';
 import { ConversationResumeService } from '@/services/conversationResumeService';
 import VoiceOrb from '@/components/VoiceOrb';
 const ONBOARDING_AGENT_ID = import.meta.env.VITE_ELEVENLABS_AGENT_ID; // Replace with your actual agent ID from Eleven Labs
@@ -34,7 +34,7 @@ const Onboarding = () => {
     onboardingCompleted,
     loading: onboardingLoading,
     markOnboardingCompleted
-  } = useOnboardingStatus();
+  } = useAuth();
   const [sessionStarted, setSessionStarted] = useState(false);
   const [remainingTime, setRemainingTime] = useState(15 * 60); // 15 minutes in seconds
   const [studentName, setStudentName] = useState('');

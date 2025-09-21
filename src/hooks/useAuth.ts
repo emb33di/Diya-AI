@@ -8,7 +8,6 @@ export interface UserProfile {
   preferred_name: string | null;
   email_address: string | null;
   onboarding_complete: boolean;
-  applying_to: string | null;
 }
 
 export interface AuthState {
@@ -77,17 +76,30 @@ export const useAuth = () => {
 
     const fetchUserProfile = async (user: User) => {
       try {
-        // Query only the profiles table - much more efficient!
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('id, full_name, onboarding_complete, applying_to')
-          .eq('user_id', user.id)
-          .maybeSingle();
+        // Fetch profiles in parallel
+        const [basicProfileRes, detailedProfileRes] = await Promise.all([
+          supabase
+            .from('profiles')
+            .select('id, full_name, onboarding_complete')
+            .eq('user_id', user.id)
+            .maybeSingle(),
+          supabase
+            .from('user_profiles')
+            .select('preferred_name, email_address')
+            .eq('user_id', user.id)
+            .maybeSingle(),
+        ]);
 
-        if (error && error.code !== 'PGRST116') throw error;
+        const { data: basicProfile, error: basicError } = basicProfileRes;
+        const { data: detailedProfile, error: detailedError } = detailedProfileRes;
 
-        // If no profile exists, create one
-        if (!profile) {
+        if (basicError && basicError.code !== 'PGRST116') throw basicError;
+        if (detailedError && detailedError.code !== 'PGRST116') throw detailedError;
+
+        let finalBasicProfile = basicProfile;
+
+        // If no basic profile, create one
+        if (!finalBasicProfile) {
           console.log('No profile found, creating one for user:', user.id);
           const { data: newProfile, error: createError } = await supabase
             .from('profiles')
@@ -95,22 +107,24 @@ export const useAuth = () => {
               user_id: user.id,
               full_name: user.user_metadata?.full_name || `${user.user_metadata?.first_name || ''} ${user.user_metadata?.last_name || ''}`.trim() || null,
               onboarding_complete: false,
-              applying_to: user.user_metadata?.applying_to || null,
             })
-            .select('id, full_name, onboarding_complete, applying_to')
+            .select('id, full_name, onboarding_complete')
             .single();
 
           if (createError) throw createError;
-          profile = newProfile;
+          finalBasicProfile = newProfile;
+        }
+
+        if (!finalBasicProfile) {
+            throw new Error('Failed to create or fetch user profile.');
         }
 
         const combinedProfile: UserProfile = {
-          id: profile.id,
-          full_name: profile.full_name || user.user_metadata?.full_name || null,
-          preferred_name: null, // This field is not in profiles table, keeping null for now
-          email_address: user.email || null,
-          onboarding_complete: profile.onboarding_complete || false,
-          applying_to: profile.applying_to || null,
+          id: finalBasicProfile.id,
+          full_name: detailedProfile?.full_name || finalBasicProfile.full_name || user.user_metadata?.full_name || null,
+          preferred_name: detailedProfile?.preferred_name || null,
+          email_address: detailedProfile?.email_address || user.email || null,
+          onboarding_complete: finalBasicProfile.onboarding_complete || false,
         };
 
         if (isMounted) {

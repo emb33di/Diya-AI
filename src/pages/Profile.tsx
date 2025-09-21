@@ -6,7 +6,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-import { useOnboardingStatus } from "@/hooks/useOnboardingStatus";
+import { useAuth } from "@/hooks/useAuth";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -288,7 +288,7 @@ const countryCodes = [
 export default function Profile() {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { markOnboardingCompleted, onboardingCompleted } = useOnboardingStatus();
+  const { markOnboardingCompleted, onboardingCompleted } = useAuth();
   const [loading, setLoading] = useState(false);
   const [satScores, setSatScores] = useState<TestScore[]>([]);
   const [actScores, setActScores] = useState<TestScore[]>([]);

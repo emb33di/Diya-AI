@@ -1,5 +1,5 @@
 import React from 'react';
-import { useOnboardingStatus } from '@/hooks/useOnboardingStatus';
+import { useAuth } from '@/hooks/useAuth';
 import OnboardingLock from './OnboardingLock';
 
 interface OnboardingGuardProps {
@@ -13,7 +13,7 @@ const OnboardingGuard: React.FC<OnboardingGuardProps> = ({
   pageName, 
   allowAccess = false 
 }) => {
-  const { onboardingCompleted, loading } = useOnboardingStatus();
+  const { onboardingCompleted, loading } = useAuth();
 
   // Show loading state
   if (loading) {
