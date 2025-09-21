@@ -1037,7 +1037,7 @@ const Essays = () => {
                         <CardTitle className="text-base">Essay Prompt</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <p className="text-sm leading-relaxed text-muted-foreground mb-4">
+                        <p className="text-sm leading-relaxed text-muted-foreground mb-4" style={{ whiteSpace: 'pre-wrap' }}>
                           {selectedMobilePrompt.prompt}
                         </p>
                         <div className="flex items-center justify-between pt-2 border-t">

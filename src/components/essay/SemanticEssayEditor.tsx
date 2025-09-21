@@ -799,7 +799,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                         </div>
                       </h3>
                       <div className="prose prose-gray max-w-none">
-                        <p className="text-gray-700 leading-relaxed m-0 text-base" style={{ fontFamily: 'Arial, sans-serif' }}>
+                        <p className="text-gray-700 leading-relaxed m-0 text-base" style={{ fontFamily: 'Arial, sans-serif', whiteSpace: 'pre-wrap' }}>
                           {prompt || document.metadata.prompt}
                         </p>
                       </div>
