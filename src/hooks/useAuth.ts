@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -7,7 +7,8 @@ export interface UserProfile {
   full_name: string | null;
   preferred_name: string | null;
   email_address: string | null;
-  onboarding_complete: boolean | null;
+  onboarding_complete: boolean;
+  applying_to: string | null;
 }
 
 export interface AuthState {
@@ -18,229 +19,140 @@ export interface AuthState {
 }
 
 export const useAuth = () => {
-  const [authState, setAuthState] = useState<AuthState>({
-    user: null,
-    profile: null,
-    loading: true,
-    error: null,
+  const [authState, setAuthState] = useState<AuthState>(() => {
+    // Initialize from localStorage for faster initial load
+    try {
+      const cachedProfile = localStorage.getItem('user_profile');
+      if (cachedProfile) {
+        return {
+          user: null, // User object will be fetched async
+          profile: JSON.parse(cachedProfile),
+          loading: true, // Still loading session info
+          error: null,
+        };
+      }
+    } catch (error) {
+      console.warn('Failed to parse cached user profile:', error);
+    }
+    return {
+      user: null,
+      profile: null,
+      loading: true,
+      error: null,
+    };
   });
+
+  // Function to mark onboarding as completed
+  const markOnboardingCompleted = useCallback(async () => {
+    if (!authState.user) {
+      console.error('Cannot mark onboarding completed: no user found.');
+      return false;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({ onboarding_complete: true })
+        .eq('user_id', authState.user.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        const updatedProfile = { ...authState.profile, onboarding_complete: true } as UserProfile;
+        setAuthState(prev => ({ ...prev, profile: updatedProfile }));
+        localStorage.setItem('user_profile', JSON.stringify(updatedProfile));
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error marking onboarding as completed:', error);
+      return false;
+    }
+  }, [authState.user, authState.profile]);
 
   useEffect(() => {
     let isMounted = true;
-    
-    // Helper function to create timeout promise
-    const createTimeoutPromise = (timeoutMs: number) => 
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Request timeout')), timeoutMs)
-      );
 
-    // Helper function for retry with exponential backoff
-    const retryWithBackoff = async <T>(
-      operation: () => Promise<T>,
-      maxRetries: number = 3,
-      baseDelay: number = 1000
-    ): Promise<T> => {
-      let lastError: Error;
-      
-      for (let attempt = 0; attempt <= maxRetries; attempt++) {
-        try {
-          return await operation();
-        } catch (error) {
-          lastError = error as Error;
-          
-          // Don't retry on certain errors
-          if (error instanceof Error && (
-            error.message.includes('Invalid login credentials') ||
-            error.message.includes('User not found') ||
-            error.message.includes('Email not confirmed')
-          )) {
-            throw error;
-          }
-          
-          // Don't retry on the last attempt
-          if (attempt === maxRetries) {
-            throw lastError;
-          }
-          
-          // Calculate delay with exponential backoff
-          const delay = baseDelay * Math.pow(2, attempt);
-          console.warn(`Auth request failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${delay}ms:`, error);
-          
-          await new Promise(resolve => setTimeout(resolve, delay));
-        }
-      }
-      
-      throw lastError!;
-    };
-
-    // Fetch user profile from database with timeout and parallel requests
     const fetchUserProfile = async (user: User) => {
       try {
-        // Make both database calls in parallel for better performance
-        const [basicProfileResult, detailedProfileResult] = await Promise.allSettled([
-          Promise.race([
-            supabase
-              .from('profiles')
-              .select('id, full_name, onboarding_complete')
-              .eq('user_id', user.id)
-              .maybeSingle(),
-            createTimeoutPromise(15000) // 15 second timeout per request
-          ]),
-          Promise.race([
-            supabase
-              .from('user_profiles')
-              .select('preferred_name, email_address')
-              .eq('user_id', user.id)
-              .maybeSingle(),
-            createTimeoutPromise(15000) // 15 second timeout per request
-          ])
-        ]);
+        // Query only the profiles table - much more efficient!
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('id, full_name, onboarding_complete, applying_to')
+          .eq('user_id', user.id)
+          .maybeSingle();
 
-        // Handle basic profile result
-        let basicProfile = null;
-        if (basicProfileResult.status === 'fulfilled') {
-          const { data, error } = basicProfileResult.value;
-          if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-            console.warn('Error fetching basic profile:', error);
-            // Don't throw error, just log it and continue
-          } else {
-            basicProfile = data;
-          }
-        } else {
-          console.warn('Basic profile request failed:', basicProfileResult.reason);
-        }
+        if (error && error.code !== 'PGRST116') throw error;
 
-        // If no basic profile exists, create one
-        if (!basicProfile) {
+        // If no profile exists, create one
+        if (!profile) {
           console.log('No profile found, creating one for user:', user.id);
           const { data: newProfile, error: createError } = await supabase
             .from('profiles')
             .insert({
               user_id: user.id,
-              full_name: user.user_metadata?.full_name || user.user_metadata?.first_name + ' ' + user.user_metadata?.last_name || null,
-              onboarding_complete: false
+              full_name: user.user_metadata?.full_name || `${user.user_metadata?.first_name || ''} ${user.user_metadata?.last_name || ''}`.trim() || null,
+              onboarding_complete: false,
+              applying_to: user.user_metadata?.applying_to || null,
             })
-            .select()
+            .select('id, full_name, onboarding_complete, applying_to')
             .single();
-          
-          if (createError) {
-            console.error('Error creating profile:', createError);
-          } else {
-            basicProfile = newProfile;
-            console.log('Profile created successfully:', newProfile);
-          }
+
+          if (createError) throw createError;
+          profile = newProfile;
         }
 
-        // Handle detailed profile result
-        let detailedProfile = null;
-        if (detailedProfileResult.status === 'fulfilled') {
-          const { data, error } = detailedProfileResult.value;
-          if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-            console.warn('Failed to fetch detailed profile:', error);
-          } else {
-            detailedProfile = data;
-          }
-        } else {
-          console.warn('Detailed profile request failed:', detailedProfileResult.reason);
-        }
-
-        // Combine the data from both tables with proper fallback logic
-        const combinedProfile = {
-          id: basicProfile?.id || user.id,
-          // Prioritize user_profiles.full_name over profiles.full_name, then fall back to user metadata
-          full_name: detailedProfile?.full_name || basicProfile?.full_name || user.user_metadata?.full_name || null,
-          preferred_name: detailedProfile?.preferred_name || null,
-          email_address: detailedProfile?.email_address || user.email || null,
-          onboarding_complete: basicProfile?.onboarding_complete || false,
+        const combinedProfile: UserProfile = {
+          id: profile.id,
+          full_name: profile.full_name || user.user_metadata?.full_name || null,
+          preferred_name: null, // This field is not in profiles table, keeping null for now
+          email_address: user.email || null,
+          onboarding_complete: profile.onboarding_complete || false,
+          applying_to: profile.applying_to || null,
         };
 
-        // Debug logging to help troubleshoot name display issues
-        console.log('Profile data sources:', {
-          basicProfile: basicProfile?.full_name,
-          detailedProfile: detailedProfile?.full_name,
-          userMetadata: user.user_metadata?.full_name,
-          finalFullName: combinedProfile.full_name,
-          finalPreferredName: combinedProfile.preferred_name,
-          userEmail: user.email
-        });
-
         if (isMounted) {
-          setAuthState({
-            user,
-            profile: combinedProfile,
-            loading: false,
-            error: null,
-          });
+          setAuthState({ user, profile: combinedProfile, loading: false, error: null });
+          // Cache the profile for faster loads and offline resilience
+          localStorage.setItem('user_profile', JSON.stringify(combinedProfile));
         }
       } catch (error) {
         console.error('Error fetching user profile:', error);
         if (isMounted) {
-          setAuthState(prev => ({
-            ...prev,
-            loading: false,
-            error: error instanceof Error ? error.message : 'Failed to fetch profile',
-          }));
+          setAuthState(prev => ({ ...prev, loading: false, error: error instanceof Error ? error.message : 'Failed to fetch profile' }));
         }
       }
     };
 
-    // Get initial session with timeout and retry
-    const getInitialSession = async () => {
-      try {
-        const sessionResult = await retryWithBackoff(async () => {
-          return await Promise.race([
-            supabase.auth.getSession(),
-            createTimeoutPromise(20000) // 20 second timeout for initial session
-          ]);
-        });
-        
-        const { data: { session }, error } = sessionResult;
-        if (error) throw error;
+    const getSession = async () => {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error) {
+        console.error('Error getting session:', error);
+        if (isMounted) setAuthState({ user: null, profile: null, loading: false, error: error.message });
+        return;
+      }
 
-        if (session?.user) {
-          await fetchUserProfile(session.user);
-        } else {
-          if (isMounted) {
-            setAuthState({
-              user: null,
-              profile: null,
-              loading: false,
-              error: null,
-            });
-          }
-        }
-      } catch (error) {
-        console.error('Error getting initial session:', error);
+      if (session?.user) {
+        await fetchUserProfile(session.user);
+      } else {
+        if (isMounted) setAuthState({ user: null, profile: null, loading: false, error: null });
+      }
+    };
+
+    getSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        fetchUserProfile(session.user);
+      } else {
         if (isMounted) {
-          setAuthState({
-            user: null,
-            profile: null,
-            loading: false,
-            error: error instanceof Error ? error.message : 'Unknown error',
-          });
+          setAuthState({ user: null, profile: null, loading: false, error: null });
+          localStorage.removeItem('user_profile');
         }
       }
-    };
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (session?.user) {
-          await fetchUserProfile(session.user);
-        } else {
-          if (isMounted) {
-            setAuthState({
-              user: null,
-              profile: null,
-              loading: false,
-              error: null,
-            });
-          }
-        }
-      }
-    );
-
-    getInitialSession();
+    });
 
     return () => {
       isMounted = false;
@@ -249,20 +161,15 @@ export const useAuth = () => {
   }, []);
 
   const signOut = async () => {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-    } catch (error) {
-      console.error('Error signing out:', error);
-      setAuthState(prev => ({
-        ...prev,
-        error: error instanceof Error ? error.message : 'Failed to sign out',
-      }));
-    }
+    const { error } = await supabase.auth.signOut();
+    if (error) console.error('Error signing out:', error);
+    // The onAuthStateChange listener will handle clearing the state
   };
 
   return {
     ...authState,
+    onboardingCompleted: authState.profile?.onboarding_complete ?? null,
+    markOnboardingCompleted,
     signOut,
   };
 };
