@@ -43,10 +43,14 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
 
   const loadResumePreview = async () => {
     setLoading(true);
+    console.log('🔄 Starting resume preview load...');
+    
     try {
       const { data: { session } } = await supabase.auth.getSession();
+      console.log('🔐 Session check:', session ? 'Found' : 'Not found');
       
       if (!session) {
+        console.log('❌ No session found');
         toast({
           title: "Authentication required",
           description: "Please log in to preview your resume.",
@@ -55,6 +59,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
         return;
       }
 
+      console.log('📡 Making request to /functions/v1/preview-resume');
       const response = await fetch('/functions/v1/preview-resume', {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -62,21 +67,28 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
         }
       });
       
+      console.log('📊 Response status:', response.status);
+      console.log('📊 Response headers:', Object.fromEntries(response.headers.entries()));
+      
       if (response.ok) {
         const html = await response.text();
+        console.log('✅ HTML received, length:', html.length);
         setHtmlContent(html);
       } else {
-        throw new Error('Failed to generate preview');
+        const errorText = await response.text();
+        console.log('❌ Response error:', errorText);
+        throw new Error(`Failed to generate preview: ${response.status} - ${errorText}`);
       }
     } catch (error) {
-      console.error('Preview error:', error);
+      console.error('💥 Preview error:', error);
       toast({
         title: "Preview failed",
-        description: "Failed to generate resume preview. Please try again.",
+        description: `Failed to generate resume preview: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive"
       });
     } finally {
       setLoading(false);
+      console.log('🏁 Preview load completed');
     }
   };
 

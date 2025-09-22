@@ -495,10 +495,10 @@ const Resume = () => {
       )
     }));
     
-    // Auto-save after a short delay
+    // Auto-save after a longer delay to prevent excessive saves
     setTimeout(() => {
       saveResumeData();
-    }, 1000);
+    }, 2000);
   }, [saveResumeData]);
 
   // Function to remove an activity

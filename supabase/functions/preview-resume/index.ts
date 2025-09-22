@@ -45,8 +45,13 @@ interface UserProfile {
 }
 
 serve(async (req) => {
+  console.log('🚀 Preview-resume function called');
+  console.log('📋 Request method:', req.method);
+  console.log('📋 Request URL:', req.url);
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log('✅ CORS preflight request handled');
     return new Response('ok', { headers: corsHeaders })
   }
 
@@ -62,6 +67,7 @@ serve(async (req) => {
       }
     )
 
+    console.log('🔐 Getting authenticated user...');
     // Get the authenticated user
     const {
       data: { user },
@@ -69,6 +75,7 @@ serve(async (req) => {
     } = await supabaseClient.auth.getUser()
 
     if (userError || !user) {
+      console.log('❌ User authentication failed:', userError?.message);
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { 
@@ -77,7 +84,10 @@ serve(async (req) => {
         }
       )
     }
+    
+    console.log('✅ User authenticated:', user.id);
 
+    console.log('👤 Fetching user profile data...');
     // Fetch user profile data for resume header
     const { data: profileData, error: profileError } = await supabaseClient
       .from('user_profiles')
@@ -86,9 +96,13 @@ serve(async (req) => {
       .single()
 
     if (profileError && profileError.code !== 'PGRST116') {
+      console.log('❌ Profile fetch error:', profileError.message);
       throw new Error(`Failed to fetch user profile: ${profileError.message}`)
     }
+    
+    console.log('✅ Profile data:', profileData ? 'Found' : 'Not found');
 
+    console.log('📄 Fetching resume activities data...');
     // Fetch resume activities data
     const { data: resumeActivitiesData, error: resumeError } = await supabaseClient
       .from('resume_activities_with_bullets')
@@ -97,8 +111,11 @@ serve(async (req) => {
       .order('display_order')
 
     if (resumeError) {
+      console.log('❌ Resume data fetch error:', resumeError.message);
       throw new Error(`Failed to fetch resume data: ${resumeError.message}`)
     }
+    
+    console.log('✅ Resume activities count:', resumeActivitiesData?.length || 0);
 
     // Organize resume data by category
     const resumeData: ResumeData = {
@@ -134,8 +151,12 @@ serve(async (req) => {
       state: undefined
     }
 
+    console.log('🎨 Generating HTML from resume data...');
     // Generate HTML from resume data
     const htmlContent = generateResumeHtml(resumeData, userProfile)
+    
+    console.log('✅ HTML generated, length:', htmlContent.length);
+    console.log('📤 Returning HTML response...');
 
     // Return the HTML directly for preview
     return new Response(htmlContent, {

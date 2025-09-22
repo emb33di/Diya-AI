@@ -28,14 +28,21 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
   const [localActivity, setLocalActivity] = useState<ActivityData>(activity);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isInitialMount = useRef(true);
 
   // Update local state when activity prop changes
   useEffect(() => {
     setLocalActivity(activity);
+    isInitialMount.current = false;
   }, [activity]);
 
   // Debounced update to parent state when local state changes
   useEffect(() => {
+    // Skip if this is the initial mount
+    if (isInitialMount.current) {
+      return;
+    }
+
     // Clear existing timeout
     if (updateTimeoutRef.current) {
       clearTimeout(updateTimeoutRef.current);
