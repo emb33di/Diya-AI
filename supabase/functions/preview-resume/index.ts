@@ -186,427 +186,285 @@ function generateResumeHtml(data: ResumeData, userProfile: UserProfile): string 
     if (!fromDate && !toDate) return ''
     const from = fromDate || ''
     const to = isCurrent ? 'Present' : (toDate || '')
-    return from && to ? `${from} - ${to}` : (from || to)
+    return from && to ? `${from} – ${to}` : (from || to)
   }
 
   // Generate personal info section
   const personalInfoHtml = `
-    <div class="header">
-      <h1 class="name">${userProfile.full_name}</h1>
-      <div class="contact-info">
-        ${userProfile.email_address ? `<span>${userProfile.email_address}</span>` : ''}
-        ${userProfile.phone_number ? `<span>${userProfile.phone_number}</span>` : ''}
-        ${userProfile.city && userProfile.state ? `<span>${userProfile.city}, ${userProfile.state}</span>` : ''}
-      </div>
-    </div>
+    <header class="header">
+      <h1 class="name">${userProfile.full_name || 'Resume'}</h1>
+      <p class="contact-info">${userProfile.phone_number || ''}${userProfile.phone_number && userProfile.email_address ? ' | ' : ''}${userProfile.email_address || ''}</p>
+    </header>
   `
 
   // Generate academic section
   const academicHtml = academic && academic.length > 0 ? `
-    <div class="section education-section">
+    <section class="section">
       <h2 class="section-title">Education</h2>
       ${academic.map(item => `
-        <div class="item">
-          <div class="item-header">
-            <div class="item-title">
-              <strong>${item.title}</strong>
-            </div>
-            <div class="dates">${formatDateRange(item.from_date, item.to_date, item.is_current)}</div>
+        <div class="entry">
+          <div class="entry-header">
+            <span class="entry-title">${item.title}</span>
+            <span class="entry-dates">${formatDateRange(item.from_date, item.to_date, item.is_current)}</span>
           </div>
-          ${item.position ? `<div class="position">${item.position}</div>` : ''}
+          ${item.position ? `<div class="entry-position">${item.position}</div>` : ''}
           ${item.bullets && item.bullets.length > 0 ? `
-            <ul class="bullets">
+            <ul class="entry-bullets">
               ${item.bullets.map(bullet => `<li>${bullet.bullet_text}</li>`).join('')}
             </ul>
           ` : ''}
         </div>
       `).join('')}
-    </div>
+    </section>
   ` : ''
 
   // Generate experience section
   const experienceHtml = experience && experience.length > 0 ? `
-    <div class="section experience-section">
-      <h2 class="section-title">Professional Experience</h2>
+    <section class="section">
+      <h2 class="section-title">Experience</h2>
       ${experience.map(item => `
-        <div class="item">
-          <div class="item-header">
-            <div class="item-title">
-              <strong>${item.title}</strong>
-            </div>
-            <div class="dates">${formatDateRange(item.from_date, item.to_date, item.is_current)}</div>
+        <div class="entry">
+          <div class="entry-header">
+            <span class="entry-title">${item.title}</span>
+            <span class="entry-dates">${formatDateRange(item.from_date, item.to_date, item.is_current)}</span>
           </div>
-          ${item.position ? `<div class="position">${item.position}</div>` : ''}
+          ${item.position ? `<div class="entry-position">${item.position}</div>` : ''}
           ${item.bullets && item.bullets.length > 0 ? `
-            <ul class="bullets">
+            <ul class="entry-bullets">
               ${item.bullets.map(bullet => `<li>${bullet.bullet_text}</li>`).join('')}
             </ul>
           ` : ''}
         </div>
       `).join('')}
-    </div>
+    </section>
   ` : ''
 
   // Generate projects section
   const projectsHtml = projects && projects.length > 0 ? `
-    <div class="section projects-section">
+    <section class="section">
       <h2 class="section-title">Projects</h2>
       ${projects.map(item => `
-        <div class="item">
-          <div class="item-header">
-            <div class="item-title">
-              <strong>${item.title}</strong>
-            </div>
-            <div class="dates">${formatDateRange(item.from_date, item.to_date, item.is_current)}</div>
+        <div class="entry">
+          <div class="entry-header">
+            <span class="entry-title">${item.title}</span>
+            <span class="entry-dates">${formatDateRange(item.from_date, item.to_date, item.is_current)}</span>
           </div>
-          ${item.position ? `<div class="position">${item.position}</div>` : ''}
+          ${item.position ? `<div class="entry-position">${item.position}</div>` : ''}
           ${item.bullets && item.bullets.length > 0 ? `
-            <ul class="bullets">
+            <ul class="entry-bullets">
               ${item.bullets.map(bullet => `<li>${bullet.bullet_text}</li>`).join('')}
             </ul>
           ` : ''}
         </div>
       `).join('')}
-    </div>
+    </section>
   ` : ''
 
   // Generate extracurricular section
   const extracurricularHtml = extracurricular && extracurricular.length > 0 ? `
-    <div class="section extracurricular-section">
+    <section class="section">
       <h2 class="section-title">Extracurricular Activities</h2>
       ${extracurricular.map(item => `
-        <div class="item">
-          <div class="item-header">
-            <div class="item-title">
-              <strong>${item.title}</strong>
-            </div>
-            <div class="dates">${formatDateRange(item.from_date, item.to_date, item.is_current)}</div>
+        <div class="entry">
+          <div class="entry-header">
+            <span class="entry-title">${item.title}</span>
+            <span class="entry-dates">${formatDateRange(item.from_date, item.to_date, item.is_current)}</span>
           </div>
-          ${item.position ? `<div class="position">${item.position}</div>` : ''}
+          ${item.position ? `<div class="entry-position">${item.position}</div>` : ''}
           ${item.bullets && item.bullets.length > 0 ? `
-            <ul class="bullets">
+            <ul class="entry-bullets">
               ${item.bullets.map(bullet => `<li>${bullet.bullet_text}</li>`).join('')}
             </ul>
           ` : ''}
         </div>
       `).join('')}
-    </div>
+    </section>
   ` : ''
 
   // Generate volunteering section
   const volunteeringHtml = volunteering && volunteering.length > 0 ? `
-    <div class="section volunteering-section">
-      <h2 class="section-title">Volunteer Experience</h2>
+    <section class="section">
+      <h2 class="section-title">Volunteering</h2>
       ${volunteering.map(item => `
-        <div class="item">
-          <div class="item-header">
-            <div class="item-title">
-              <strong>${item.title}</strong>
-            </div>
-            <div class="dates">${formatDateRange(item.from_date, item.to_date, item.is_current)}</div>
+        <div class="entry">
+          <div class="entry-header">
+            <span class="entry-title">${item.title}</span>
+            <span class="entry-dates">${formatDateRange(item.from_date, item.to_date, item.is_current)}</span>
           </div>
-          ${item.position ? `<div class="position">${item.position}</div>` : ''}
+          ${item.position ? `<div class="entry-position">${item.position}</div>` : ''}
           ${item.bullets && item.bullets.length > 0 ? `
-            <ul class="bullets">
+            <ul class="entry-bullets">
               ${item.bullets.map(bullet => `<li>${bullet.bullet_text}</li>`).join('')}
             </ul>
           ` : ''}
         </div>
       `).join('')}
-    </div>
+    </section>
   ` : ''
 
   // Generate skills section
   const skillsHtml = skills && skills.length > 0 ? `
-    <div class="section skills-section">
-      <h2 class="section-title">Technical Skills</h2>
+    <section class="section simple-list-section">
+      <h2 class="section-title">Skills</h2>
       ${skills.map(item => `
-        <div class="item">
-          <div class="item-header">
-            <div class="item-title">
-              <strong>${item.title}</strong>
-            </div>
-          </div>
-          ${item.position ? `<div class="position">${item.position}</div>` : ''}
-          ${item.bullets && item.bullets.length > 0 ? `
-            <ul class="bullets">
-              ${item.bullets.map(bullet => `<li>${bullet.bullet_text}</li>`).join('')}
-            </ul>
-          ` : ''}
-        </div>
+        <p><strong>${item.title}:</strong> ${item.bullets && item.bullets.length > 0 ? item.bullets.map(bullet => bullet.bullet_text).join(', ') : ''}</p>
       `).join('')}
-    </div>
+    </section>
   ` : ''
 
   // Generate interests section
   const interestsHtml = interests && interests.length > 0 ? `
-    <div class="section interests-section">
+    <section class="section simple-list-section">
       <h2 class="section-title">Interests</h2>
-      ${interests.map(item => `
-        <div class="item">
-          <div class="item-header">
-            <div class="item-title">
-              <strong>${item.title}</strong>
-            </div>
-          </div>
-          ${item.position ? `<div class="position">${item.position}</div>` : ''}
-          ${item.bullets && item.bullets.length > 0 ? `
-            <ul class="bullets">
-              ${item.bullets.map(bullet => `<li>${bullet.bullet_text}</li>`).join('')}
-            </ul>
-          ` : ''}
-        </div>
-      `).join('')}
-    </div>
+      <p>${interests.map(item => item.title).join(', ')}</p>
+    </section>
   ` : ''
 
   // Generate languages section
   const languagesHtml = languages && languages.length > 0 ? `
-    <div class="section languages-section">
+    <section class="section simple-list-section">
       <h2 class="section-title">Languages</h2>
-      ${languages.map(item => `
-        <div class="item">
-          <div class="item-header">
-            <div class="item-title">
-              <strong>${item.title}</strong>
-            </div>
-          </div>
-          ${item.position ? `<div class="position">${item.position}</div>` : ''}
-          ${item.bullets && item.bullets.length > 0 ? `
-            <ul class="bullets">
-              ${item.bullets.map(bullet => `<li>${bullet.bullet_text}</li>`).join('')}
-            </ul>
-          ` : ''}
-        </div>
-      `).join('')}
-    </div>
+      <p>${languages.map(item => item.title).join(', ')}</p>
+    </section>
   ` : ''
 
   return `
     <!DOCTYPE html>
     <html lang="en">
     <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Resume Preview</title>
-      <style>
-        * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-        }
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Resume Template</title>
+        <style>
+            /* --- Page Layout & Typography --- */
+            body {
+                background-color: #f0f0f0;
+                font-family: "Times New Roman", Times, serif;
+                font-size: 12pt;
+                line-height: 1.4;
+            }
 
-        body {
-          font-family: 'Georgia', 'Times New Roman', serif;
-          line-height: 1.4;
-          color: #2c3e50;
-          background: white;
-          padding: 0.75in;
-          font-size: 11pt;
-          max-width: 8.5in;
-          margin: 0 auto;
-        }
+            .resume-page {
+                background-color: #ffffff;
+                width: 8.5in;
+                min-height: 11in;
+                padding: 1in;
+                margin: 20px auto;
+                box-sizing: border-box;
+                box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            }
 
-        /* Header Section */
-        .header {
-          text-align: center;
-          margin-bottom: 0.4in;
-          border-bottom: 2px solid #2c3e50;
-          padding-bottom: 0.15in;
-        }
+            /* --- Header --- */
+            .header {
+                text-align: center;
+                margin-bottom: 24px;
+            }
 
-        .name {
-          font-size: 24pt;
-          font-weight: bold;
-          margin-bottom: 0.1in;
-          color: #2c3e50;
-          letter-spacing: 1px;
-        }
+            .header .name {
+                font-size: 22pt;
+                font-weight: bold;
+                margin: 0;
+            }
 
-        .contact-info {
-          display: flex;
-          justify-content: center;
-          gap: 0.3in;
-          flex-wrap: wrap;
-          font-size: 10pt;
-          color: #34495e;
-        }
+            .header .contact-info {
+                font-size: 11pt;
+                margin-top: 4px;
+            }
 
-        .contact-info span {
-          padding: 0.05in 0.1in;
-          background-color: #f8f9fa;
-          border-radius: 3px;
-        }
+            /* --- General Section Styling --- */
+            .section {
+                margin-bottom: 16px;
+            }
 
-        /* Section Styling */
-        .section {
-          margin-bottom: 0.25in;
-          page-break-inside: avoid;
-        }
+            .section-title {
+                font-size: 13pt;
+                font-weight: bold;
+                text-transform: uppercase;
+                border-bottom: 1px solid #333;
+                padding-bottom: 4px;
+                margin-bottom: 10px;
+            }
 
-        .section-title {
-          font-size: 14pt;
-          font-weight: bold;
-          color: #2c3e50;
-          margin-bottom: 0.1in;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-          border-bottom: 1px solid #bdc3c7;
-          padding-bottom: 0.05in;
-        }
+            /* --- Entry Styling (for Education, Experience, etc.) --- */
+            .entry {
+                margin-bottom: 12px;
+            }
 
-        /* Experience/Education Items */
-        .item {
-          margin-bottom: 0.15in;
-          page-break-inside: avoid;
-        }
+            .entry-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: baseline;
+            }
 
-        .item-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          margin-bottom: 0.05in;
-        }
+            .entry-title {
+                font-weight: bold;
+            }
 
-        .item-title {
-          flex: 1;
-        }
+            .entry-dates {
+                font-style: italic;
+                color: #333;
+                flex-shrink: 0; /* Prevents dates from wrapping */
+                padding-left: 15px; /* Ensures space between title and date */
+            }
+            
+            .entry-position {
+                font-style: italic;
+                margin-top: 1px;
+            }
 
-        .item-title strong {
-          font-size: 12pt;
-          color: #2c3e50;
-          font-weight: bold;
-        }
+            .entry-bullets {
+                padding-left: 20px;
+                margin-top: 4px;
+                margin-bottom: 0;
+            }
 
-        .dates {
-          font-size: 10pt;
-          color: #7f8c8d;
-          font-weight: 500;
-          white-space: nowrap;
-          margin-left: 0.2in;
-        }
+            .entry-bullets li {
+                margin-bottom: 4px;
+            }
+            
+            /* --- Simple List Section (Skills, Interests, etc.) --- */
+            .simple-list-section p {
+                margin: 0 0 4px 0;
+            }
 
-        .position {
-          font-size: 11pt;
-          color: #34495e;
-          margin-bottom: 0.08in;
-          font-style: italic;
-          font-weight: 500;
-        }
-
-        /* Bullet Points */
-        .bullets {
-          margin-left: 0.2in;
-          margin-bottom: 0.1in;
-        }
-
-        .bullets li {
-          margin-bottom: 0.05in;
-          font-size: 10pt;
-          line-height: 1.3;
-          color: #2c3e50;
-        }
-
-        /* Skills Section */
-        .skills-section .item {
-          margin-bottom: 0.1in;
-        }
-
-        .skills-section .item-title strong {
-          font-size: 11pt;
-          color: #2c3e50;
-        }
-
-        .skills-section .bullets {
-          margin-left: 0;
-        }
-
-        .skills-section .bullets li {
-          display: inline-block;
-          background-color: #ecf0f1;
-          padding: 0.03in 0.08in;
-          margin: 0.02in 0.05in 0.02in 0;
-          border-radius: 3px;
-          font-size: 9pt;
-          border: 1px solid #bdc3c7;
-        }
-
-        /* Interests and Languages */
-        .interests-section .bullets,
-        .languages-section .bullets {
-          margin-left: 0;
-        }
-
-        .interests-section .bullets li,
-        .languages-section .bullets li {
-          display: inline-block;
-          margin-right: 0.1in;
-          margin-bottom: 0.05in;
-          font-size: 10pt;
-        }
-
-        /* Projects Section */
-        .projects-section .item-title strong {
-          color: #2980b9;
-        }
-
-        /* Extracurricular Section */
-        .extracurricular-section .item-title strong {
-          color: #27ae60;
-        }
-
-        /* Volunteering Section */
-        .volunteering-section .item-title strong {
-          color: #e74c3c;
-        }
-
-        /* Print Optimizations */
-        @media print {
-          body {
-            padding: 0.5in;
-            font-size: 10pt;
-          }
-          
-          .section {
-            page-break-inside: avoid;
-          }
-          
-          .item {
-            page-break-inside: avoid;
-          }
-          
-          .header {
-            margin-bottom: 0.3in;
-          }
-          
-          .name {
-            font-size: 22pt;
-          }
-          
-          .section-title {
-            font-size: 13pt;
-          }
-        }
-
-        /* Responsive adjustments for PDF generation */
-        @media screen {
-          body {
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            margin: 0.5in auto;
-          }
-        }
-      </style>
+            /* Print Optimizations */
+            @media print {
+                body {
+                    background-color: white;
+                    margin: 0;
+                    padding: 0;
+                }
+                
+                .resume-page {
+                    width: 100%;
+                    height: 100%;
+                    margin: 0;
+                    padding: 1in;
+                    box-shadow: none;
+                }
+                
+                .section {
+                    page-break-inside: avoid;
+                }
+                
+                .entry {
+                    page-break-inside: avoid;
+                }
+            }
+        </style>
     </head>
     <body>
-      ${personalInfoHtml}
-      ${academicHtml}
-      ${experienceHtml}
-      ${projectsHtml}
-      ${extracurricularHtml}
-      ${volunteeringHtml}
-      ${skillsHtml}
-      ${interestsHtml}
-      ${languagesHtml}
+        <div class="resume-page">
+            ${personalInfoHtml}
+            ${academicHtml}
+            ${experienceHtml}
+            ${projectsHtml}
+            ${extracurricularHtml}
+            ${volunteeringHtml}
+            ${skillsHtml}
+            ${interestsHtml}
+            ${languagesHtml}
+        </div>
     </body>
     </html>
   `
