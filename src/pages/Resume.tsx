@@ -15,6 +15,8 @@ import EnhancedLoadingPane from "@/components/EnhancedLoadingPane";
 import MobileResponsiveWrapper from "@/components/MobileResponsiveWrapper";
 import ResumeComparisonView from "@/components/ResumeComparisonView";
 import DragDropUpload from "@/components/DragDropUpload";
+import AddActivityDropdown from "@/components/AddActivityDropdown";
+import ActivityEditor from "@/components/ActivityEditor";
 import { 
   Upload, 
   FileText, 
@@ -30,12 +32,37 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { structuredResumeService } from "@/services/structuredResumeService";
+import { resumeActivitiesService } from "@/services/resumeActivitiesService";
 import { 
   StructuredResumeRecord, 
   ResumeFeedbackRecord, 
   ResumeProcessingState,
   ResumeViewState 
 } from "@/types/resume";
+import { ResumeData as BackendResumeData } from "@/integrations/supabase/types";
+
+// Define the activity data structure
+interface ActivityData {
+  id: number;
+  title: string;
+  position: string;
+  fromDate: string;
+  toDate: string;
+  isCurrent: boolean;
+  bullets: string[];
+}
+
+// Define the resume data structure
+interface ResumeData {
+  academic: ActivityData[];
+  experience: ActivityData[];
+  projects: ActivityData[];
+  extracurricular: ActivityData[];
+  volunteering: ActivityData[];
+  skills: ActivityData[];
+  interests: ActivityData[];
+  languages: ActivityData[];
+}
 
 const Resume = () => {
   const [resumeRecords, setResumeRecords] = useState<StructuredResumeRecord[]>([]);
@@ -44,6 +71,18 @@ const Resume = () => {
   const [viewingResume, setViewingResume] = useState<ResumeViewState | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const { toast } = useToast();
+
+  // Resume data state for block-based editor
+  const [resumeData, setResumeData] = useState<ResumeData>({
+    academic: [],
+    experience: [],
+    projects: [],
+    extracurricular: [],
+    volunteering: [],
+    skills: [],
+    interests: [],
+    languages: []
+  });
 
   // Loading pane state for AI processing
   const [showLoadingPane, setShowLoadingPane] = useState(false);
@@ -87,7 +126,87 @@ const Resume = () => {
   // Load resume records on component mount
   useEffect(() => {
     loadResumeRecords();
+    loadResumeActivities();
   }, []);
+
+  // Load resume activities from backend
+  const loadResumeActivities = async () => {
+    try {
+      const backendData = await resumeActivitiesService.getResumeData();
+      
+      // Convert backend data to frontend format
+      const frontendData: ResumeData = {
+        academic: backendData.academic.map(convertBackendToFrontend),
+        experience: backendData.experience.map(convertBackendToFrontend),
+        projects: backendData.projects.map(convertBackendToFrontend),
+        extracurricular: backendData.extracurricular.map(convertBackendToFrontend),
+        volunteering: backendData.volunteering.map(convertBackendToFrontend),
+        skills: backendData.skills.map(convertBackendToFrontend),
+        interests: backendData.interests.map(convertBackendToFrontend),
+        languages: backendData.languages.map(convertBackendToFrontend)
+      };
+      
+      setResumeData(frontendData);
+    } catch (error) {
+      console.error('Failed to load resume activities:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load resume data. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Convert backend data to frontend format
+  const convertBackendToFrontend = (backendActivity: any): ActivityData => ({
+    id: parseInt(backendActivity.id.replace(/-/g, '').substring(0, 8), 16), // Convert UUID to number
+    title: backendActivity.title,
+    position: backendActivity.position || '',
+    fromDate: backendActivity.from_date || '',
+    toDate: backendActivity.to_date || '',
+    isCurrent: backendActivity.is_current || false,
+    bullets: backendActivity.bullets?.map((bullet: any) => bullet.bullet_text) || ['']
+  });
+
+  // Convert frontend data to backend format
+  const convertFrontendToBackend = (frontendActivity: ActivityData, category: string) => ({
+    title: frontendActivity.title,
+    position: frontendActivity.position || null,
+    from_date: frontendActivity.fromDate || null,
+    to_date: frontendActivity.toDate || null,
+    is_current: frontendActivity.isCurrent || false,
+    bullets: frontendActivity.bullets.filter(bullet => bullet.trim() !== '')
+  });
+
+  // Save resume data to backend
+  const saveResumeData = async () => {
+    try {
+      const backendData: BackendResumeData = {
+        academic: resumeData.academic.map(activity => convertFrontendToBackend(activity, 'academic')),
+        experience: resumeData.experience.map(activity => convertFrontendToBackend(activity, 'experience')),
+        projects: resumeData.projects.map(activity => convertFrontendToBackend(activity, 'projects')),
+        extracurricular: resumeData.extracurricular.map(activity => convertFrontendToBackend(activity, 'extracurricular')),
+        volunteering: resumeData.volunteering.map(activity => convertFrontendToBackend(activity, 'volunteering')),
+        skills: resumeData.skills.map(activity => convertFrontendToBackend(activity, 'skills')),
+        interests: resumeData.interests.map(activity => convertFrontendToBackend(activity, 'interests')),
+        languages: resumeData.languages.map(activity => convertFrontendToBackend(activity, 'languages'))
+      };
+
+      await resumeActivitiesService.saveResumeData(backendData);
+      
+      toast({
+        title: "Resume Saved! 🎉",
+        description: "Your resume data has been saved successfully.",
+      });
+    } catch (error) {
+      console.error('Failed to save resume data:', error);
+      toast({
+        title: "Save Failed",
+        description: "Failed to save resume data. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
 
   // Check for processing resumes and show loading pane if needed
   useEffect(() => {
@@ -344,6 +463,47 @@ const Resume = () => {
     setViewingResume(null);
   };
 
+  // Function to add a new activity to the resume data
+  const addActivity = (category: string) => {
+    const newActivity: ActivityData = {
+      id: new Date().getTime(),
+      title: '',
+      position: '',
+      fromDate: '',
+      toDate: '',
+      isCurrent: false,
+      bullets: ['']
+    };
+
+    setResumeData(prevData => ({
+      ...prevData,
+      [category]: [...prevData[category as keyof ResumeData], newActivity]
+    }));
+  };
+
+  // Function to update an activity
+  const updateActivity = (category: string, activityId: number, updatedActivity: Partial<ActivityData>) => {
+    setResumeData(prevData => ({
+      ...prevData,
+      [category]: prevData[category as keyof ResumeData].map(activity =>
+        activity.id === activityId ? { ...activity, ...updatedActivity } : activity
+      )
+    }));
+    
+    // Auto-save after a short delay
+    setTimeout(() => {
+      saveResumeData();
+    }, 1000);
+  };
+
+  // Function to remove an activity
+  const removeActivity = (category: string, activityId: number) => {
+    setResumeData(prevData => ({
+      ...prevData,
+      [category]: prevData[category as keyof ResumeData].filter(activity => activity.id !== activityId)
+    }));
+  };
+
   const getStatusIcon = (status: 'processing' | 'completed' | 'error') => {
     switch (status) {
       case 'processing':
@@ -380,6 +540,26 @@ const Resume = () => {
               </p>
             </div>
 
+            {/* User Name Display */}
+            <div className="text-center font-bold text-lg mb-6">
+              John Doe
+              {/* TODO: Fetch real name from user_profiles table */}
+            </div>
+
+            {/* Add Activity Dropdown and Save Button */}
+            <div className="mb-6 flex items-center justify-between">
+              <AddActivityDropdown onActivitySelect={(category) => {
+                addActivity(category.toLowerCase());
+              }} />
+              <Button 
+                onClick={saveResumeData}
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Save Resume
+              </Button>
+            </div>
+
             <Tabs defaultValue="upload" className="space-y-6">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="upload">Upload New Resume</TabsTrigger>
@@ -387,6 +567,8 @@ const Resume = () => {
               </TabsList>
 
               <TabsContent value="upload" className="space-y-6">
+                {/* File Uploader - Commented Out */}
+                {/* 
                 <Card className="shadow-lg">
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2">
@@ -414,6 +596,55 @@ const Resume = () => {
                     </Button>
                   </CardContent>
                 </Card>
+                */}
+                
+                {/* Block-based Resume Editor */}
+                <div className="space-y-6">
+                  {/* Display all activity categories */}
+                  {Object.entries(resumeData).map(([category, activities]) => (
+                    activities.length > 0 && (
+                      <div key={category} className="space-y-4">
+                        <h3 className="text-xl font-semibold capitalize">
+                          {category === 'academic' ? 'Academic Experience' :
+                           category === 'experience' ? 'Work Experience' :
+                           category === 'projects' ? 'Projects' :
+                           category === 'extracurricular' ? 'Extracurricular Activities' :
+                           category === 'volunteering' ? 'Volunteer Experience' :
+                           category === 'skills' ? 'Skills' :
+                           category === 'interests' ? 'Interests' :
+                           category === 'languages' ? 'Languages' : category}
+                        </h3>
+                        <div className="space-y-4">
+                          {activities.map((activity) => (
+                            <ActivityEditor
+                              key={activity.id}
+                              activity={activity}
+                              category={category}
+                              onUpdate={(activityId, updatedActivity) => 
+                                updateActivity(category, activityId, updatedActivity)
+                              }
+                              onRemove={(activityId) => 
+                                removeActivity(category, activityId)
+                              }
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  ))}
+                  
+                  {/* Show message when no activities are added */}
+                  {Object.values(resumeData).every(activities => activities.length === 0) && (
+                    <Card className="shadow-lg">
+                      <CardContent className="py-12">
+                        <div className="text-center text-muted-foreground">
+                          <p className="text-lg mb-2">Block-based Resume Editor</p>
+                          <p className="text-sm">Use the "Add Activity" button above to start building your resume</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
               </TabsContent>
 
               <TabsContent value="versions" className="space-y-6">

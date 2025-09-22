@@ -13,7 +13,7 @@ const supabase = createClient(supabaseUrl, supabaseKey)
 
 // Gemini API configuration
 const GEMINI_API_KEY = Deno.env.get('GOOGLE_API_KEY')
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent'
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
 
 // Resume extraction prompt for Gemini 2.5 Flash with Vision
 const RESUME_EXTRACTION_PROMPT = `You are an expert resume parser specializing in extracting structured data from resume documents. Your task is to analyze the provided resume document and extract all relevant information into a structured JSON format.
