@@ -116,6 +116,7 @@ serve(async (req) => {
     }
     
     console.log('✅ Resume activities count:', resumeActivitiesData?.length || 0);
+    console.log('📋 Raw resume data:', JSON.stringify(resumeActivitiesData, null, 2));
 
     // Organize resume data by category
     const resumeData: ResumeData = {
@@ -143,6 +144,8 @@ serve(async (req) => {
       })
     }
 
+    console.log('📊 Organized resume data:', JSON.stringify(resumeData, null, 2));
+
     const userProfile: UserProfile = profileData || {
       full_name: user.user_metadata?.full_name || 'Resume',
       email_address: user.email,
@@ -151,11 +154,14 @@ serve(async (req) => {
       state: undefined
     }
 
+    console.log('👤 User profile:', JSON.stringify(userProfile, null, 2));
+
     console.log('🎨 Generating HTML from resume data...');
     // Generate HTML from resume data
     const htmlContent = generateResumeHtml(resumeData, userProfile)
     
     console.log('✅ HTML generated, length:', htmlContent.length);
+    console.log('📄 HTML preview:', htmlContent.substring(0, 500) + '...');
     console.log('📤 Returning HTML response...');
 
     // Return the HTML directly for preview
@@ -328,6 +334,11 @@ function generateResumeHtml(data: ResumeData, userProfile: UserProfile): string 
     </section>
   ` : ''
 
+  // Check if there's any data to display
+  const hasAnyData = academic.length > 0 || experience.length > 0 || projects.length > 0 || 
+                     extracurricular.length > 0 || volunteering.length > 0 || skills.length > 0 || 
+                     interests.length > 0 || languages.length > 0;
+
   return `
     <!DOCTYPE html>
     <html lang="en">
@@ -338,20 +349,23 @@ function generateResumeHtml(data: ResumeData, userProfile: UserProfile): string 
         <style>
             /* --- Page Layout & Typography --- */
             body {
-                background-color: #f0f0f0;
+                background-color: #ffffff;
                 font-family: "Times New Roman", Times, serif;
                 font-size: 12pt;
                 line-height: 1.4;
+                margin: 0;
+                padding: 0;
+                color: #000000;
             }
 
             .resume-page {
                 background-color: #ffffff;
-                width: 8.5in;
+                width: 100%;
+                max-width: 8.5in;
                 min-height: 11in;
                 padding: 1in;
-                margin: 20px auto;
+                margin: 0 auto;
                 box-sizing: border-box;
-                box-shadow: 0 0 10px rgba(0,0,0,0.1);
             }
 
             /* --- Header --- */
@@ -364,11 +378,13 @@ function generateResumeHtml(data: ResumeData, userProfile: UserProfile): string 
                 font-size: 22pt;
                 font-weight: bold;
                 margin: 0;
+                color: #000000;
             }
 
             .header .contact-info {
                 font-size: 11pt;
                 margin-top: 4px;
+                color: #000000;
             }
 
             /* --- General Section Styling --- */
@@ -383,6 +399,7 @@ function generateResumeHtml(data: ResumeData, userProfile: UserProfile): string 
                 border-bottom: 1px solid #333;
                 padding-bottom: 4px;
                 margin-bottom: 10px;
+                color: #000000;
             }
 
             /* --- Entry Styling (for Education, Experience, etc.) --- */
@@ -398,11 +415,12 @@ function generateResumeHtml(data: ResumeData, userProfile: UserProfile): string 
 
             .entry-title {
                 font-weight: bold;
+                color: #000000;
             }
 
             .entry-dates {
                 font-style: italic;
-                color: #333;
+                color: #333333;
                 flex-shrink: 0; /* Prevents dates from wrapping */
                 padding-left: 15px; /* Ensures space between title and date */
             }
@@ -410,6 +428,7 @@ function generateResumeHtml(data: ResumeData, userProfile: UserProfile): string 
             .entry-position {
                 font-style: italic;
                 margin-top: 1px;
+                color: #000000;
             }
 
             .entry-bullets {
@@ -420,11 +439,13 @@ function generateResumeHtml(data: ResumeData, userProfile: UserProfile): string 
 
             .entry-bullets li {
                 margin-bottom: 4px;
+                color: #000000;
             }
             
             /* --- Simple List Section (Skills, Interests, etc.) --- */
             .simple-list-section p {
                 margin: 0 0 4px 0;
+                color: #000000;
             }
 
             /* Print Optimizations */
@@ -436,8 +457,8 @@ function generateResumeHtml(data: ResumeData, userProfile: UserProfile): string 
                 }
                 
                 .resume-page {
-                    width: 100%;
-                    height: 100%;
+                    width: 8.5in;
+                    height: 11in;
                     margin: 0;
                     padding: 1in;
                     box-shadow: none;
@@ -456,14 +477,21 @@ function generateResumeHtml(data: ResumeData, userProfile: UserProfile): string 
     <body>
         <div class="resume-page">
             ${personalInfoHtml}
-            ${academicHtml}
-            ${experienceHtml}
-            ${projectsHtml}
-            ${extracurricularHtml}
-            ${volunteeringHtml}
-            ${skillsHtml}
-            ${interestsHtml}
-            ${languagesHtml}
+            ${hasAnyData ? `
+                ${academicHtml}
+                ${experienceHtml}
+                ${projectsHtml}
+                ${extracurricularHtml}
+                ${volunteeringHtml}
+                ${skillsHtml}
+                ${interestsHtml}
+                ${languagesHtml}
+            ` : `
+                <section class="section">
+                    <h2 class="section-title">No Resume Data</h2>
+                    <p>Please add some resume activities to see your resume preview.</p>
+                </section>
+            `}
         </div>
     </body>
     </html>

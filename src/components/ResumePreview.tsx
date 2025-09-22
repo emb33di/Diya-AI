@@ -73,6 +73,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
       if (response.ok) {
         const html = await response.text();
         console.log('✅ HTML received, length:', html.length);
+        console.log('📄 HTML content preview:', html.substring(0, 500) + '...');
         setHtmlContent(html);
       } else {
         const errorText = await response.text();
