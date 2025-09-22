@@ -68,6 +68,17 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
     }));
   };
 
+  const handleBulletBlur = (index: number) => {
+    // Remove empty bullets when user clicks out
+    setLocalActivity(prev => ({
+      ...prev,
+      bullets: prev.bullets.filter((bullet, i) => {
+        // Keep the bullet if it has content or if it's not the current index
+        return bullet.trim() !== '' || i !== index;
+      })
+    }));
+  };
+
   const addBullet = () => {
     setLocalActivity(prev => ({
       ...prev,
@@ -234,6 +245,7 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
                   <Textarea
                     value={bullet}
                     onChange={(e) => handleBulletChange(index, e.target.value)}
+                    onBlur={() => handleBulletBlur(index)}
                     placeholder={`Describe your ${category === 'academic' ? 'academic' : 
                       category === 'experience' ? 'work' :
                       category === 'volunteering' ? 'volunteer' :
@@ -276,6 +288,7 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
                   <Input
                     value={skill}
                     onChange={(e) => handleBulletChange(index, e.target.value)}
+                    onBlur={() => handleBulletBlur(index)}
                     placeholder={
                       index === 0 ? "e.g., JavaScript, Python, React" :
                       index === 1 ? "e.g., Leadership, Team Management" :
@@ -320,6 +333,7 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
                   <Input
                     value={interest}
                     onChange={(e) => handleBulletChange(index, e.target.value)}
+                    onBlur={() => handleBulletBlur(index)}
                     placeholder={
                       index === 0 ? "e.g., Photography, Travel" :
                       index === 1 ? "e.g., Music, Art" :
@@ -364,6 +378,7 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
                   <Input
                     value={language}
                     onChange={(e) => handleBulletChange(index, e.target.value)}
+                    onBlur={() => handleBulletBlur(index)}
                     placeholder={
                       index === 0 ? "e.g., Spanish (Fluent)" :
                       index === 1 ? "e.g., French (Conversational)" :

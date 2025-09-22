@@ -113,9 +113,11 @@ export class ResumeActivitiesService {
    * Create bullet points for an activity
    */
   async createBullets(activityId: string, bullets: string[]): Promise<void> {
-    if (bullets.length === 0) return;
+    // Filter out empty or null bullets
+    const validBullets = bullets.filter(bullet => bullet && bullet.trim() !== '');
+    if (validBullets.length === 0) return;
 
-    const bulletInserts = bullets.map((bulletText, index) => ({
+    const bulletInserts = validBullets.map((bulletText, index) => ({
       activity_id: activityId,
       bullet_text: bulletText,
       bullet_order: index
@@ -205,8 +207,12 @@ export class ResumeActivitiesService {
 
         // Create bullets if they exist
         if (activity.bullets && Array.isArray(activity.bullets) && activity.bullets.length > 0) {
-          const bulletTexts = activity.bullets.map((bullet: any) => bullet.bullet_text);
-          await this.createBullets((createdActivity as any).id, bulletTexts);
+          const bulletTexts = activity.bullets
+            .map((bullet: any) => bullet.bullet_text)
+            .filter((text: string) => text && text.trim() !== '');
+          if (bulletTexts.length > 0) {
+            await this.createBullets((createdActivity as any).id, bulletTexts);
+          }
         }
       }
     }
