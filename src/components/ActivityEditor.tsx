@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,15 +27,31 @@ interface ActivityEditorProps {
 const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEditorProps) => {
   const [localActivity, setLocalActivity] = useState<ActivityData>(activity);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Update local state when activity prop changes
   useEffect(() => {
     setLocalActivity(activity);
   }, [activity]);
 
-  // Update parent state when local state changes
+  // Debounced update to parent state when local state changes
   useEffect(() => {
-    onUpdate(activity.id, localActivity);
+    // Clear existing timeout
+    if (updateTimeoutRef.current) {
+      clearTimeout(updateTimeoutRef.current);
+    }
+
+    // Set new timeout for debounced update
+    updateTimeoutRef.current = setTimeout(() => {
+      onUpdate(activity.id, localActivity);
+    }, 500); // 500ms debounce
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
+    };
   }, [localActivity, activity.id, onUpdate]);
 
   const handleInputChange = (field: keyof ActivityData, value: string | boolean) => {

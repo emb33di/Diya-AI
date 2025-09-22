@@ -137,47 +137,18 @@ serve(async (req) => {
     // Generate HTML from resume data
     const htmlContent = generateResumeHtml(resumeData, userProfile)
 
-    // Call HTML/CSS to Image API
-    const pdfApiKey = Deno.env.get('PDF_API_KEY')
-    if (!pdfApiKey) {
-      throw new Error('PDF_API_KEY environment variable is not set')
-    }
-
-    const pdfApiResponse = await fetch('https://hcti.io/v1/image', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Basic ${btoa(pdfApiKey + ':')}`,
-      },
-      body: JSON.stringify({
-        html: htmlContent,
-        css: '', // CSS is embedded in HTML
-        google_fonts: 'Arial',
-        device_scale: 2,
-        format: 'pdf',
-        width: 794, // A4 width in pixels
-        height: 1123 // A4 height in pixels
-      })
-    })
-
-    if (!pdfApiResponse.ok) {
-      const errorText = await pdfApiResponse.text()
-      throw new Error(`PDF API error: ${pdfApiResponse.status} - ${errorText}`)
-    }
-
-    // Stream the PDF back to the client
-    return new Response(pdfApiResponse.body, {
+    // Return the HTML directly for preview
+    return new Response(htmlContent, {
       headers: {
         ...corsHeaders,
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="resume-${user.id}.pdf"`
+        'Content-Type': 'text/html; charset=utf-8'
       }
     })
 
   } catch (error) {
-    console.error('Error generating resume PDF:', error)
+    console.error('Error generating resume preview:', error)
     return new Response(
-      JSON.stringify({ error: 'Failed to generate PDF', details: error.message }),
+      JSON.stringify({ error: 'Failed to generate preview', details: error.message }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -396,7 +367,7 @@ function generateResumeHtml(data: ResumeData, userProfile: UserProfile): string 
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Resume</title>
+      <title>Resume Preview</title>
       <style>
         * {
           margin: 0;

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -28,11 +28,13 @@ import {
   AlertCircle,
   Clock,
   Star,
-  X
+  X,
+  ExternalLink
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { structuredResumeService } from "@/services/structuredResumeService";
 import { resumeActivitiesService } from "@/services/resumeActivitiesService";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   StructuredResumeRecord, 
   ResumeFeedbackRecord, 
@@ -179,7 +181,7 @@ const Resume = () => {
   });
 
   // Save resume data to backend
-  const saveResumeData = async () => {
+  const saveResumeData = useCallback(async () => {
     try {
       const backendData: BackendResumeData = {
         academic: resumeData.academic.map(activity => convertFrontendToBackend(activity, 'academic')),
@@ -206,7 +208,7 @@ const Resume = () => {
         variant: "destructive"
       });
     }
-  };
+  }, [resumeData, toast]);
 
   // Check for processing resumes and show loading pane if needed
   useEffect(() => {
@@ -463,6 +465,150 @@ const Resume = () => {
     setViewingResume(null);
   };
 
+  // Function to preview the resume HTML
+  const previewResume = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        toast({
+          title: "Authentication required",
+          description: "Please log in to preview your resume.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const response = await fetch('/functions/v1/preview-resume', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'text/html'
+        }
+      });
+      
+      if (response.ok) {
+        const html = await response.text();
+        const newWindow = window.open();
+        if (newWindow) {
+          // Inject download functionality into the preview window
+          const enhancedHtml = html.replace(
+            '</head>',
+            `
+            <style>
+              .download-toolbar {
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 1000;
+                background: white;
+                padding: 10px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                border: 1px solid #e5e7eb;
+              }
+              .download-btn {
+                background: #3b82f6;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: 500;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                transition: background-color 0.2s;
+              }
+              .download-btn:hover {
+                background: #2563eb;
+              }
+              .download-btn:disabled {
+                background: #9ca3af;
+                cursor: not-allowed;
+              }
+            </style>
+            </head>`
+          ).replace(
+            '<body>',
+            `
+            <div class="download-toolbar">
+              <button class="download-btn" onclick="downloadPDF()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7,10 12,15 17,10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Download PDF
+              </button>
+            </div>
+            <body>`
+          );
+
+          newWindow.document.write(enhancedHtml);
+          
+          // Add download function to the new window
+          newWindow.document.write(`
+            <script>
+              async function downloadPDF() {
+                const btn = document.querySelector('.download-btn');
+                btn.disabled = true;
+                btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27,6.96 12,12.01 20.73,6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg> Generating...';
+                
+                try {
+                  const response = await fetch('/functions/v1/download-resume', {
+                    headers: {
+                      'Authorization': 'Bearer ${session.access_token}'
+                    }
+                  });
+                  
+                  if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'resume.pdf';
+                    document.body.appendChild(a);
+                    a.click();
+                    
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    
+                    btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download PDF';
+                  } else {
+                    throw new Error('Failed to generate PDF');
+                  }
+                } catch (error) {
+                  console.error('Download error:', error);
+                  btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg> Error';
+                } finally {
+                  btn.disabled = false;
+                }
+              }
+            </script>
+          `);
+          
+          newWindow.document.close();
+        }
+        
+        toast({
+          title: "Preview opened",
+          description: "Resume preview opened in a new window with download option.",
+        });
+      } else {
+        throw new Error('Failed to generate preview');
+      }
+    } catch (error) {
+      console.error('Preview error:', error);
+      toast({
+        title: "Preview failed",
+        description: "Failed to generate resume preview. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+
   // Function to add a new activity to the resume data
   const addActivity = (category: string) => {
     const newActivity: ActivityData = {
@@ -482,7 +628,7 @@ const Resume = () => {
   };
 
   // Function to update an activity
-  const updateActivity = (category: string, activityId: number, updatedActivity: Partial<ActivityData>) => {
+  const updateActivity = useCallback((category: string, activityId: number, updatedActivity: Partial<ActivityData>) => {
     setResumeData(prevData => ({
       ...prevData,
       [category]: prevData[category as keyof ResumeData].map(activity =>
@@ -494,15 +640,15 @@ const Resume = () => {
     setTimeout(() => {
       saveResumeData();
     }, 1000);
-  };
+  }, [saveResumeData]);
 
   // Function to remove an activity
-  const removeActivity = (category: string, activityId: number) => {
+  const removeActivity = useCallback((category: string, activityId: number) => {
     setResumeData(prevData => ({
       ...prevData,
       [category]: prevData[category as keyof ResumeData].filter(activity => activity.id !== activityId)
     }));
-  };
+  }, []);
 
   const getStatusIcon = (status: 'processing' | 'completed' | 'error') => {
     switch (status) {
@@ -546,18 +692,28 @@ const Resume = () => {
               {/* TODO: Fetch real name from user_profiles table */}
             </div>
 
-            {/* Add Activity Dropdown and Save Button */}
+            {/* Add Activity Dropdown and Action Buttons */}
             <div className="mb-6 flex items-center justify-between">
               <AddActivityDropdown onActivitySelect={(category) => {
                 addActivity(category.toLowerCase());
               }} />
-              <Button 
-                onClick={saveResumeData}
-                className="bg-green-600 hover:bg-green-700 text-white"
-              >
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Save Resume
-              </Button>
+              <div className="flex items-center space-x-3">
+                <Button 
+                  onClick={previewResume}
+                  variant="outline"
+                  className="flex items-center space-x-2"
+                >
+                  <Eye className="h-4 w-4" />
+                  <span>Preview</span>
+                </Button>
+                <Button 
+                  onClick={saveResumeData}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Save Resume
+                </Button>
+              </div>
             </div>
 
             <Tabs defaultValue="upload" className="space-y-6">
