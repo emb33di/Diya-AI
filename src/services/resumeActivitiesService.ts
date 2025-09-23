@@ -151,71 +151,173 @@ export class ResumeActivitiesService {
   }
 
   /**
-   * Save complete resume data (activities + bullets)
+   * Save complete resume data (activities + bullets) using upsert logic
    */
   async saveResumeData(resumeData: any): Promise<void> {
+    console.log('🔍 [DEBUG] saveResumeData called with data:', JSON.stringify(resumeData, null, 2));
+    
     // Get current user
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       throw new Error('User not authenticated');
     }
+    
+    console.log('👤 [DEBUG] User ID:', user.id);
 
-    // Clear existing data
-    const { error: deleteError } = await supabase
+    // Get existing activities to compare
+    console.log('📥 [DEBUG] Fetching existing activities...');
+    const { data: existingActivities, error: fetchError } = await supabase
       .from('resume_activities')
-      .delete()
+      .select('*')
       .eq('user_id' as any, user.id as any);
 
-    if (deleteError) {
-      throw new Error(`Failed to clear existing data: ${deleteError.message}`);
+    if (fetchError) {
+      console.error('❌ [DEBUG] Failed to fetch existing activities:', fetchError);
+      throw new Error(`Failed to fetch existing activities: ${fetchError.message}`);
     }
 
-    // Insert new data
+    console.log('📊 [DEBUG] Existing activities count:', existingActivities?.length || 0);
+    console.log('📋 [DEBUG] Existing activities:', JSON.stringify(existingActivities, null, 2));
+
+    const existingActivitiesMap = new Map();
+    if (existingActivities) {
+      existingActivities.forEach((activity: any) => {
+        existingActivitiesMap.set(activity.id, activity);
+      });
+    }
+    
+    console.log('🗺️ [DEBUG] Existing activities map size:', existingActivitiesMap.size);
+
     const categories = Object.keys(resumeData) as string[];
+    const processedActivityIds = new Set<string>();
+    
+    console.log('📂 [DEBUG] Processing categories:', categories);
     
     for (const category of categories) {
       const activities = resumeData[category];
+      console.log(`📁 [DEBUG] Processing category '${category}' with ${activities?.length || 0} activities`);
+      
+      if (!activities || !Array.isArray(activities)) {
+        console.log(`⚠️ [DEBUG] Category '${category}' has no activities or is not an array`);
+        continue;
+      }
       
       for (let i = 0; i < activities.length; i++) {
         const activity = activities[i];
+        console.log(`🔍 [DEBUG] Processing activity ${i + 1}/${activities.length} in ${category}:`, JSON.stringify(activity, null, 2));
         
-        // Create activity
-        const activityInsert = {
-          user_id: user.id,
-          category: category,
-          title: activity.title,
-          position: activity.position,
-          from_date: activity.from_date,
-          to_date: activity.to_date,
-          is_current: activity.is_current,
-          display_order: i
-        };
+        // Check if this is an existing activity (has a valid UUID-like ID)
+        const isExistingActivity = activity.id && typeof activity.id === 'string' && activity.id.includes('-');
+        console.log(`🆔 [DEBUG] Activity ID: '${activity.id}', isExisting: ${isExistingActivity}`);
+        
+        if (isExistingActivity) {
+          console.log(`✏️ [DEBUG] Updating existing activity: ${activity.id}`);
+          // Update existing activity
+          const activityUpdate = {
+            title: activity.title,
+            position: activity.position,
+            from_date: activity.from_date,
+            to_date: activity.to_date,
+            is_current: activity.is_current,
+            display_order: i
+          };
 
-        const { data: createdActivity, error: activityError } = await supabase
-          .from('resume_activities')
-          .insert([activityInsert] as any)
-          .select()
-          .single();
+          const { error: updateError } = await supabase
+            .from('resume_activities')
+            .update(activityUpdate as any)
+            .eq('id' as any, activity.id as any)
+            .eq('user_id' as any, user.id as any);
 
-        if (activityError) {
-          throw new Error(`Failed to create activity: ${activityError.message}`);
-        }
+          if (updateError) {
+            console.error(`❌ [DEBUG] Failed to update activity ${activity.id}:`, updateError);
+            throw new Error(`Failed to update activity: ${updateError.message}`);
+          }
 
-        if (!createdActivity) {
-          throw new Error('No activity created');
-        }
+          console.log(`✅ [DEBUG] Successfully updated activity: ${activity.id}`);
+          processedActivityIds.add(activity.id);
 
-        // Create bullets if they exist
-        if (activity.bullets && Array.isArray(activity.bullets) && activity.bullets.length > 0) {
-          const bulletTexts = activity.bullets
-            .map((bullet: any) => bullet.bullet_text)
-            .filter((text: string) => text && text.trim() !== '');
-          if (bulletTexts.length > 0) {
-            await this.createBullets((createdActivity as any).id, bulletTexts);
+          // Update bullets
+          if (activity.bullets && Array.isArray(activity.bullets)) {
+            const bulletTexts = activity.bullets
+              .map((bullet: any) => typeof bullet === 'string' ? bullet : bullet.bullet_text)
+              .filter((text: string) => text && text.trim() !== '');
+            console.log(`📝 [DEBUG] Updating bullets for activity ${activity.id}:`, bulletTexts);
+            await this.updateBullets(activity.id, bulletTexts);
+          }
+        } else {
+          console.log(`➕ [DEBUG] Creating new activity in category: ${category}`);
+          // Create new activity
+          const activityInsert = {
+            user_id: user.id,
+            category: category,
+            title: activity.title,
+            position: activity.position,
+            from_date: activity.from_date,
+            to_date: activity.to_date,
+            is_current: activity.is_current,
+            display_order: i
+          };
+
+          const { data: createdActivity, error: activityError } = await supabase
+            .from('resume_activities')
+            .insert([activityInsert] as any)
+            .select()
+            .single();
+
+          if (activityError) {
+            console.error(`❌ [DEBUG] Failed to create activity:`, activityError);
+            throw new Error(`Failed to create activity: ${activityError.message}`);
+          }
+
+          if (!createdActivity) {
+            console.error(`❌ [DEBUG] No activity created - no data returned`);
+            throw new Error('No activity created');
+          }
+
+          console.log(`✅ [DEBUG] Successfully created activity:`, (createdActivity as any).id);
+          processedActivityIds.add((createdActivity as any).id);
+
+          // Create bullets if they exist
+          if (activity.bullets && Array.isArray(activity.bullets) && activity.bullets.length > 0) {
+            const bulletTexts = activity.bullets
+              .map((bullet: any) => typeof bullet === 'string' ? bullet : bullet.bullet_text)
+              .filter((text: string) => text && text.trim() !== '');
+            if (bulletTexts.length > 0) {
+              console.log(`📝 [DEBUG] Creating bullets for new activity:`, bulletTexts);
+              await this.createBullets((createdActivity as any).id, bulletTexts);
+            }
           }
         }
       }
     }
+    
+    console.log(`🔄 [DEBUG] Processed activity IDs:`, Array.from(processedActivityIds));
+
+    // Delete activities that are no longer in the data
+    const activitiesToDelete = Array.from(existingActivitiesMap.keys())
+      .filter(id => !processedActivityIds.has(id));
+
+    console.log(`🗑️ [DEBUG] Activities to delete:`, activitiesToDelete);
+
+    if (activitiesToDelete.length > 0) {
+      console.log(`🗑️ [DEBUG] Deleting ${activitiesToDelete.length} activities that are no longer in the data`);
+      const { error: deleteError } = await supabase
+        .from('resume_activities')
+        .delete()
+        .eq('user_id' as any, user.id as any)
+        .in('id' as any, activitiesToDelete);
+
+      if (deleteError) {
+        console.error(`❌ [DEBUG] Failed to delete activities:`, deleteError);
+        throw new Error(`Failed to delete removed activities: ${deleteError.message}`);
+      }
+      
+      console.log(`✅ [DEBUG] Successfully deleted ${activitiesToDelete.length} activities`);
+    } else {
+      console.log(`✅ [DEBUG] No activities to delete`);
+    }
+    
+    console.log(`🎉 [DEBUG] saveResumeData completed successfully`);
   }
 
   /**

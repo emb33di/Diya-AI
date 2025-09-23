@@ -20,12 +20,18 @@ interface ResumePreviewProps {
   isOpen: boolean;
   onClose: () => void;
   resumeData?: any;
+  userProfile?: {
+    full_name?: string;
+    email_address?: string;
+    phone_number?: string;
+  };
 }
 
 const ResumePreview: React.FC<ResumePreviewProps> = ({ 
   isOpen, 
   onClose, 
-  resumeData 
+  resumeData,
+  userProfile 
 }) => {
   const [htmlContent, setHtmlContent] = useState<string>('');
   const [loading, setLoading] = useState(false);
@@ -39,13 +45,22 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
     if (isOpen) {
       loadResumePreview();
     }
-  }, [isOpen]);
+  }, [isOpen, resumeData]);
 
   const loadResumePreview = async () => {
     setLoading(true);
     console.log('🔄 Starting resume preview load...');
     
     try {
+      // Check if we have local resume data first
+      if (resumeData && Object.values(resumeData).some(activities => activities.length > 0)) {
+        console.log('📄 Using local resume data for preview');
+        const html = generateResumeHtmlFromData(resumeData);
+        setHtmlContent(html);
+        return;
+      }
+
+      // Fall back to API call if no local data
       const { data: { session } } = await supabase.auth.getSession();
       console.log('🔐 Session check:', session ? 'Found' : 'Not found');
       
@@ -156,16 +171,315 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
     setZoom(100);
   };
 
+  // Generate HTML from local resume data
+  const generateResumeHtmlFromData = (data: any) => {
+    const { academic, experience, projects, extracurricular, volunteering, skills, interests, languages } = data;
+
+    // Format date range
+    const formatDateRange = (fromDate: string, toDate: string, isCurrent: boolean) => {
+      if (!fromDate && !toDate) return '';
+      const from = fromDate || '';
+      const to = isCurrent ? 'Present' : (toDate || '');
+      return from && to ? `${from} – ${to}` : (from || to);
+    };
+
+    // Generate personal info section
+    const userName = userProfile?.full_name || 'Resume';
+    const contactInfo = [
+      userProfile?.phone_number,
+      userProfile?.email_address
+    ].filter(Boolean).join(' | ');
+    
+    const personalInfoHtml = `
+      <header class="header">
+        <h1 class="name">${userName}</h1>
+        ${contactInfo ? `<p class="contact-info">${contactInfo}</p>` : ''}
+      </header>
+    `;
+
+    // Generate academic section
+    const academicHtml = academic && academic.length > 0 ? `
+      <section class="section">
+        <h2 class="section-title">Education</h2>
+        ${academic.map((item: any) => `
+          <div class="entry">
+            <div class="entry-header">
+              <span class="entry-title">${item.title || ''}</span>
+              <span class="entry-dates">${formatDateRange(item.fromDate || '', item.toDate || '', item.isCurrent || false)}</span>
+            </div>
+            ${item.position ? `<div class="entry-position">${item.position}</div>` : ''}
+            ${item.bullets && item.bullets.length > 0 ? `
+              <ul class="entry-bullets">
+                ${item.bullets.map((bullet: string) => `<li>${bullet}</li>`).join('')}
+              </ul>
+            ` : ''}
+          </div>
+        `).join('')}
+      </section>
+    ` : '';
+
+    // Generate experience section
+    const experienceHtml = experience && experience.length > 0 ? `
+      <section class="section">
+        <h2 class="section-title">Experience</h2>
+        ${experience.map((item: any) => `
+          <div class="entry">
+            <div class="entry-header">
+              <span class="entry-title">${item.title || ''}</span>
+              <span class="entry-dates">${formatDateRange(item.fromDate || '', item.toDate || '', item.isCurrent || false)}</span>
+            </div>
+            ${item.position ? `<div class="entry-position">${item.position}</div>` : ''}
+            ${item.bullets && item.bullets.length > 0 ? `
+              <ul class="entry-bullets">
+                ${item.bullets.map((bullet: string) => `<li>${bullet}</li>`).join('')}
+              </ul>
+            ` : ''}
+          </div>
+        `).join('')}
+      </section>
+    ` : '';
+
+    // Generate projects section
+    const projectsHtml = projects && projects.length > 0 ? `
+      <section class="section">
+        <h2 class="section-title">Projects</h2>
+        ${projects.map((item: any) => `
+          <div class="entry">
+            <div class="entry-header">
+              <span class="entry-title">${item.title || ''}</span>
+              <span class="entry-dates">${formatDateRange(item.fromDate || '', item.toDate || '', item.isCurrent || false)}</span>
+            </div>
+            ${item.position ? `<div class="entry-position">${item.position}</div>` : ''}
+            ${item.bullets && item.bullets.length > 0 ? `
+              <ul class="entry-bullets">
+                ${item.bullets.map((bullet: string) => `<li>${bullet}</li>`).join('')}
+              </ul>
+            ` : ''}
+          </div>
+        `).join('')}
+      </section>
+    ` : '';
+
+    // Generate extracurricular section
+    const extracurricularHtml = extracurricular && extracurricular.length > 0 ? `
+      <section class="section">
+        <h2 class="section-title">Extracurricular Activities</h2>
+        ${extracurricular.map((item: any) => `
+          <div class="entry">
+            <div class="entry-header">
+              <span class="entry-title">${item.title || ''}</span>
+              <span class="entry-dates">${formatDateRange(item.fromDate || '', item.toDate || '', item.isCurrent || false)}</span>
+            </div>
+            ${item.position ? `<div class="entry-position">${item.position}</div>` : ''}
+            ${item.bullets && item.bullets.length > 0 ? `
+              <ul class="entry-bullets">
+                ${item.bullets.map((bullet: string) => `<li>${bullet}</li>`).join('')}
+              </ul>
+            ` : ''}
+          </div>
+        `).join('')}
+      </section>
+    ` : '';
+
+    // Generate volunteering section
+    const volunteeringHtml = volunteering && volunteering.length > 0 ? `
+      <section class="section">
+        <h2 class="section-title">Volunteering</h2>
+        ${volunteering.map((item: any) => `
+          <div class="entry">
+            <div class="entry-header">
+              <span class="entry-title">${item.title || ''}</span>
+              <span class="entry-dates">${formatDateRange(item.fromDate || '', item.toDate || '', item.isCurrent || false)}</span>
+            </div>
+            ${item.position ? `<div class="entry-position">${item.position}</div>` : ''}
+            ${item.bullets && item.bullets.length > 0 ? `
+              <ul class="entry-bullets">
+                ${item.bullets.map((bullet: string) => `<li>${bullet}</li>`).join('')}
+              </ul>
+            ` : ''}
+          </div>
+        `).join('')}
+      </section>
+    ` : '';
+
+    // Generate skills section
+    const skillsHtml = skills && skills.length > 0 ? `
+      <section class="section simple-list-section">
+        <h2 class="section-title">Skills</h2>
+        ${skills.map((item: any) => `
+          <p><strong>${item.title || ''}:</strong> ${item.bullets && item.bullets.length > 0 ? item.bullets.join(', ') : ''}</p>
+        `).join('')}
+      </section>
+    ` : '';
+
+    // Generate interests section
+    const interestsHtml = interests && interests.length > 0 ? `
+      <section class="section simple-list-section">
+        <h2 class="section-title">Interests</h2>
+        <p>${interests.map((item: any) => item.title || '').join(', ')}</p>
+      </section>
+    ` : '';
+
+    // Generate languages section
+    const languagesHtml = languages && languages.length > 0 ? `
+      <section class="section simple-list-section">
+        <h2 class="section-title">Languages</h2>
+        <p>${languages.map((item: any) => item.title || '').join(', ')}</p>
+      </section>
+    ` : '';
+
+    // Check if there's any data to display
+    const hasAnyData = academic.length > 0 || experience.length > 0 || projects.length > 0 || 
+                       extracurricular.length > 0 || volunteering.length > 0 || skills.length > 0 || 
+                       interests.length > 0 || languages.length > 0;
+
+    return `
+      <div class="resume-page">
+        ${personalInfoHtml}
+        ${hasAnyData ? `
+          ${academicHtml}
+          ${experienceHtml}
+          ${projectsHtml}
+          ${extracurricularHtml}
+          ${volunteeringHtml}
+          ${skillsHtml}
+          ${interestsHtml}
+          ${languagesHtml}
+        ` : `
+          <section class="section">
+            <h2 class="section-title">No Resume Data</h2>
+            <p>Please add some resume activities using the "Add Activity" dropdown above to see your resume preview.</p>
+            <p>You can add education, experience, projects, and other sections to build your resume.</p>
+          </section>
+        `}
+      </div>
+    `;
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className={`${isFullscreen ? 'max-w-none w-screen h-screen' : 'max-w-6xl max-h-[90vh]'} overflow-hidden`}>
+    <>
+      {/* Resume-specific styles */}
+      <style>{`
+        .resume-page {
+          background-color: #ffffff;
+          font-family: "Times New Roman", Times, serif;
+          font-size: 12pt;
+          line-height: 1.4;
+          color: #000000;
+          width: 100%;
+          max-width: 8.5in;
+          min-height: 11in;
+          padding: 1in;
+          margin: 0 auto;
+          box-sizing: border-box;
+        }
+
+        .resume-page .header {
+          text-align: center;
+          margin-bottom: 24px;
+        }
+
+        .resume-page .header .name {
+          font-size: 22pt;
+          font-weight: bold;
+          margin: 0;
+          color: #000000;
+        }
+
+        .resume-page .header .contact-info {
+          font-size: 11pt;
+          margin-top: 4px;
+          color: #000000;
+        }
+
+        .resume-page .section {
+          margin-bottom: 16px;
+        }
+
+        .resume-page .section-title {
+          font-size: 13pt;
+          font-weight: bold;
+          text-transform: uppercase;
+          border-bottom: 1px solid #333;
+          padding-bottom: 4px;
+          margin-bottom: 10px;
+          color: #000000;
+        }
+
+        .resume-page .entry {
+          margin-bottom: 12px;
+        }
+
+        .resume-page .entry-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: baseline;
+        }
+
+        .resume-page .entry-title {
+          font-weight: bold;
+          color: #000000;
+        }
+
+        .resume-page .entry-dates {
+          font-style: italic;
+          color: #333333;
+          flex-shrink: 0;
+          padding-left: 15px;
+        }
+        
+        .resume-page .entry-position {
+          font-style: italic;
+          margin-top: 1px;
+          color: #000000;
+        }
+
+        .resume-page .entry-bullets {
+          padding-left: 20px;
+          margin-top: 4px;
+          margin-bottom: 0;
+        }
+
+        .resume-page .entry-bullets li {
+          margin-bottom: 4px;
+          color: #000000;
+        }
+        
+        .resume-page .simple-list-section p {
+          margin: 0 0 4px 0;
+          color: #000000;
+        }
+
+        @media print {
+          .resume-page {
+            width: 8.5in;
+            height: 11in;
+            margin: 0;
+            padding: 1in;
+            box-shadow: none;
+          }
+          
+          .resume-page .section {
+            page-break-inside: avoid;
+          }
+          
+          .resume-page .entry {
+            page-break-inside: avoid;
+          }
+        }
+      `}</style>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent 
+          className={`${isFullscreen ? 'max-w-none w-screen h-screen' : 'max-w-6xl max-h-[90vh]'} overflow-hidden`}
+          aria-describedby="resume-preview-description"
+        >
         <DialogHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <div className="flex flex-col space-y-1">
             <DialogTitle className="flex items-center space-x-2">
               <FileText className="h-5 w-5" />
               <span>Resume Preview & PDF Download</span>
             </DialogTitle>
-            <p className="text-sm text-muted-foreground">
+            <p id="resume-preview-description" className="text-sm text-muted-foreground">
               Preview your resume before downloading to save on generation costs
             </p>
           </div>
@@ -346,6 +660,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
         </div>
       </DialogContent>
     </Dialog>
+    </>
   );
 };
 

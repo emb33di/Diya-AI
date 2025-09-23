@@ -340,160 +340,24 @@ function generateResumeHtml(data: ResumeData, userProfile: UserProfile): string 
                      interests.length > 0 || languages.length > 0;
 
   return `
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Resume Template</title>
-        <style>
-            /* --- Page Layout & Typography --- */
-            body {
-                background-color: #ffffff;
-                font-family: "Times New Roman", Times, serif;
-                font-size: 12pt;
-                line-height: 1.4;
-                margin: 0;
-                padding: 0;
-                color: #000000;
-            }
-
-            .resume-page {
-                background-color: #ffffff;
-                width: 100%;
-                max-width: 8.5in;
-                min-height: 11in;
-                padding: 1in;
-                margin: 0 auto;
-                box-sizing: border-box;
-            }
-
-            /* --- Header --- */
-            .header {
-                text-align: center;
-                margin-bottom: 24px;
-            }
-
-            .header .name {
-                font-size: 22pt;
-                font-weight: bold;
-                margin: 0;
-                color: #000000;
-            }
-
-            .header .contact-info {
-                font-size: 11pt;
-                margin-top: 4px;
-                color: #000000;
-            }
-
-            /* --- General Section Styling --- */
-            .section {
-                margin-bottom: 16px;
-            }
-
-            .section-title {
-                font-size: 13pt;
-                font-weight: bold;
-                text-transform: uppercase;
-                border-bottom: 1px solid #333;
-                padding-bottom: 4px;
-                margin-bottom: 10px;
-                color: #000000;
-            }
-
-            /* --- Entry Styling (for Education, Experience, etc.) --- */
-            .entry {
-                margin-bottom: 12px;
-            }
-
-            .entry-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: baseline;
-            }
-
-            .entry-title {
-                font-weight: bold;
-                color: #000000;
-            }
-
-            .entry-dates {
-                font-style: italic;
-                color: #333333;
-                flex-shrink: 0; /* Prevents dates from wrapping */
-                padding-left: 15px; /* Ensures space between title and date */
-            }
-            
-            .entry-position {
-                font-style: italic;
-                margin-top: 1px;
-                color: #000000;
-            }
-
-            .entry-bullets {
-                padding-left: 20px;
-                margin-top: 4px;
-                margin-bottom: 0;
-            }
-
-            .entry-bullets li {
-                margin-bottom: 4px;
-                color: #000000;
-            }
-            
-            /* --- Simple List Section (Skills, Interests, etc.) --- */
-            .simple-list-section p {
-                margin: 0 0 4px 0;
-                color: #000000;
-            }
-
-            /* Print Optimizations */
-            @media print {
-                body {
-                    background-color: white;
-                    margin: 0;
-                    padding: 0;
-                }
-                
-                .resume-page {
-                    width: 8.5in;
-                    height: 11in;
-                    margin: 0;
-                    padding: 1in;
-                    box-shadow: none;
-                }
-                
-                .section {
-                    page-break-inside: avoid;
-                }
-                
-                .entry {
-                    page-break-inside: avoid;
-                }
-            }
-        </style>
-    </head>
-    <body>
-        <div class="resume-page">
-            ${personalInfoHtml}
-            ${hasAnyData ? `
-                ${academicHtml}
-                ${experienceHtml}
-                ${projectsHtml}
-                ${extracurricularHtml}
-                ${volunteeringHtml}
-                ${skillsHtml}
-                ${interestsHtml}
-                ${languagesHtml}
-            ` : `
-                <section class="section">
-                    <h2 class="section-title">No Resume Data</h2>
-                    <p>Please add some resume activities to see your resume preview.</p>
-                </section>
-            `}
-        </div>
-    </body>
-    </html>
+    <div class="resume-page">
+        ${personalInfoHtml}
+        ${hasAnyData ? `
+            ${academicHtml}
+            ${experienceHtml}
+            ${projectsHtml}
+            ${extracurricularHtml}
+            ${volunteeringHtml}
+            ${skillsHtml}
+            ${interestsHtml}
+            ${languagesHtml}
+        ` : `
+            <section class="section">
+                <h2 class="section-title">No Resume Data</h2>
+                <p>Please add some resume activities using the "Add Activity" dropdown to see your resume preview.</p>
+                <p>You can add education, experience, projects, and other sections to build your resume.</p>
+            </section>
+        `}
+    </div>
   `
 }

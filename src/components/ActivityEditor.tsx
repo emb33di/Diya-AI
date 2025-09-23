@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Trash2, Calendar, Edit3 } from "lucide-react";
 
 interface ActivityData {
-  id: number;
+  id: string;
   title: string;
   position: string;
   fromDate: string;
@@ -20,8 +20,8 @@ interface ActivityData {
 interface ActivityEditorProps {
   activity: ActivityData;
   category: string;
-  onUpdate: (activityId: number, updatedActivity: Partial<ActivityData>) => void;
-  onRemove: (activityId: number) => void;
+  onUpdate: (activityId: string, updatedActivity: Partial<ActivityData>) => void;
+  onRemove: (activityId: string) => void;
 }
 
 const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEditorProps) => {
@@ -29,6 +29,12 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialMount = useRef(true);
+  const onUpdateRef = useRef(onUpdate);
+
+  // Keep the ref updated with the latest onUpdate function
+  useEffect(() => {
+    onUpdateRef.current = onUpdate;
+  }, [onUpdate]);
 
   // Update local state when activity prop changes
   useEffect(() => {
@@ -50,16 +56,25 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
 
     // Set new timeout for debounced update
     updateTimeoutRef.current = setTimeout(() => {
-      onUpdate(activity.id, localActivity);
+      onUpdateRef.current(activity.id, localActivity);
     }, 500); // 500ms debounce
 
-    // Cleanup timeout on unmount
-    return () => {
-      if (updateTimeoutRef.current) {
-        clearTimeout(updateTimeoutRef.current);
-      }
-    };
-  }, [localActivity, activity.id, onUpdate]);
+  // Cleanup timeout on unmount
+  return () => {
+    if (updateTimeoutRef.current) {
+      clearTimeout(updateTimeoutRef.current);
+    }
+  };
+}, [localActivity, activity.id]); // Removed onUpdate from dependencies
+
+// Cleanup timeout on component unmount
+useEffect(() => {
+  return () => {
+    if (updateTimeoutRef.current) {
+      clearTimeout(updateTimeoutRef.current);
+    }
+  };
+}, []);
 
   const handleInputChange = (field: keyof ActivityData, value: string | boolean) => {
     setLocalActivity(prev => ({
@@ -117,6 +132,11 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
     }));
   };
 
+  const autoResizeTextarea = (textarea: HTMLTextAreaElement) => {
+    textarea.style.height = 'auto';
+    textarea.style.height = textarea.scrollHeight + 'px';
+  };
+
   const getCategoryLabel = (category: string) => {
     const labels: { [key: string]: string } = {
       academic: 'Academic',
@@ -137,26 +157,46 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2 flex-1">
             {isEditingTitle ? (
-              <Input
+              <Textarea
                 value={localActivity.title}
-                onChange={(e) => handleTitleChange(e.target.value)}
+                onChange={(e) => {
+                  handleTitleChange(e.target.value);
+                  autoResizeTextarea(e.target);
+                }}
                 onBlur={handleTitleSave}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
                     handleTitleSave();
                   }
                 }}
                 placeholder={`Enter ${getCategoryLabel(category).toLowerCase()} title...`}
-                className="text-lg font-semibold border-none shadow-none p-0 h-auto"
+                className="text-lg font-semibold border-none shadow-none p-2 rounded transition-colors min-h-[1.5rem] resize-none focus:outline-none focus:ring-0 focus:border-none"
                 autoFocus
+                style={{ 
+                  fontFamily: 'inherit',
+                  fontSize: '1.125rem',
+                  lineHeight: '1.5',
+                  fontWeight: '600',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  outline: 'none',
+                  boxShadow: 'none'
+                }}
               />
             ) : (
-              <CardTitle 
-                className="text-lg capitalize cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors"
+              <div 
+                className="text-lg font-semibold capitalize cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors min-h-[1.5rem] whitespace-pre-wrap"
                 onClick={handleTitleEdit}
+                style={{ 
+                  fontFamily: 'inherit',
+                  fontSize: '1.125rem',
+                  lineHeight: '1.5',
+                  fontWeight: '600'
+                }}
               >
                 {localActivity.title || `${getCategoryLabel(category)} Entry`}
-              </CardTitle>
+              </div>
             )}
             {!isEditingTitle && (
               <Button
