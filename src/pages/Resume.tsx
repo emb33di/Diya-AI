@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -33,9 +33,8 @@ import {
   ExternalLink
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { usePageVisibility } from "@/hooks/usePageVisibility";
+import { useResumeEditor } from "@/hooks/useResumeEditor";
 import { structuredResumeService } from "@/services/structuredResumeService";
-import { resumeActivitiesService } from "@/services/resumeActivitiesService";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   StructuredResumeRecord, 
@@ -43,30 +42,7 @@ import {
   ResumeProcessingState,
   ResumeViewState 
 } from "@/types/resume";
-import { ResumeData as BackendResumeData } from "@/integrations/supabase/types";
 
-// Define the activity data structure
-interface ActivityData {
-  id: string;
-  title: string;
-  position: string;
-  fromDate: string;
-  toDate: string;
-  isCurrent: boolean;
-  bullets: string[];
-}
-
-// Define the resume data structure
-interface ResumeData {
-  academic: ActivityData[];
-  experience: ActivityData[];
-  projects: ActivityData[];
-  extracurricular: ActivityData[];
-  volunteering: ActivityData[];
-  skills: ActivityData[];
-  interests: ActivityData[];
-  languages: ActivityData[];
-}
 
 const Resume = () => {
   const [resumeRecords, setResumeRecords] = useState<StructuredResumeRecord[]>([]);
@@ -80,21 +56,19 @@ const Resume = () => {
     email_address?: string;
     phone_number?: string;
   } | null>(null);
-  const [isAutoSaving, setIsAutoSaving] = useState(false);
-  const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const { toast } = useToast();
 
-  // Resume data state for block-based editor
-  const [resumeData, setResumeData] = useState<ResumeData>({
-    academic: [],
-    experience: [],
-    projects: [],
-    extracurricular: [],
-    volunteering: [],
-    skills: [],
-    interests: [],
-    languages: []
-  });
+  // Use the simplified resume editor hook
+  const {
+    resumeData,
+    loading: resumeLoading,
+    saving,
+    lastSaved,
+    saveError,
+    addActivity,
+    updateActivity,
+    removeActivity
+  } = useResumeEditor();
 
   // Loading pane state for AI processing
   const [showLoadingPane, setShowLoadingPane] = useState(false);
@@ -138,99 +112,9 @@ const Resume = () => {
   // Load resume records on component mount
   useEffect(() => {
     loadResumeRecords();
-    loadResumeActivities();
     loadUserProfile();
   }, []);
 
-  // Cleanup function to prevent memory leaks
-  useEffect(() => {
-    return () => {
-      // Clear any pending timeouts when component unmounts
-      if (autoSaveTimeoutRef.current) {
-        clearTimeout(autoSaveTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  // Auto-save when resume data changes (debounced) - DISABLED to prevent data loss
-  // useEffect(() => {
-  //   // Skip auto-save on initial load or if no data
-  //   if (Object.values(resumeData).every(activities => activities.length === 0)) {
-  //     return;
-  //   }
-
-  //   // Clear existing timeout
-  //   if (autoSaveTimeoutRef.current) {
-  //     clearTimeout(autoSaveTimeoutRef.current);
-  //   }
-
-  //   // Debounce auto-save by 3 seconds
-  //   autoSaveTimeoutRef.current = setTimeout(() => {
-  //     autoSaveResumeData();
-  //   }, 3000);
-
-  //   return () => {
-  //     if (autoSaveTimeoutRef.current) {
-  //       clearTimeout(autoSaveTimeoutRef.current);
-  //     }
-  //   };
-  // }, [resumeData]); // Removed autoSaveResumeData from dependencies
-
-  // Load resume activities from backend
-  const loadResumeActivities = async () => {
-    console.log('📥 [DEBUG] loadResumeActivities called');
-    try {
-      console.log('📡 [DEBUG] Calling resumeActivitiesService.getResumeData...');
-      const backendData = await resumeActivitiesService.getResumeData();
-      // Safe logging for backend data
-      const safeBackendData = {
-        academic: backendData.academic?.map(a => ({ id: a.id, title: a.title, position: a.position })) || [],
-        experience: backendData.experience?.map(a => ({ id: a.id, title: a.title, position: a.position })) || [],
-        projects: backendData.projects?.map(a => ({ id: a.id, title: a.title, position: a.position })) || [],
-        extracurricular: backendData.extracurricular?.map(a => ({ id: a.id, title: a.title, position: a.position })) || [],
-        volunteering: backendData.volunteering?.map(a => ({ id: a.id, title: a.title, position: a.position })) || [],
-        skills: backendData.skills?.map(a => ({ id: a.id, title: a.title, position: a.position })) || [],
-        interests: backendData.interests?.map(a => ({ id: a.id, title: a.title, position: a.position })) || [],
-        languages: backendData.languages?.map(a => ({ id: a.id, title: a.title, position: a.position })) || []
-      };
-      console.log('📊 [DEBUG] Backend data received (safe):', JSON.stringify(safeBackendData, null, 2));
-      
-      // Convert backend data to frontend format
-      const frontendData: ResumeData = {
-        academic: backendData.academic.map(convertBackendToFrontend),
-        experience: backendData.experience.map(convertBackendToFrontend),
-        projects: backendData.projects.map(convertBackendToFrontend),
-        extracurricular: backendData.extracurricular.map(convertBackendToFrontend),
-        volunteering: backendData.volunteering.map(convertBackendToFrontend),
-        skills: backendData.skills.map(convertBackendToFrontend),
-        interests: backendData.interests.map(convertBackendToFrontend),
-        languages: backendData.languages.map(convertBackendToFrontend)
-      };
-      
-      // Safe logging for frontend data
-      const safeFrontendData = {
-        academic: frontendData.academic?.map(a => ({ id: a.id, title: a.title, position: a.position })) || [],
-        experience: frontendData.experience?.map(a => ({ id: a.id, title: a.title, position: a.position })) || [],
-        projects: frontendData.projects?.map(a => ({ id: a.id, title: a.title, position: a.position })) || [],
-        extracurricular: frontendData.extracurricular?.map(a => ({ id: a.id, title: a.title, position: a.position })) || [],
-        volunteering: frontendData.volunteering?.map(a => ({ id: a.id, title: a.title, position: a.position })) || [],
-        skills: frontendData.skills?.map(a => ({ id: a.id, title: a.title, position: a.position })) || [],
-        interests: frontendData.interests?.map(a => ({ id: a.id, title: a.title, position: a.position })) || [],
-        languages: frontendData.languages?.map(a => ({ id: a.id, title: a.title, position: a.position })) || []
-      };
-      console.log('🔄 [DEBUG] Converted frontend data (safe):', JSON.stringify(safeFrontendData, null, 2));
-      console.log('💾 [DEBUG] Setting resumeData state...');
-      setResumeData(frontendData);
-      console.log('✅ [DEBUG] loadResumeActivities completed successfully');
-    } catch (error) {
-      console.error('❌ [DEBUG] Failed to load resume activities:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load resume data. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
 
   // Load user profile data
   const loadUserProfile = async () => {
@@ -241,7 +125,7 @@ const Resume = () => {
       const { data: profileData, error } = await supabase
         .from('user_profiles')
         .select('full_name, email_address, phone_number')
-        .eq('user_id', user.id)
+        .eq('user_id' as any, user.id as any)
         .single();
 
       if (error && error.code !== 'PGRST116') {
@@ -249,136 +133,14 @@ const Resume = () => {
         return;
       }
 
-      if (profileData) {
-        setUserProfile(profileData);
+      if (profileData && !('code' in profileData)) {
+        setUserProfile(profileData as any);
       }
     } catch (error) {
       console.error('Failed to load user profile:', error);
     }
   };
 
-  // Convert backend data to frontend format
-  const convertBackendToFrontend = (backendActivity: any): ActivityData => ({
-    id: backendActivity.id, // Keep UUID as string
-    title: backendActivity.title,
-    position: backendActivity.position || '',
-    fromDate: backendActivity.from_date || '',
-    toDate: backendActivity.to_date || '',
-    isCurrent: backendActivity.is_current || false,
-    bullets: backendActivity.bullets?.map((bullet: any) => bullet.bullet_text) || ['']
-  });
-
-  // Convert frontend data to backend format
-  const convertFrontendToBackend = (frontendActivity: ActivityData, category: string) => ({
-    title: frontendActivity.title,
-    position: frontendActivity.position || null,
-    from_date: frontendActivity.fromDate || null,
-    to_date: frontendActivity.toDate || null,
-    is_current: frontendActivity.isCurrent || false,
-    bullets: frontendActivity.bullets.filter(bullet => bullet.trim() !== '')
-  });
-
-  // Save resume data to backend (without resumeData dependency to prevent loops)
-  const saveResumeData = useCallback(async (dataToSave?: ResumeData) => {
-    console.log('💾 [DEBUG] saveResumeData called from Resume.tsx');
-    
-    // Safe logging to avoid circular reference issues
-    const safeResumeData = {
-      academic: resumeData.academic?.length || 0,
-      experience: resumeData.experience?.length || 0,
-      projects: resumeData.projects?.length || 0,
-      extracurricular: resumeData.extracurricular?.length || 0,
-      volunteering: resumeData.volunteering?.length || 0,
-      skills: resumeData.skills?.length || 0,
-      interests: resumeData.interests?.length || 0,
-      languages: resumeData.languages?.length || 0
-    };
-    console.log('📊 [DEBUG] Current resumeData state (counts):', safeResumeData);
-    
-    const safeDataToSave = dataToSave ? {
-      academic: dataToSave.academic?.length || 0,
-      experience: dataToSave.experience?.length || 0,
-      projects: dataToSave.projects?.length || 0,
-      extracurricular: dataToSave.extracurricular?.length || 0,
-      volunteering: dataToSave.volunteering?.length || 0,
-      skills: dataToSave.skills?.length || 0,
-      interests: dataToSave.interests?.length || 0,
-      languages: dataToSave.languages?.length || 0
-    } : null;
-    console.log('📊 [DEBUG] dataToSave parameter (counts):', safeDataToSave);
-    
-    try {
-      const data = dataToSave || resumeData;
-      
-      // Safe logging for the actual data being used
-      const safeDataForLogging = {
-        academic: data.academic?.map(a => ({ id: a.id, title: a.title, position: a.position })) || [],
-        experience: data.experience?.map(a => ({ id: a.id, title: a.title, position: a.position })) || [],
-        projects: data.projects?.map(a => ({ id: a.id, title: a.title, position: a.position })) || [],
-        extracurricular: data.extracurricular?.map(a => ({ id: a.id, title: a.title, position: a.position })) || [],
-        volunteering: data.volunteering?.map(a => ({ id: a.id, title: a.title, position: a.position })) || [],
-        skills: data.skills?.map(a => ({ id: a.id, title: a.title, position: a.position })) || [],
-        interests: data.interests?.map(a => ({ id: a.id, title: a.title, position: a.position })) || [],
-        languages: data.languages?.map(a => ({ id: a.id, title: a.title, position: a.position })) || []
-      };
-      console.log('📊 [DEBUG] Using data (safe):', JSON.stringify(safeDataForLogging, null, 2));
-      
-      // Ensure all arrays exist and are arrays
-      const safeData = {
-        academic: Array.isArray(data.academic) ? data.academic : [],
-        experience: Array.isArray(data.experience) ? data.experience : [],
-        projects: Array.isArray(data.projects) ? data.projects : [],
-        extracurricular: Array.isArray(data.extracurricular) ? data.extracurricular : [],
-        volunteering: Array.isArray(data.volunteering) ? data.volunteering : [],
-        skills: Array.isArray(data.skills) ? data.skills : [],
-        interests: Array.isArray(data.interests) ? data.interests : [],
-        languages: Array.isArray(data.languages) ? data.languages : []
-      };
-      
-      console.log('🛡️ [DEBUG] Safe data after validation:', JSON.stringify(safeData, null, 2));
-      
-      const backendData: BackendResumeData = {
-        academic: safeData.academic.map(activity => convertFrontendToBackend(activity, 'academic')),
-        experience: safeData.experience.map(activity => convertFrontendToBackend(activity, 'experience')),
-        projects: safeData.projects.map(activity => convertFrontendToBackend(activity, 'projects')),
-        extracurricular: safeData.extracurricular.map(activity => convertFrontendToBackend(activity, 'extracurricular')),                                                                                                
-        volunteering: safeData.volunteering.map(activity => convertFrontendToBackend(activity, 'volunteering')),                                                                                                         
-        skills: safeData.skills.map(activity => convertFrontendToBackend(activity, 'skills')),
-        interests: safeData.interests.map(activity => convertFrontendToBackend(activity, 'interests')),
-        languages: safeData.languages.map(activity => convertFrontendToBackend(activity, 'languages'))
-      };
-
-      console.log('🔄 [DEBUG] Converted backend data:', JSON.stringify(backendData, null, 2));
-      console.log('📤 [DEBUG] Calling resumeActivitiesService.saveResumeData...');
-      
-      await resumeActivitiesService.saveResumeData(backendData);
-      
-      console.log('✅ [DEBUG] resumeActivitiesService.saveResumeData completed successfully');
-      setLastSaved(new Date());
-    } catch (error) {
-      console.error('Failed to save resume data:', error);
-      toast({
-        title: "Save Failed",
-        description: "Failed to save resume data. Please try again.",
-        variant: "destructive"
-      });
-    }
-  }, [toast]); // Removed resumeData dependency
-
-  // Auto-save function with loading state and timeout ref
-  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const autoSaveResumeData = useCallback(async () => {
-    if (isAutoSaving) return; // Prevent multiple simultaneous saves
-    
-    setIsAutoSaving(true);
-    try {
-      await saveResumeData(); // Uses current resumeData state
-    } catch (error) {
-      console.error('Auto-save failed:', error);
-    } finally {
-      setIsAutoSaving(false);
-    }
-  }, [saveResumeData, isAutoSaving]);
 
   // Check for processing resumes and show loading pane if needed
   useEffect(() => {
@@ -641,44 +403,6 @@ const Resume = () => {
   };
 
 
-  // Function to add a new activity to the resume data
-  const addActivity = (category: string) => {
-    const newActivity: ActivityData = {
-      id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // Generate temporary ID
-      title: '',
-      position: '',
-      fromDate: '',
-      toDate: '',
-      isCurrent: false,
-      bullets: ['']
-    };
-
-    setResumeData(prevData => ({
-      ...prevData,
-      [category]: [...prevData[category as keyof ResumeData], newActivity]
-    }));
-  };
-
-  // Function to update an activity
-  const updateActivity = useCallback((category: string, activityId: string, updatedActivity: Partial<ActivityData>) => {
-    setResumeData(prevData => ({
-      ...prevData,
-      [category]: prevData[category as keyof ResumeData].map(activity =>
-        activity.id === activityId ? { ...activity, ...updatedActivity } : activity
-      )
-    }));
-    
-    // Note: Auto-save removed to prevent circular dependency issues
-    // User can manually save using the "Save Resume" button
-  }, []);
-
-  // Function to remove an activity
-  const removeActivity = useCallback((category: string, activityId: string) => {
-    setResumeData(prevData => ({
-      ...prevData,
-      [category]: prevData[category as keyof ResumeData].filter(activity => activity.id !== activityId)
-    }));
-  }, []);
 
   const getStatusIcon = (status: 'processing' | 'completed' | 'error') => {
     switch (status) {
@@ -710,7 +434,9 @@ const Resume = () => {
             <main className="container mx-auto">
             {/* Header */}
             <div className="mb-8">
-              <h1 className="text-3xl font-display font-bold mb-2">Resume Review</h1>
+              <div className="flex items-center justify-between mb-2">
+                <h1 className="text-3xl font-display font-bold">Resume Review</h1>
+              </div>
               <p className="text-muted-foreground text-lg">
                 Upload and manage your resume drafts with personalized feedback from Diya
               </p>
@@ -723,20 +449,13 @@ const Resume = () => {
                 addActivity(category.toLowerCase());
               }} />
               <div className="flex items-center space-x-3">
-                {/* Auto-save status indicator */}
-                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                  {isAutoSaving ? (
-                    <>
-                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary"></div>
-                      <span>Auto-saving...</span>
-                    </>
-                  ) : lastSaved ? (
-                    <>
-                      <CheckCircle className="h-3 w-3 text-green-600" />
-                      <span>Saved {lastSaved.toLocaleTimeString()}</span>
-                    </>
-                  ) : null}
-                </div>
+                {/* Saved timestamp */}
+                {lastSaved && !saving && !saveError && (
+                  <div className="flex items-center space-x-1 text-xs text-muted-foreground">
+                    <CheckCircle className="h-3 w-3 text-green-600" />
+                    <span>Saved {lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  </div>
+                )}
                 
                 <Button 
                   onClick={previewResume}
@@ -745,13 +464,6 @@ const Resume = () => {
                 >
                   <Eye className="h-4 w-4" />
                   <span>Preview & Download PDF</span>
-                </Button>
-                <Button 
-                  onClick={saveResumeData}
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                >
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Save Resume
                 </Button>
               </div>
             </div>

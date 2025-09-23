@@ -154,7 +154,7 @@ export class ResumeActivitiesService {
    * Save complete resume data (activities + bullets) using upsert logic
    */
   async saveResumeData(resumeData: any): Promise<void> {
-    console.log('🔍 [DEBUG] saveResumeData called with data:', JSON.stringify(resumeData, null, 2));
+    console.log('🔍 [SUPABASE DEBUG] saveResumeData called with data:', JSON.stringify(resumeData, null, 2));
     
     // Get current user
     const { data: { user } } = await supabase.auth.getUser();
@@ -162,22 +162,22 @@ export class ResumeActivitiesService {
       throw new Error('User not authenticated');
     }
     
-    console.log('👤 [DEBUG] User ID:', user.id);
+    console.log('👤 [SUPABASE DEBUG] User ID:', user.id);
 
     // Get existing activities to compare
-    console.log('📥 [DEBUG] Fetching existing activities...');
+    console.log('📥 [SUPABASE DEBUG] Fetching existing activities...');
     const { data: existingActivities, error: fetchError } = await supabase
       .from('resume_activities')
       .select('*')
       .eq('user_id' as any, user.id as any);
 
     if (fetchError) {
-      console.error('❌ [DEBUG] Failed to fetch existing activities:', fetchError);
+      console.error('❌ [SUPABASE DEBUG] Failed to fetch existing activities:', fetchError);
       throw new Error(`Failed to fetch existing activities: ${fetchError.message}`);
     }
 
-    console.log('📊 [DEBUG] Existing activities count:', existingActivities?.length || 0);
-    console.log('📋 [DEBUG] Existing activities:', JSON.stringify(existingActivities, null, 2));
+    console.log('📊 [SUPABASE DEBUG] Existing activities count:', existingActivities?.length || 0);
+    console.log('📋 [SUPABASE DEBUG] Existing activities:', JSON.stringify(existingActivities, null, 2));
 
     const existingActivitiesMap = new Map();
     if (existingActivities) {
@@ -186,12 +186,12 @@ export class ResumeActivitiesService {
       });
     }
     
-    console.log('🗺️ [DEBUG] Existing activities map size:', existingActivitiesMap.size);
+    console.log('🗺️ [SUPABASE DEBUG] Existing activities map size:', existingActivitiesMap.size);
 
     const categories = Object.keys(resumeData) as string[];
     const processedActivityIds = new Set<string>();
     
-    console.log('📂 [DEBUG] Processing categories:', categories);
+    console.log('📂 [SUPABASE DEBUG] Processing categories:', categories);
     
     for (const category of categories) {
       const activities = resumeData[category];
@@ -211,7 +211,7 @@ export class ResumeActivitiesService {
         console.log(`🆔 [DEBUG] Activity ID: '${activity.id}', isExisting: ${isExistingActivity}`);
         
         if (isExistingActivity) {
-          console.log(`✏️ [DEBUG] Updating existing activity: ${activity.id}`);
+          console.log(`✏️ [SUPABASE DEBUG] Updating existing activity: ${activity.id}`);
           // Update existing activity
           const activityUpdate = {
             title: activity.title,
@@ -245,7 +245,7 @@ export class ResumeActivitiesService {
             await this.updateBullets(activity.id, bulletTexts);
           }
         } else {
-          console.log(`➕ [DEBUG] Creating new activity in category: ${category}`);
+          console.log(`➕ [SUPABASE DEBUG] Creating new activity in category: ${category}`);
           // Create new activity
           const activityInsert = {
             user_id: user.id,
@@ -317,7 +317,7 @@ export class ResumeActivitiesService {
       console.log(`✅ [DEBUG] No activities to delete`);
     }
     
-    console.log(`🎉 [DEBUG] saveResumeData completed successfully`);
+    console.log(`🎉 [SUPABASE DEBUG] saveResumeData completed successfully`);
   }
 
   /**

@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Trash2, Calendar, Edit3 } from "lucide-react";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Plus, Trash2, Edit3, Clock, CheckCircle, AlertTriangle } from "lucide-react";
 
 interface ActivityData {
   id: string;
@@ -25,120 +25,137 @@ interface ActivityEditorProps {
 }
 
 const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEditorProps) => {
-  const [localActivity, setLocalActivity] = useState<ActivityData>(activity);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const isInitialMount = useRef(true);
-  const onUpdateRef = useRef(onUpdate);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  
+  // Local state for immediate UI updates
+  const [localActivity, setLocalActivity] = useState<ActivityData>(activity);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-  // Keep the ref updated with the latest onUpdate function
-  useEffect(() => {
-    onUpdateRef.current = onUpdate;
-  }, [onUpdate]);
-
-  // Update local state when activity prop changes
+  // Sync local state with prop changes
   useEffect(() => {
     setLocalActivity(activity);
-    isInitialMount.current = false;
+    setHasUnsavedChanges(false); // Reset unsaved changes when activity prop changes
   }, [activity]);
 
-  // Debounced update to parent state when local state changes
+  // Check if there are unsaved changes
+  const checkForUnsavedChanges = useCallback(() => {
+    const hasChanges = 
+      localActivity.title !== activity.title ||
+      localActivity.position !== activity.position ||
+      localActivity.fromDate !== activity.fromDate ||
+      localActivity.toDate !== activity.toDate ||
+      localActivity.isCurrent !== activity.isCurrent ||
+      JSON.stringify(localActivity.bullets) !== JSON.stringify(activity.bullets);
+    
+    setHasUnsavedChanges(hasChanges);
+    return hasChanges;
+  }, [localActivity, activity]);
+
+  // Update unsaved changes state whenever local activity changes
   useEffect(() => {
-    // Skip if this is the initial mount
-    if (isInitialMount.current) {
-      return;
+    checkForUnsavedChanges();
+  }, [checkForUnsavedChanges]);
+
+  // Warn user before leaving page with unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+        return 'You have unsaved changes. Are you sure you want to leave?';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [hasUnsavedChanges]);
+
+  // Save only when user is done editing (on blur/focus loss)
+  const saveChanges = useCallback(async (updates: Partial<ActivityData>) => {
+    try {
+      setIsAutoSaving(true);
+      onUpdate(activity.id, updates);
+      setLastSaved(new Date());
+      setHasUnsavedChanges(false); // Clear unsaved changes after successful save
+    } catch (error) {
+      console.error('Save failed:', error);
+    } finally {
+      setIsAutoSaving(false);
     }
+  }, [activity.id, onUpdate]);
 
-    // Clear existing timeout
-    if (updateTimeoutRef.current) {
-      clearTimeout(updateTimeoutRef.current);
-    }
+  // Handle field changes - update local state immediately for responsive UI
+  const handleFieldChange = useCallback((field: keyof ActivityData, value: string | boolean | string[]) => {
+    setLocalActivity(prev => ({ ...prev, [field]: value }));
+  }, []);
 
-    // Set new timeout for debounced update
-    updateTimeoutRef.current = setTimeout(() => {
-      onUpdateRef.current(activity.id, localActivity);
-    }, 500); // 500ms debounce
+  const handleFieldBlur = useCallback((field: keyof ActivityData, value: string | boolean | string[]) => {
+    saveChanges({ [field]: value });
+  }, [saveChanges]);
 
-  // Cleanup timeout on unmount
-  return () => {
-    if (updateTimeoutRef.current) {
-      clearTimeout(updateTimeoutRef.current);
-    }
-  };
-}, [localActivity, activity.id]); // Removed onUpdate from dependencies
+  // Handle bullet point changes - update local state immediately
+  const handleBulletChange = useCallback((index: number, value: string) => {
+    setLocalActivity(prev => {
+      const newBullets = [...prev.bullets];
+      newBullets[index] = value;
+      return { ...prev, bullets: newBullets };
+    });
+  }, []);
 
-// Cleanup timeout on component unmount
-useEffect(() => {
-  return () => {
-    if (updateTimeoutRef.current) {
-      clearTimeout(updateTimeoutRef.current);
-    }
-  };
-}, []);
+  // Handle bullet point blur - save when done editing
+  const handleBulletBlur = useCallback((index: number, value: string) => {
+    const newBullets = [...localActivity.bullets];
+    newBullets[index] = value;
+    
+    // Clean up empty bullets
+    const cleanedBullets = newBullets.filter((bullet, i) => 
+      bullet.trim() !== '' || i !== index
+    );
+    
+    saveChanges({ bullets: cleanedBullets });
+  }, [localActivity.bullets, saveChanges]);
 
-  const handleInputChange = (field: keyof ActivityData, value: string | boolean) => {
-    setLocalActivity(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
+  // Add new bullet point - save immediately since it's a user action
+  const addBullet = useCallback(() => {
+    const newBullets = [...localActivity.bullets, ''];
+    setLocalActivity(prev => ({ ...prev, bullets: newBullets }));
+    saveChanges({ bullets: newBullets });
+  }, [localActivity.bullets, saveChanges]);
 
-  const handleBulletChange = (index: number, value: string) => {
-    setLocalActivity(prev => ({
-      ...prev,
-      bullets: prev.bullets.map((bullet, i) => i === index ? value : bullet)
-    }));
-  };
-
-  const handleBulletBlur = (index: number) => {
-    // Remove empty bullets when user clicks out
-    setLocalActivity(prev => ({
-      ...prev,
-      bullets: prev.bullets.filter((bullet, i) => {
-        // Keep the bullet if it has content or if it's not the current index
-        return bullet.trim() !== '' || i !== index;
-      })
-    }));
-  };
-
-  const addBullet = () => {
-    setLocalActivity(prev => ({
-      ...prev,
-      bullets: [...prev.bullets, '']
-    }));
-  };
-
-  const removeBullet = (index: number) => {
+  // Remove bullet point - save immediately since it's a user action
+  const removeBullet = useCallback((index: number) => {
     if (localActivity.bullets.length > 1) {
-      setLocalActivity(prev => ({
-        ...prev,
-        bullets: prev.bullets.filter((_, i) => i !== index)
-      }));
+      const newBullets = localActivity.bullets.filter((_, i) => i !== index);
+      setLocalActivity(prev => ({ ...prev, bullets: newBullets }));
+      saveChanges({ bullets: newBullets });
     }
-  };
+  }, [localActivity.bullets, saveChanges]);
 
-  const handleTitleEdit = () => {
-    setIsEditingTitle(true);
-  };
+  // Title editing handlers
+  const handleTitleEdit = useCallback(() => setIsEditingTitle(true), []);
+  const handleTitleSave = useCallback(() => setIsEditingTitle(false), []);
+  const handleTitleChange = useCallback((value: string) => {
+    setLocalActivity(prev => ({ ...prev, title: value }));
+  }, []);
+  
+  const handleTitleBlur = useCallback((value: string) => {
+    saveChanges({ title: value });
+  }, [saveChanges]);
 
-  const handleTitleSave = () => {
-    setIsEditingTitle(false);
-  };
-
-  const handleTitleChange = (value: string) => {
-    setLocalActivity(prev => ({
-      ...prev,
-      title: value
-    }));
-  };
-
-  const autoResizeTextarea = (textarea: HTMLTextAreaElement) => {
+  // Auto-resize textarea
+  const autoResizeTextarea = useCallback((textarea: HTMLTextAreaElement) => {
     textarea.style.height = 'auto';
     textarea.style.height = textarea.scrollHeight + 'px';
-  };
+  }, []);
 
-  const getCategoryLabel = (category: string) => {
-    const labels: { [key: string]: string } = {
+  // Get category-specific labels
+  const getCategoryLabel = useCallback((category: string) => {
+    const labels: Record<string, string> = {
       academic: 'Academic',
       experience: 'Experience',
       projects: 'Projects',
@@ -149,7 +166,71 @@ useEffect(() => {
       languages: 'Languages'
     };
     return labels[category] || category;
-  };
+  }, []);
+
+  // Check if category shows dates
+  const showsDates = ['academic', 'experience', 'volunteering', 'extracurricular'].includes(category);
+  
+  // Check if category shows position
+  const showsPosition = !['skills', 'interests', 'languages'].includes(category);
+  
+  // Check if category shows bullets
+  const showsBullets = ['academic', 'experience', 'volunteering', 'extracurricular', 'projects'].includes(category);
+  
+  // Check if category shows simple list (skills, interests, languages)
+  const showsSimpleList = ['skills', 'interests', 'languages'].includes(category);
+
+  // Get placeholder text for different categories
+  const getPlaceholderText = useCallback((category: string, index: number) => {
+    const placeholders: Record<string, string[]> = {
+      skills: [
+        "e.g., JavaScript, Python, React",
+        "e.g., Leadership, Team Management", 
+        "e.g., Data Analysis, Excel, SQL",
+        "e.g., Public Speaking, Communication",
+        "e.g., Project Management, Strategic Planning"
+      ],
+      interests: [
+        "e.g., Photography, Travel",
+        "e.g., Music, Art",
+        "e.g., Sports, Fitness", 
+        "e.g., Reading, Writing",
+        "e.g., Cooking, Gardening"
+      ],
+      languages: [
+        "e.g., Spanish (Fluent)",
+        "e.g., French (Conversational)",
+        "e.g., Mandarin (Beginner)",
+        "e.g., German (Intermediate)",
+        "e.g., Portuguese (Native)"
+      ]
+    };
+    return placeholders[category]?.[index] || `Enter ${category} ${index + 1}...`;
+  }, []);
+
+  // Get position label based on category
+  const getPositionLabel = useCallback((category: string) => {
+    const labels: Record<string, string> = {
+      academic: 'Degree/Program',
+      experience: 'Position',
+      projects: 'Role',
+      volunteering: 'Role',
+      extracurricular: 'Role'
+    };
+    return labels[category] || 'Role';
+  }, []);
+
+  // Get position placeholder based on category
+  const getPositionPlaceholder = useCallback((category: string) => {
+    const placeholders: Record<string, string> = {
+      academic: 'e.g., Bachelor of Computer Science',
+      experience: 'e.g., Software Engineer Intern',
+      projects: 'e.g., Full-Stack Developer',
+      volunteering: 'e.g., Volunteer Coordinator',
+      extracurricular: 'e.g., President'
+    };
+    return placeholders[category] || 'e.g., Role Title';
+  }, []);
 
   return (
     <Card className="shadow-lg group">
@@ -163,10 +244,14 @@ useEffect(() => {
                   handleTitleChange(e.target.value);
                   autoResizeTextarea(e.target);
                 }}
-                onBlur={handleTitleSave}
+                onBlur={(e) => {
+                  handleTitleBlur(e.target.value);
+                  handleTitleSave();
+                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
+                    handleTitleBlur(e.currentTarget.value);
                     handleTitleSave();
                   }
                 }}
@@ -209,57 +294,79 @@ useEffect(() => {
               </Button>
             )}
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onRemove(activity.id)}
-            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          
+          <div className="flex items-center space-x-2">
+            {/* Unsaved changes indicator */}
+            {hasUnsavedChanges && (
+              <div className="flex items-center space-x-1 text-xs text-orange-600">
+                <AlertTriangle className="h-3 w-3" />
+                <span>Unsaved changes</span>
+              </div>
+            )}
+            
+            {/* Auto-save status indicator */}
+            {isAutoSaving && (
+              <div className="flex items-center space-x-1 text-xs text-gray-500">
+                <Clock className="h-3 w-3 animate-spin" />
+                <span>Saving...</span>
+              </div>
+            )}
+            {!isAutoSaving && lastSaved && !hasUnsavedChanges && (
+              <div className="flex items-center space-x-1 text-xs text-green-600">
+                <CheckCircle className="h-3 w-3" />
+                <span>Saved</span>
+              </div>
+            )}
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onRemove(activity.id)}
+              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </CardHeader>
+      
       <CardContent className="space-y-4">
-
-        {/* Position Field - Hide for skills, interests, and languages */}
-        {(category !== 'skills' && category !== 'interests' && category !== 'languages') && (
+        {/* Position Field */}
+        {showsPosition && (
           <div className="space-y-2">
             <Label htmlFor={`position-${activity.id}`}>
-              {category === 'academic' ? 'Degree/Program' :
-               category === 'experience' ? 'Position' :
-               category === 'projects' ? 'Role' : 'Role'}
+              {getPositionLabel(category)}
             </Label>
             <Input
-              id={`position-${activity.id}`}
+              id={`position-${localActivity.id}`}
               value={localActivity.position}
-              onChange={(e) => handleInputChange('position', e.target.value)}
-              placeholder={
-                category === 'academic' ? 'e.g., Bachelor of Computer Science' :
-                category === 'experience' ? 'e.g., Software Engineer Intern' :
-                category === 'projects' ? 'e.g., Full-Stack Developer' : 'e.g., President'
-              }
+              onChange={(e) => handleFieldChange('position', e.target.value)}
+              onBlur={(e) => handleFieldBlur('position', e.target.value)}
+              placeholder={getPositionPlaceholder(category)}
             />
           </div>
         )}
 
-        {/* Date Fields - Show for academic, experience, volunteering, and extracurricular */}
-        {(category === 'academic' || category === 'experience' || category === 'volunteering' || category === 'extracurricular') && (
+        {/* Date Fields */}
+        {showsDates && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor={`fromDate-${activity.id}`}>From Date</Label>
               <Input
-                id={`fromDate-${activity.id}`}
+                id={`fromDate-${localActivity.id}`}
                 value={localActivity.fromDate}
-                onChange={(e) => handleInputChange('fromDate', e.target.value)}
+                onChange={(e) => handleFieldChange('fromDate', e.target.value)}
+                onBlur={(e) => handleFieldBlur('fromDate', e.target.value)}
                 placeholder="MM/YYYY"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor={`toDate-${activity.id}`}>To Date</Label>
+              <Label htmlFor={`toDate-${localActivity.id}`}>To Date</Label>
               <Input
-                id={`toDate-${activity.id}`}
+                id={`toDate-${localActivity.id}`}
                 value={localActivity.toDate}
-                onChange={(e) => handleInputChange('toDate', e.target.value)}
+                onChange={(e) => handleFieldChange('toDate', e.target.value)}
+                onBlur={(e) => handleFieldBlur('toDate', e.target.value)}
                 placeholder="MM/YYYY"
                 disabled={localActivity.isCurrent}
               />
@@ -267,22 +374,25 @@ useEffect(() => {
           </div>
         )}
 
-        {/* Current Role Checkbox - Only show for experience */}
+        {/* Current Role Checkbox - Only for experience */}
         {category === 'experience' && (
           <div className="flex items-center space-x-2">
             <Checkbox
-              id={`isCurrent-${activity.id}`}
+              id={`isCurrent-${localActivity.id}`}
               checked={localActivity.isCurrent}
-              onCheckedChange={(checked) => handleInputChange('isCurrent', checked as boolean)}
+              onCheckedChange={(checked) => {
+                setLocalActivity(prev => ({ ...prev, isCurrent: checked as boolean }));
+                saveChanges({ isCurrent: checked as boolean });
+              }}
             />
-            <Label htmlFor={`isCurrent-${activity.id}`} className="text-sm">
+            <Label htmlFor={`isCurrent-${localActivity.id}`} className="text-sm">
               I am currently in this role
             </Label>
           </div>
         )}
 
-        {/* Bullet Points - Only show for certain categories */}
-        {(category === 'academic' || category === 'experience' || category === 'volunteering' || category === 'extracurricular' || category === 'projects') && (
+        {/* Bullet Points for complex categories */}
+        {showsBullets && (
           <div className="space-y-3">
             <Label>Description & Achievements</Label>
             {localActivity.bullets.map((bullet, index) => (
@@ -292,12 +402,8 @@ useEffect(() => {
                   <Textarea
                     value={bullet}
                     onChange={(e) => handleBulletChange(index, e.target.value)}
-                    onBlur={() => handleBulletBlur(index)}
-                    placeholder={`Describe your ${category === 'academic' ? 'academic' : 
-                      category === 'experience' ? 'work' :
-                      category === 'volunteering' ? 'volunteer' :
-                      category === 'extracurricular' ? 'extracurricular' :
-                      category === 'projects' ? 'project' : 'activity'} experience...`}
+                    onBlur={(e) => handleBulletBlur(index, e.target.value)}
+                    placeholder={`Describe your ${category} experience...`}
                     className="flex-1 min-h-[80px]"
                   />
                   {localActivity.bullets.length > 1 && (
@@ -324,25 +430,21 @@ useEffect(() => {
           </div>
         )}
 
-        {/* Skills - Simple numbered list */}
-        {category === 'skills' && (
+        {/* Simple List for skills, interests, languages */}
+        {showsSimpleList && (
           <div className="space-y-3">
-            <Label>Skills</Label>
-            {localActivity.bullets.map((skill, index) => (
+            <Label>{getCategoryLabel(category)}</Label>
+            {localActivity.bullets.map((item, index) => (
               <div key={index} className="space-y-2">
-                <Label className="text-sm font-medium">Skill {index + 1}</Label>
+                <Label className="text-sm font-medium">
+                  {getCategoryLabel(category)} {index + 1}
+                </Label>
                 <div className="flex items-start space-x-2">
                   <Input
-                    value={skill}
+                    value={item}
                     onChange={(e) => handleBulletChange(index, e.target.value)}
-                    onBlur={() => handleBulletBlur(index)}
-                    placeholder={
-                      index === 0 ? "e.g., JavaScript, Python, React" :
-                      index === 1 ? "e.g., Leadership, Team Management" :
-                      index === 2 ? "e.g., Data Analysis, Excel, SQL" :
-                      index === 3 ? "e.g., Public Speaking, Communication" :
-                      "e.g., Project Management, Strategic Planning"
-                    }
+                    onBlur={(e) => handleBulletBlur(index, e.target.value)}
+                    placeholder={getPlaceholderText(category, index)}
                     className="flex-1"
                   />
                   {localActivity.bullets.length > 1 && (
@@ -364,97 +466,7 @@ useEffect(() => {
               className="w-full border-dashed"
             >
               <Plus className="h-4 w-4 mr-2" />
-              Add Another Skill
-            </Button>
-          </div>
-        )}
-
-        {/* Interests - Simple numbered list */}
-        {category === 'interests' && (
-          <div className="space-y-3">
-            <Label>Interests</Label>
-            {localActivity.bullets.map((interest, index) => (
-              <div key={index} className="space-y-2">
-                <Label className="text-sm font-medium">Interest {index + 1}</Label>
-                <div className="flex items-start space-x-2">
-                  <Input
-                    value={interest}
-                    onChange={(e) => handleBulletChange(index, e.target.value)}
-                    onBlur={() => handleBulletBlur(index)}
-                    placeholder={
-                      index === 0 ? "e.g., Photography, Travel" :
-                      index === 1 ? "e.g., Music, Art" :
-                      index === 2 ? "e.g., Sports, Fitness" :
-                      index === 3 ? "e.g., Reading, Writing" :
-                      "e.g., Cooking, Gardening"
-                    }
-                    className="flex-1"
-                  />
-                  {localActivity.bullets.length > 1 && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => removeBullet(index)}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
-            <Button
-              variant="outline"
-              onClick={addBullet}
-              className="w-full border-dashed"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Another Interest
-            </Button>
-          </div>
-        )}
-
-        {/* Languages - Simple numbered list */}
-        {category === 'languages' && (
-          <div className="space-y-3">
-            <Label>Languages</Label>
-            {localActivity.bullets.map((language, index) => (
-              <div key={index} className="space-y-2">
-                <Label className="text-sm font-medium">Language {index + 1}</Label>
-                <div className="flex items-start space-x-2">
-                  <Input
-                    value={language}
-                    onChange={(e) => handleBulletChange(index, e.target.value)}
-                    onBlur={() => handleBulletBlur(index)}
-                    placeholder={
-                      index === 0 ? "e.g., Spanish (Fluent)" :
-                      index === 1 ? "e.g., French (Conversational)" :
-                      index === 2 ? "e.g., Mandarin (Beginner)" :
-                      index === 3 ? "e.g., German (Intermediate)" :
-                      "e.g., Portuguese (Native)"
-                    }
-                    className="flex-1"
-                  />
-                  {localActivity.bullets.length > 1 && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => removeBullet(index)}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
-            <Button
-              variant="outline"
-              onClick={addBullet}
-              className="w-full border-dashed"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Another Language
+              Add Another {getCategoryLabel(category).slice(0, -1)}
             </Button>
           </div>
         )}
