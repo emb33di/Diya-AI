@@ -74,7 +74,8 @@ const Auth = () => {
 
         const redirectUrl = `${window.location.origin}/`;
         
-        const { error } = await supabase.auth.signUp({
+        // Step 1: Create user via Supabase Auth
+        const { data: authData, error: authError } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -88,24 +89,30 @@ const Auth = () => {
           },
         });
 
-        if (error) throw error;
+        if (authError) throw authError;
+        if (!authData.user) throw new Error('User creation failed');
 
-        // Create user profile with program type
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { error: profileError } = await supabase
-            .from('user_profiles')
-            .insert({
-              user_id: user.id,
-              full_name: `${firstName} ${lastName}`,
-              email_address: email,
-              applying_to: applyingTo,
-            });
+        // Step 2: Use atomic function to ensure profile consistency
+        const { data: signupResult, error: signupError } = await supabase.rpc('create_user_profiles_atomic', {
+          p_user_id: authData.user.id,
+          p_email: email,
+          p_first_name: firstName,
+          p_last_name: lastName,
+          p_applying_to: applyingTo
+        });
 
-          if (profileError) {
-            console.error('Error creating user profile:', profileError);
-          }
+        if (signupError) {
+          console.error('Signup function error:', signupError);
+          throw new Error(signupError.message || 'Signup failed');
         }
+
+        // Check if the function returned success
+        if (!signupResult || !signupResult.success) {
+          const errorMessage = signupResult?.error || 'Signup failed';
+          throw new Error(errorMessage);
+        }
+
+        console.log('Atomic signup successful:', signupResult);
 
         toast({
           title: "Account created!",
@@ -326,10 +333,10 @@ const Auth = () => {
             <p className="text-sm text-muted-foreground">
               Questions? Contact our team at{" "}
               <a 
-                                href="mailto:support@diya.com" 
+                                href="mailto:info@diya.com" 
                 className="text-primary hover:text-primary/80 transition-colors"
               >
-                                support@diya.com
+                                info@diya.com
               </a>
             </p>
           </div>
