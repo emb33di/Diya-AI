@@ -50,7 +50,7 @@ export const useAuth = () => {
 
     try {
       const { data, error } = await supabase
-        .from('profiles')
+        .from('user_profiles')
         .update({ onboarding_complete: true })
         .eq('user_id', authState.user.id)
         .select()
@@ -76,55 +76,45 @@ export const useAuth = () => {
 
     const fetchUserProfile = async (user: User) => {
       try {
-        // Fetch profiles in parallel
-        const [basicProfileRes, detailedProfileRes] = await Promise.all([
-          supabase
-            .from('profiles')
-            .select('id, full_name, onboarding_complete')
-            .eq('user_id', user.id)
-            .maybeSingle(),
-          supabase
-            .from('user_profiles')
-            .select('preferred_name, email_address')
-            .eq('user_id', user.id)
-            .maybeSingle(),
-        ]);
+        // Fetch profile from user_profiles table only
+        const { data: profile, error } = await supabase
+          .from('user_profiles')
+          .select('id, full_name, preferred_name, email_address, onboarding_complete')
+          .eq('user_id', user.id)
+          .maybeSingle();
 
-        const { data: basicProfile, error: basicError } = basicProfileRes;
-        const { data: detailedProfile, error: detailedError } = detailedProfileRes;
+        if (error && error.code !== 'PGRST116') throw error;
 
-        if (basicError && basicError.code !== 'PGRST116') throw basicError;
-        if (detailedError && detailedError.code !== 'PGRST116') throw detailedError;
+        let finalProfile = profile;
 
-        let finalBasicProfile = basicProfile;
-
-        // If no basic profile, create one
-        if (!finalBasicProfile) {
+        // If no profile exists, create one
+        if (!finalProfile) {
           console.log('No profile found, creating one for user:', user.id);
           const { data: newProfile, error: createError } = await supabase
-            .from('profiles')
+            .from('user_profiles')
             .insert({
               user_id: user.id,
               full_name: user.user_metadata?.full_name || `${user.user_metadata?.first_name || ''} ${user.user_metadata?.last_name || ''}`.trim() || null,
+              email_address: user.email,
               onboarding_complete: false,
             })
-            .select('id, full_name, onboarding_complete')
+            .select('id, full_name, preferred_name, email_address, onboarding_complete')
             .single();
 
           if (createError) throw createError;
-          finalBasicProfile = newProfile;
+          finalProfile = newProfile;
         }
 
-        if (!finalBasicProfile) {
+        if (!finalProfile) {
             throw new Error('Failed to create or fetch user profile.');
         }
 
         const combinedProfile: UserProfile = {
-          id: finalBasicProfile.id,
-          full_name: detailedProfile?.full_name || finalBasicProfile.full_name || user.user_metadata?.full_name || null,
-          preferred_name: detailedProfile?.preferred_name || null,
-          email_address: detailedProfile?.email_address || user.email || null,
-          onboarding_complete: finalBasicProfile.onboarding_complete || false,
+          id: finalProfile.id,
+          full_name: finalProfile.full_name || user.user_metadata?.full_name || null,
+          preferred_name: finalProfile.preferred_name || null,
+          email_address: finalProfile.email_address || user.email || null,
+          onboarding_complete: finalProfile.onboarding_complete || false,
         };
 
         if (isMounted) {

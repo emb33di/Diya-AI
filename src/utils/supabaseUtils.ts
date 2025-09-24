@@ -87,21 +87,6 @@ export const fetchUserProfileWithTimeout = async (userId: string) => {
 };
 
 /**
- * Fetch basic profile data with timeout
- */
-export const fetchBasicProfileWithTimeout = async (userId: string) => {
-  return fetchWithTimeout(
-    supabase
-      .from('profiles')
-      .select('full_name, onboarding_complete')
-      .eq('user_id', userId)
-      .maybeSingle(),
-    5000,
-    'Failed to load basic profile'
-  );
-};
-
-/**
  * Fetch test scores with timeout
  */
 export const fetchTestScoresWithTimeout = async (userId: string) => {

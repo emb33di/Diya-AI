@@ -30,21 +30,7 @@ export const debugSupabase406 = async () => {
     console.log('✅ User metadata:', user?.user_metadata);
     console.log('✅ User email:', user?.email);
     
-    // 2. Test if we can access the profiles table (which seems to work)
-    console.log('🔍 Testing profiles table...');
-    const { data: profilesData, error: profilesError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('user_id', user.id)
-      .maybeSingle();
-    
-    if (profilesError) {
-      console.warn('⚠️ Profiles table error:', profilesError);
-    } else {
-      console.log('✅ Profiles table accessible:', profilesData);
-    }
-    
-    // 3. Test user_profiles table with different approaches
+    // Test user_profiles table with different approaches
     console.log('🔍 Testing user_profiles table...');
     
     // Test 1: Simple select without filters
@@ -119,7 +105,6 @@ export const debugSupabase406 = async () => {
     return { 
       success: true, 
       user: user?.id,
-      profilesTableWorks: !profilesError,
       userProfilesTableWorks: !allError,
       userHasProfile: !!profileExists
     };

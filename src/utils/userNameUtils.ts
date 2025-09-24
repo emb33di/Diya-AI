@@ -69,56 +69,33 @@ export const fetchUserProfileData = async (userId: string): Promise<UserProfile 
         setTimeout(() => reject(new Error('Request timeout')), timeoutMs)
       );
 
-    // Make both database calls in parallel for better performance
-    const [basicProfileResult, detailedProfileResult] = await Promise.allSettled([
-      Promise.race([
-        import('@/integrations/supabase/client').then(({ supabase }) =>
-          supabase
-            .from('profiles')
-            .select('full_name')
-            .eq('user_id', userId)
-            .maybeSingle()
-        ),
-        createTimeoutPromise(5000)
-      ]),
-      Promise.race([
-        import('@/integrations/supabase/client').then(({ supabase }) =>
-          supabase
-            .from('user_profiles')
-            .select('full_name, preferred_name')
-            .eq('user_id', userId)
-            .maybeSingle()
-        ),
-        createTimeoutPromise(5000)
-      ])
+    // Make database call to user_profiles table
+    const detailedProfileResult = await Promise.race([
+      import('@/integrations/supabase/client').then(({ supabase }) =>
+        supabase
+          .from('user_profiles')
+          .select('full_name, preferred_name')
+          .eq('user_id', userId)
+          .maybeSingle()
+      ),
+      createTimeoutPromise(5000)
     ]);
 
-    // Handle basic profile result
-    let basicProfile = null;
-    if (basicProfileResult.status === 'fulfilled') {
-      const { data, error } = basicProfileResult.value;
-      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-        console.warn('Error fetching basic profile:', error);
-      } else {
-        basicProfile = data;
-      }
-    }
-
-    // Handle detailed profile result
-    let detailedProfile = null;
+    // Handle user_profiles result
+    let profile = null;
     if (detailedProfileResult.status === 'fulfilled') {
       const { data, error } = detailedProfileResult.value;
       if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-        console.warn('Error fetching detailed profile:', error);
+        console.warn('Error fetching profile:', error);
       } else {
-        detailedProfile = data;
+        profile = data;
       }
     }
 
-    // Combine the data with proper priority
+    // Return the profile data
     return {
-      full_name: detailedProfile?.full_name || basicProfile?.full_name || null,
-      preferred_name: detailedProfile?.preferred_name || null,
+      full_name: profile?.full_name || null,
+      preferred_name: profile?.preferred_name || null,
     };
   } catch (error) {
     console.error('Error fetching user profile data:', error);

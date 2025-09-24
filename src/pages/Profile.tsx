@@ -663,37 +663,20 @@ export default function Profile() {
       }
       console.log('✅ User found in loadProfile:', user.id);
 
-      // Load detailed profile from user_profiles table
-      let { data: detailedProfile, error: detailedError } = await supabase
+      // Load profile from user_profiles table only
+      let { data: profile, error: profileError } = await supabase
         .from("user_profiles")
         .select("*")
         .eq("user_id", user.id)
         .maybeSingle();
 
-
-      // Load basic profile from profiles table
-      const { data: basicProfile, error: basicError } = await supabase
-        .from("profiles")
-        .select("full_name, onboarding_complete")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (detailedError && detailedError.code !== "PGRST116") {
-        console.warn("Error loading detailed profile:", detailedError);
-        // Don't throw error, just log it and continue
-      }
-      if (basicError && basicError.code !== "PGRST116") {
-        console.warn("Error loading basic profile:", basicError);
+      if (profileError && profileError.code !== "PGRST116") {
+        console.warn("Error loading profile:", profileError);
         // Don't throw error, just log it and continue
       }
 
-      // If no user_profiles record exists but we have basic profile data, create a minimal user_profiles record
-      // Multiple safeguards against duplicates:
-      // 1. Check if record already exists (!detailedProfile)
-      // 2. Check if we're already creating one (!isCreatingProfile)
-      // 3. Use upsert with onConflict to handle race conditions
-      // 4. Database has UNIQUE(user_id) constraint as final safeguard
-      if (!detailedProfile && basicProfile && !isCreatingProfile) {
+      // If no profile exists, create one
+      if (!profile && !isCreatingProfile) {
         console.log("Creating initial user_profiles record...");
         setIsCreatingProfile(true);
         
@@ -702,12 +685,13 @@ export default function Profile() {
           .from("user_profiles")
           .upsert({
             user_id: user.id,
-            full_name: basicProfile.full_name || user.user_metadata?.full_name || "",
+            full_name: user.user_metadata?.full_name || "",
             email_address: user.email || "",
+            onboarding_complete: false,
           }, {
             onConflict: 'user_id'
           })
-          .select()
+          .select("*")
           .single();
 
         if (createError) {
@@ -722,31 +706,25 @@ export default function Profile() {
               .maybeSingle();
             
             if (existingProfile) {
-              detailedProfile = existingProfile;
+              profile = existingProfile;
             }
           }
         } else {
           console.log("Initial user_profiles record created successfully:", upsertedProfile);
-          detailedProfile = upsertedProfile;
+          profile = upsertedProfile;
           
           // Show a subtle notification that the profile was initialized
           toast({
             title: "Profile initialized",
-            description: "Your profile has been set up. You can now fill out the details below.",
-            variant: "default",
+            description: "Your profile has been set up successfully.",
           });
         }
         
         setIsCreatingProfile(false);
       }
 
-      // Combine data from both tables, prioritizing user_profiles data
-      const combinedProfile = {
-        ...detailedProfile,
-        // Override with basic profile data if available
-        full_name: basicProfile?.full_name || detailedProfile?.full_name || user.user_metadata?.full_name || "",
-        email_address: detailedProfile?.email_address || user.email || "",
-      };
+      // Use profile data directly (no need to combine from multiple tables)
+      const combinedProfile = profile;
 
       if (combinedProfile) {
       // Convert database values to form values
@@ -1047,19 +1025,6 @@ export default function Profile() {
       }
 
       console.log("Profile saved successfully:", savedProfile);
-
-      // Also update the basic profile table with full_name if it exists
-      if (data.full_name) {
-        const { error: basicProfileError } = await supabase
-          .from("profiles")
-          .update({ full_name: data.full_name })
-          .eq('user_id', user.id);
-
-        if (basicProfileError) {
-          console.warn("Error updating basic profile:", basicProfileError);
-          // Don't throw here as the main profile was saved successfully
-        }
-      }
 
       // Clear any existing form errors
       form.clearErrors();

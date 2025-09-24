@@ -258,7 +258,7 @@ const Onboarding = () => {
           
           const {
             data: profile
-          } = await supabase.from('profiles').select('full_name, cumulative_onboarding_time, onboarding_complete').eq('user_id', user.id).single();
+          } = await supabase.from('user_profiles').select('full_name, cumulative_onboarding_time, onboarding_complete').eq('user_id', user.id).single();
           if (profile?.full_name) {
             // Extract first name from full name
             const firstName = profile.full_name.split(' ')[0];
@@ -496,7 +496,7 @@ const Onboarding = () => {
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
             await supabase
-              .from('profiles')
+              .from('user_profiles')
               .update({ cumulative_onboarding_time: Math.round(newCumulativeTimeLocal) })
               .eq('user_id', user.id);
             console.log('✅ Updated cumulative time in database:', Math.round(newCumulativeTimeLocal), 'seconds');
@@ -927,7 +927,7 @@ const Onboarding = () => {
 
           // Store cumulative time in database
           await supabase
-            .from('profiles')
+            .from('user_profiles')
             .update({ cumulative_onboarding_time: Math.round(newCumulativeTime) })
             .eq('user_id', user.id);
           console.log('✅ Pause: Updated cumulative time in database:', Math.round(newCumulativeTime), 'seconds');
@@ -1114,7 +1114,7 @@ const Onboarding = () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           await supabase
-            .from('profiles')
+            .from('user_profiles')
             .update({ cumulative_onboarding_time: Math.round(newCumulativeTime) })
             .eq('user_id', user.id);
           console.log('✅ End: Updated cumulative time in database:', Math.round(newCumulativeTime), 'seconds');
