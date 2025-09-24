@@ -163,6 +163,140 @@ SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_key
 ```
 
+## 🗄️ Database Migration Troubleshooting
+
+### Common Database Schema Issues
+
+When you encounter errors like `"Could not find the 'column_name' column of 'table_name' in the schema cache"`, it usually means there's a mismatch between your local migrations and the remote database schema.
+
+### Quick Diagnosis Steps
+
+1. **Check Migration Status**
+   ```bash
+   # Link to your remote project first
+   supabase link --project-ref YOUR_PROJECT_ID
+   
+   # Check which migrations are applied locally vs remotely
+   supabase migrations list --linked
+   ```
+
+2. **Identify Missing Migrations**
+   - Look for migrations that show in the "Local" column but are empty in the "Remote" column
+   - These are migrations that exist locally but haven't been applied to the remote database
+
+3. **Apply Missing Migrations**
+   ```bash
+   # Push all missing migrations to remote database
+   supabase db push --linked --include-all
+   ```
+
+### Detailed Migration Workflow
+
+#### Step 1: Link to Remote Project
+```bash
+# Replace with your actual project reference ID
+supabase link --project-ref oliclbcxukqddxlfxuuc
+```
+
+#### Step 2: Check Migration Status
+```bash
+supabase migrations list --linked
+```
+
+**Expected Output:**
+```
+Local          | Remote         | Time (UTC)          
+----------------|----------------|---------------------
+20241220       | 20241220       | 20241220            
+20250131000001 |                | 2025-01-31 00:00:01  ← Missing on remote
+20250131000002 |                | 2025-01-31 00:00:02  ← Missing on remote
+```
+
+#### Step 3: Apply Missing Migrations
+```bash
+# This will prompt you to confirm the migration push
+supabase db push --linked --include-all
+```
+
+#### Step 4: Verify Success
+```bash
+# Check that all migrations are now applied
+supabase migrations list --linked
+```
+
+**Expected Output After Fix:**
+```
+Local          | Remote         | Time (UTC)          
+----------------|----------------|---------------------
+20241220       | 20241220       | 20241220            
+20250131000001 | 20250131000001 | 2025-01-31 00:00:01  ← Now applied
+20250131000002 | 20250131000002 | 2025-01-31 00:00:02  ← Now applied
+```
+
+### Common Error Patterns
+
+#### Error: `"Could not find the 'application_concerns' column"`
+- **Cause**: Migration `20250131000001_add_undergraduate_prompt_fields.sql` not applied
+- **Solution**: Run `supabase db push --linked --include-all`
+
+#### Error: `"relation 'table_name' does not exist"`
+- **Cause**: Table creation migration not applied
+- **Solution**: Check migration status and push missing migrations
+
+#### Error: `"duplicate key value violates unique constraint"`
+- **Cause**: Migration applied multiple times or data conflict
+- **Solution**: Check migration history and resolve data conflicts
+
+### Migration File Naming Issues
+
+Some migration files may be skipped due to incorrect naming patterns:
+```
+❌ Bad: 20250118T000000_fix_essay_prompts_table_structure.sql
+✅ Good: 20250118000000_fix_essay_prompts_table_structure.sql
+```
+
+**Fix naming issues:**
+```bash
+# Rename files to follow the pattern: YYYYMMDDHHMMSS_name.sql
+mv 20250118T000000_fix_essay_prompts_table_structure.sql 20250118000000_fix_essay_prompts_table_structure.sql
+```
+
+### Emergency Recovery
+
+If migrations are completely broken:
+
+1. **Reset Local Database**
+   ```bash
+   supabase db reset
+   ```
+
+2. **Pull Remote Schema**
+   ```bash
+   supabase db pull --linked
+   ```
+
+3. **Generate New Migration**
+   ```bash
+   supabase db diff --linked -f new_migration_name
+   ```
+
+### Best Practices
+
+1. **Always check migration status** before deploying
+2. **Test migrations locally** before pushing to remote
+3. **Keep migration files properly named** with timestamp format
+4. **Document schema changes** in migration comments
+5. **Backup database** before major schema changes
+
+### Troubleshooting Checklist
+
+- [ ] Is Supabase CLI installed? (`which supabase`)
+- [ ] Is project linked? (`supabase status`)
+- [ ] Are there missing migrations? (`supabase migrations list --linked`)
+- [ ] Are migration files properly named?
+- [ ] Have migrations been pushed? (`supabase db push --linked --include-all`)
+- [ ] Is the error resolved after migration push?
+
 ## 🚀 Deployment
 
 ### Frontend (Vercel/Netlify)

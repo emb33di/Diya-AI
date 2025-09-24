@@ -312,6 +312,55 @@ export default function Profile() {
   const [profileData, setProfileData] = useState<ProfileFormData | null>(null);
   const [aiPopulatedFields, setAIPopulatedFields] = useState<Set<string>>(new Set());
 
+  const form = useForm<ProfileFormData>({
+    // Remove zodResolver to prevent automatic validation
+    // resolver: zodResolver(profileSchema),
+    defaultValues: {
+      // Personal Information
+      full_name: "",
+      preferred_name: "",
+      email_address: "",
+      country_code: "+91",
+      phone_number: "",
+      applying_to: "Undergraduate",
+      masters_field_of_focus: "",
+      
+      // Academic Profile
+      high_school_name: "",
+      high_school_graduation_year: "",
+      school_board: "",
+      year_of_study: "",
+      class_10_score: "",
+      class_11_score: "",
+      class_12_half_yearly_score: "",
+      undergraduate_cgpa: "",
+      intended_majors: "",
+      college_name: "",
+      college_graduation_year: "",
+      college_gpa: "",
+      test_type: "Not yet taken" as const,
+      test_score: "",
+      
+      // College Preferences
+      ideal_college_size: "not_specified",
+      ideal_college_setting: "not_specified",
+      must_haves: "",
+      deal_breakers: "",
+      
+      // Financial Information
+      college_budget: "not_specified",
+      financial_aid_importance: "not_specified",
+      scholarship_interests: [],
+      
+      // Additional Undergraduate Prompt Fields
+      extracurricular_activities: "",
+      leadership_roles: "",
+      personal_projects: "",
+      application_concerns: "",
+      specific_questions: "",
+    },
+  });
+
   // Note: We intentionally don't use local storage for auto-saving
   // Users must manually save their changes to persist them
 
@@ -504,55 +553,6 @@ export default function Profile() {
     // Save profile and mark onboarding as complete
     await onSubmit(formData);
   };
-
-  const form = useForm<ProfileFormData>({
-    // Remove zodResolver to prevent automatic validation
-    // resolver: zodResolver(profileSchema),
-    defaultValues: {
-      // Personal Information
-      full_name: "",
-      preferred_name: "",
-      email_address: "",
-      country_code: "+91",
-      phone_number: "",
-      applying_to: "Undergraduate",
-      masters_field_of_focus: "",
-      
-      // Academic Profile
-      high_school_name: "",
-      high_school_graduation_year: "",
-      school_board: "",
-      year_of_study: "",
-      class_10_score: "",
-      class_11_score: "",
-      class_12_half_yearly_score: "",
-      undergraduate_cgpa: "",
-      intended_majors: "",
-      college_name: "",
-      college_graduation_year: "",
-      college_gpa: "",
-      test_type: "Not yet taken" as const,
-      test_score: "",
-      
-      // College Preferences
-      ideal_college_size: "not_specified",
-      ideal_college_setting: "not_specified",
-      must_haves: "",
-      deal_breakers: "",
-      
-      // Financial Information
-      college_budget: "not_specified",
-      financial_aid_importance: "not_specified",
-      scholarship_interests: [],
-      
-      // Additional Undergraduate Prompt Fields
-      extracurricular_activities: "",
-      leadership_roles: "",
-      personal_projects: "",
-      application_concerns: "",
-      specific_questions: "",
-    },
-  });
 
   // Clear test score when "Not yet taken" is selected
   useEffect(() => {
