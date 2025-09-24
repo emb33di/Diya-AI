@@ -248,6 +248,9 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
   
   // Check if category shows simple list (skills, interests, languages)
   const showsSimpleList = ['skills', 'interests', 'languages'].includes(category);
+  
+  // Check if category shows location (hide for skills, interests, languages)
+  const showsLocation = !['skills', 'interests', 'languages'].includes(category);
 
   // Get placeholder text for different categories
   const getPlaceholderText = useCallback((category: string, index: number) => {
@@ -418,18 +421,20 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
         )}
 
         {/* Location Field */}
-        <div className="space-y-2">
-          <Label htmlFor={`location-${activity.id}`}>
-            Location
-          </Label>
-          <Input
-            id={`location-${localActivity.id}`}
-            value={localActivity.location}
-            onChange={(e) => handleFieldChange('location', e.target.value)}
-            onBlur={(e) => handleFieldBlur('location', e.target.value)}
-            placeholder="e.g., San Francisco, CA"
-          />
-        </div>
+        {showsLocation && (
+          <div className="space-y-2">
+            <Label htmlFor={`location-${activity.id}`}>
+              Location
+            </Label>
+            <Input
+              id={`location-${localActivity.id}`}
+              value={localActivity.location}
+              onChange={(e) => handleFieldChange('location', e.target.value)}
+              onBlur={(e) => handleFieldBlur('location', e.target.value)}
+              placeholder="e.g., San Francisco, CA"
+            />
+          </div>
+        )}
 
         {/* Date Fields */}
         {showsDates && (

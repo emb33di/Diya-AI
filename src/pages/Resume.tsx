@@ -86,7 +86,7 @@ const Resume = () => {
                 <h1 className="text-3xl font-display font-bold">Resume Review</h1>
               </div>
               <p className="text-muted-foreground text-lg">
-                Upload and manage your resume drafts with personalized feedback from Diya
+                Edit and download your resume in the perfect format that your target schools are looking for!
               </p>
             </div>
 
