@@ -66,7 +66,7 @@ export interface StructuredResumeData {
     certifications: string[];
   };
 
-  // Extracurricular Activities
+  // Extracurriculars
   extracurriculars: Array<{
     organization: string;
     role: string;

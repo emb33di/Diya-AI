@@ -110,7 +110,7 @@ const Onboarding = () => {
     bgColor: 'bg-green-500/10',
     completed: false
   }, {
-    name: 'Extracurricular Activities',
+    name: 'Extracurriculars',
     icon: Trophy,
     color: 'text-yellow-500',
     bgColor: 'bg-yellow-500/10',

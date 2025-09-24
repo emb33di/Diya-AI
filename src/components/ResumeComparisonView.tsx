@@ -231,10 +231,10 @@ const ResumeComparisonView: React.FC<ResumeComparisonViewProps> = ({
           </div>
         </div>
 
-        {/* Extracurricular Activities */}
+        {/* Extracurriculars */}
         {resume.extracurriculars.length > 0 && (
           <div>
-            <h4 className="font-medium mb-2">Extracurricular Activities</h4>
+            <h4 className="font-medium mb-2">Extracurriculars</h4>
             <div className="space-y-3">
               {resume.extracurriculars.map((extra, index) => (
                 <div key={index} className="border-l-2 border-primary/20 pl-3">

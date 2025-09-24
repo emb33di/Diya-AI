@@ -2,6 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { 
   Download, 
   Eye, 
@@ -11,10 +17,13 @@ import {
   RotateCw,
   ZoomIn,
   ZoomOut,
-  FileText
+  FileText,
+  FileDown,
+  ChevronDown
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { generateDocxFromResumeData } from '@/utils/docxGenerator';
 
 interface ResumePreviewProps {
   isOpen: boolean;
@@ -35,7 +44,6 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
 }) => {
   const [htmlContent, setHtmlContent] = useState<string>('');
   const [loading, setLoading] = useState(false);
-  const [downloadLoading, setDownloadLoading] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [zoom, setZoom] = useState(100);
   const { toast } = useToast();
@@ -108,60 +116,201 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
     }
   };
 
-  const handleDownloadPDF = async () => {
-    setDownloadLoading(true);
+  // DOCX generation and download
+  const handleDownloadDOCX = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
+      if (!resumeData || Object.values(resumeData).every(activities => activities.length === 0)) {
         toast({
-          title: "Authentication required",
-          description: "Please log in to download your resume.",
+          title: "No resume data",
+          description: "Please add some resume activities before downloading.",
           variant: "destructive"
         });
         return;
       }
 
-      const response = await fetch('/functions/v1/download-resume', {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`
-        }
-      });
+      await generateDocxFromResumeData(resumeData, userProfile || {});
       
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'resume.pdf';
-        document.body.appendChild(a);
-        a.click();
-        
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        
-        toast({
-          title: "Download Started",
-          description: "PDF file is being downloaded.",
-        });
-      } else {
-        throw new Error('Failed to generate PDF');
-      }
-    } catch (error) {
-      console.error('Download error:', error);
       toast({
-        title: "Download failed",
-        description: "Failed to download the resume file. Please try again.",
+        title: "DOCX Download Started",
+        description: "Your resume is being downloaded as a Word document.",
+      });
+    } catch (error) {
+      console.error('DOCX generation error:', error);
+      toast({
+        title: "DOCX generation failed",
+        description: "Failed to generate DOCX document. Please try again.",
         variant: "destructive"
       });
-    } finally {
-      setDownloadLoading(false);
+    }
+  };
+
+  // Primary PDF generation using browser print (reliable and cost-effective)
+  const handleDownloadPDF = () => {
+    try {
+      // Generate HTML content from local data
+      const htmlContent = generateResumeHtmlFromData(resumeData);
+      
+      // Create a new window with the HTML content and exact preview styling
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(`
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Resume</title>
+            <style>
+              .resume-page {
+                background-color: #ffffff;
+                font-family: "Times New Roman", Times, serif;
+                font-size: 12pt;
+                line-height: 1.4;
+                color: #000000;
+                width: 100%;
+                max-width: 8.5in;
+                min-height: 11in;
+                padding: 0.5in;
+                margin: 0 auto;
+                box-sizing: border-box;
+              }
+
+              .resume-page .header {
+                text-align: center;
+                margin-bottom: 24px;
+              }
+
+              .resume-page .header .name {
+                font-size: 22pt;
+                font-weight: bold;
+                margin: 0;
+                color: #000000;
+              }
+
+              .resume-page .header .contact-info {
+                font-size: 11pt;
+                margin-top: 4px;
+                color: #000000;
+              }
+
+              .resume-page .section {
+                margin-bottom: 16px;
+              }
+
+              .resume-page .section-title {
+                font-size: 13pt;
+                font-weight: bold;
+                text-transform: uppercase;
+                border-bottom: 1px solid #333;
+                padding-bottom: 4px;
+                margin-bottom: 10px;
+                color: #000000;
+              }
+
+              .resume-page .entry {
+                margin-bottom: 12px;
+              }
+
+              .resume-page .entry-title {
+                font-weight: bold;
+                color: #000000;
+              }
+              
+              .resume-page .entry-position-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: baseline;
+              }
+              
+              .resume-page .entry-position {
+                font-style: italic;
+                margin-top: 1px;
+                color: #000000;
+              }
+
+              .resume-page .entry-dates {
+                font-style: italic;
+                color: #333333;
+                flex-shrink: 0;
+                padding-left: 15px;
+              }
+
+              .resume-page .entry-bullets {
+                padding-left: 20px;
+                margin-top: 4px;
+                margin-bottom: 0;
+                list-style-type: disc;
+              }
+
+              .resume-page .entry-bullets li {
+                margin-bottom: 4px;
+                color: #000000;
+              }
+              
+              .resume-page .simple-list-section p {
+                margin: 0 0 4px 0;
+                color: #000000;
+              }
+
+              @media print {
+                body {
+                  margin: 0;
+                  padding: 0;
+                  background: white;
+                }
+                
+                .resume-page {
+                  width: 8.5in;
+                  height: 11in;
+                  margin: 0;
+                  padding: 0.5in;
+                  box-shadow: none;
+                }
+                
+                .resume-page .section {
+                  page-break-inside: avoid;
+                }
+                
+                .resume-page .entry {
+                  page-break-inside: avoid;
+                }
+              }
+            </style>
+          </head>
+          <body>
+            ${htmlContent}
+          </body>
+          </html>
+        `);
+        printWindow.document.close();
+        
+        // Wait for content to load, then trigger print
+        printWindow.onload = () => {
+          setTimeout(() => {
+            printWindow.print();
+            printWindow.close();
+          }, 500);
+        };
+        
+        toast({
+          title: "Print Dialog Opened",
+          description: "Select 'Save as PDF' in your browser's print dialog for a perfect copy.",
+        });
+      }
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast({
+        title: "PDF generation failed",
+        description: "Failed to open print dialog. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 
   const toggleFullscreen = () => {
     setIsFullscreen(!isFullscreen);
   };
+
 
   const adjustZoom = (delta: number) => {
     setZoom(prev => Math.max(50, Math.min(200, prev + delta)));
@@ -171,9 +320,16 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
     setZoom(100);
   };
 
+
   // Generate HTML from local resume data
   const generateResumeHtmlFromData = (data: any) => {
     const { academic, experience, projects, extracurricular, volunteering, skills, interests, languages } = data;
+    
+    // Debug logging to see what's in the data
+    console.log('🔍 ResumePreview Debug - Full data:', data);
+    console.log('🔍 ResumePreview Debug - Languages:', languages);
+    console.log('🔍 ResumePreview Debug - Skills:', skills);
+    console.log('🔍 ResumePreview Debug - Interests:', interests);
 
     // Format date range
     const formatDateRange = (fromDate: string, toDate: string, isCurrent: boolean) => {
@@ -203,11 +359,15 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
         <h2 class="section-title">Education</h2>
         ${academic.map((item: any) => `
           <div class="entry">
-            <div class="entry-header">
-              <span class="entry-title">${item.title || ''}</span>
-              <span class="entry-dates">${formatDateRange(item.fromDate || '', item.toDate || '', item.isCurrent || false)}</span>
-            </div>
-            ${item.position ? `<div class="entry-position">${item.position}</div>` : ''}
+            <div class="entry-title">${item.title || ''}</div>
+            ${item.position ? `
+              <div class="entry-position-header">
+                <span class="entry-position">${item.position}</span>
+                ${formatDateRange(item.fromDate || '', item.toDate || '', item.isCurrent || false) ? `
+                  <span class="entry-dates">${formatDateRange(item.fromDate || '', item.toDate || '', item.isCurrent || false)}</span>
+                ` : ''}
+              </div>
+            ` : ''}
             ${item.bullets && item.bullets.length > 0 ? `
               <ul class="entry-bullets">
                 ${item.bullets.map((bullet: string) => `<li>${bullet}</li>`).join('')}
@@ -224,11 +384,15 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
         <h2 class="section-title">Experience</h2>
         ${experience.map((item: any) => `
           <div class="entry">
-            <div class="entry-header">
-              <span class="entry-title">${item.title || ''}</span>
-              <span class="entry-dates">${formatDateRange(item.fromDate || '', item.toDate || '', item.isCurrent || false)}</span>
-            </div>
-            ${item.position ? `<div class="entry-position">${item.position}</div>` : ''}
+            <div class="entry-title">${item.title || ''}</div>
+            ${item.position ? `
+              <div class="entry-position-header">
+                <span class="entry-position">${item.position}</span>
+                ${formatDateRange(item.fromDate || '', item.toDate || '', item.isCurrent || false) ? `
+                  <span class="entry-dates">${formatDateRange(item.fromDate || '', item.toDate || '', item.isCurrent || false)}</span>
+                ` : ''}
+              </div>
+            ` : ''}
             ${item.bullets && item.bullets.length > 0 ? `
               <ul class="entry-bullets">
                 ${item.bullets.map((bullet: string) => `<li>${bullet}</li>`).join('')}
@@ -245,11 +409,15 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
         <h2 class="section-title">Projects</h2>
         ${projects.map((item: any) => `
           <div class="entry">
-            <div class="entry-header">
-              <span class="entry-title">${item.title || ''}</span>
-              <span class="entry-dates">${formatDateRange(item.fromDate || '', item.toDate || '', item.isCurrent || false)}</span>
-            </div>
-            ${item.position ? `<div class="entry-position">${item.position}</div>` : ''}
+            <div class="entry-title">${item.title || ''}</div>
+            ${item.position ? `
+              <div class="entry-position-header">
+                <span class="entry-position">${item.position}</span>
+                ${formatDateRange(item.fromDate || '', item.toDate || '', item.isCurrent || false) ? `
+                  <span class="entry-dates">${formatDateRange(item.fromDate || '', item.toDate || '', item.isCurrent || false)}</span>
+                ` : ''}
+              </div>
+            ` : ''}
             ${item.bullets && item.bullets.length > 0 ? `
               <ul class="entry-bullets">
                 ${item.bullets.map((bullet: string) => `<li>${bullet}</li>`).join('')}
@@ -263,14 +431,18 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
     // Generate extracurricular section
     const extracurricularHtml = extracurricular && extracurricular.length > 0 ? `
       <section class="section">
-        <h2 class="section-title">Extracurricular Activities</h2>
+        <h2 class="section-title">Extracurriculars</h2>
         ${extracurricular.map((item: any) => `
           <div class="entry">
-            <div class="entry-header">
-              <span class="entry-title">${item.title || ''}</span>
-              <span class="entry-dates">${formatDateRange(item.fromDate || '', item.toDate || '', item.isCurrent || false)}</span>
-            </div>
-            ${item.position ? `<div class="entry-position">${item.position}</div>` : ''}
+            <div class="entry-title">${item.title || ''}</div>
+            ${item.position ? `
+              <div class="entry-position-header">
+                <span class="entry-position">${item.position}</span>
+                ${formatDateRange(item.fromDate || '', item.toDate || '', item.isCurrent || false) ? `
+                  <span class="entry-dates">${formatDateRange(item.fromDate || '', item.toDate || '', item.isCurrent || false)}</span>
+                ` : ''}
+              </div>
+            ` : ''}
             ${item.bullets && item.bullets.length > 0 ? `
               <ul class="entry-bullets">
                 ${item.bullets.map((bullet: string) => `<li>${bullet}</li>`).join('')}
@@ -287,11 +459,15 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
         <h2 class="section-title">Volunteering</h2>
         ${volunteering.map((item: any) => `
           <div class="entry">
-            <div class="entry-header">
-              <span class="entry-title">${item.title || ''}</span>
-              <span class="entry-dates">${formatDateRange(item.fromDate || '', item.toDate || '', item.isCurrent || false)}</span>
-            </div>
-            ${item.position ? `<div class="entry-position">${item.position}</div>` : ''}
+            <div class="entry-title">${item.title || ''}</div>
+            ${item.position ? `
+              <div class="entry-position-header">
+                <span class="entry-position">${item.position}</span>
+                ${formatDateRange(item.fromDate || '', item.toDate || '', item.isCurrent || false) ? `
+                  <span class="entry-dates">${formatDateRange(item.fromDate || '', item.toDate || '', item.isCurrent || false)}</span>
+                ` : ''}
+              </div>
+            ` : ''}
             ${item.bullets && item.bullets.length > 0 ? `
               <ul class="entry-bullets">
                 ${item.bullets.map((bullet: string) => `<li>${bullet}</li>`).join('')}
@@ -302,29 +478,34 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
       </section>
     ` : '';
 
-    // Generate skills section
-    const skillsHtml = skills && skills.length > 0 ? `
+    // Generate combined skills and interests section
+    const skillsAndInterestsHtml = (skills && skills.length > 0) || (interests && interests.length > 0) || (languages && languages.length > 0) ? `
       <section class="section simple-list-section">
-        <h2 class="section-title">Skills</h2>
-        ${skills.map((item: any) => `
-          <p><strong>${item.title || ''}:</strong> ${item.bullets && item.bullets.length > 0 ? item.bullets.join(', ') : ''}</p>
-        `).join('')}
-      </section>
-    ` : '';
-
-    // Generate interests section
-    const interestsHtml = interests && interests.length > 0 ? `
-      <section class="section simple-list-section">
-        <h2 class="section-title">Interests</h2>
-        <p>${interests.map((item: any) => item.title || '').join(', ')}</p>
-      </section>
-    ` : '';
-
-    // Generate languages section
-    const languagesHtml = languages && languages.length > 0 ? `
-      <section class="section simple-list-section">
-        <h2 class="section-title">Languages</h2>
-        <p>${languages.map((item: any) => item.title || '').join(', ')}</p>
+        <h2 class="section-title">Skills and Interests</h2>
+        ${skills && skills.length > 0 ? `
+          <p><strong>Skills:</strong> ${skills.map((item: any) => 
+            item.bullets && item.bullets.length > 0 ? item.bullets.join(', ') : (item.title || '')
+          ).join(', ')}</p>
+        ` : ''}
+        ${languages && languages.length > 0 ? `
+          <p><strong>Languages:</strong> ${languages.map((item: any) => {
+            // Handle different possible data structures
+            if (item.title) {
+              return item.title;
+            } else if (item.language) {
+              // Handle structured language data with proficiency
+              return item.proficiency ? `${item.language} (${item.proficiency})` : item.language;
+            } else if (typeof item === 'string') {
+              return item;
+            } else if (item.bullets && item.bullets.length > 0) {
+              return item.bullets.join(', ');
+            }
+            return '';
+          }).filter(Boolean).join(', ')}</p>
+        ` : ''}
+        ${interests && interests.length > 0 ? `
+          <p><strong>Interests:</strong> ${interests.map((item: any) => item.title || '').join(', ')}</p>
+        ` : ''}
       </section>
     ` : '';
 
@@ -342,9 +523,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
           ${projectsHtml}
           ${extracurricularHtml}
           ${volunteeringHtml}
-          ${skillsHtml}
-          ${interestsHtml}
-          ${languagesHtml}
+          ${skillsAndInterestsHtml}
         ` : `
           <section class="section">
             <h2 class="section-title">No Resume Data</h2>
@@ -369,7 +548,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
           width: 100%;
           max-width: 8.5in;
           min-height: 11in;
-          padding: 1in;
+          padding: 0.5in;
           margin: 0 auto;
           box-sizing: border-box;
         }
@@ -410,14 +589,20 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
           margin-bottom: 12px;
         }
 
-        .resume-page .entry-header {
+        .resume-page .entry-title {
+          font-weight: bold;
+          color: #000000;
+        }
+        
+        .resume-page .entry-position-header {
           display: flex;
           justify-content: space-between;
           align-items: baseline;
         }
-
-        .resume-page .entry-title {
-          font-weight: bold;
+        
+        .resume-page .entry-position {
+          font-style: italic;
+          margin-top: 1px;
           color: #000000;
         }
 
@@ -427,17 +612,12 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
           flex-shrink: 0;
           padding-left: 15px;
         }
-        
-        .resume-page .entry-position {
-          font-style: italic;
-          margin-top: 1px;
-          color: #000000;
-        }
 
         .resume-page .entry-bullets {
           padding-left: 20px;
           margin-top: 4px;
           margin-bottom: 0;
+          list-style-type: disc;
         }
 
         .resume-page .entry-bullets li {
@@ -455,7 +635,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
             width: 8.5in;
             height: 11in;
             margin: 0;
-            padding: 1in;
+            padding: 0.5in;
             box-shadow: none;
           }
           
@@ -477,10 +657,10 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
           <div className="flex flex-col space-y-1">
             <DialogTitle className="flex items-center space-x-2">
               <FileText className="h-5 w-5" />
-              <span>Resume Preview & PDF Download</span>
+              <span>Resume Preview & PDF Export</span>
             </DialogTitle>
             <p id="resume-preview-description" className="text-sm text-muted-foreground">
-              Preview your resume before downloading to save on generation costs
+              Preview your resume and export as PDF using your browser's print function
             </p>
           </div>
           <div className="flex items-center space-x-2">
@@ -527,15 +707,31 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
               {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
             </Button>
 
-            {/* Download Button */}
-            <Button
-              onClick={handleDownloadPDF}
-              disabled={downloadLoading}
-              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              <Download className="h-4 w-4" />
-              <span>{downloadLoading ? 'Generating PDF...' : 'Download PDF'}</span>
-            </Button>
+            {/* Download Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  className="flex items-center space-x-2 text-white"
+                  style={{ backgroundColor: '#D07D00' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#B86F00'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#D07D00'}
+                >
+                  <Download className="h-4 w-4" />
+                  <span>Download</span>
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleDownloadPDF} className="cursor-pointer">
+                  <FileText className="h-4 w-4 mr-2" />
+                  Download PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleDownloadDOCX} className="cursor-pointer">
+                  <FileDown className="h-4 w-4 mr-2" />
+                  Download DOCX
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             {/* Close Button */}
             <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 p-0">
@@ -578,7 +774,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
                     </div>
 
                     {/* Document Container */}
-                    <div className="bg-gray-100 p-8">
+                    <div className="bg-gray-100 p-8 overflow-auto max-h-[calc(100vh-200px)]">
                       <div 
                         className="mx-auto bg-white shadow-lg border border-gray-200"
                         style={{
@@ -587,15 +783,14 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
                           transition: 'transform 0.2s ease-in-out',
                           width: '210mm',
                           minHeight: '297mm',
-                          maxHeight: '297mm',
-                          padding: '20mm',
+                          padding: '2mm',
                           boxSizing: 'border-box'
                         }}
                       >
                         {htmlContent ? (
                           <div 
                             dangerouslySetInnerHTML={{ __html: htmlContent }}
-                            className="h-full overflow-hidden"
+                            className="h-full"
                           />
                         ) : (
                           <div className="flex items-center justify-center h-full text-gray-500">
@@ -617,7 +812,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
                         <span>•</span>
                         <span>Ready to print</span>
                         <span>•</span>
-                        <span className="text-green-600 font-medium">Preview-first design saves costs</span>
+                        <span className="text-green-600 font-medium">Browser print ensures perfect formatting</span>
                       </div>
                       <div className="flex items-center space-x-1">
                         <Button

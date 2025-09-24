@@ -44,7 +44,7 @@ RESUME GENERATION REQUIREMENTS:
    - Work Experience (with achievements and impact)
    - Projects (with technologies and outcomes)
    - Skills (organized by category)
-   - Extracurricular Activities
+   - Extracurriculars
    - Volunteer Experience
    - Awards and Honors
    - Publications (if any)
@@ -88,7 +88,7 @@ GPA: [GPA] | [Honors/Awards]
 **Soft Skills:** [Leadership, communication, teamwork, etc.]  
 **Certifications:** [Relevant certifications]
 
-## Extracurricular Activities
+## Extracurriculars
 **[Organization/Role]** | [Dates]  
 [Enhanced description with leadership and impact]  
 • [Achievement 1]  
@@ -174,7 +174,7 @@ ${project.githubUrl ? `GitHub: ${project.githubUrl}` : ''}
 **Soft Skills:** ${resumeData.skills.soft.join(', ')}
 ${resumeData.skills.certifications.length > 0 ? `**Certifications:** ${resumeData.skills.certifications.join(', ')}` : ''}
 
-## Extracurricular Activities
+## Extracurriculars
 ${resumeData.extracurriculars.map((extra: any) => `
 **${extra.role}** | ${extra.organization} | ${extra.startDate} - ${extra.endDate}
 ${extra.description}

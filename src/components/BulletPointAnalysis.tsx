@@ -191,7 +191,7 @@ const BulletPointAnalysis: React.FC<BulletPointAnalysisProps> = ({ feedback }) =
       )}
 
       {renderBulletPointSection(
-        "Extracurricular Activities",
+        "Extracurriculars",
         "extracurriculars",
         <Star className="h-5 w-5 text-green-500" />
       )}

@@ -85,7 +85,7 @@ INSTRUCTIONS:
 Extract and organize the following information from the conversation:
 
 1. **Academic Achievements**: Grades, test scores, academic honors, coursework
-2. **Extracurricular Activities**: Clubs, sports, hobbies, interests
+2. **Extracurriculars**: Clubs, sports, hobbies, interests
 3. **Leadership Experience**: Leadership roles, responsibilities, initiatives
 4. **Community Service**: Volunteer work, community involvement, social impact
 5. **Work Experience**: Jobs, internships, projects, entrepreneurial activities

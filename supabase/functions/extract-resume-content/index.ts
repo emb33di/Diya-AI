@@ -53,7 +53,7 @@ Extract the following information from the resume document:
    - Soft skills, certifications
    - Organize by category
 
-7. **Extracurricular Activities**
+7. **Extracurriculars**
    - Organization, role, dates
    - Description, achievements
 

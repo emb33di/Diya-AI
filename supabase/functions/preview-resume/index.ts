@@ -269,7 +269,7 @@ function generateResumeHtml(data: ResumeData, userProfile: UserProfile): string 
   // Generate extracurricular section
   const extracurricularHtml = extracurricular && extracurricular.length > 0 ? `
     <section class="section">
-      <h2 class="section-title">Extracurricular Activities</h2>
+      <h2 class="section-title">Extracurriculars</h2>
       ${extracurricular.map(item => `
         <div class="entry">
           <div class="entry-header">

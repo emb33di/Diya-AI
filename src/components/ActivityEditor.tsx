@@ -32,6 +32,10 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
   // Local state for immediate UI updates
   const [localActivity, setLocalActivity] = useState<ActivityData>(activity);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  
+  // Undo state management
+  const [undoStack, setUndoStack] = useState<ActivityData[]>([]);
+  const [redoStack, setRedoStack] = useState<ActivityData[]>([]);
 
   // Sync local state with prop changes
   useEffect(() => {
@@ -57,6 +61,67 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
   useEffect(() => {
     checkForUnsavedChanges();
   }, [checkForUnsavedChanges]);
+
+  // Save state to undo stack before making changes
+  const saveToUndoStack = useCallback(() => {
+    setUndoStack(prev => [...prev, { ...localActivity }]);
+    setRedoStack([]); // Clear redo stack when new action is performed
+  }, [localActivity]);
+
+  // Undo function
+  const undo = useCallback(() => {
+    if (undoStack.length > 0) {
+      const previousState = undoStack[undoStack.length - 1];
+      setRedoStack(prev => [...prev, { ...localActivity }]);
+      setLocalActivity(previousState);
+      setUndoStack(prev => prev.slice(0, -1));
+    }
+  }, [undoStack, localActivity]);
+
+  // Redo function
+  const redo = useCallback(() => {
+    if (redoStack.length > 0) {
+      const nextState = redoStack[redoStack.length - 1];
+      setUndoStack(prev => [...prev, { ...localActivity }]);
+      setLocalActivity(nextState);
+      setRedoStack(prev => prev.slice(0, -1));
+    }
+  }, [redoStack, localActivity]);
+
+  // Handle keyboard shortcuts
+  const handleKeyDown = useCallback((e: React.KeyboardEvent, fieldType: 'title' | 'position' | 'bullet', index?: number) => {
+    // Cmd+Z (Mac) or Ctrl+Z (Windows/Linux) for undo
+    if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+      e.preventDefault();
+      undo();
+      return;
+    }
+    
+    // Cmd+Shift+Z (Mac) or Ctrl+Y (Windows/Linux) for redo
+    if (((e.metaKey && e.shiftKey) || (e.ctrlKey && e.key === 'y')) && e.key === 'z') {
+      e.preventDefault();
+      redo();
+      return;
+    }
+    
+    // Cmd+C (Mac) or Ctrl+C (Windows/Linux) for copy
+    if ((e.metaKey || e.ctrlKey) && e.key === 'c') {
+      // Let the default copy behavior work
+      return;
+    }
+    
+    // Cmd+V (Mac) or Ctrl+V (Windows/Linux) for paste
+    if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
+      // Let the default paste behavior work
+      return;
+    }
+    
+    // Cmd+A (Mac) or Ctrl+A (Windows/Linux) for select all
+    if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
+      // Let the default select all behavior work
+      return;
+    }
+  }, [undo, redo]);
 
   // Warn user before leaving page with unsaved changes
   useEffect(() => {
@@ -100,12 +165,13 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
 
   // Handle bullet point changes - update local state immediately
   const handleBulletChange = useCallback((index: number, value: string) => {
+    saveToUndoStack();
     setLocalActivity(prev => {
       const newBullets = [...prev.bullets];
       newBullets[index] = value;
       return { ...prev, bullets: newBullets };
     });
-  }, []);
+  }, [saveToUndoStack]);
 
   // Handle bullet point blur - save when done editing
   const handleBulletBlur = useCallback((index: number, value: string) => {
@@ -140,8 +206,9 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
   const handleTitleEdit = useCallback(() => setIsEditingTitle(true), []);
   const handleTitleSave = useCallback(() => setIsEditingTitle(false), []);
   const handleTitleChange = useCallback((value: string) => {
+    saveToUndoStack();
     setLocalActivity(prev => ({ ...prev, title: value }));
-  }, []);
+  }, [saveToUndoStack]);
   
   const handleTitleBlur = useCallback((value: string) => {
     saveChanges({ title: value });
@@ -249,6 +316,7 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
                   handleTitleSave();
                 }}
                 onKeyDown={(e) => {
+                  handleKeyDown(e, 'title');
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     handleTitleBlur(e.currentTarget.value);
@@ -403,6 +471,7 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
                     value={bullet}
                     onChange={(e) => handleBulletChange(index, e.target.value)}
                     onBlur={(e) => handleBulletBlur(index, e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(e, 'bullet', index)}
                     placeholder={`Describe your ${category} experience...`}
                     className="flex-1 min-h-[80px]"
                   />
@@ -444,6 +513,7 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
                     value={item}
                     onChange={(e) => handleBulletChange(index, e.target.value)}
                     onBlur={(e) => handleBulletBlur(index, e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(e, 'bullet', index)}
                     placeholder={getPlaceholderText(category, index)}
                     className="flex-1"
                   />

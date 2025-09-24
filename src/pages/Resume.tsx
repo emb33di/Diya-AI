@@ -516,7 +516,7 @@ const Resume = () => {
                           {category === 'academic' ? 'Academic Experience' :
                            category === 'experience' ? 'Work Experience' :
                            category === 'projects' ? 'Projects' :
-                           category === 'extracurricular' ? 'Extracurricular Activities' :
+                           category === 'extracurricular' ? 'Extracurriculars' :
                            category === 'volunteering' ? 'Volunteer Experience' :
                            category === 'skills' ? 'Skills' :
                            category === 'interests' ? 'Interests' :
