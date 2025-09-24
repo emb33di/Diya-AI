@@ -9,7 +9,8 @@ import { getUserDisplayName, fetchUserProfileData } from "@/utils/userNameUtils"
 import { useConversation } from '@outspeed/react';
 import VoiceOrb from "@/components/VoiceOrb";
 import { ConversationProcessingService } from "@/services/conversationProcessingService";
-import { OutspeedAPI } from '@/utils/outspeedAPI';
+import { MessagePersistenceService, ConversationMessage } from '@/services/messagePersistenceService';
+import { useTranscriptSaver } from '@/hooks/useTranscriptSaver';
 
 interface BrainstormSummary {
   key_themes: string[];
@@ -34,6 +35,7 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
   const [studentName, setStudentName] = useState<string>('');
   const [onboardingTranscript, setOnboardingTranscript] = useState<string>('');
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  // NOTE: messageOrder state removed - no longer needed with Outspeed API approach
   const [audioLevel, setAudioLevel] = useState(0);
   const [showFullScreenChat, setShowFullScreenChat] = useState(false);
   const [messages, setMessages] = useState<Array<{
@@ -42,6 +44,14 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
     timestamp: Date;
   }>>([]);
   const { toast } = useToast();
+
+  // Initialize transcript saver hook for automatic message persistence
+  const { forceSaveTranscript } = useTranscriptSaver(
+    messages,
+    conversationId,
+    'brainstorming',
+    500 // 500ms debounce delay
+  );
 
   // Audio analysis refs
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -96,6 +106,13 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
       
       setSessionStarted(false);
       setShowFullScreenChat(false);
+      
+      // Force save transcript before clearing conversation ID
+      if (messagesRef.current.length > 0) {
+        console.log('💾 Force saving transcript on disconnect...');
+        await forceSaveTranscript();
+      }
+      
       setConversationId(null);
       setMessages([]);
       stopAudioAnalysis();
@@ -112,37 +129,49 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
       console.error('Outspeed error:', error);
       setConnectionError(error.toString());
     },
-    onMessage: (message: any) => {
+    onMessage: async (message: any) => {
       console.log('🎯 AI Message received:', message);
       console.log('📊 Message received at:', new Date().toISOString());
+      
       // Add message to conversation transcript
       if (message.message && typeof message.message === 'string') {
+        const newMessage = {
+          source: (message.source || 'ai') as 'ai' | 'user',
+          text: message.message,
+          timestamp: new Date()
+        };
+        
+        // Update local state
         setMessages(prev => {
-          const newMessages = [...prev, {
-            source: (message.source || 'ai') as 'ai' | 'user',
-            text: message.message,
-            timestamp: new Date()
-          }];
+          const newMessages = [...prev, newMessage];
           console.log('📝 Updated messages array:', newMessages.length, 'messages');
           return newMessages;
         });
+        
+        // NOTE: Real-time message storage removed - will use Outspeed API instead
       } else {
         console.log('⚠️ AI message missing or invalid:', message);
       }
     },
-    onUserSpeech: (speech: any) => {
+    onUserSpeech: async (speech: any) => {
       console.log('🎤 User speech detected:', speech);
+      
       // Add user speech to transcript if we have the text
       if (speech.text && typeof speech.text === 'string') {
+        const newMessage = {
+          source: 'user' as const,
+          text: speech.text,
+          timestamp: new Date()
+        };
+        
+        // Update local state
         setMessages(prev => {
-          const newMessages = [...prev, {
-            source: 'user' as const,
-            text: speech.text,
-            timestamp: new Date()
-          }];
+          const newMessages = [...prev, newMessage];
           console.log('📝 Updated messages array:', newMessages.length, 'messages');
           return newMessages;
         });
+        
+        // NOTE: Real-time message storage removed - will use Outspeed API instead
       } else {
         console.log('⚠️ User speech missing or invalid:', speech);
       }

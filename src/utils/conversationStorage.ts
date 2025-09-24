@@ -4,7 +4,15 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
-import { ElevenLabsAPI, ConversationData } from './elevenLabsAPI';
+
+export interface ConversationData {
+  conversation_id: string;
+  transcript_summary: string | null;
+  transcript: string | null;
+  audio_url: string | null;
+  created_at: string;
+  user_id: string;
+}
 
 export class ConversationStorage {
   /**
@@ -90,7 +98,7 @@ export class ConversationStorage {
       if (error) {
         console.error('Error storing metadata in Supabase:', error);
         // Fallback to localStorage
-        ElevenLabsAPI.storeConversationLocally(metadata);
+        this.storeConversationLocally(metadata);
         return false;
       }
 
@@ -109,33 +117,46 @@ export class ConversationStorage {
     } catch (error) {
       console.error('Error storing conversation metadata:', error);
       // Fallback to localStorage
-      ElevenLabsAPI.storeConversationLocally(metadata);
+      this.storeConversationLocally(metadata);
       return false;
     }
   }
 
   /**
-   * Retrieve and store metadata for a conversation
+   * Store conversation metadata locally as backup
    */
-  static async retrieveAndStoreMetadata(conversationId: string, userId: string): Promise<boolean> {
+  static storeConversationLocally(metadata: ConversationData) {
     try {
-      console.log('Retrieving and storing metadata for conversation:', conversationId);
-      
-      // Get metadata from ElevenLabs API
-      const metadata = await ElevenLabsAPI.getConversationMetadata(conversationId, userId);
+      const storedMetadata = localStorage.getItem('conversation_metadata') || '{}';
+      const metadataMap = JSON.parse(storedMetadata);
+      metadataMap[metadata.conversation_id] = metadata;
+      localStorage.setItem('conversation_metadata', JSON.stringify(metadataMap));
+      console.log('Metadata stored locally:', metadata.conversation_id);
+    } catch (error) {
+      console.error('Error storing metadata locally:', error);
+    }
+  }
+
+  /**
+   * Retrieve and store metadata for a conversation
+   * Note: This method now expects metadata to be provided externally (e.g., from Outspeed)
+   */
+  static async storeProvidedMetadata(metadata: ConversationData): Promise<boolean> {
+    try {
+      console.log('Storing provided metadata for conversation:', metadata.conversation_id);
       
       // Store in database
       const success = await this.storeConversationMetadata(metadata);
       
       if (success) {
-        console.log('✅ Metadata retrieved and stored successfully');
+        console.log('✅ Metadata stored successfully');
       } else {
         console.log('⚠️ Metadata stored locally as fallback');
       }
       
       return true;
     } catch (error) {
-      console.error('Error retrieving and storing metadata:', error);
+      console.error('Error storing provided metadata:', error);
       return false;
     }
   }

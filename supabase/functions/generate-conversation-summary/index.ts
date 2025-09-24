@@ -254,9 +254,9 @@ serve(async (req) => {
 
     // Get conversation transcript
     const { data: conversation, error: conversationError } = await supabase
-      .from('conversations')
+      .from('conversation_metadata')
       .select('transcript')
-      .eq('id', conversation_id)
+      .eq('conversation_id', conversation_id)
       .eq('user_id', user_id)
       .single()
 

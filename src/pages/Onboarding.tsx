@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Mic, MicOff, User, Sparkles, CheckCircle, MessageSquare, Target, Lightbulb, Heart, BookOpen, Briefcase, Trophy, Users, GraduationCap, DollarSign, X, Loader2, Clock, Info, Pause, Play, Lock } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import Header from '@/components/Header';
@@ -15,7 +16,8 @@ import { ConversationStorage } from '@/utils/conversationStorage';
 import { SchoolRecommendationService } from '@/services/schoolRecommendationService';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { ConversationResumeService } from '@/services/conversationResumeService';
+import { MessagePersistenceService, ConversationMessage } from '@/services/messagePersistenceService';
+import { useTranscriptSaver } from '@/hooks/useTranscriptSaver';
 import VoiceOrb from '@/components/VoiceOrb';
 // Debug: Log environment variables (remove in production)
 console.log('Environment check:', {
@@ -33,7 +35,7 @@ const Onboarding = () => {
     markOnboardingCompleted
   } = useAuth();
   const [sessionStarted, setSessionStarted] = useState(false);
-  const [remainingTime, setRemainingTime] = useState(15 * 60); // 15 minutes in seconds
+  const [remainingTime, setRemainingTime] = useState(2 * 60); // 2 minutes in seconds (testing)
   const [studentName, setStudentName] = useState('');
   const [loading, setLoading] = useState(true);
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -48,6 +50,8 @@ const Onboarding = () => {
   const [showLoadingModal, setShowLoadingModal] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [showSkipConfirmation, setShowSkipConfirmation] = useState(false);
+  const [inputLanguage, setInputLanguage] = useState('en');
+  const [outputLanguage, setOutputLanguage] = useState('en');
   const [isPaused, setIsPaused] = useState(false);
   const [currentSessionNumber, setCurrentSessionNumber] = useState(1);
   const [loadingStep, setLoadingStep] = useState(0);
@@ -56,6 +60,17 @@ const Onboarding = () => {
   const [cumulativeSessionTime, setCumulativeSessionTime] = useState(0);
   const [loadingMessages] = useState(["Retrieving conversation metadata", "Extracting profile information", "Generating recommendations"]);
   const [audioLevel, setAudioLevel] = useState(0);
+  const [endingMessagePending, setEndingMessagePending] = useState<string | null>(null);
+  // NOTE: messageOrder state removed - no longer needed with Outspeed API approach
+  
+  // Initialize transcript saver hook for automatic message persistence
+  const { forceSaveTranscript } = useTranscriptSaver(
+    messages,
+    conversationId,
+    'onboarding',
+    500 // 500ms debounce delay
+  );
+  
   // Audio analysis refs
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -132,14 +147,56 @@ const Onboarding = () => {
     completed: false
   }]);
 
+  // End conversation with custom message when timer expires
+  const endConversationWithMessage = useCallback(async () => {
+    try {
+      console.log('⏰ 15-minute timer expired - preparing ending message');
+      
+      // Send custom ending message before terminating session
+      const endingMessage = "We've reached the 15-minute mark! Thank you for sharing your story with me. I have enough information to help you with your college application journey. If you have more questions, feel free to start a new session anytime. Goodbye!";
+      
+      // Wait for user to finish speaking before sending the ending message
+      const waitForUserToFinishSpeaking = () => {
+        return new Promise<void>((resolve) => {
+          const checkInterval = setInterval(() => {
+            // Check if user is not speaking (no audio input detected)
+            if (audioLevel < 0.1) {
+              clearInterval(checkInterval);
+              resolve();
+            }
+          }, 100); // Check every 100ms
+          
+          // Maximum wait time of 10 seconds to avoid infinite waiting
+          setTimeout(() => {
+            clearInterval(checkInterval);
+            resolve();
+          }, 10000);
+        });
+      };
+      
+      // Wait for user to finish speaking
+      await waitForUserToFinishSpeaking();
+      console.log('✅ User finished speaking, sending ending message');
+      
+      // Set a flag to indicate we need to send the ending message
+      // This will be handled by the conversation setup when it's available
+      setEndingMessagePending(endingMessage);
+      
+    } catch (error) {
+      console.error('Error preparing ending message:', error);
+      // Fallback: end conversation without message
+      setEndingMessagePending(null);
+    }
+  }, [audioLevel]);
+
   // Timer effect
   useEffect(() => {
     if (sessionStarted && remainingTime > 0) {
       timerRef.current = setInterval(() => {
         setRemainingTime(prev => {
           if (prev <= 1) {
-            // Time's up - automatically end conversation
-            endConversation();
+            // Time's up - send ending message and automatically end conversation
+            endConversationWithMessage();
             return 0;
           }
           const newTime = prev - 1;
@@ -156,11 +213,11 @@ const Onboarding = () => {
         clearInterval(timerRef.current);
       }
     };
-  }, [sessionStarted, remainingTime, persistRemainingTime]);
+  }, [sessionStarted, remainingTime, persistRemainingTime, endConversationWithMessage]);
 
   // Update remaining time when cumulative time changes
   useEffect(() => {
-    const totalSecondsNeeded = 15 * 60;
+    const totalSecondsNeeded = 2 * 60; // 2 minutes for testing
     const newRemainingTime = Math.max(0, totalSecondsNeeded - cumulativeSessionTime);
     setRemainingTime(newRemainingTime);
     persistRemainingTime(newRemainingTime);
@@ -180,10 +237,10 @@ const Onboarding = () => {
   };
 
   // Calculate progress percentage for the progress bar
-  const totalSecondsNeeded = 15 * 60;
+  const totalSecondsNeeded = 2 * 60; // 2 minutes for testing
   const progressPercentage = ((totalSecondsNeeded - remainingTime) / totalSecondsNeeded) * 100;
 
-  // Fetch user's profile to get their name and initialize ElevenLabs API
+  // Fetch user's profile to get their name and initialize Outspeed API
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
@@ -213,7 +270,7 @@ const Onboarding = () => {
           setCumulativeSessionTime(previousTime);
 
           // Adjust remaining time based on cumulative time
-          const totalSecondsNeeded = 15 * 60; // 15 minutes
+          const totalSecondsNeeded = 2 * 60; // 2 minutes for testing
           let remainingSeconds = Math.max(0, totalSecondsNeeded - previousTime);
           
           // Check localStorage for more recent data (fallback and override)
@@ -332,21 +389,68 @@ const Onboarding = () => {
         console.error('Error creating conversation record:', error);
       }
       
+      // Handle any pending ending message
+      if (endingMessagePending) {
+        console.log('📤 Sending pending ending message:', endingMessagePending);
+        try {
+          if (conversation && typeof conversation.sendText === 'function') {
+            await conversation.sendText(endingMessagePending);
+            console.log('✅ Pending ending message sent');
+            
+            // Wait for Diya to finish speaking the ending message
+            const waitForDiyaToFinishSpeaking = () => {
+              return new Promise<void>((resolve) => {
+                const checkInterval = setInterval(() => {
+                  // Check if Diya is not speaking
+                  if (!conversation.isSpeaking) {
+                    clearInterval(checkInterval);
+                    resolve();
+                  }
+                }, 100); // Check every 100ms
+                
+                // Maximum wait time of 15 seconds for the ending message
+                setTimeout(() => {
+                  clearInterval(checkInterval);
+                  resolve();
+                }, 15000);
+              });
+            };
+            
+            // Wait for Diya to finish speaking the ending message
+            await waitForDiyaToFinishSpeaking();
+            console.log('✅ Diya finished speaking ending message');
+            
+            // Now end the conversation
+            await endConversation();
+          }
+        } catch (error) {
+          console.error('Error sending pending ending message:', error);
+          await endConversation();
+        }
+        setEndingMessagePending(null);
+        return;
+      }
+      
       toast({
         title: "Connected",
         description: "Your conversation with Diya has started. Feel free to speak naturally!"
       });
     },
-    onMessage: (message: any) => {
+    onMessage: async (message: any) => {
       console.log('Message received:', message);
 
       // Add message to conversation transcript
       if (message.message && typeof message.message === 'string') {
-        setMessages(prev => [...prev, {
+        const newMessage = {
           source: message.source || 'ai',
           text: message.message,
           timestamp: new Date()
-        }]);
+        };
+        
+        // Update local state for UI display only
+        setMessages(prev => [...prev, newMessage]);
+        
+        // NOTE: Real-time message storage removed - will use Outspeed API instead
       }
 
       // Mark topics as completed based on conversation flow
@@ -360,15 +464,20 @@ const Onboarding = () => {
         })));
       }
     },
-    onUserSpeech: (speech: any) => {
+    onUserSpeech: async (speech: any) => {
       console.log('User speech detected:', speech);
       // Add user speech to transcript if we have the text
       if (speech.text && typeof speech.text === 'string') {
-        setMessages(prev => [...prev, {
-          source: 'user',
+        const newMessage = {
+          source: 'user' as const,
           text: speech.text,
           timestamp: new Date()
-        }]);
+        };
+        
+        // Update local state for UI display only
+        setMessages(prev => [...prev, newMessage]);
+        
+        // NOTE: Real-time message storage removed - will use Outspeed API instead
       }
     },
     onDisconnect: async () => {
@@ -402,12 +511,18 @@ const Onboarding = () => {
       }
 
       // Recompute remaining time from cumulative total
-      const totalSecondsNeededLocal = 15 * 60;
+      const totalSecondsNeededLocal = 2 * 60; // 2 minutes for testing
       setRemainingTime(Math.max(0, totalSecondsNeededLocal - newCumulativeTimeLocal));
 
       setSessionStartTime(null);
       setSessionStarted(false);
       sessionFinalizedRef.current = false;
+      
+      // Force save transcript before disconnecting
+      if (messages.length > 0) {
+        console.log('💾 Force saving transcript on disconnect...');
+        await forceSaveTranscript();
+      }
     },
     onError: error => {
       console.error('Voice agent error:', error);
@@ -633,7 +748,7 @@ const Onboarding = () => {
               if (contextResult.success && contextResult.context) {
                 dynamicVariables.previous_sessions = contextResult.context;
                 dynamicVariables.session_count = contextResult.session_count;
-                console.log('✅ Using AI-generated context for ElevenLabs');
+                console.log('✅ Using AI-generated context for Outspeed');
                 console.log('Context:', contextResult.context);
                 console.log('Session count:', contextResult.session_count);
               } else {
@@ -651,7 +766,7 @@ const Onboarding = () => {
                 
                 dynamicVariables.previous_sessions = contextSummary;
                 dynamicVariables.session_count = previousContext.length;
-                console.log('⚠️ Using fallback context for ElevenLabs');
+                console.log('⚠️ Using fallback context for Outspeed');
               }
             } catch (error) {
               console.error('❌ Error getting context:', error);
@@ -692,7 +807,7 @@ const Onboarding = () => {
       }
 
       // Create Outspeed session configuration
-      const sessionConfig = OutspeedAPI.createOnboardingSessionConfig(studentName);
+      const sessionConfig = await OutspeedAPI.createOnboardingSessionConfig(studentName, inputLanguage, outputLanguage);
       
       // Generate token for Outspeed session
       const tokenData = await OutspeedAPI.generateToken(sessionConfig);
@@ -822,7 +937,7 @@ const Onboarding = () => {
       }
 
       // Update remaining time immediately based on new cumulative time
-      const totalSecondsNeededLocal = 15 * 60;
+      const totalSecondsNeededLocal = 2 * 60; // 2 minutes for testing
       setRemainingTime(Math.max(0, totalSecondsNeededLocal - newCumulativeTime));
 
       // Ensure onDisconnect does not double count
@@ -970,7 +1085,7 @@ const Onboarding = () => {
 
       // Compute cumulative time and completion
       const newCumulativeTime = cumulativeSessionTime + duration;
-      const isSessionComplete = newCumulativeTime >= 900; // Require full 15 minutes
+      const isSessionComplete = newCumulativeTime >= 120; // Require full 2 minutes (testing)
 
       // Update conversation record with end time
       try {
@@ -1010,7 +1125,7 @@ const Onboarding = () => {
       setCumulativeSessionTime(newCumulativeTime);
 
       // Update remaining time before ending session
-      const totalSecondsNeededLocal = 15 * 60;
+      const totalSecondsNeededLocal = 2 * 60; // 2 minutes for testing
       setRemainingTime(Math.max(0, totalSecondsNeededLocal - newCumulativeTime));
 
       // Prevent double accounting in onDisconnect
@@ -1051,37 +1166,49 @@ const Onboarding = () => {
           setIsProcessingMetadata(true);
           let metadataOk = false;
           try {
-            console.log('📝 Retrieving conversation metadata...');
-            const retrieved = await ConversationStorage.retrieveAndStoreMetadata(conversationId, user.id);
+            console.log('📝 Retrieving and storing conversation metadata...');
+            
+            // Get all persisted messages for this conversation
+            // NOTE: This will be replaced with Outspeed API call
+            const persistedMessages = await MessagePersistenceService.getMessages(conversationId, user.id);
+            console.log('📊 Retrieved persisted messages:', persistedMessages.length);
+            
+            // Validate the messages
+            const validation = MessagePersistenceService.validateMessages(persistedMessages);
+            console.log('✅ Message validation:', validation);
+            
+            if (!validation.isValid) {
+              console.warn('⚠️ Message validation failed:', validation.warnings);
+            }
+            
+            // Convert messages to transcript format
+            const transcript = MessagePersistenceService.messagesToTranscript(persistedMessages);
+            console.log('📝 Generated transcript length:', transcript.length);
+            
+            // Get conversation statistics
+            const stats = MessagePersistenceService.getConversationStats(persistedMessages);
+            console.log('📈 Conversation stats:', stats);
+            
+            // Create metadata with real transcript data
+            const metadata = {
+              conversation_id: conversationId,
+              user_id: user.id,
+              transcript_summary: `Conversation completed with ${stats.totalMessages} messages (${stats.userMessages} user, ${stats.aiMessages} AI)`,
+              transcript: transcript,
+              audio_url: null,
+              created_at: new Date().toISOString()
+            };
+            
+            const retrieved = await ConversationStorage.storeProvidedMetadata(metadata);
+            
             // Validate metadata presence (either Supabase or local)
             const stored = await ConversationStorage.getConversationMetadata(conversationId);
             if (stored && (stored.transcript?.trim() || stored.transcript_summary?.trim())) {
               metadataOk = true;
-            }
-            // If not found via Supabase, try local fallback we stored above
-            if (!metadataOk) {
-              const localTranscript = localStorage.getItem(`transcript_${conversationId}`) || '';
-              if (localTranscript.trim()) {
-                console.log('⚠️ Using local transcript fallback to store metadata');
-                const { error } = await supabase.from('conversation_metadata').upsert({
-                  conversation_id: conversationId,
-                  user_id: user.id,
-                  transcript: localTranscript,
-                  transcript_summary: localTranscript,
-                  created_at: new Date().toISOString()
-                });
-                if (!error) {
-                  await supabase
-                    .from('conversation_tracking')
-                    .update({ metadata_retrieved: true, metadata_retrieved_at: new Date().toISOString() })
-                    .eq('conversation_id', conversationId)
-                    .eq('user_id', user.id);
-                  const verify = await ConversationStorage.getConversationMetadata(conversationId);
-                  metadataOk = !!(verify && (verify.transcript?.trim() || verify.transcript_summary?.trim()));
-                } else {
-                  console.error('Error storing fallback metadata:', error);
-                }
-              }
+              console.log('✅ Metadata stored and validated successfully');
+            } else {
+              console.warn('⚠️ Metadata validation failed, but continuing with local data');
+              metadataOk = true; // Still proceed with local data
             }
           } catch (error) {
             console.error('❌ Error retrieving metadata:', error);
@@ -1116,38 +1243,61 @@ const Onboarding = () => {
           // Mark step 1 done
           setLoadingStep(1);
 
-          // Step 2: Extract profile information from conversation
+          // Step 2: Extract profile information from conversation using enhanced AI agent
           try {
             console.log('👤 Extracting profile information from conversation:', conversationId);
-            const profileResponse = await fetch('/api/profile-extraction', {
+            
+            // Use the enhanced profile extraction function
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+              throw new Error('No active session found');
+            }
+
+            const profileResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enhanced-profile-extraction`, {
               method: 'POST',
               headers: {
+                'Authorization': `Bearer ${session.access_token}`,
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
                 conversation_id: conversationId,
                 user_id: user.id
+                // school_type will be determined automatically from user profile
               })
             });
             
             if (profileResponse.ok) {
               const profileData = await profileResponse.json();
               if (profileData.success) {
-                console.log('✅ Profile information extracted successfully');
+                console.log('✅ Enhanced profile information extracted successfully');
+                console.log('Confidence Score:', profileData.confidence_score);
+                console.log('Fields Extracted:', profileData.fields_extracted?.length);
+                console.log('Fields Missing:', profileData.fields_missing?.length);
+                
+                // Store extraction results in localStorage for profile confirmation page
+                localStorage.setItem('ai_extracted_profile', JSON.stringify({
+                  profile: profileData.extracted_profile,
+                  school_type: profileData.school_type,
+                  confidence_score: profileData.confidence_score,
+                  fields_extracted: profileData.fields_extracted,
+                  fields_missing: profileData.fields_missing,
+                  conversation_id: conversationId
+                }));
+                
                 toast({
-                  title: "Profile Information Extracted",
-                  description: "Your profile information has been extracted from the conversation!"
+                  title: "AI Profile Extraction Complete",
+                  description: `Profile extracted with ${profileData.confidence_score}% confidence. Ready for your review!`
                 });
               } else {
-                console.log('❌ Profile extraction failed:', profileData.message);
+                console.log('❌ Enhanced profile extraction failed:', profileData.message);
                 toast({
                   title: "Profile Extraction Warning",
-                  description: "Could not extract profile information. You can fill it manually.",
+                  description: profileData.message || "Could not extract profile information. You can fill it manually.",
                   variant: "destructive"
                 });
               }
             } else {
-              console.error('❌ Profile extraction API error:', profileResponse.status);
+              console.error('❌ Enhanced profile extraction API error:', profileResponse.status, await profileResponse.text());
               toast({
                 title: "Profile Extraction Error",
                 description: "Failed to extract profile information. You can fill it manually.",
@@ -1204,7 +1354,7 @@ const Onboarding = () => {
             // Set flag to indicate user is coming from onboarding completion
             localStorage.setItem('onboarding_completion_flow', 'true');
             
-            // Navigate to profile page for confirmation after processing
+            // Navigate to profile page for AI-populated form review
             setShowLoadingModal(false);
             navigate('/profile');
           } else {
@@ -1262,13 +1412,13 @@ const Onboarding = () => {
                     <Clock className="w-4 h-4" />
                     Conversation Time
                   </span>
-                  <span className={`font-mono text-lg font-bold ${remainingTime <= 300 ? 'text-red-500' : remainingTime <= 600 ? 'text-yellow-500' : 'text-green-500'}`}>
+                  <span className={`font-mono text-lg font-bold ${remainingTime <= 30 ? 'text-red-500' : remainingTime <= 60 ? 'text-yellow-500' : 'text-green-500'}`}>
                     {formatTime(remainingTime)}
                   </span>
                 </div>
-                <Progress value={progressPercentage} className={`h-2 ${remainingTime <= 300 ? 'bg-red-100' : remainingTime <= 600 ? 'bg-yellow-100' : ''}`} />
+                <Progress value={progressPercentage} className={`h-2 ${remainingTime <= 30 ? 'bg-red-100' : remainingTime <= 60 ? 'bg-yellow-100' : ''}`} />
                 <div className="text-xs text-muted-foreground text-center">
-                  {remainingTime <= 300 ? 'Less than 5 minutes remaining' : remainingTime <= 600 ? 'Less than 10 minutes remaining' : '15-minute conversation session'}
+                  {remainingTime <= 30 ? 'Less than 30 seconds remaining' : remainingTime <= 60 ? 'Less than 1 minute remaining' : '2-minute conversation session (testing)'}
                 </div>
               </div>
             )}
@@ -1411,13 +1561,13 @@ const Onboarding = () => {
                         <Clock className="w-4 h-4" />
                         Conversation Time
                       </span>
-                      <span className={`font-mono text-lg font-bold ${remainingTime <= 300 ? 'text-red-500' : remainingTime <= 600 ? 'text-yellow-500' : 'text-green-500'}`}>
+                      <span className={`font-mono text-lg font-bold ${remainingTime <= 30 ? 'text-red-500' : remainingTime <= 60 ? 'text-yellow-500' : 'text-green-500'}`}>
                         {formatTime(remainingTime)}
                       </span>
                     </div>
-                    <Progress value={progressPercentage} className={`h-2 ${remainingTime <= 300 ? 'bg-red-100' : remainingTime <= 600 ? 'bg-yellow-100' : ''}`} />
+                    <Progress value={progressPercentage} className={`h-2 ${remainingTime <= 30 ? 'bg-red-100' : remainingTime <= 60 ? 'bg-yellow-100' : ''}`} />
                     <div className="text-xs text-muted-foreground text-center">
-                      {remainingTime <= 300 ? 'Less than 5 minutes remaining' : remainingTime <= 600 ? 'Less than 10 minutes remaining' : '15-minute conversation session'}
+                      {remainingTime <= 30 ? 'Less than 30 seconds remaining' : remainingTime <= 60 ? 'Less than 1 minute remaining' : '2-minute conversation session (testing)'}
                     </div>
                   </div>
                 )}
@@ -1458,13 +1608,55 @@ const Onboarding = () => {
                               {!onboardingCompleted && (
                                 <span className="font-medium text-primary">
                                   {(hasStartedOnce || cumulativeSessionTime > 0 || currentSessionNumber > 1)
-                                    ? `${Math.max(0, 15 - Math.floor(cumulativeSessionTime / 60))} minutes remaining`
-                                    : 'Session duration: 15 minutes'}
+                                    ? `${Math.max(0, 2 - Math.floor(cumulativeSessionTime / 60))} minutes remaining`
+                                    : 'Session duration: 2 minutes (testing)'}
                                 </span>
                               )}
                             </p>
                             {!onboardingCompleted ? (
                               <>
+                                {/* Language Selection */}
+                                <div className="mt-6 space-y-4">
+                                  <div className="text-center">
+                                    <h4 className="text-sm font-medium text-muted-foreground mb-3">Choose your conversation language</h4>
+                                    <div className="flex gap-4 justify-center">
+                                      <div className="space-y-2">
+                                        <label className="text-xs text-muted-foreground">Input Language</label>
+                                        <Select value={inputLanguage} onValueChange={setInputLanguage}>
+                                          <SelectTrigger className="w-32">
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="en">English</SelectItem>
+                                            <SelectItem value="hindi">हिंदी (Hindi)</SelectItem>
+                                            <SelectItem value="spanish">Español</SelectItem>
+                                            <SelectItem value="chinese">中文</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                      <div className="space-y-2">
+                                        <label className="text-xs text-muted-foreground">Output Language</label>
+                                        <Select value={outputLanguage} onValueChange={setOutputLanguage}>
+                                          <SelectTrigger className="w-32">
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="en">English</SelectItem>
+                                            <SelectItem value="hindi">हिंदी (Hindi)</SelectItem>
+                                            <SelectItem value="spanish">Español</SelectItem>
+                                            <SelectItem value="chinese">中文</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    </div>
+                                    {outputLanguage === 'hindi' && (
+                                      <p className="text-xs text-muted-foreground mt-2">
+                                        🎤 Diya will speak in Hindi using the Apoorva voice
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+
                                 <Button 
                                   onClick={startConversation} 
                                   size="lg" 
@@ -1541,7 +1733,7 @@ const Onboarding = () => {
                           setShowCompletionPopup(false);
                           setSessionStarted(false);
                           setConversationCompleted(false);
-                          setRemainingTime(Math.max(0, 15 * 60 - cumulativeSessionTime));
+                          setRemainingTime(Math.max(0, 2 * 60 - cumulativeSessionTime));
                           setConversationId(null);
                           setMessages([]);
                         }} size="lg" className="mt-4">
@@ -1763,7 +1955,7 @@ const Onboarding = () => {
                     </p>
                     <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 mb-6">
                       <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                        <strong>Why 15 minutes?</strong> This gives Diya enough time to understand your goals, preferences, and personality to create truly personalized recommendations.
+                        <strong>Why 2 minutes?</strong> This is a testing duration to verify the Hindi voice functionality works correctly.
                       </p>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-3 justify-center w-full">
@@ -1771,7 +1963,7 @@ const Onboarding = () => {
                         setShowCompletionPopup(false);
                         setSessionStarted(false);
                         setConversationCompleted(false);
-                        setRemainingTime(15 * 60);
+                        setRemainingTime(2 * 60);
                         setConversationId(null);
                         setMessages([]);
                         setSessionStartTime(null);

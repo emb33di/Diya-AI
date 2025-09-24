@@ -116,9 +116,9 @@ export class SchoolRecommendationService {
   static async getConversationTranscript(conversationId: string): Promise<ConversationTranscriptResponse> {
     try {
       const { data: conversation, error } = await supabase
-        .from('conversations')
+        .from('conversation_metadata')
         .select('transcript, user_id')
-        .eq('id', conversationId)
+        .eq('conversation_id', conversationId)
         .single();
 
       if (error) {

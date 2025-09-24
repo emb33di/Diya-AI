@@ -1,4 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
+import { loadPromptTemplate, processPromptTemplate } from './promptLoader';
+import { ApplyingToType } from './userProfileUtils';
 
 export interface SessionConfig {
   model: string;
@@ -76,27 +78,45 @@ export class OutspeedAPI {
   /**
    * Create session configuration for onboarding
    */
-  static createOnboardingSessionConfig(studentName?: string, inputLanguage?: string, outputLanguage?: string): SessionConfig {
+  static async createOnboardingSessionConfig(studentName?: string, inputLanguage?: string, outputLanguage?: string): Promise<SessionConfig> {
+    // Fetch user's applying_to field from their profile
+    let applyingTo: ApplyingToType | null = null;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profileData, error } = await supabase
+          .from('user_profiles')
+          .select('applying_to')
+          .eq('user_id', user.id as any)
+          .single();
+
+        if (!error && profileData && 'applying_to' in profileData && profileData.applying_to) {
+          applyingTo = profileData.applying_to as ApplyingToType;
+        }
+      }
+    } catch (error) {
+      console.warn('Could not fetch applying_to field:', error);
+    }
+
+    // Load the appropriate prompt template based on application type
+    const promptTemplate = await loadPromptTemplate(applyingTo);
+    const processedInstructions = processPromptTemplate(promptTemplate, studentName);
+
+    // Create custom opening message based on applying_to field
+    const customOpeningMessage = applyingTo 
+      ? `Hi there! I'm excited to learn more about your application and goals! From your profile it looks like you are a ${applyingTo} applicant?`
+      : `Hello ${studentName || 'there'}! I'm Diya, your AI college counselor. I'm here to help you navigate your college application journey. Let's start by getting to know you better. What are you most excited about when you think about college?`;
+
     return {
       model: "outspeed-v1",
-      instructions: `You are Diya, an AI college counselor specializing in helping international students with their US college applications. You're having a conversation with ${studentName || 'a student'} to understand their academic background, interests, goals, and preferences. 
-
-Your role is to:
-1. Ask thoughtful questions about their academic interests, extracurricular activities, and career goals
-2. Help them identify their strengths and unique qualities
-3. Understand their preferences for college size, location, programs, and culture
-4. Provide guidance on the college application process, including visa requirements and cultural adaptation
-5. Be encouraging, supportive, and professional
-6. Address concerns specific to international students (language barriers, cultural differences, etc.)
-
-Keep the conversation natural and engaging. Ask follow-up questions to get deeper insights. This conversation will help generate personalized school recommendations.`,
-      voice: outputLanguage === 'spanish' ? 'spanish_voice' : outputLanguage === 'chinese' ? 'chinese_voice' : "david", // Default to david, can be changed based on language
+      instructions: processedInstructions,
+      voice: outputLanguage === 'spanish' ? 'spanish_voice' : outputLanguage === 'chinese' ? 'chinese_voice' : outputLanguage === 'hindi' ? 'apoorva' : "david", // Default to david, can be changed based on language
       input_language: inputLanguage || 'en',
       output_language: outputLanguage || 'en',
       turn_detection: {
         type: "semantic_vad",
       },
-      first_message: `Hello ${studentName || 'there'}! I'm Diya, your AI college counselor. I'm here to help you navigate your college application journey. Let's start by getting to know you better. What are you most excited about when you think about college?`,
+      first_message: customOpeningMessage,
     };
   }
 
@@ -121,7 +141,7 @@ Your role is to:
 5. Help them structure their thoughts and organize their ideas
 
 Be encouraging and help them discover their authentic voice. Ask follow-up questions to dig deeper into their experiences and perspectives.`,
-      voice: outputLanguage === 'spanish' ? 'spanish_voice' : outputLanguage === 'chinese' ? 'chinese_voice' : "david",
+      voice: outputLanguage === 'spanish' ? 'spanish_voice' : outputLanguage === 'chinese' ? 'chinese_voice' : outputLanguage === 'hindi' ? 'apoorva' : "david",
       input_language: inputLanguage || 'en',
       output_language: outputLanguage || 'en',
       turn_detection: {
@@ -149,7 +169,7 @@ Be encouraging and help them discover their authentic voice. Ask follow-up quest
           session_number: metadata.session_number || 1,
           duration_seconds: metadata.duration_seconds,
           message_count: metadata.message_count || 0
-        }]);
+        }] as any);
 
       if (error) {
         console.error('Error storing Outspeed metadata in Supabase:', error);
@@ -205,7 +225,7 @@ Be encouraging and help them discover their authentic voice. Ask follow-up quest
       const { data, error } = await supabase
         .from('conversation_metadata')
         .select('*')
-        .eq('user_id', userId)
+        .eq('user_id', userId as any)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -213,7 +233,7 @@ Be encouraging and help them discover their authentic voice. Ask follow-up quest
         return this.getLocalConversations();
       }
 
-      return data || [];
+      return (data as unknown as OutspeedConversationData[]) || [];
     } catch (error) {
       console.error('Error retrieving conversation metadata:', error);
       return this.getLocalConversations();
@@ -244,7 +264,7 @@ Be encouraging and help them discover their authentic voice. Ask follow-up quest
           conversation_id: conversationId,
           user_id: userId,
           conversation_ended_at: new Date().toISOString()
-        }]);
+        }] as any);
 
       if (error) {
         console.error('Error storing Outspeed conversation ID in Supabase:', error);

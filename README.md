@@ -12,7 +12,7 @@ Diya transforms the college application process by offering personalized voice c
 - **Framework**: React 18 with TypeScript
 - **UI Library**: Shadcn UI components
 - **Styling**: Tailwind CSS
-- **Voice Integration**: ElevenLabs React SDK
+- **Voice Integration**: Outspeed React SDK
 - **State Management**: React hooks and context
 - **Build Tool**: Vite
 
@@ -22,8 +22,8 @@ Diya transforms the college application process by offering personalized voice c
 - **Database**: Supabase (PostgreSQL)
 - **Environment**: Python virtual environment
 
-### Voice AI (ElevenLabs)
-- **Voice Agent**: Custom ElevenLabs agent for college counseling
+### Voice AI (Outspeed)
+- **Voice Agent**: Custom Outspeed agent for college counseling
 - **Real-time Processing**: Live voice conversation handling
 - **Metadata Storage**: Conversation transcripts and summaries
 
@@ -42,7 +42,7 @@ Diya transforms the college application process by offering personalized voice c
 - ✅ **UI Components**: Shadcn UI integration
 - ✅ **Routing**: React Router setup
 - ✅ **Basic Pages**: Dashboard, Onboarding, Essays, etc.
-- ✅ **Voice Integration**: ElevenLabs SDK integration
+- ✅ **Voice Integration**: Outspeed SDK integration
 - ✅ **Backend Setup**: FastAPI server with health checks
 - ✅ **Database**: Supabase connection and basic tables
 
@@ -57,7 +57,7 @@ Diya transforms the college application process by offering personalized voice c
 
 ### Step 3: Voice Call Ending & Metadata Storage
 - ✅ **Conversation Ending Trigger**: Automatic metadata capture
-- ✅ **ElevenLabs API Integration**: Metadata retrieval (transcript, summary, audio)
+- ✅ **Outspeed API Integration**: Metadata retrieval (transcript, summary, audio)
 - ✅ **Database Storage**: Conversation tracking and metadata tables
 - ✅ **School Recommendations**: AI-powered recommendation generation
 - ✅ **Conversation History**: View past conversations and metadata
@@ -84,7 +84,7 @@ pathfinder-voice/
 │   ├── services/           # API services
 │   │   └── backendAPI.ts   # Backend communication
 │   ├── utils/              # Utility functions
-│   │   ├── elevenLabsAPI.ts    # ElevenLabs integration
+│   │   ├── outspeedAPI.ts      # Outspeed integration
 │   │   └── conversationStorage.ts # Database operations
 │   ├── integrations/       # Third-party integrations
 │   │   └── supabase/       # Supabase client and types
@@ -131,7 +131,7 @@ pathfinder-voice/
 - Node.js 18+
 - Python 3.8+
 - Supabase account
-- ElevenLabs API key
+- Outspeed API key
 - Google Gemini API key
 
 ### Frontend Setup
@@ -217,12 +217,12 @@ The application now uses Supabase Edge Functions instead of a separate backend A
 - **Frontend**: Optimized with Vite build
 - **Backend**: FastAPI with async operations
 - **Database**: Indexed queries for fast retrieval
-- **Voice**: Real-time processing with ElevenLabs
+- **Voice**: Real-time processing with Outspeed
 - **Caching**: Local storage for offline support
 
 ## 🔄 Data Flow
 
-1. **User starts conversation** → ElevenLabs agent initializes
+1. **User starts conversation** → Outspeed agent initializes
 2. **Voice interaction** → Real-time processing and display
 3. **User ends conversation** → Metadata capture and storage
 4. **AI analysis** → School recommendation generation

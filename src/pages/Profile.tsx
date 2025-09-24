@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Sparkles, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -62,6 +62,13 @@ const profileSchema = z.object({
   college_budget: z.enum(["not_specified", "< $20,000", "$20,000 - $35,000", "$35,000 - $50,000", "$50,000 - $70,000", "> $70,000"]).optional(),
   financial_aid_importance: z.enum(["not_specified", "Crucial", "Very Important", "Somewhat Important", "Not a factor"]).optional(),
   scholarship_interests: z.array(z.string()).optional(),
+  
+  // Additional Undergraduate Prompt Fields
+  extracurricular_activities: z.string().optional(),
+  leadership_roles: z.string().optional(),
+  personal_projects: z.string().optional(),
+  application_concerns: z.string().optional(),
+  specific_questions: z.string().optional(),
 });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
@@ -303,9 +310,155 @@ export default function Profile() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [profileMode, setProfileMode] = useState<'edit' | 'review'>('edit');
   const [profileData, setProfileData] = useState<ProfileFormData | null>(null);
+  const [aiPopulatedFields, setAIPopulatedFields] = useState<Set<string>>(new Set());
 
   // Note: We intentionally don't use local storage for auto-saving
   // Users must manually save their changes to persist them
+
+  // Check for AI extracted profile data from onboarding and auto-populate form
+  useEffect(() => {
+    const aiProfileData = localStorage.getItem('ai_extracted_profile');
+    if (aiProfileData) {
+      try {
+        const parsedData = JSON.parse(aiProfileData);
+        
+        // Auto-populate form with AI data
+        const formData = convertAIProfileToFormData(parsedData.profile);
+        const populatedFields = new Set<string>();
+        
+        // Populate form fields and track which ones were AI-populated
+        Object.keys(formData).forEach(key => {
+          if (formData[key] !== undefined && formData[key] !== null && formData[key] !== '') {
+            form.setValue(key as keyof ProfileFormData, formData[key]);
+            populatedFields.add(key);
+          }
+        });
+        
+        setAIPopulatedFields(populatedFields);
+        
+        console.log('AI profile data auto-populated:', {
+          fieldsPopulated: populatedFields.size,
+          confidenceScore: parsedData.confidence_score,
+          schoolType: parsedData.school_type
+        });
+        
+        toast({
+          title: "Profile Auto-Populated",
+          description: `Your profile has been populated with ${parsedData.confidence_score}% confidence from your conversation with Diya. Please review and complete any missing fields.`
+        });
+        
+      } catch (error) {
+        console.error('Error parsing AI extracted profile data:', error);
+        localStorage.removeItem('ai_extracted_profile');
+      }
+    }
+  }, [form, toast]);
+
+  // AI Data Management Functions
+  const clearAIData = () => {
+    setAIPopulatedFields(new Set());
+    localStorage.removeItem('ai_extracted_profile');
+    
+    toast({
+      title: "AI Data Cleared",
+      description: "All AI-populated fields have been cleared. You can fill out your profile manually."
+    });
+  };
+
+  // Helper function to check if a field was AI-populated
+  const isAIPopulated = (fieldName: string) => {
+    return aiPopulatedFields.has(fieldName);
+  };
+
+  // Helper component for form fields with AI indicators
+  const AIFormField = ({ 
+    children, 
+    fieldName, 
+    className = "" 
+  }: { 
+    children: React.ReactNode; 
+    fieldName: string; 
+    className?: string;
+  }) => {
+    const isAI = isAIPopulated(fieldName);
+    
+    return (
+      <div className={cn("relative", className)}>
+        {children}
+        {isAI && (
+          <div className="absolute -top-1 -right-1 w-5 h-5 bg-primary/10 rounded-full flex items-center justify-center">
+            <Sparkles className="w-3 h-3 text-primary" />
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Convert AI extracted profile to form data format
+  const convertAIProfileToFormData = (aiProfile: any): Partial<ProfileFormData> => {
+    const formData: Partial<ProfileFormData> = {};
+    
+    // Personal info
+    if (aiProfile.personal_info) {
+      formData.full_name = aiProfile.personal_info.full_name;
+      formData.preferred_name = aiProfile.personal_info.preferred_name;
+      formData.email_address = aiProfile.personal_info.email_address;
+      formData.phone_number = aiProfile.personal_info.phone_number;
+    }
+    
+    // Academic background
+    if (aiProfile.academic_background) {
+      formData.high_school_name = aiProfile.academic_background.high_school_name;
+      formData.high_school_graduation_year = aiProfile.academic_background.high_school_graduation_year;
+      formData.school_board = aiProfile.academic_background.school_board as any;
+      formData.year_of_study = aiProfile.academic_background.year_of_study as any;
+      formData.class_10_score = aiProfile.academic_background.class_10_score;
+      formData.class_11_score = aiProfile.academic_background.class_11_score;
+      formData.class_12_half_yearly_score = aiProfile.academic_background.class_12_half_yearly_score;
+      formData.undergraduate_cgpa = aiProfile.academic_background.undergraduate_gpa;
+      formData.intended_majors = aiProfile.academic_background.intended_majors?.join(', ');
+      formData.college_name = aiProfile.academic_background.undergraduate_institution;
+      formData.college_graduation_year = aiProfile.academic_background.undergraduate_graduation_year;
+      formData.college_gpa = aiProfile.academic_background.undergraduate_gpa;
+      formData.masters_field_of_focus = aiProfile.academic_background.masters_field_of_focus;
+    }
+    
+    // Test scores
+    if (aiProfile.test_scores) {
+      formData.test_type = aiProfile.test_scores.test_type as any;
+      formData.test_score = aiProfile.test_scores.sat_score || aiProfile.test_scores.act_score || 
+                          aiProfile.test_scores.gmat_score || aiProfile.test_scores.gre_score;
+    }
+    
+    // Preferences
+    if (aiProfile.preferences) {
+      formData.ideal_college_size = aiProfile.preferences.ideal_college_size as any;
+      formData.ideal_college_setting = aiProfile.preferences.ideal_college_setting as any;
+      formData.must_haves = aiProfile.preferences.must_haves?.join(', ');
+      formData.deal_breakers = aiProfile.preferences.deal_breakers?.join(', ');
+    }
+    
+    // Financial considerations
+    if (aiProfile.financial_considerations) {
+      formData.college_budget = aiProfile.financial_considerations.college_budget as any;
+      formData.financial_aid_importance = aiProfile.financial_considerations.financial_aid_importance as any;
+      formData.scholarship_interests = aiProfile.financial_considerations.scholarship_interests;
+    }
+    
+    // Extracurricular activities
+    if (aiProfile.extracurricular_activities) {
+      formData.extracurricular_activities = aiProfile.extracurricular_activities.activities?.join(', ');
+      formData.leadership_roles = aiProfile.extracurricular_activities.leadership_roles?.join(', ');
+    }
+    
+    // Additional info
+    if (aiProfile.additional_info) {
+      formData.personal_projects = aiProfile.additional_info.unique_experiences?.join(', ');
+      formData.application_concerns = aiProfile.additional_info.questions_concerns?.join(', ');
+    }
+    
+    return formData;
+  };
 
   // Handle profile completion flow
   const handleProfileCompletion = async () => {
@@ -391,6 +544,13 @@ export default function Profile() {
       college_budget: "not_specified",
       financial_aid_importance: "not_specified",
       scholarship_interests: [],
+      
+      // Additional Undergraduate Prompt Fields
+      extracurricular_activities: "",
+      leadership_roles: "",
+      personal_projects: "",
+      application_concerns: "",
+      specific_questions: "",
     },
   });
 
@@ -676,6 +836,13 @@ export default function Profile() {
           college_budget: formData.college_budget ?? "not_specified",
           financial_aid_importance: formData.financial_aid_importance ?? "not_specified",
           scholarship_interests: Array.isArray(formData.scholarship_interests) ? formData.scholarship_interests : [],
+          
+          // Additional Undergraduate Prompt Fields
+          extracurricular_activities: formData.extracurricular_activities ?? "",
+          leadership_roles: formData.leadership_roles ?? "",
+          personal_projects: formData.personal_projects ?? "",
+          application_concerns: formData.application_concerns ?? "",
+          specific_questions: formData.specific_questions ?? "",
         };
 
         // Load server data directly (no local storage merging)
@@ -1226,25 +1393,27 @@ export default function Profile() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="full_name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Full Name <span className="text-red-500">*</span></FormLabel>
-                      <FormControl>
-                        <Input 
-                          {...field} 
-                          onChange={(e) => {
-                            field.onChange(e);
-                            clearFieldError('full_name');
-                          }}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <AIFormField fieldName="full_name">
+                  <FormField
+                    control={form.control}
+                    name="full_name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Full Name <span className="text-red-500">*</span></FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            onChange={(e) => {
+                              field.onChange(e);
+                              clearFieldError('full_name');
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </AIFormField>
                 <FormField
                   control={form.control}
                   name="preferred_name"
@@ -1262,26 +1431,28 @@ export default function Profile() {
 
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="email_address"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email Address <span className="text-red-500">*</span></FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="email" 
-                          {...field} 
-                          onChange={(e) => {
-                            field.onChange(e);
-                            clearFieldError('email_address');
-                          }}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <AIFormField fieldName="email_address">
+                  <FormField
+                    control={form.control}
+                    name="email_address"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email Address <span className="text-red-500">*</span></FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="email" 
+                            {...field} 
+                            onChange={(e) => {
+                              field.onChange(e);
+                              clearFieldError('email_address');
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </AIFormField>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <FormField
                     control={form.control}
@@ -1377,10 +1548,11 @@ export default function Profile() {
 
                 {/* Conditional Field: Intended Majors (only for Undergraduate) */}
                 {form.watch("applying_to") === "Undergraduate" && (
-                  <FormField
-                    control={form.control}
-                    name="intended_majors"
-                    render={({ field }) => (
+                  <AIFormField fieldName="intended_majors">
+                    <FormField
+                      control={form.control}
+                      name="intended_majors"
+                      render={({ field }) => (
                       <FormItem>
                         <FormLabel>Intended Major(s) <span className="text-red-500">*</span></FormLabel>
                         <FormControl>
@@ -1499,6 +1671,7 @@ export default function Profile() {
                       </FormItem>
                     )}
                   />
+                  </AIFormField>
                 )}
               </div>
 
@@ -1517,19 +1690,21 @@ export default function Profile() {
                 <>
                   {/* Undergraduate Fields */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="high_school_name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>High School Name <span className="text-red-500">*</span></FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <AIFormField fieldName="high_school_name">
+                      <FormField
+                        control={form.control}
+                        name="high_school_name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>High School Name <span className="text-red-500">*</span></FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </AIFormField>
                     <FormField
                       control={form.control}
                       name="high_school_graduation_year"
@@ -2178,6 +2353,117 @@ export default function Profile() {
               />
             </CardContent>
           </Card>
+
+          {/* Additional Undergraduate Information */}
+          {form.watch("applying_to") === "Undergraduate" && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Additional Information</CardTitle>
+                <CardDescription>Help us understand your goals and preferences better</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Extracurricular Activities */}
+                <FormField
+                  control={form.control}
+                  name="extracurricular_activities"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Extracurricular Activities & Interests</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Tell us about your activities, passions, and accomplishments outside of academics..."
+                          className="resize-none"
+                          rows={3}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Leadership Roles */}
+                <FormField
+                  control={form.control}
+                  name="leadership_roles"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Leadership Roles & Experiences</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Describe any leadership roles, responsibilities, or experiences you've had..."
+                          className="resize-none"
+                          rows={3}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Personal Projects */}
+                <FormField
+                  control={form.control}
+                  name="personal_projects"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Personal Projects & Initiatives</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Share any personal projects, initiatives, or creative work you're proud of..."
+                          className="resize-none"
+                          rows={3}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Application Concerns */}
+                <FormField
+                  control={form.control}
+                  name="application_concerns"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Application Concerns</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Any specific concerns or anxieties about the application process?"
+                          className="resize-none"
+                          rows={3}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Specific Questions */}
+                <FormField
+                  control={form.control}
+                  name="specific_questions"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Specific Questions</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Any specific questions you'd like addressed in your personalized report?"
+                          className="resize-none"
+                          rows={3}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
+          )}
 
           <div className="flex justify-end">
             <Button 

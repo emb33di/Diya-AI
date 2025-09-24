@@ -128,8 +128,8 @@ serve(async (req) => {
 
     // Get user's previous conversations
     const { data: conversations, error: conversationsError } = await supabase
-      .from('conversations')
-      .select('id, transcript, created_at')
+      .from('conversation_metadata')
+      .select('conversation_id, transcript, created_at')
       .eq('user_id', user_id)
       .order('created_at', { ascending: false })
       .limit(10) // Get last 10 conversations
@@ -161,7 +161,7 @@ serve(async (req) => {
         context,
         session_count: conversations.length,
         conversations: conversations.map(conv => ({
-          id: conv.id,
+          id: conv.conversation_id,
           created_at: conv.created_at,
           transcript_length: conv.transcript?.length || 0
         }))
