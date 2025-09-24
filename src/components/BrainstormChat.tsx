@@ -6,9 +6,10 @@ import { ArrowLeft, Sparkles, MessageSquare, Mic, User, X } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { getUserDisplayName, fetchUserProfileData } from "@/utils/userNameUtils";
-import { useConversation } from '@11labs/react';
+import { useConversation } from '@outspeed/react';
 import VoiceOrb from "@/components/VoiceOrb";
 import { ConversationProcessingService } from "@/services/conversationProcessingService";
+import { OutspeedAPI } from '@/utils/outspeedAPI';
 
 interface BrainstormSummary {
   key_themes: string[];
@@ -69,50 +70,15 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
     messagesRef.current = messages;
   });
 
-  // Get agent ID from environment or use fallback
-  const agentId = import.meta.env.VITE_ELEVENLABS_AGENT_ID_BRAINTSTORMING;
-
-  // Test API connection
+  // Initialize Outspeed API
   useEffect(() => {
-    const testAPIConnection = async () => {
-      try {
-        const apiKey = import.meta.env.VITE_ELEVENLABS_API_KEY;
-        if (!apiKey) {
-          console.error('ElevenLabs API key not found');
-          setConnectionError('API key not configured');
-          return;
-        }
+    OutspeedAPI.initialize(import.meta.env.VITE_SUPABASE_URL);
+  }, []);
 
-        // Test the agent connection
-        const response = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agentId}`, {
-          headers: {
-            'xi-api-key': apiKey,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error(`Agent not found or inaccessible: ${response.statusText}`);
-        }
-
-        const agentData = await response.json();
-        console.log('Agent connection successful:', agentData);
-        setConnectionError(null);
-      } catch (error) {
-        console.error('Agent connection failed:', error);
-        setConnectionError(`Agent connection failed: ${error.message}`);
-      }
-    };
-
-    if (sessionStarted) {
-      testAPIConnection();
-    }
-  }, [sessionStarted, agentId]);
-
-  // ElevenLabs React SDK integration - using same structure as Onboarding Agent
+  // Outspeed React SDK integration
   const conversation = useConversation({
     onConnect: async () => {
-      console.log('🔗 Connected to voice agent');
+      console.log('🔗 Connected to Outspeed voice agent');
       console.log('📊 Current state before connect:', { sessionStarted: sessionStartedRef.current, showFullScreenChat: showFullScreenChatRef.current, messagesCount: messagesRef.current.length });
       sessionStartTimeRef.current = new Date();
       setSessionStarted(true);
@@ -143,7 +109,7 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
       }
     },
     onError: (error) => {
-      console.error('ElevenLabs error:', error);
+      console.error('Outspeed error:', error);
       setConnectionError(error.toString());
     },
     onMessage: (message: any) => {
@@ -254,13 +220,13 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
   // Enhanced session ending with timeout fallback
   const endSessionWithTimeout = async () => {
     try {
-      // Try to end the ElevenLabs session
+      // Try to end the Outspeed session
       await conversation.endSession();
     } catch (error) {
-      console.error('Error ending ElevenLabs session:', error);
+      console.error('Error ending Outspeed session:', error);
     }
     
-    // Set a timeout to force reset states if ElevenLabs doesn't respond
+    // Set a timeout to force reset states if Outspeed doesn't respond
     setTimeout(() => {
       if (sessionStarted) {
         forceResetAllStates();
@@ -279,10 +245,10 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
   const startConversation = useCallback(async () => {
     try {
       // Check if environment variables are set
-      if (!agentId || agentId === 'your-agent-id') {
+      if (!import.meta.env.VITE_OUTSPEED_ONBOARDING) {
         toast({
           title: "Configuration Error",
-          description: "Voice agent is not properly configured. Please check your environment variables.",
+          description: "Outspeed voice agent is not properly configured. Please check your environment variables.",
           variant: "destructive"
         });
         return;
@@ -292,25 +258,21 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
       await navigator.mediaDevices.getUserMedia({
         audio: true
       });
-      console.log('Microphone access granted, starting conversation with agent:', agentId);
+      console.log('Microphone access granted, starting Outspeed conversation');
 
-      // Prepare dynamic variables for the agent
-      const dynamicVariables = {
-        student_name: studentName || 'Student',
-        onboarding_transcript: onboardingTranscript || 'No transcript available',
-        target_college: targetCollege || 'Not specified',
-        essay_title: essayTitle,
-        essay_prompt: essayPrompt
-      };
+      // Create Outspeed session configuration for brainstorming
+      const sessionConfig = OutspeedAPI.createBrainstormingSessionConfig(essayTitle, essayPrompt, targetCollege);
       
-      // Start the conversation with your agent
-      console.log('🚀 Starting ElevenLabs conversation with:');
-      console.log('Agent ID:', agentId);
-      console.log('Dynamic Variables:', JSON.stringify(dynamicVariables, null, 2));
+      // Generate token for Outspeed session
+      const tokenData = await OutspeedAPI.generateToken(sessionConfig);
+      
+      console.log('🚀 Starting Outspeed brainstorming conversation with:');
+      console.log('Session Config:', JSON.stringify(sessionConfig, null, 2));
+      console.log('Token Data:', tokenData);
       
       const session = await conversation.startSession({
-        agentId: agentId,
-        dynamicVariables
+        token: tokenData.token,
+        sessionId: tokenData.session_id
       });
       console.log('✅ Session started:', session);
 
@@ -339,7 +301,7 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
         });
       }
     }
-  }, [conversation, agentId, studentName, onboardingTranscript, targetCollege, essayTitle, essayPrompt, toast]);
+  }, [conversation, studentName, onboardingTranscript, targetCollege, essayTitle, essayPrompt, toast]);
 
   // Fetch user data for dynamic variables
   useEffect(() => {

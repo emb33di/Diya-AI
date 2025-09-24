@@ -4,6 +4,8 @@ export interface SessionConfig {
   model: string;
   instructions: string;
   voice: string;
+  input_language?: string;
+  output_language?: string;
   turn_detection: {
     type: string;
   };
@@ -74,7 +76,7 @@ export class OutspeedAPI {
   /**
    * Create session configuration for onboarding
    */
-  static createOnboardingSessionConfig(studentName?: string): SessionConfig {
+  static createOnboardingSessionConfig(studentName?: string, inputLanguage?: string, outputLanguage?: string): SessionConfig {
     return {
       model: "outspeed-v1",
       instructions: `You are Diya, an AI college counselor specializing in helping international students with their US college applications. You're having a conversation with ${studentName || 'a student'} to understand their academic background, interests, goals, and preferences. 
@@ -88,7 +90,9 @@ Your role is to:
 6. Address concerns specific to international students (language barriers, cultural differences, etc.)
 
 Keep the conversation natural and engaging. Ask follow-up questions to get deeper insights. This conversation will help generate personalized school recommendations.`,
-      voice: "david", // You can change this to "apoorva" or other available voices
+      voice: outputLanguage === 'spanish' ? 'spanish_voice' : outputLanguage === 'chinese' ? 'chinese_voice' : "david", // Default to david, can be changed based on language
+      input_language: inputLanguage || 'en',
+      output_language: outputLanguage || 'en',
       turn_detection: {
         type: "semantic_vad",
       },
@@ -99,7 +103,7 @@ Keep the conversation natural and engaging. Ask follow-up questions to get deepe
   /**
    * Create session configuration for essay brainstorming
    */
-  static createBrainstormingSessionConfig(essayTitle: string, essayPrompt: string, targetCollege?: string): SessionConfig {
+  static createBrainstormingSessionConfig(essayTitle: string, essayPrompt: string, targetCollege?: string, inputLanguage?: string, outputLanguage?: string): SessionConfig {
     return {
       model: "outspeed-v1",
       instructions: `You are Diya, an AI essay counselor helping a student brainstorm ideas for their college application essay. 
@@ -117,7 +121,9 @@ Your role is to:
 5. Help them structure their thoughts and organize their ideas
 
 Be encouraging and help them discover their authentic voice. Ask follow-up questions to dig deeper into their experiences and perspectives.`,
-      voice: "david",
+      voice: outputLanguage === 'spanish' ? 'spanish_voice' : outputLanguage === 'chinese' ? 'chinese_voice' : "david",
+      input_language: inputLanguage || 'en',
+      output_language: outputLanguage || 'en',
       turn_detection: {
         type: "semantic_vad",
       },

@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { useConversation } from '@11labs/react';
+import { useConversation } from '@outspeed/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -10,20 +10,17 @@ import { useToast } from '@/components/ui/use-toast';
 import Header from '@/components/Header';
 import GradientBackground from '@/components/GradientBackground';
 import { supabase } from '@/integrations/supabase/client';
-import { ElevenLabsAPI } from '@/utils/elevenLabsAPI';
+import { OutspeedAPI } from '@/utils/outspeedAPI';
 import { ConversationStorage } from '@/utils/conversationStorage';
 import { SchoolRecommendationService } from '@/services/schoolRecommendationService';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { ConversationResumeService } from '@/services/conversationResumeService';
 import VoiceOrb from '@/components/VoiceOrb';
-const ONBOARDING_AGENT_ID = import.meta.env.VITE_ELEVENLABS_AGENT_ID; // Replace with your actual agent ID from Eleven Labs
-
 // Debug: Log environment variables (remove in production)
 console.log('Environment check:', {
-  agentId: ONBOARDING_AGENT_ID,
-  hasApiKey: !!import.meta.env.VITE_ELEVENLABS_API_KEY,
-  apiKeyLength: import.meta.env.VITE_ELEVENLABS_API_KEY?.length || 0
+  hasOutspeedKey: !!import.meta.env.VITE_OUTSPEED_ONBOARDING,
+  outspeedKeyLength: import.meta.env.VITE_OUTSPEED_ONBOARDING?.length || 0
 });
 const Onboarding = () => {
   const {
@@ -196,8 +193,8 @@ const Onboarding = () => {
           }
         } = await supabase.auth.getUser();
         if (user) {
-          // Initialize ElevenLabs API
-          ElevenLabsAPI.initialize(import.meta.env.VITE_ELEVENLABS_API_KEY);
+          // Initialize Outspeed API
+          OutspeedAPI.initialize(import.meta.env.VITE_SUPABASE_URL);
           
           // Add a small delay to ensure database updates are committed
           await new Promise(resolve => setTimeout(resolve, 100));
@@ -293,7 +290,7 @@ const Onboarding = () => {
   }, []);
   const conversation = useConversation({
     onConnect: async () => {
-      console.log('Connected to voice agent');
+      console.log('Connected to Outspeed voice agent');
       console.log('Conversation object:', conversation);
       console.log('Conversation object keys:', Object.keys(conversation));
       setSessionStarted(true);
@@ -573,10 +570,10 @@ const Onboarding = () => {
   const startConversation = useCallback(async () => {
     try {
       // Check if environment variables are set
-      if (!ONBOARDING_AGENT_ID || ONBOARDING_AGENT_ID === 'your-agent-id') {
+      if (!import.meta.env.VITE_OUTSPEED_ONBOARDING) {
         toast({
           title: "Configuration Error",
-          description: "Voice agent is not properly configured. Please check your environment variables.",
+          description: "Outspeed voice agent is not properly configured. Please check your environment variables.",
           variant: "destructive"
         });
         return;
@@ -586,7 +583,7 @@ const Onboarding = () => {
       await navigator.mediaDevices.getUserMedia({
         audio: true
       });
-      console.log('Microphone access granted, starting conversation with agent:', ONBOARDING_AGENT_ID);
+      console.log('Microphone access granted, starting Outspeed conversation');
 
       // Expand UI into conversation layout
       setExpandedView(true);
@@ -694,17 +691,19 @@ const Onboarding = () => {
         console.log('ℹ️ No previous context found');
       }
 
-      // Start the conversation with your agent
-      console.log('🚀 Starting ElevenLabs conversation with:');
-      console.log('Agent ID:', ONBOARDING_AGENT_ID);
-      console.log('Dynamic Variables:', JSON.stringify(dynamicVariables, null, 2));
-      console.log('Session Count:', dynamicVariables.session_count);
-      console.log('Previous Sessions:', dynamicVariables.previous_sessions);
-      console.log('Student Name:', dynamicVariables.student_name);
+      // Create Outspeed session configuration
+      const sessionConfig = OutspeedAPI.createOnboardingSessionConfig(studentName);
+      
+      // Generate token for Outspeed session
+      const tokenData = await OutspeedAPI.generateToken(sessionConfig);
+      
+      console.log('🚀 Starting Outspeed conversation with:');
+      console.log('Session Config:', JSON.stringify(sessionConfig, null, 2));
+      console.log('Token Data:', tokenData);
       
       const session = await conversation.startSession({
-        agentId: ONBOARDING_AGENT_ID,
-        dynamicVariables
+        token: tokenData.token,
+        sessionId: tokenData.session_id
       });
       console.log('✅ Session started:', session);
 
@@ -830,7 +829,7 @@ const Onboarding = () => {
       sessionFinalizedRef.current = true;
       await conversation.endSession();
 
-      // Store local transcript as metadata since ElevenLabs API might not have it yet
+      // Store local transcript as metadata since Outspeed API might not have it yet
       if (conversationId) {
         try {
           const { data: { user } = {} } = await supabase.auth.getUser();
@@ -878,7 +877,7 @@ const Onboarding = () => {
       console.error('Error pausing conversation:', error);
       toast({
         title: "Pause Error",
-        description: "There was an error pausing your conversation. Please try again.",
+        description: "There was an error pausing your Outspeed conversation. Please try again.",
         variant: "destructive"
       });
     }
@@ -953,7 +952,7 @@ const Onboarding = () => {
       setExpandedView(false);
       toast({
         title: "Resume Error",
-        description: "There was an error resuming your conversation. Please try again.",
+        description: "There was an error resuming your Outspeed conversation. Please try again.",
         variant: "destructive"
       });
     }
