@@ -7,7 +7,6 @@ import {
   Eye, 
   EyeOff, 
   FileText, 
-  Download, 
   GitCompare,
   ArrowRight,
   CheckCircle,
@@ -28,14 +27,12 @@ import { StructuredResumeData } from '@/types/resume';
 interface EnhancedResumeComparisonProps {
   originalResume: StructuredResumeData;
   improvedResume: StructuredResumeData | null;
-  onDownload: (fileType: 'pdf' | 'docx') => void;
   onViewResume: () => void;
 }
 
 const EnhancedResumeComparison: React.FC<EnhancedResumeComparisonProps> = ({
   originalResume,
   improvedResume,
-  onDownload,
   onViewResume
 }) => {
   const [viewMode, setViewMode] = useState<'side-by-side' | 'diff' | 'original-only'>('side-by-side');
@@ -426,30 +423,6 @@ const EnhancedResumeComparison: React.FC<EnhancedResumeComparisonProps> = ({
         </CardContent>
       </Card>
 
-      {/* Download Options */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Download className="h-5 w-5 text-green-500" />
-            <span>Download Enhanced Resume</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center space-x-4">
-            <Button onClick={() => onDownload('pdf')} className="flex items-center space-x-2">
-              <Download className="h-4 w-4" />
-              <span>Download PDF</span>
-            </Button>
-            <Button onClick={() => onDownload('docx')} variant="outline" className="flex items-center space-x-2">
-              <Download className="h-4 w-4" />
-              <span>Download DOCX</span>
-            </Button>
-          </div>
-          <p className="text-sm text-muted-foreground mt-2">
-            Download the AI-enhanced version of your resume in your preferred format.
-          </p>
-        </CardContent>
-      </Card>
     </div>
   );
 };

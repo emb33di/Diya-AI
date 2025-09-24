@@ -1,7 +1,7 @@
 -- Create essay checkpoints table for storing essay versions with AI feedback
 CREATE TABLE public.essay_checkpoints (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  essay_id UUID NOT NULL REFERENCES essays(id) ON DELETE CASCADE,
+  essay_id UUID NOT NULL, -- REFERENCES essays(id) ON DELETE CASCADE, -- Will add FK constraint later
   user_id UUID NOT NULL REFERENCES auth.users(id),
   
   -- Checkpoint metadata

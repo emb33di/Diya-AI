@@ -215,6 +215,11 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
                 font-weight: bold;
                 color: #000000;
               }
+
+              .resume-page .entry-location {
+                font-weight: normal;
+                color: #000000;
+              }
               
               .resume-page .entry-position-header {
                 display: flex;
@@ -359,7 +364,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
         <h2 class="section-title">Education</h2>
         ${academic.map((item: any) => `
           <div class="entry">
-            <div class="entry-title">${item.title || ''}</div>
+            <div class="entry-title">${item.title || ''}${item.location ? ` <span class="entry-location">| ${item.location}</span>` : ''}</div>
             ${item.position ? `
               <div class="entry-position-header">
                 <span class="entry-position">${item.position}</span>
@@ -384,7 +389,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
         <h2 class="section-title">Experience</h2>
         ${experience.map((item: any) => `
           <div class="entry">
-            <div class="entry-title">${item.title || ''}</div>
+            <div class="entry-title">${item.title || ''}${item.location ? ` <span class="entry-location">| ${item.location}</span>` : ''}</div>
             ${item.position ? `
               <div class="entry-position-header">
                 <span class="entry-position">${item.position}</span>
@@ -409,7 +414,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
         <h2 class="section-title">Projects</h2>
         ${projects.map((item: any) => `
           <div class="entry">
-            <div class="entry-title">${item.title || ''}</div>
+            <div class="entry-title">${item.title || ''}${item.location ? ` <span class="entry-location">| ${item.location}</span>` : ''}</div>
             ${item.position ? `
               <div class="entry-position-header">
                 <span class="entry-position">${item.position}</span>
@@ -434,7 +439,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
         <h2 class="section-title">Extracurriculars</h2>
         ${extracurricular.map((item: any) => `
           <div class="entry">
-            <div class="entry-title">${item.title || ''}</div>
+            <div class="entry-title">${item.title || ''}${item.location ? ` <span class="entry-location">| ${item.location}</span>` : ''}</div>
             ${item.position ? `
               <div class="entry-position-header">
                 <span class="entry-position">${item.position}</span>
@@ -459,7 +464,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
         <h2 class="section-title">Volunteering</h2>
         ${volunteering.map((item: any) => `
           <div class="entry">
-            <div class="entry-title">${item.title || ''}</div>
+            <div class="entry-title">${item.title || ''}${item.location ? ` <span class="entry-location">| ${item.location}</span>` : ''}</div>
             ${item.position ? `
               <div class="entry-position-header">
                 <span class="entry-position">${item.position}</span>
@@ -591,6 +596,11 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
 
         .resume-page .entry-title {
           font-weight: bold;
+          color: #000000;
+        }
+
+        .resume-page .entry-location {
+          font-weight: normal;
           color: #000000;
         }
         

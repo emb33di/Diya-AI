@@ -27,7 +27,6 @@ interface ResumeComparisonViewProps {
   originalResume: StructuredResumeData;
   improvedResume: StructuredResumeData | null;
   feedback: ResumeFeedbackData;
-  onDownload: (fileType: 'pdf' | 'docx') => void;
   onViewResume: () => void;
   resumeDataId?: string; // Add this to identify which resume to download
 }
@@ -36,7 +35,6 @@ const ResumeComparisonView: React.FC<ResumeComparisonViewProps> = ({
   originalResume,
   improvedResume,
   feedback,
-  onDownload,
   onViewResume,
   resumeDataId
 }) => {
@@ -376,7 +374,6 @@ const ResumeComparisonView: React.FC<ResumeComparisonViewProps> = ({
             <EnhancedResumeComparison
               originalResume={originalResume}
               improvedResume={improvedResume}
-              onDownload={onDownload}
               onViewResume={onViewResume}
             />
           </div>

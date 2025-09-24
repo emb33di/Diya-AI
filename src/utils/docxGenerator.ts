@@ -229,7 +229,7 @@ const generateAcademicSection = (academic: any[]): Paragraph[] => {
         new Paragraph({
           children: [
             new TextRun({
-              text: item.title,
+              text: `${item.title}${item.location ? ` | ${item.location}` : ''}`,
               bold: true,
               size: 22, // 11pt font size
               color: "000000", // Black color
@@ -254,16 +254,6 @@ const generateAcademicSection = (academic: any[]): Paragraph[] => {
           { italics: true, size: 22 }  // Right text style
         )
       );
-      
-      // Add spacing after
-      paragraphs.push(
-        new Paragraph({
-          children: [new TextRun({ text: '' })],
-          spacing: {
-            after: 100, // 5pt spacing
-          },
-        })
-      );
     }
 
     // Add bullets if available
@@ -283,15 +273,6 @@ const generateAcademicSection = (academic: any[]): Paragraph[] => {
       });
     }
 
-    // Add spacing after each entry
-    paragraphs.push(
-      new Paragraph({
-        children: [new TextRun({ text: '' })],
-        spacing: {
-          after: 100, // 5pt spacing
-        },
-      })
-    );
   });
 
   return paragraphs;
@@ -338,7 +319,7 @@ const generateExperienceSection = (experience: any[]): Paragraph[] => {
         new Paragraph({
           children: [
             new TextRun({
-              text: item.title,
+              text: `${item.title}${item.location ? ` | ${item.location}` : ''}`,
               bold: true,
               size: 22, // 11pt font size
               color: "000000", // Black color
@@ -363,16 +344,6 @@ const generateExperienceSection = (experience: any[]): Paragraph[] => {
           { italics: true, size: 22 }  // Right text style
         )
       );
-      
-      // Add spacing after
-      paragraphs.push(
-        new Paragraph({
-          children: [new TextRun({ text: '' })],
-          spacing: {
-            after: 100, // 5pt spacing
-          },
-        })
-      );
     }
 
     // Add bullets if available
@@ -392,15 +363,6 @@ const generateExperienceSection = (experience: any[]): Paragraph[] => {
       });
     }
 
-    // Add spacing after each entry
-    paragraphs.push(
-      new Paragraph({
-        children: [new TextRun({ text: '' })],
-        spacing: {
-          after: 100, // 5pt spacing
-        },
-      })
-    );
   });
 
   return paragraphs;
@@ -447,7 +409,7 @@ const generateProjectsSection = (projects: any[]): Paragraph[] => {
         new Paragraph({
           children: [
             new TextRun({
-              text: item.title,
+              text: `${item.title}${item.location ? ` | ${item.location}` : ''}`,
               bold: true,
               size: 22, // 11pt font size
               color: "000000", // Black color
@@ -472,16 +434,6 @@ const generateProjectsSection = (projects: any[]): Paragraph[] => {
           { italics: true, size: 22 }  // Right text style
         )
       );
-      
-      // Add spacing after
-      paragraphs.push(
-        new Paragraph({
-          children: [new TextRun({ text: '' })],
-          spacing: {
-            after: 100, // 5pt spacing
-          },
-        })
-      );
     }
 
     // Add bullets if available
@@ -501,15 +453,6 @@ const generateProjectsSection = (projects: any[]): Paragraph[] => {
       });
     }
 
-    // Add spacing after each entry
-    paragraphs.push(
-      new Paragraph({
-        children: [new TextRun({ text: '' })],
-        spacing: {
-          after: 100, // 5pt spacing
-        },
-      })
-    );
   });
 
   return paragraphs;
@@ -556,7 +499,7 @@ const generateExtracurricularSection = (extracurricular: any[]): Paragraph[] => 
         new Paragraph({
           children: [
             new TextRun({
-              text: item.title,
+              text: `${item.title}${item.location ? ` | ${item.location}` : ''}`,
               bold: true,
               size: 22, // 11pt font size
               color: "000000", // Black color
@@ -581,16 +524,6 @@ const generateExtracurricularSection = (extracurricular: any[]): Paragraph[] => 
           { italics: true, size: 22 }  // Right text style
         )
       );
-      
-      // Add spacing after
-      paragraphs.push(
-        new Paragraph({
-          children: [new TextRun({ text: '' })],
-          spacing: {
-            after: 100, // 5pt spacing
-          },
-        })
-      );
     }
 
     // Add bullets if available
@@ -610,15 +543,6 @@ const generateExtracurricularSection = (extracurricular: any[]): Paragraph[] => 
       });
     }
 
-    // Add spacing after each entry
-    paragraphs.push(
-      new Paragraph({
-        children: [new TextRun({ text: '' })],
-        spacing: {
-          after: 100, // 5pt spacing
-        },
-      })
-    );
   });
 
   return paragraphs;
@@ -665,7 +589,7 @@ const generateVolunteeringSection = (volunteering: any[]): Paragraph[] => {
         new Paragraph({
           children: [
             new TextRun({
-              text: item.title,
+              text: `${item.title}${item.location ? ` | ${item.location}` : ''}`,
               bold: true,
               size: 22, // 11pt font size
               color: "000000", // Black color
@@ -690,16 +614,6 @@ const generateVolunteeringSection = (volunteering: any[]): Paragraph[] => {
           { italics: true, size: 22 }  // Right text style
         )
       );
-      
-      // Add spacing after
-      paragraphs.push(
-        new Paragraph({
-          children: [new TextRun({ text: '' })],
-          spacing: {
-            after: 100, // 5pt spacing
-          },
-        })
-      );
     }
 
     // Add bullets if available
@@ -719,15 +633,6 @@ const generateVolunteeringSection = (volunteering: any[]): Paragraph[] => {
       });
     }
 
-    // Add spacing after each entry
-    paragraphs.push(
-      new Paragraph({
-        children: [new TextRun({ text: '' })],
-        spacing: {
-          after: 100, // 5pt spacing
-        },
-      })
-    );
   });
 
   return paragraphs;

@@ -339,36 +339,6 @@ const Resume = () => {
     }
   };
 
-  const handleDownload = async (recordId: string, fileType: 'pdf' | 'docx') => {
-    try {
-      // Get or generate the file
-      const fileData = await structuredResumeService.getResumeFileForDownload(recordId, fileType);
-      
-      // Create download link
-      const url = window.URL.createObjectURL(fileData.blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileData.filename;
-      document.body.appendChild(a);
-      a.click();
-      
-      // Cleanup
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      
-      toast({
-        title: "Download Started",
-        description: `${fileType.toUpperCase()} file is being downloaded.`,
-      });
-    } catch (error) {
-      console.error('Download error:', error);
-      toast({
-        title: "Download failed",
-        description: "Failed to download the resume file. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
 
   const handleView = async (record: StructuredResumeRecord) => {
     try {
@@ -695,11 +665,6 @@ const Resume = () => {
                   improvedResume={viewingResume.improvedResume}
                   feedback={viewingResume.feedback!}
                   resumeDataId={viewingResume.resumeDataId}
-                  onDownload={(fileType) => {
-                    if (viewingResume.resumeDataId) {
-                      handleDownload(viewingResume.resumeDataId, fileType);
-                    }
-                  }}
                   onViewResume={() => {
                     // For now, just show a message
                     toast({

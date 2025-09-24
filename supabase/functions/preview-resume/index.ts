@@ -18,6 +18,7 @@ interface ResumeActivity {
   category: string
   title: string
   position: string
+  location: string
   from_date: string
   to_date: string
   is_current: boolean
@@ -210,7 +211,7 @@ function generateResumeHtml(data: ResumeData, userProfile: UserProfile): string 
       ${academic.map(item => `
         <div class="entry">
           <div class="entry-header">
-            <span class="entry-title">${item.title}</span>
+            <span class="entry-title">${item.title}${item.location ? ` | ${item.location}` : ''}</span>
             <span class="entry-dates">${formatDateRange(item.from_date, item.to_date, item.is_current)}</span>
           </div>
           ${item.position ? `<div class="entry-position">${item.position}</div>` : ''}
@@ -231,7 +232,7 @@ function generateResumeHtml(data: ResumeData, userProfile: UserProfile): string 
       ${experience.map(item => `
         <div class="entry">
           <div class="entry-header">
-            <span class="entry-title">${item.title}</span>
+            <span class="entry-title">${item.title}${item.location ? ` | ${item.location}` : ''}</span>
             <span class="entry-dates">${formatDateRange(item.from_date, item.to_date, item.is_current)}</span>
           </div>
           ${item.position ? `<div class="entry-position">${item.position}</div>` : ''}
@@ -252,7 +253,7 @@ function generateResumeHtml(data: ResumeData, userProfile: UserProfile): string 
       ${projects.map(item => `
         <div class="entry">
           <div class="entry-header">
-            <span class="entry-title">${item.title}</span>
+            <span class="entry-title">${item.title}${item.location ? ` | ${item.location}` : ''}</span>
             <span class="entry-dates">${formatDateRange(item.from_date, item.to_date, item.is_current)}</span>
           </div>
           ${item.position ? `<div class="entry-position">${item.position}</div>` : ''}
@@ -273,7 +274,7 @@ function generateResumeHtml(data: ResumeData, userProfile: UserProfile): string 
       ${extracurricular.map(item => `
         <div class="entry">
           <div class="entry-header">
-            <span class="entry-title">${item.title}</span>
+            <span class="entry-title">${item.title}${item.location ? ` | ${item.location}` : ''}</span>
             <span class="entry-dates">${formatDateRange(item.from_date, item.to_date, item.is_current)}</span>
           </div>
           ${item.position ? `<div class="entry-position">${item.position}</div>` : ''}
@@ -294,7 +295,7 @@ function generateResumeHtml(data: ResumeData, userProfile: UserProfile): string 
       ${volunteering.map(item => `
         <div class="entry">
           <div class="entry-header">
-            <span class="entry-title">${item.title}</span>
+            <span class="entry-title">${item.title}${item.location ? ` | ${item.location}` : ''}</span>
             <span class="entry-dates">${formatDateRange(item.from_date, item.to_date, item.is_current)}</span>
           </div>
           ${item.position ? `<div class="entry-position">${item.position}</div>` : ''}

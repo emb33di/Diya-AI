@@ -7,6 +7,7 @@ interface ActivityData {
   id: string;
   title: string;
   position: string;
+  location: string;
   fromDate: string;
   toDate: string;
   isCurrent: boolean;
@@ -182,6 +183,7 @@ export const useResumeEditor = () => {
       id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       title: '',
       position: '',
+      location: '',
       fromDate: '',
       toDate: '',
       isCurrent: false,

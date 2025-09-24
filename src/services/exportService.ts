@@ -1,11 +1,10 @@
 /**
  * Export Service
  * 
- * Handles exporting essays to DOCX and PDF formats with proper academic formatting.
+ * Handles exporting essays to DOCX format with proper academic formatting.
  */
 
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
-import jsPDF from 'jspdf';
 
 export interface ExportOptions {
   title: string;
@@ -221,97 +220,6 @@ export class ExportService {
     } catch (error) {
       console.error('Error exporting DOCX:', error);
       throw new Error('Failed to export DOCX file. Please try again.');
-    }
-  }
-
-  /**
-   * Export essay as PDF with academic formatting
-   */
-  static async exportToPDF(options: ExportOptions): Promise<void> {
-    try {
-      const { title, content, prompt, wordLimit } = options;
-    
-    // Convert HTML to plain text
-    const plainText = this.htmlToPlainText(content);
-    const paragraphs = this.splitIntoParagraphs(plainText);
-    
-    // Create PDF document
-    const pdf = new jsPDF({
-      orientation: 'portrait',
-      unit: 'in',
-      format: 'letter'
-    });
-    
-    // Set font to Times New Roman (default font in jsPDF)
-    pdf.setFont('times', 'normal');
-    
-    // Page dimensions
-    const pageWidth = 8.5;
-    const pageHeight = 11;
-    const margin = 1;
-    const contentWidth = pageWidth - (2 * margin);
-    
-    let yPosition = margin;
-    const lineHeight = 0.5; // Double spacing (12pt * 2 = 24pt = 0.5 inches)
-    const fontSize = 12;
-    
-    // Helper function to add text with word wrapping
-    const addText = (text: string, isBold = false, isItalic = false, alignment: 'left' | 'center' | 'right' = 'left') => {
-      pdf.setFont('times', isBold ? 'bold' : isItalic ? 'italic' : 'normal');
-      pdf.setFontSize(fontSize);
-      
-      const lines = pdf.splitTextToSize(text, contentWidth);
-      
-      lines.forEach((line: string) => {
-        if (yPosition + lineHeight > pageHeight - margin) {
-          pdf.addPage();
-          yPosition = margin;
-        }
-        
-        let xPosition = margin;
-        if (alignment === 'center') {
-          xPosition = pageWidth / 2;
-        } else if (alignment === 'right') {
-          xPosition = pageWidth - margin;
-        }
-        
-        pdf.text(line, xPosition, yPosition, { align: alignment });
-        yPosition += lineHeight;
-      });
-    };
-    
-    // Title
-    pdf.setFontSize(16);
-    addText(title, true, false, 'center');
-    yPosition += 0.3; // Extra space after title
-    
-    // Prompt section (if provided)
-    if (prompt) {
-      yPosition += 0.2;
-      addText('Essay Prompt:', true);
-      yPosition += 0.1;
-      addText(prompt, false, true);
-      yPosition += 0.2;
-    }
-    
-    // Essay content
-    paragraphs.forEach(paragraph => {
-      addText(paragraph.trim());
-      yPosition += 0.1; // Space between paragraphs
-    });
-    
-    // Word count footer (if word limit provided)
-    if (wordLimit) {
-      const wordCount = plainText.split(/\s+/).filter(word => word.length > 0).length;
-      yPosition += 0.3;
-      addText(`Word Count: ${wordCount}/${wordLimit}`, false, true, 'right');
-    }
-    
-    // Download
-    pdf.save(`${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`);
-    } catch (error) {
-      console.error('Error exporting PDF:', error);
-      throw new Error('Failed to export PDF file. Please try again.');
     }
   }
 }

@@ -16,6 +16,7 @@ export interface Database {
           category: 'academic' | 'experience' | 'projects' | 'extracurricular' | 'volunteering' | 'skills' | 'interests' | 'languages'
           title: string
           position: string | null
+          location: string | null
           from_date: string | null
           to_date: string | null
           is_current: boolean
@@ -29,6 +30,7 @@ export interface Database {
           category: 'academic' | 'experience' | 'projects' | 'extracurricular' | 'volunteering' | 'skills' | 'interests' | 'languages'
           title: string
           position?: string | null
+          location?: string | null
           from_date?: string | null
           to_date?: string | null
           is_current?: boolean
@@ -42,6 +44,7 @@ export interface Database {
           category?: 'academic' | 'experience' | 'projects' | 'extracurricular' | 'volunteering' | 'skills' | 'interests' | 'languages'
           title?: string
           position?: string | null
+          location?: string | null
           from_date?: string | null
           to_date?: string | null
           is_current?: boolean
@@ -101,6 +104,7 @@ export interface Database {
           category: 'academic' | 'experience' | 'projects' | 'extracurricular' | 'volunteering' | 'skills' | 'interests' | 'languages'
           title: string
           position: string | null
+          location: string | null
           from_date: string | null
           to_date: string | null
           is_current: boolean

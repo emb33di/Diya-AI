@@ -216,6 +216,7 @@ export class ResumeActivitiesService {
           const activityUpdate = {
             title: activity.title,
             position: activity.position,
+            location: activity.location,
             from_date: activity.from_date,
             to_date: activity.to_date,
             is_current: activity.is_current,
@@ -252,6 +253,7 @@ export class ResumeActivitiesService {
             category: category,
             title: activity.title,
             position: activity.position,
+            location: activity.location,
             from_date: activity.from_date,
             to_date: activity.to_date,
             is_current: activity.is_current,

@@ -11,6 +11,7 @@ interface ActivityData {
   id: string;
   title: string;
   position: string;
+  location: string;
   fromDate: string;
   toDate: string;
   isCurrent: boolean;
@@ -48,6 +49,7 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
     const hasChanges = 
       localActivity.title !== activity.title ||
       localActivity.position !== activity.position ||
+      localActivity.location !== activity.location ||
       localActivity.fromDate !== activity.fromDate ||
       localActivity.toDate !== activity.toDate ||
       localActivity.isCurrent !== activity.isCurrent ||
@@ -414,6 +416,20 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
             />
           </div>
         )}
+
+        {/* Location Field */}
+        <div className="space-y-2">
+          <Label htmlFor={`location-${activity.id}`}>
+            Location
+          </Label>
+          <Input
+            id={`location-${localActivity.id}`}
+            value={localActivity.location}
+            onChange={(e) => handleFieldChange('location', e.target.value)}
+            onBlur={(e) => handleFieldBlur('location', e.target.value)}
+            placeholder="e.g., San Francisco, CA"
+          />
+        </div>
 
         {/* Date Fields */}
         {showsDates && (
