@@ -58,3 +58,4 @@ BEGIN
         RAISE NOTICE 'Data migration completed successfully - all records migrated';
     END IF;
 END $$;
+

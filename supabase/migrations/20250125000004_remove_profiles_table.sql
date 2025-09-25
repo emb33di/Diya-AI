@@ -94,3 +94,4 @@ END $$;
 
 -- Add final comment documenting the consolidation
 COMMENT ON TABLE public.user_profiles IS 'Consolidated user profile table containing all user data. Previously split between profiles and user_profiles tables.';
+

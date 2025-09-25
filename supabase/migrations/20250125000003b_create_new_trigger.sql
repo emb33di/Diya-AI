@@ -5,3 +5,4 @@ FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- Add comment explaining the consolidated approach
 COMMENT ON FUNCTION public.handle_new_user IS 'Creates user_profiles record when new user signs up. No longer creates profiles table records.';
+

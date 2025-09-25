@@ -3,3 +3,4 @@ COMMENT ON FUNCTION public.create_user_profiles_atomic IS 'Atomic function to cr
 
 -- Grant necessary permissions
 GRANT EXECUTE ON FUNCTION public.create_user_profiles_atomic TO authenticated;
+
