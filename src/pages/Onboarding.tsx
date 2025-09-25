@@ -343,12 +343,27 @@ const Onboarding = () => {
     };
     fetchUserProfile();
   }, []);
-  const conversation = useConversation({
-    ephemeralKey: ephemeralKey, // Use the ephemeral key from token generation
+
+  // Debug useConversation hook initialization
+  useEffect(() => {
+    console.log('🚀 useConversation hook initialized:', {
+      ephemeralKey: ephemeralKey ? 'Set' : 'Not set',
+      timestamp: new Date().toISOString()
+    });
+  }, []);
+
+  // Conversation hook - only initialize when we have an ephemeral key
+  const conversation = ephemeralKey ? useConversation({
+    ephemeralKey: ephemeralKey,
     onConnect: async () => {
-      console.log('Connected to Outspeed voice agent');
-      console.log('Conversation object:', conversation);
-      console.log('Conversation object keys:', Object.keys(conversation));
+      console.log('🎉 CONNECTED to Outspeed voice agent');
+      console.log('📊 Connection details:', {
+        conversationId: conversationId,
+        ephemeralKey: ephemeralKey ? 'Set' : 'Not set',
+        timestamp: new Date().toISOString()
+      });
+      console.log('🔍 Conversation object:', conversation);
+      console.log('🔑 Conversation object keys:', Object.keys(conversation));
       setSessionStarted(true);
       setSessionStartTime(new Date());
       setHasStartedOnce(true);
@@ -524,22 +539,58 @@ const Onboarding = () => {
       }
     },
     onError: error => {
-      console.error('Voice agent error:', error);
+      console.error('❌ VOICE AGENT ERROR:', error);
+      console.error('🔍 Error details:', {
+        errorType: typeof error,
+        errorMessage: error?.message || 'No message',
+        errorStack: error?.stack || 'No stack',
+        errorName: error?.name || 'No name',
+        ephemeralKey: ephemeralKey ? 'Set' : 'Not set',
+        conversationId: conversationId,
+        timestamp: new Date().toISOString()
+      });
       toast({
         title: "Connection Error",
         description: "There was an issue with the voice connection. Please try again.",
         variant: "destructive"
       });
     }
-  });
+  }) : null;
 
   // Debug conversation state changes
   useEffect(() => {
-    console.log('Conversation state changed:', {
+    console.log('🔄 Conversation state changed:', {
       conversationId: conversationId,
-      sessionStarted: sessionStarted
+      sessionStarted: sessionStarted,
+      ephemeralKey: ephemeralKey ? 'Set' : 'Not set',
+      timestamp: new Date().toISOString()
     });
-  }, [conversationId, sessionStarted]);
+  }, [conversationId, sessionStarted, ephemeralKey]);
+
+  // Debug ephemeralKey changes
+  useEffect(() => {
+    console.log('🔑 EphemeralKey changed:', {
+      hasKey: !!ephemeralKey,
+      keyLength: ephemeralKey?.length || 0,
+      keyPreview: ephemeralKey ? `${ephemeralKey.substring(0, 20)}...` : 'null',
+      timestamp: new Date().toISOString()
+    });
+    
+    // Debug conversation object
+    if (conversation) {
+      console.log('🔍 Conversation object available:', {
+        type: typeof conversation,
+        keys: Object.keys(conversation),
+        hasConnect: typeof conversation.connect === 'function',
+        hasStart: typeof conversation.start === 'function',
+        hasStartSession: typeof conversation.startSession === 'function',
+        hasConnectSession: typeof conversation.connectSession === 'function'
+      });
+    }
+    
+    // Note: useConversation hook automatically connects when ephemeralKey is provided
+    // No manual connection needed - the hook handles this automatically
+  }, [ephemeralKey, conversation]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -693,11 +744,28 @@ const Onboarding = () => {
         return;
       }
 
+      // Debug WebRTC support
+      console.log('🔍 WebRTC Debug Info:');
+      console.log('- WebRTC supported:', !!window.RTCPeerConnection);
+      console.log('- getUserMedia supported:', !!navigator.mediaDevices?.getUserMedia);
+      console.log('- MediaDevices available:', !!navigator.mediaDevices);
+      console.log('- User agent:', navigator.userAgent);
+
       // Request microphone access
-      await navigator.mediaDevices.getUserMedia({
+      console.log('🎤 Requesting microphone access...');
+      const stream = await navigator.mediaDevices.getUserMedia({
         audio: true
       });
-      console.log('Microphone access granted, starting Outspeed conversation');
+      console.log('✅ Microphone access granted:', {
+        streamId: stream.id,
+        tracks: stream.getTracks().length,
+        audioTracks: stream.getAudioTracks().length,
+        videoTracks: stream.getVideoTracks().length
+      });
+      
+      // Stop the stream immediately as we just needed permission
+      stream.getTracks().forEach(track => track.stop());
+      console.log('🛑 Microphone stream stopped (permission test complete)');
 
       // Expand UI into conversation layout
       setExpandedView(true);
@@ -816,13 +884,13 @@ const Onboarding = () => {
       console.log('Token Data:', tokenData);
       
       // Set the ephemeral key to trigger the conversation connection
-      setEphemeralKey(tokenData.token);
-      console.log('✅ Ephemeral key set:', tokenData.token);
+      setEphemeralKey(tokenData.client_secret.value);
+      console.log('✅ Ephemeral key set:', tokenData.client_secret.value);
 
       // Store session ID for later use
-      if (tokenData.session_id) {
-        console.log('Conversation ID captured:', tokenData.session_id);
-        setConversationId(tokenData.session_id);
+      if (tokenData.id) {
+        console.log('Conversation ID captured:', tokenData.id);
+        setConversationId(tokenData.id);
 
         // Update the temporary conversation record with the actual conversationId
         try {
@@ -830,13 +898,13 @@ const Onboarding = () => {
           if (tempConversationId) {
             const { error } = await supabase
               .from('conversation_tracking')
-              .update({ conversation_id: tokenData.session_id })
+              .update({ conversation_id: tokenData.id })
               .eq('conversation_id', tempConversationId);
             
             if (error) {
               console.error('Error updating conversation ID:', error);
             } else {
-              console.log('✅ Updated conversation record with actual ID:', tokenData.session_id);
+              console.log('✅ Updated conversation record with actual ID:', tokenData.id);
               localStorage.removeItem('temp_conversation_id');
             }
           }
@@ -872,7 +940,7 @@ const Onboarding = () => {
         });
       }
     }
-  }, [conversation, toast]);
+  }, [toast]);
   const pauseConversation = useCallback(async () => {
     try {
       console.log('Pausing conversation, current conversationId:', conversationId);
@@ -944,7 +1012,9 @@ const Onboarding = () => {
 
       // Ensure onDisconnect does not double count
       sessionFinalizedRef.current = true;
-      await conversation.endSession();
+      if (conversation) {
+        await conversation.endSession();
+      }
 
       // Store local transcript as metadata since Outspeed API might not have it yet
       if (conversationId) {
@@ -998,7 +1068,7 @@ const Onboarding = () => {
         variant: "destructive"
       });
     }
-  }, [conversation, conversationId, sessionStartTime, cumulativeSessionTime, currentSessionNumber, messages, toast]);
+  }, [conversationId, sessionStartTime, cumulativeSessionTime, currentSessionNumber, messages, toast]);
 
   // Function to get previous session context
   const getPreviousSessionContext = useCallback(async () => {
@@ -1132,7 +1202,9 @@ const Onboarding = () => {
 
       // Prevent double accounting in onDisconnect
       sessionFinalizedRef.current = true;
-      await conversation.endSession();
+      if (conversation) {
+        await conversation.endSession();
+      }
 
       // Clear timer
       if (timerRef.current) {
@@ -1387,7 +1459,7 @@ const Onboarding = () => {
         variant: "destructive"
       });
     }
-  }, [conversation, conversationId, messages, toast, navigate, sessionStartTime, markOnboardingCompleted, cumulativeSessionTime, currentSessionNumber]);
+  }, [conversationId, messages, toast, navigate, sessionStartTime, markOnboardingCompleted, cumulativeSessionTime, currentSessionNumber]);
   
   // Show loading state while checking onboarding status
   if (onboardingLoading) {
@@ -1430,9 +1502,9 @@ const Onboarding = () => {
                 <div className="flex-1 w-full flex items-center justify-center min-h-0">
                                       <div className="w-80 h-80 max-w-full max-h-full aspect-square">
                       <VoiceOrb
-                        isListening={sessionStarted && !conversation.isSpeaking}
-                        isSpeaking={conversation.isSpeaking}
-                        isThinking={sessionStarted && !conversation.isSpeaking && audioLevel < 0.1}
+                        isListening={sessionStarted && conversation && !conversation.isSpeaking}
+                        isSpeaking={conversation?.isSpeaking || false}
+                        isThinking={sessionStarted && conversation && !conversation.isSpeaking && audioLevel < 0.1}
                         audioLevel={audioLevel}
                         audioOutputLevel={audioOutputLevel}
                         className="w-full h-full"
@@ -1440,7 +1512,7 @@ const Onboarding = () => {
                     </div>
                 </div>
                 <div className="text-center mt-4 md:mt-6 flex-shrink-0">
-                  <h3 className="text-lg font-medium">{conversation.isSpeaking ? 'Diya is speaking...' : 'Diya is listening...'}</h3>
+                  <h3 className="text-lg font-medium">{conversation?.isSpeaking ? 'Diya is speaking...' : 'Diya is listening...'}</h3>
                   <p className="text-sm text-muted-foreground">Share your thoughts and experiences naturally - just like talking to a friend!</p>
                   <div className="flex gap-2 justify-center mt-4">
                     <Button onClick={pauseConversation} variant="outline" disabled={isProcessingMetadata} size="sm">
@@ -1579,9 +1651,9 @@ const Onboarding = () => {
                   <div className="mx-auto flex items-center justify-center" style={{ width: landingOrbSize, height: landingOrbSize }}>
                     <div className="w-full h-full aspect-square">
                       <VoiceOrb
-                        isListening={sessionStarted && !conversation.isSpeaking}
-                        isSpeaking={conversation.isSpeaking}
-                        isThinking={sessionStarted && !conversation.isSpeaking && audioLevel < 0.1}
+                        isListening={sessionStarted && conversation && !conversation.isSpeaking}
+                        isSpeaking={conversation?.isSpeaking || false}
+                        isThinking={sessionStarted && conversation && !conversation.isSpeaking && audioLevel < 0.1}
                         audioLevel={audioLevel}
                         audioOutputLevel={audioOutputLevel}
                         className="w-full h-full"
@@ -1657,7 +1729,7 @@ const Onboarding = () => {
                     ) : sessionStarted ? (
                       <>
                         <h3 className="text-lg font-medium">
-                          {conversation.isSpeaking ? "Diya is speaking..." : "Diya is listening..."}
+                          {conversation?.isSpeaking ? "Diya is speaking..." : "Diya is listening..."}
                         </h3>
                         <p className="text-sm text-muted-foreground">
                           Share your thoughts and experiences naturally - just like talking to a friend!

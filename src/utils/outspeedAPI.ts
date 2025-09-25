@@ -15,9 +15,18 @@ export interface SessionConfig {
 }
 
 export interface OutspeedSessionData {
-  session_id: string;
-  token: string;
-  expires_at: string;
+  id: string;
+  client_secret: {
+    value: string;
+    expires_at: number;
+  };
+  object: string;
+  model: string;
+  modalities: string[];
+  instructions: string;
+  voice: string;
+  created: number;
+  // ... other fields from the actual response
 }
 
 export interface OutspeedConversationData {

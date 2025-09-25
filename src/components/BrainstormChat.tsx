@@ -86,8 +86,8 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
     OutspeedAPI.initialize(import.meta.env.VITE_SUPABASE_URL);
   }, []);
 
-  // Outspeed React SDK integration
-  const conversation = useConversation({
+  // Outspeed React SDK integration - only initialize when we have an ephemeral key
+  const conversation = ephemeralKey ? useConversation({
     ephemeralKey: ephemeralKey, // Use the ephemeral key from token generation
     onConnect: async () => {
       console.log('🔗 Connected to Outspeed voice agent');
@@ -178,7 +178,7 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
         console.log('⚠️ User speech missing or invalid:', speech);
       }
     }
-  });
+  }) : null;
 
   // Audio analysis functions
   const startAudioAnalysis = async () => {
@@ -252,7 +252,9 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
   const endSessionWithTimeout = async () => {
     try {
       // Try to end the Outspeed session
-      await conversation.endSession();
+      if (conversation) {
+        await conversation.endSession();
+      }
     } catch (error) {
       console.error('Error ending Outspeed session:', error);
     }
@@ -302,14 +304,14 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
       console.log('Token Data:', tokenData);
       
       // Set the ephemeral key to trigger the conversation connection
-      setEphemeralKey(tokenData.token);
-      console.log('✅ Ephemeral key set:', tokenData.token);
+      setEphemeralKey(tokenData.client_secret.value);
+      console.log('✅ Ephemeral key set:', tokenData.client_secret.value);
 
       // Store session ID for later use
-      if (tokenData.session_id) {
-        console.log('Conversation ID captured:', tokenData.session_id);
-        setConversationId(tokenData.session_id);
-        createConversationRecord(tokenData.session_id);
+      if (tokenData.id) {
+        console.log('Conversation ID captured:', tokenData.id);
+        setConversationId(tokenData.id);
+        createConversationRecord(tokenData.id);
       } else {
         console.error('Failed to get session ID from token data');
         toast({
@@ -335,7 +337,7 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
         });
       }
     }
-  }, [conversation, studentName, onboardingTranscript, targetCollege, essayTitle, essayPrompt, toast]);
+  }, [studentName, onboardingTranscript, targetCollege, essayTitle, essayPrompt, toast]);
 
   // Fetch user data for dynamic variables
   useEffect(() => {
@@ -510,9 +512,9 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
               <div className="flex-1 w-full flex items-center justify-center min-h-0">
                 <div className="w-80 h-80 max-w-full max-h-full aspect-square">
                   <VoiceOrb
-                    isListening={sessionStarted && !conversation.isSpeaking}
-                    isSpeaking={conversation.isSpeaking}
-                    isThinking={sessionStarted && !conversation.isSpeaking && audioLevel < 0.1}
+                    isListening={sessionStarted && conversation && !conversation.isSpeaking}
+                    isSpeaking={conversation?.isSpeaking || false}
+                    isThinking={sessionStarted && conversation && !conversation.isSpeaking && audioLevel < 0.1}
                     audioLevel={audioLevel}
                     audioOutputLevel={audioOutputLevel}
                     className="w-full h-full"
@@ -521,7 +523,7 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
               </div>
               <div className="text-center mt-4 md:mt-6 flex-shrink-0">
                 <h3 className="text-lg font-medium">
-                  {conversation.isSpeaking ? "Diya is speaking..." : "Diya is listening..."}
+                  {conversation?.isSpeaking ? "Diya is speaking..." : "Diya is listening..."}
                 </h3>
                 <p className="text-sm text-muted-foreground">
                   Share your thoughts and experiences naturally - just like talking to a friend!
