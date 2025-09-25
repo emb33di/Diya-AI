@@ -46,8 +46,19 @@ serve(async (req) => {
     const requestBody = await req.json()
     console.log('Request body:', JSON.stringify(requestBody, null, 2))
 
+    // Check for resume_session parameter in URL query string
+    const url = new URL(req.url)
+    const resumeSessionId = url.searchParams.get('resume_session')
+    
+    // Build the Outspeed API URL with optional resume_session parameter
+    let outspeedApiUrl = "https://api.outspeed.com/v1/realtime/sessions"
+    if (resumeSessionId) {
+      outspeedApiUrl += `?resume_session=${encodeURIComponent(resumeSessionId)}`
+      console.log('Resuming session with ID:', resumeSessionId)
+    }
+
     // Generate ephemeral token using Outspeed API
-    const response = await fetch("https://api.outspeed.com/v1/realtime/sessions", {
+    const response = await fetch(outspeedApiUrl, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${outspeedApiKey}`,

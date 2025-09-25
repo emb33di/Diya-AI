@@ -56,7 +56,7 @@ export class OutspeedAPI {
    * Generate ephemeral token for Outspeed session using agent ID
    * This is the new simplified approach that replaces the old generateToken method
    */
-  static async generateToken(agentId: string, source: string = 'diya-onboarding'): Promise<OutspeedSessionData> {
+  static async generateToken(agentId: string, source: string = 'diya-onboarding', sessionId?: string): Promise<OutspeedSessionData> {
     try {
       // Validate agent ID format
       if (!agentId || !agentId.startsWith('agent_')) {
@@ -74,7 +74,14 @@ export class OutspeedAPI {
         throw new Error('No active session found');
       }
 
-      const response = await fetch(this.tokenEndpoint, {
+      // Build URL with optional sessionId parameter
+      let url = this.tokenEndpoint;
+      if (sessionId) {
+        url += `?resume_session=${encodeURIComponent(sessionId)}`;
+        console.log('Resuming session with ID:', sessionId);
+      }
+
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -102,9 +109,9 @@ export class OutspeedAPI {
   /**
    * Generate token for onboarding conversation
    */
-  static async generateOnboardingToken(): Promise<OutspeedSessionData> {
+  static async generateOnboardingToken(sessionId?: string): Promise<OutspeedSessionData> {
     const agentId = await this.getOnboardingAgentId();
-    return this.generateToken(agentId, 'diya-onboarding');
+    return this.generateToken(agentId, 'diya-onboarding', sessionId);
   }
 
   /**

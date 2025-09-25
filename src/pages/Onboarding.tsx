@@ -28,14 +28,18 @@ console.log('Environment check:', {
 interface ConversationUIProps {
   agentId: string;
   source: string;
-  onConnect: () => void;
+  sessionId?: string;
+  onConnect: (conversationId: string) => void;
   onMessage: (message: any) => void;
   onUserSpeech: (speech: any) => void;
   onDisconnect: () => void;
   onError: (error: any) => void;
+  onContextRestored?: (items: any[]) => void;
 }
 
-const ConversationUI = ({ agentId, source, onConnect, onMessage, onUserSpeech, onDisconnect, onError }: ConversationUIProps) => {
+const ConversationUI = ({ agentId, source, sessionId, onConnect, onMessage, onUserSpeech, onDisconnect, onError, onContextRestored }: ConversationUIProps) => {
+  const sessionStartedRef = useRef(false);
+  
   const conversation = useConversation({
     onConnect: async () => {
       // Create conversation tracking record when session starts
@@ -72,21 +76,23 @@ const ConversationUI = ({ agentId, source, onConnect, onMessage, onUserSpeech, o
             console.error('Error creating conversation record:', error);
           } else {
             console.log('✅ Created conversation record:', conversationId);
-            // Store conversation ID for later use
-            localStorage.setItem('current_conversation_id', conversationId);
           }
+          
+          // Call the parent onConnect callback with the conversationId
+          onConnect(conversationId);
         }
       } catch (error) {
         console.error('Error creating conversation record:', error);
+        // Still call onConnect even if there's an error, but with a fallback ID
+        const fallbackId = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        onConnect(fallbackId);
       }
-      
-      // Call the original onConnect callback
-      onConnect();
     },
     onMessage,
     onUserSpeech,
     onDisconnect,
-    onError
+    onError,
+    onContextRestored
   });
 
   // Null check for the hook's return value
@@ -94,12 +100,22 @@ const ConversationUI = ({ agentId, source, onConnect, onMessage, onUserSpeech, o
     return <div>Loading conversation...</div>;
   }
 
+  // Reset session started flag when agentId changes
+  useEffect(() => {
+    sessionStartedRef.current = false;
+  }, [agentId]);
+
   // Start the session with the agent ID
   useEffect(() => {
-    if (agentId && conversation.startSession) {
+    if (agentId && conversation.startSession && !sessionStartedRef.current) {
+      console.log('🚀 ConversationUI: Starting session with agent:', agentId);
+      if (sessionId) {
+        console.log('🔄 Resuming session with ID:', sessionId);
+      }
+      sessionStartedRef.current = true;
       conversation.startSession({ agentId, source });
     }
-  }, [agentId, source, conversation]);
+  }, [agentId, source, sessionId, conversation]);
 
 
   // Return null - the parent component will handle rendering
@@ -173,6 +189,7 @@ const Onboarding = () => {
   const [voiceOrbSize, setVoiceOrbSize] = useState(256);
   const [landingOrbSize, setLandingOrbSize] = useState(160);
   const [showTranscript, setShowTranscript] = useState(true); // Control transcript visibility
+  const [isResumingSession, setIsResumingSession] = useState(false); // Track session resumption state
   
   // Helper function to persist remaining time
   const persistRemainingTime = useCallback((time: number) => {
@@ -180,6 +197,36 @@ const Onboarding = () => {
       localStorage.setItem('onboarding_remaining_time', time.toString());
     } catch (error) {
       console.warn('Could not save remaining time to localStorage:', error);
+    }
+  }, []);
+
+  // Helper function to store session ID
+  const storeSessionId = useCallback((sessionId: string) => {
+    try {
+      localStorage.setItem('outspeed_session_id', sessionId);
+      console.log('✅ Stored session ID:', sessionId);
+    } catch (error) {
+      console.warn('Could not save session ID to localStorage:', error);
+    }
+  }, []);
+
+  // Helper function to retrieve session ID
+  const getStoredSessionId = useCallback((): string | null => {
+    try {
+      return localStorage.getItem('outspeed_session_id');
+    } catch (error) {
+      console.warn('Could not retrieve session ID from localStorage:', error);
+      return null;
+    }
+  }, []);
+
+  // Helper function to clear session ID
+  const clearSessionId = useCallback(() => {
+    try {
+      localStorage.removeItem('outspeed_session_id');
+      console.log('✅ Cleared session ID from localStorage');
+    } catch (error) {
+      console.warn('Could not clear session ID from localStorage:', error);
     }
   }, []);
 
@@ -371,26 +418,34 @@ const Onboarding = () => {
   }, [agentId]);
 
   // Callback functions for ConversationUI component
-  const handleConnect = useCallback(async () => {
-    // Get conversation ID from localStorage (set by ConversationUI)
-    const currentConversationId = localStorage.getItem('current_conversation_id');
-    setConversationId(currentConversationId);
+  const handleConnect = useCallback(async (conversationId: string) => {
+    setConversationId(conversationId);
+
+    // Store session ID for resumption only if this is a new conversation
+    if (conversationId && !isResumingSession) {
+      storeSessionId(conversationId);
+    }
     
     console.log('🎉 CONNECTED to Outspeed voice agent');
     console.log('📊 Connection details:', {
-      conversationId: currentConversationId,
+      conversationId: conversationId,
       agentId: agentId ? 'Set' : 'Not set',
+      isResuming: isResumingSession,
       timestamp: new Date().toISOString()
     });
     setSessionStarted(true);
     setSessionStartTime(new Date());
     setHasStartedOnce(true);
     
+    const connectionMessage = isResumingSession 
+      ? "Your conversation with Diya has been resumed. Previous context is being restored..."
+      : "Your conversation with Diya has started. Feel free to speak naturally!";
+    
     toast({
-      title: "Connected",
-      description: "Your conversation with Diya has started. Feel free to speak naturally!"
+      title: isResumingSession ? "Session Resumed" : "Connected",
+      description: connectionMessage
     });
-  }, [agentId, toast]);
+  }, [agentId, toast, isResumingSession, storeSessionId]);
 
   const handleMessage = useCallback(async (message: any) => {
     console.log('Message received:', message);
@@ -495,6 +550,33 @@ const Onboarding = () => {
       variant: "destructive"
     });
   }, [agentId, conversationId, toast]);
+
+  const handleContextRestored = useCallback((items: any[]) => {
+    console.log('🔄 Context restored with items:', items.length);
+    
+    // Process the restored messages and update local state
+    const restoredMessages = items.map((item, index) => {
+      // Determine if this is a user or AI message based on the item structure
+      // This may need to be adjusted based on the actual Outspeed API response format
+      const isUserMessage = item.role === 'user' || item.source === 'user';
+      
+      return {
+        source: isUserMessage ? 'user' as const : 'ai' as const,
+        text: item.content || item.message || item.text || 'Restored message',
+        timestamp: item.timestamp ? new Date(item.timestamp) : new Date()
+      };
+    });
+
+    // Update the messages state with restored content
+    setMessages(prev => [...prev, ...restoredMessages]);
+    
+    toast({
+      title: "Session Restored",
+      description: `Restored ${restoredMessages.length} previous messages from your conversation.`
+    });
+    
+    setIsResumingSession(false);
+  }, [toast]);
 
   // Debug conversation state changes
   useEffect(() => {
@@ -607,7 +689,7 @@ const Onboarding = () => {
               setFrequencyData(new Uint8Array(frequencyArray));
               
               // Calculate audio output level based on conversation state
-              if (conversation.isSpeaking) {
+              if (sessionStarted) {
                 // Enhanced AI audio output level simulation for better breathing effect
                 const baseLevel = 0.4; // Higher base level for more visible breathing
                 const variation = Math.sin(Date.now() * 0.01) * 0.3; // Smooth sine wave variation
@@ -650,6 +732,18 @@ const Onboarding = () => {
       }
     };
   }, [sessionStarted]);
+
+  // Check for stored session ID on component load and auto-resume if available
+  useEffect(() => {
+    if (!loading && !onboardingCompleted) {
+      const storedSessionId = getStoredSessionId();
+      if (storedSessionId) {
+        console.log('🔄 Found stored session ID, auto-resuming conversation:', storedSessionId);
+        // Auto-resume the conversation
+        startConversation(storedSessionId);
+      }
+    }
+  }, [loading, onboardingCompleted, getStoredSessionId]);
 
   // Redirect users who have already completed onboarding
   useEffect(() => {
@@ -705,9 +799,17 @@ const Onboarding = () => {
   }, []);
 
   // Start conversation using agent-based approach
-  const startConversation = useCallback(async () => {
+  const startConversation = useCallback(async (resumeSessionId?: string) => {
     setIsLoadingAgent(true);
     setAgentError(null);
+    
+    // Check if we're resuming a session
+    const storedSessionId = resumeSessionId || getStoredSessionId();
+    if (storedSessionId) {
+      setIsResumingSession(true);
+      console.log('🔄 Resuming session with ID:', storedSessionId);
+    }
+    
     try {
       // Check if environment variables are set
       if (!import.meta.env.VITE_OUTSPEED_ONBOARDING) {
@@ -756,12 +858,15 @@ const Onboarding = () => {
       // Store session number in localStorage for ConversationUI to use
       localStorage.setItem('current_session_number', currentSessionNumber.toString());
 
-      // Increment session number for next conversation
-      setCurrentSessionNumber(prev => prev + 1);
+      // Increment session number for next conversation (only if not resuming)
+      if (!storedSessionId) {
+        setCurrentSessionNumber(prev => prev + 1);
+      }
       
     } catch (error) {
       console.error('Error starting conversation:', error);
       setExpandedView(false);
+      setIsResumingSession(false);
       if (error instanceof DOMException && error.name === 'NotAllowedError') {
         toast({
           title: "Microphone Access Required",
@@ -779,7 +884,7 @@ const Onboarding = () => {
     } finally {
       setIsLoadingAgent(false);
     }
-  }, [toast, studentName]);
+  }, [toast, studentName, getStoredSessionId]);
 
   const pauseConversation = useCallback(async () => {
     try {
@@ -852,9 +957,7 @@ const Onboarding = () => {
 
       // Ensure onDisconnect does not double count
       sessionFinalizedRef.current = true;
-      if (conversation) {
-        await conversation.endSession();
-      }
+      // Note: Conversation ending is handled by the ConversationUI component
 
       // Store local transcript as metadata since Outspeed API might not have it yet
       if (conversationId) {
@@ -945,6 +1048,9 @@ const Onboarding = () => {
       console.log('Ending conversation, current conversationId:', conversationId);
       setExpandedView(false);
 
+      // Clear session ID when conversation is intentionally ended
+      clearSessionId();
+
       // Calculate session duration
       const endTime = new Date();
       const duration = sessionStartTime ? Math.max(0, (endTime.getTime() - sessionStartTime.getTime()) / 1000) : 0;
@@ -998,9 +1104,7 @@ const Onboarding = () => {
 
       // Prevent double accounting in onDisconnect
       sessionFinalizedRef.current = true;
-      if (conversation) {
-        await conversation.endSession();
-      }
+      // Note: Conversation ending is handled by the ConversationUI component
 
       // Clear timer
       if (timerRef.current) {
@@ -1038,9 +1142,18 @@ const Onboarding = () => {
           try {
             console.log('📝 Retrieving and storing conversation metadata...');
             
-            // Get all persisted messages for this conversation
-            // NOTE: This will be replaced with Outspeed API call
-            const persistedMessages = await MessagePersistenceService.getMessages(conversationId, user.id);
+            // Use local messages since MessagePersistenceService is deprecated
+            // Convert local messages to the expected format
+            const persistedMessages = messages.map((msg, index) => ({
+              id: `local_${index}`,
+              conversation_id: conversationId,
+              user_id: user.id,
+              source: msg.source,
+              text: msg.text,
+              timestamp: msg.timestamp,
+              message_order: index + 1,
+              created_at: msg.timestamp.toISOString()
+            }));
             console.log('📊 Retrieved persisted messages:', persistedMessages.length);
             
             // Validate the messages
@@ -1255,7 +1368,7 @@ const Onboarding = () => {
         variant: "destructive"
       });
     }
-  }, [conversationId, messages, toast, navigate, sessionStartTime, markOnboardingCompleted, cumulativeSessionTime, currentSessionNumber]);
+  }, [conversationId, messages, toast, navigate, sessionStartTime, markOnboardingCompleted, cumulativeSessionTime, currentSessionNumber, clearSessionId]);
   
   // End conversation when timer expires
   const endConversationWithMessage = useCallback(async () => {
@@ -1320,11 +1433,13 @@ const Onboarding = () => {
         <ConversationUI
           agentId={agentId}
           source="diya-onboarding"
+          sessionId={getStoredSessionId()}
           onConnect={handleConnect}
           onMessage={handleMessage}
           onUserSpeech={handleUserSpeech}
           onDisconnect={handleDisconnect}
           onError={handleError}
+          onContextRestored={handleContextRestored}
         />
       )}
         {expandedView && (
@@ -1520,6 +1635,16 @@ const Onboarding = () => {
                             <p className="text-sm text-muted-foreground max-w-md mx-auto">
                               Preparing your personalized conversation with Diya.
                             </p>
+                          </div>
+                        ) : isResumingSession ? (
+                          <div className="space-y-4">
+                            <h3 className="text-lg font-medium">Resuming conversation...</h3>
+                            <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                              Restoring your previous conversation with Diya. Please wait while we reconnect.
+                            </p>
+                            <div className="flex justify-center">
+                              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                            </div>
                           </div>
                         ) : (
                           <>

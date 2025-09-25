@@ -45,12 +45,17 @@ export const useTranscriptSaver = (
         sessionType: transcriptData.session_type
       });
 
-      // TODO: Replace with actual API endpoint
-      const response = await fetch('/api/transcripts/save', {
+      // Use Supabase Edge Function for transcript saving
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No active session found');
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/save-transcript`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ''}`
+          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify(transcriptData),
       });
