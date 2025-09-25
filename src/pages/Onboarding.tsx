@@ -23,6 +23,43 @@ console.log('Environment check:', {
   hasOutspeedKey: !!import.meta.env.VITE_OUTSPEED_ONBOARDING,
   outspeedKeyLength: import.meta.env.VITE_OUTSPEED_ONBOARDING?.length || 0
 });
+
+// 1. Create a new component for the conversation itself
+interface ConversationUIProps {
+  agentId: string;
+  source: string;
+  onConnect: () => void;
+  onMessage: (message: any) => void;
+  onUserSpeech: (speech: any) => void;
+  onDisconnect: () => void;
+  onError: (error: any) => void;
+}
+
+const ConversationUI = ({ agentId, source, onConnect, onMessage, onUserSpeech, onDisconnect, onError }: ConversationUIProps) => {
+  const conversation = useConversation({
+    onConnect,
+    onMessage,
+    onUserSpeech,
+    onDisconnect,
+    onError
+  });
+
+  // Null check for the hook's return value
+  if (!conversation) {
+    return <div>Loading conversation...</div>;
+  }
+
+  // Start the session with the agent ID
+  useEffect(() => {
+    if (agentId && conversation.startSession) {
+      conversation.startSession({ agentId, source });
+    }
+  }, [agentId, source, conversation]);
+
+  // Return null - the parent component will handle rendering
+  return null;
+};
+
 const Onboarding = () => {
   const {
     toast
@@ -38,7 +75,10 @@ const Onboarding = () => {
   const [studentName, setStudentName] = useState('');
   const [loading, setLoading] = useState(true);
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [ephemeralKey, setEphemeralKey] = useState<string | null>(null);
+  const [agentId, setAgentId] = useState<string | null>(null);
+  const [conversation, setConversation] = useState<any>(null);
+  const [isLoadingAgent, setIsLoadingAgent] = useState(false);
+  const [agentError, setAgentError] = useState<string | null>(null);
   const [messages, setMessages] = useState<Array<{
     source: 'ai' | 'user';
     text: string;
@@ -347,232 +387,184 @@ const Onboarding = () => {
   // Debug useConversation hook initialization
   useEffect(() => {
     console.log('🚀 useConversation hook initialized:', {
-      ephemeralKey: ephemeralKey ? 'Set' : 'Not set',
+      agentId: agentId ? 'Set' : 'Not set',
       timestamp: new Date().toISOString()
     });
+  }, [agentId]);
+
+  // Callback functions for ConversationUI component
+  const handleConnect = useCallback(async () => {
+    console.log('🎉 CONNECTED to Outspeed voice agent');
+    console.log('📊 Connection details:', {
+      conversationId: conversationId,
+      agentId: agentId ? 'Set' : 'Not set',
+      timestamp: new Date().toISOString()
+    });
+    setSessionStarted(true);
+    setSessionStartTime(new Date());
+    setHasStartedOnce(true);
+    
+    // Create conversation record when session starts
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        let conversationType: "onboarding_1" | "onboarding_2" | "onboarding_3" | "onboarding_4" | "onboarding_5";
+        switch (currentSessionNumber) {
+          case 1: conversationType = "onboarding_1"; break;
+          case 2: conversationType = "onboarding_2"; break;
+          case 3: conversationType = "onboarding_3"; break;
+          case 4: conversationType = "onboarding_4"; break;
+          case 5: conversationType = "onboarding_5"; break;
+          default: conversationType = "onboarding_1"; break;
+        }
+        
+        // Create conversation record with current timestamp as created_at
+        const { error } = await supabase
+          .from('conversation_tracking')
+          .insert({
+            conversation_id: conversationId || `temp_${Date.now()}`,
+            user_id: user.id,
+            conversation_type: conversationType,
+            conversation_started_at: new Date().toISOString(),
+            metadata_retrieved: false
+          });
+        
+        if (error) {
+          console.error('Error creating conversation record:', error);
+        } else {
+          console.log('✅ Created conversation record at session start');
+        }
+      }
+    } catch (error) {
+      console.error('Error creating conversation record:', error);
+    }
+    
+    toast({
+      title: "Connected",
+      description: "Your conversation with Diya has started. Feel free to speak naturally!"
+    });
+  }, [conversationId, agentId, currentSessionNumber, toast]);
+
+  const handleMessage = useCallback(async (message: any) => {
+    console.log('Message received:', message);
+
+    // Add message to conversation transcript
+    if (message.message && typeof message.message === 'string') {
+      const newMessage = {
+        source: message.source || 'ai',
+        text: message.message,
+        timestamp: new Date()
+      };
+      
+      // Update local state for UI display only
+      setMessages(prev => [...prev, newMessage]);
+    }
+
+    // Mark topics as completed based on conversation flow
+    if (message.source === 'ai') {
+      const currentProgress = Math.min(progressPercentage + 2, 100);
+      const completedCount = Math.floor(currentProgress / 16.67);
+      setTopics(prev => prev.map((topic, index) => ({
+        ...topic,
+        completed: index < completedCount
+      })));
+    }
+  }, [progressPercentage]);
+
+  const handleUserSpeech = useCallback(async (speech: any) => {
+    console.log('User speech detected:', speech);
+    // Add user speech to transcript if we have the text
+    if (speech.text && typeof speech.text === 'string') {
+      const newMessage = {
+        source: 'user' as const,
+        text: speech.text,
+        timestamp: new Date()
+      };
+      
+      // Update local state for UI display only
+      setMessages(prev => [...prev, newMessage]);
+    }
   }, []);
 
-  // Conversation hook - only initialize when we have an ephemeral key
-  const conversation = ephemeralKey ? useConversation({
-    ephemeralKey: ephemeralKey,
-    onConnect: async () => {
-      console.log('🎉 CONNECTED to Outspeed voice agent');
-      console.log('📊 Connection details:', {
-        conversationId: conversationId,
-        ephemeralKey: ephemeralKey ? 'Set' : 'Not set',
-        timestamp: new Date().toISOString()
-      });
-      console.log('🔍 Conversation object:', conversation);
-      console.log('🔑 Conversation object keys:', Object.keys(conversation));
-      setSessionStarted(true);
-      setSessionStartTime(new Date());
-      setHasStartedOnce(true);
-      
-      // Create conversation record when session starts
+  const handleDisconnect = useCallback(async () => {
+    console.log('Disconnected from voice agent');
+
+    // Prevent double accounting when pause/end already handled
+    let newCumulativeTimeLocal = cumulativeSessionTime;
+    if (!sessionFinalizedRef.current && sessionStartTime) {
+      const duration = Math.max(0, (new Date().getTime() - sessionStartTime.getTime()) / 1000);
+      setSessionDuration(duration);
+      newCumulativeTimeLocal = cumulativeSessionTime + duration;
+      setCumulativeSessionTime(newCumulativeTimeLocal);
+
+      // Store cumulative time in database
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          let conversationType: "onboarding_1" | "onboarding_2" | "onboarding_3" | "onboarding_4" | "onboarding_5";
-          switch (currentSessionNumber) {
-            case 1: conversationType = "onboarding_1"; break;
-            case 2: conversationType = "onboarding_2"; break;
-            case 3: conversationType = "onboarding_3"; break;
-            case 4: conversationType = "onboarding_4"; break;
-            case 5: conversationType = "onboarding_5"; break;
-            default: conversationType = "onboarding_1"; break;
-          }
-          
-          // Create conversation record with current timestamp as created_at
-          const { error } = await supabase
-            .from('conversation_tracking')
-            .insert({
-              conversation_id: conversationId || `temp_${Date.now()}`,
-              user_id: user.id,
-              conversation_type: conversationType,
-              conversation_started_at: new Date().toISOString(),
-              metadata_retrieved: false
-            });
-          
-          if (error) {
-            console.error('Error creating conversation record:', error);
-          } else {
-            console.log('✅ Created conversation record at session start');
-          }
+          await supabase
+            .from('user_profiles')
+            .update({ cumulative_onboarding_time: Math.round(newCumulativeTimeLocal) })
+            .eq('user_id', user.id);
+          console.log('✅ Updated cumulative time in database:', Math.round(newCumulativeTimeLocal), 'seconds');
         }
       } catch (error) {
-        console.error('Error creating conversation record:', error);
+        console.error('Error updating cumulative session time:', error);
       }
-      
-      // Handle any pending ending message
-      if (endingMessagePending) {
-        console.log('📤 Sending pending ending message:', endingMessagePending);
-        try {
-          if (conversation && typeof conversation.sendText === 'function') {
-            await conversation.sendText(endingMessagePending);
-            console.log('✅ Pending ending message sent');
-            
-            // Wait for Diya to finish speaking the ending message
-            const waitForDiyaToFinishSpeaking = () => {
-              return new Promise<void>((resolve) => {
-                const checkInterval = setInterval(() => {
-                  // Check if Diya is not speaking
-                  if (!conversation.isSpeaking) {
-                    clearInterval(checkInterval);
-                    resolve();
-                  }
-                }, 100); // Check every 100ms
-                
-                // Maximum wait time of 15 seconds for the ending message
-                setTimeout(() => {
-                  clearInterval(checkInterval);
-                  resolve();
-                }, 15000);
-              });
-            };
-            
-            // Wait for Diya to finish speaking the ending message
-            await waitForDiyaToFinishSpeaking();
-            console.log('✅ Diya finished speaking ending message');
-            
-            // Now end the conversation
-            await endConversation();
-          }
-        } catch (error) {
-          console.error('Error sending pending ending message:', error);
-          await endConversation();
-        }
-        setEndingMessagePending(null);
-        return;
-      }
-      
-      toast({
-        title: "Connected",
-        description: "Your conversation with Diya has started. Feel free to speak naturally!"
-      });
-    },
-    onMessage: async (message: any) => {
-      console.log('Message received:', message);
-
-      // Add message to conversation transcript
-      if (message.message && typeof message.message === 'string') {
-        const newMessage = {
-          source: message.source || 'ai',
-          text: message.message,
-          timestamp: new Date()
-        };
-        
-        // Update local state for UI display only
-        setMessages(prev => [...prev, newMessage]);
-        
-        // NOTE: Real-time message storage removed - will use Outspeed API instead
-      }
-
-      // Mark topics as completed based on conversation flow
-      // This would be enhanced with actual topic tracking
-      if (message.source === 'ai') {
-        const currentProgress = Math.min(progressPercentage + 2, 100);
-        const completedCount = Math.floor(currentProgress / 16.67);
-        setTopics(prev => prev.map((topic, index) => ({
-          ...topic,
-          completed: index < completedCount
-        })));
-      }
-    },
-    onUserSpeech: async (speech: any) => {
-      console.log('User speech detected:', speech);
-      // Add user speech to transcript if we have the text
-      if (speech.text && typeof speech.text === 'string') {
-        const newMessage = {
-          source: 'user' as const,
-          text: speech.text,
-          timestamp: new Date()
-        };
-        
-        // Update local state for UI display only
-        setMessages(prev => [...prev, newMessage]);
-        
-        // NOTE: Real-time message storage removed - will use Outspeed API instead
-      }
-    },
-    onDisconnect: async () => {
-      console.log('Disconnected from voice agent');
-
-      // Prevent double accounting when pause/end already handled
-      let newCumulativeTimeLocal = cumulativeSessionTime;
-      if (!sessionFinalizedRef.current && sessionStartTime) {
-        const duration = Math.max(0, (new Date().getTime() - sessionStartTime.getTime()) / 1000);
-        setSessionDuration(duration);
-        newCumulativeTimeLocal = cumulativeSessionTime + duration;
-        setCumulativeSessionTime(newCumulativeTimeLocal);
-
-        // Store cumulative time in database
-        try {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            await supabase
-              .from('user_profiles')
-              .update({ cumulative_onboarding_time: Math.round(newCumulativeTimeLocal) })
-              .eq('user_id', user.id);
-            console.log('✅ Updated cumulative time in database:', Math.round(newCumulativeTimeLocal), 'seconds');
-          }
-        } catch (error) {
-          console.error('Error updating cumulative session time:', error);
-        }
-        console.log('Session duration:', duration, 'seconds');
-        console.log('Cumulative session time:', newCumulativeTimeLocal, 'seconds');
-      } else {
-        console.log('Session already finalized; skipping time accounting.');
-      }
-
-      // Recompute remaining time from cumulative total
-      const totalSecondsNeededLocal = 2 * 60; // 2 minutes for testing
-      setRemainingTime(Math.max(0, totalSecondsNeededLocal - newCumulativeTimeLocal));
-
-      setSessionStartTime(null);
-      setSessionStarted(false);
-      sessionFinalizedRef.current = false;
-      
-      // Force save transcript before disconnecting
-      if (messages.length > 0) {
-        console.log('💾 Force saving transcript on disconnect...');
-        await forceSaveTranscript();
-      }
-    },
-    onError: error => {
-      console.error('❌ VOICE AGENT ERROR:', error);
-      console.error('🔍 Error details:', {
-        errorType: typeof error,
-        errorMessage: error?.message || 'No message',
-        errorStack: error?.stack || 'No stack',
-        errorName: error?.name || 'No name',
-        ephemeralKey: ephemeralKey ? 'Set' : 'Not set',
-        conversationId: conversationId,
-        timestamp: new Date().toISOString()
-      });
-      toast({
-        title: "Connection Error",
-        description: "There was an issue with the voice connection. Please try again.",
-        variant: "destructive"
-      });
+      console.log('Session duration:', duration, 'seconds');
+      console.log('Cumulative session time:', newCumulativeTimeLocal, 'seconds');
+    } else {
+      console.log('Session already finalized; skipping time accounting.');
     }
-  }) : null;
+
+    // Recompute remaining time from cumulative total
+    const totalSecondsNeededLocal = 2 * 60; // 2 minutes for testing
+    setRemainingTime(Math.max(0, totalSecondsNeededLocal - newCumulativeTimeLocal));
+
+    setSessionStartTime(null);
+    setSessionStarted(false);
+    sessionFinalizedRef.current = false;
+    
+    // Force save transcript before disconnecting
+    if (messages.length > 0) {
+      console.log('💾 Force saving transcript on disconnect...');
+      await forceSaveTranscript();
+    }
+  }, [cumulativeSessionTime, sessionStartTime, messages, forceSaveTranscript]);
+
+  const handleError = useCallback((error: any) => {
+    console.error('❌ VOICE AGENT ERROR:', error);
+    console.error('🔍 Error details:', {
+      errorType: typeof error,
+      errorMessage: error?.message || 'No message',
+      errorStack: error?.stack || 'No stack',
+      errorName: error?.name || 'No name',
+      agentId: agentId ? 'Set' : 'Not set',
+      conversationId: conversationId,
+      timestamp: new Date().toISOString()
+    });
+    toast({
+      title: "Connection Error",
+      description: "There was an issue with the voice connection. Please try again.",
+      variant: "destructive"
+    });
+  }, [agentId, conversationId, toast]);
 
   // Debug conversation state changes
   useEffect(() => {
     console.log('🔄 Conversation state changed:', {
       conversationId: conversationId,
       sessionStarted: sessionStarted,
-      ephemeralKey: ephemeralKey ? 'Set' : 'Not set',
+      agentId: agentId ? 'Set' : 'Not set',
       timestamp: new Date().toISOString()
     });
-  }, [conversationId, sessionStarted, ephemeralKey]);
+  }, [conversationId, sessionStarted, agentId]);
 
-  // Debug ephemeralKey changes
+  // Debug agentId changes
   useEffect(() => {
-    console.log('🔑 EphemeralKey changed:', {
-      hasKey: !!ephemeralKey,
-      keyLength: ephemeralKey?.length || 0,
-      keyPreview: ephemeralKey ? `${ephemeralKey.substring(0, 20)}...` : 'null',
+    console.log('🔑 AgentId changed:', {
+      hasAgentId: !!agentId,
+      agentIdLength: agentId?.length || 0,
+      agentIdPreview: agentId ? `${agentId.substring(0, 20)}...` : 'null',
       timestamp: new Date().toISOString()
     });
     
@@ -588,9 +580,9 @@ const Onboarding = () => {
       });
     }
     
-    // Note: useConversation hook automatically connects when ephemeralKey is provided
-    // No manual connection needed - the hook handles this automatically
-  }, [ephemeralKey, conversation]);
+    // Note: useConversation hook will start session when agentId is provided
+    // The ConversationUI component handles the startSession call
+  }, [agentId, conversation]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -732,7 +724,55 @@ const Onboarding = () => {
     }
   }, [onboardingCompleted, onboardingLoading, navigate]);
 
+  // Function to get previous session context
+  const getPreviousSessionContext = useCallback(async () => {
+    try {
+      const {
+        data: {
+          user
+        }
+      } = await supabase.auth.getUser();
+      if (!user) return null;
+
+      // Get all previous conversation metadata for this user
+      const {
+        data: previousMetadata,
+        error
+      } = await supabase.from('conversation_metadata').select('conversation_id, summary, transcript, created_at').eq('user_id', user.id).neq('transcript', '').order('created_at', {
+        ascending: true
+      });
+      if (error) {
+        console.error('❌ Error fetching previous metadata:', error);
+        return null;
+      }
+      if (!previousMetadata) {
+        console.log('ℹ️ No previous metadata found');
+        return null;
+      }
+      console.log('✅ Found previous metadata:', previousMetadata.length, 'conversations');
+      console.log('📋 Metadata sample:', previousMetadata[0]);
+
+      // Map metadata to context format
+      const contexts = previousMetadata.map((metadata, index) => {
+        const sessionNumber = index + 1;
+        return {
+          session: `onboarding_${sessionNumber}`,
+          summary: metadata.summary || '',
+          transcript: metadata.transcript || ''
+        };
+      });
+      console.log('Processed contexts:', contexts);
+      return contexts.filter(ctx => ctx.transcript && ctx.transcript.trim() !== '');
+    } catch (error) {
+      console.error('Error getting previous session context:', error);
+      return null;
+    }
+  }, []);
+
+  // Start conversation using agent-based approach
   const startConversation = useCallback(async () => {
+    setIsLoadingAgent(true);
+    setAgentError(null);
     try {
       // Check if environment variables are set
       if (!import.meta.env.VITE_OUTSPEED_ONBOARDING) {
@@ -770,159 +810,22 @@ const Onboarding = () => {
       // Expand UI into conversation layout
       setExpandedView(true);
 
-      // Get previous session context - prefer DB, fallback to localStorage
-      let previousContext: any[] | null = null;
-      try {
-        // Always try fresh DB context first
-        previousContext = await getPreviousSessionContext();
-        if (previousContext && previousContext.length > 0) {
-          console.log('Using previous session context from DB:', previousContext);
-          localStorage.setItem('previous_onboarding_context', JSON.stringify(previousContext));
-        } else {
-          // Fallback to stored local context, normalize session labels
-          const storedContext = localStorage.getItem('previous_onboarding_context');
-          if (storedContext) {
-            const parsed = JSON.parse(storedContext);
-            if (Array.isArray(parsed)) {
-              previousContext = parsed.map((ctx: any, index: number) => ({
-                ...ctx,
-                session: `onboarding_${index + 1}`
-              }));
-              console.log('Using normalized previous session context from localStorage:', previousContext);
-            }
-          }
-        }
-      } catch (error) {
-        console.warn('Error loading previous context:', error);
-      }
-
-      // Prepare dynamic variables with context
-      const dynamicVariables: any = {
-        student_name: studentName
-      };
-
-      // Add previous session context if available
-      if (previousContext && previousContext.length > 0) {
-        console.log('📋 Previous context found:', previousContext.length, 'sessions');
-        console.log('📝 Sample context:', previousContext[0]);
-        try {
-          console.log('🤖 Getting AI-powered conversation context...');
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            // Use Supabase Edge Function for conversation resume context
-            try {
-              const contextResult = await ConversationResumeService.generateConversationResumeContext(user.id);
-              if (contextResult.success && contextResult.context) {
-                dynamicVariables.previous_sessions = contextResult.context;
-                dynamicVariables.session_count = contextResult.session_count;
-                console.log('✅ Using AI-generated context for Outspeed');
-                console.log('Context:', contextResult.context);
-                console.log('Session count:', contextResult.session_count);
-              } else {
-                // Fallback to local method
-                const contextSummary = previousContext
-                  .map((ctx: any) => {
-                    const content = ctx.transcript || '';
-                    return `${ctx.session}: ${content}`;
-                  })
-                  .filter(ctx => {
-                    const parts = ctx.split(': ');
-                    return parts.length > 1 && parts[1].trim() !== '';
-                  })
-                  .join('\n\n');
-                
-                dynamicVariables.previous_sessions = contextSummary;
-                dynamicVariables.session_count = previousContext.length;
-                console.log('⚠️ Using fallback context for Outspeed');
-              }
-            } catch (error) {
-              console.error('❌ Error getting context:', error);
-              // Fallback to local method
-              const contextSummary = previousContext
-                .map((ctx: any) => {
-                  const content = ctx.transcript || '';
-                  return `${ctx.session}: ${content}`;
-                })
-                .filter(ctx => {
-                  const parts = ctx.split(': ');
-                  return parts.length > 1 && parts[1].trim() !== '';
-                })
-                .join('\n\n');
-              
-              dynamicVariables.previous_sessions = contextSummary;
-              dynamicVariables.session_count = previousContext.length;
-              console.log('⚠️ Using fallback context due to error');
-            }
-          }
-        } catch (error) {
-          console.error('❌ Error getting conversation context:', error);
-          // Fallback to original method
-          const contextSummary = previousContext.map((ctx: any) => {
-            const content = ctx.transcript || '';
-            return `${ctx.session}: ${content}`;
-          }).filter((ctx: string) => {
-            const parts = ctx.split(': ');
-            return parts.length > 1 && parts[1].trim() !== '';
-          }).join('\n\n');
-          dynamicVariables.previous_sessions = contextSummary;
-          dynamicVariables.session_count = previousContext.length;
-        }
-        console.log('✅ Added previous session context to agent variables');
-        console.log('Full dynamic variables:', dynamicVariables);
-      } else {
-        console.log('ℹ️ No previous context found');
-      }
-
-      // Create Outspeed session configuration
-      const sessionConfig = await OutspeedAPI.createOnboardingSessionConfig(studentName);
+      // Get the appropriate agent ID based on user's applying_to field
+      const agentId = await OutspeedAPI.getOnboardingAgentId();
+      console.log('🚀 Starting Outspeed conversation with agent:', agentId);
       
-      // Generate token for Outspeed session
-      const tokenData = await OutspeedAPI.generateToken(sessionConfig);
+      // Set the agent ID to trigger the conversation connection
+      setAgentId(agentId);
+      console.log('✅ Agent ID set:', agentId);
+
+      // Create a temporary conversation ID for tracking
+      const tempConversationId = `temp_${Date.now()}`;
+      setConversationId(tempConversationId);
+      localStorage.setItem('temp_conversation_id', tempConversationId);
+
+      // Increment session number for next conversation
+      setCurrentSessionNumber(prev => prev + 1);
       
-      console.log('🚀 Starting Outspeed conversation with:');
-      console.log('Session Config:', JSON.stringify(sessionConfig, null, 2));
-      console.log('Token Data:', tokenData);
-      
-      // Set the ephemeral key to trigger the conversation connection
-      setEphemeralKey(tokenData.client_secret.value);
-      console.log('✅ Ephemeral key set:', tokenData.client_secret.value);
-
-      // Store session ID for later use
-      if (tokenData.id) {
-        console.log('Conversation ID captured:', tokenData.id);
-        setConversationId(tokenData.id);
-
-        // Update the temporary conversation record with the actual conversationId
-        try {
-          const tempConversationId = localStorage.getItem('temp_conversation_id');
-          if (tempConversationId) {
-            const { error } = await supabase
-              .from('conversation_tracking')
-              .update({ conversation_id: tokenData.id })
-              .eq('conversation_id', tempConversationId);
-            
-            if (error) {
-              console.error('Error updating conversation ID:', error);
-            } else {
-              console.log('✅ Updated conversation record with actual ID:', tokenData.id);
-              localStorage.removeItem('temp_conversation_id');
-            }
-          }
-        } catch (error) {
-          console.error('Error updating conversation ID:', error);
-        }
-
-        // Increment session number for next conversation
-        setCurrentSessionNumber(prev => prev + 1);
-      } else {
-        console.error('Failed to get session ID from token data');
-        toast({
-          title: "Connection Error",
-          description: "Failed to start the conversation. Please try again.",
-          variant: "destructive"
-        });
-        return;
-      }
     } catch (error) {
       console.error('Error starting conversation:', error);
       setExpandedView(false);
@@ -939,8 +842,12 @@ const Onboarding = () => {
           variant: "destructive"
         });
       }
+      setAgentError(error instanceof Error ? error.message : 'Unknown error');
+    } finally {
+      setIsLoadingAgent(false);
     }
-  }, [toast]);
+  }, [toast, studentName]);
+
   const pauseConversation = useCallback(async () => {
     try {
       console.log('Pausing conversation, current conversationId:', conversationId);
@@ -1032,7 +939,7 @@ const Onboarding = () => {
               conversation_id: conversationId,
               user_id: user.id,
               transcript: transcriptText || 'Conversation in progress',
-              transcript_summary: transcriptText || 'Conversation in progress',
+              summary: transcriptText || 'Conversation in progress',
               // Use transcript as summary
               created_at: new Date().toISOString()
             });
@@ -1070,50 +977,6 @@ const Onboarding = () => {
     }
   }, [conversationId, sessionStartTime, cumulativeSessionTime, currentSessionNumber, messages, toast]);
 
-  // Function to get previous session context
-  const getPreviousSessionContext = useCallback(async () => {
-    try {
-      const {
-        data: {
-          user
-        }
-      } = await supabase.auth.getUser();
-      if (!user) return null;
-
-      // Get all previous conversation metadata for this user
-      const {
-        data: previousMetadata,
-        error
-      } = await supabase.from('conversation_metadata').select('conversation_id, summary, transcript, created_at').eq('user_id', user.id).neq('transcript', '').order('created_at', {
-        ascending: true
-      });
-      if (error) {
-        console.error('❌ Error fetching previous metadata:', error);
-        return null;
-      }
-      if (!previousMetadata) {
-        console.log('ℹ️ No previous metadata found');
-        return null;
-      }
-      console.log('✅ Found previous metadata:', previousMetadata.length, 'conversations');
-      console.log('📋 Metadata sample:', previousMetadata[0]);
-
-      // Map metadata to context format
-      const contexts = previousMetadata.map((metadata, index) => {
-        const sessionNumber = index + 1;
-        return {
-          session: `onboarding_${sessionNumber}`,
-          summary: metadata.summary || '',
-          transcript: metadata.transcript || ''
-        };
-      });
-      console.log('Processed contexts:', contexts);
-      return contexts.filter(ctx => ctx.transcript && ctx.transcript.trim() !== '');
-    } catch (error) {
-      console.error('Error getting previous session context:', error);
-      return null;
-    }
-  }, []);
   const resumeConversation = useCallback(async () => {
     try {
       console.log('🔄 Resuming conversation, session number:', currentSessionNumber);
@@ -1477,6 +1340,18 @@ const Onboarding = () => {
 
   return (
     <GradientBackground>
+      {/* 4. CRITICAL: Only render the ConversationUI when you have an agent ID */}
+      {agentId && (
+        <ConversationUI
+          agentId={agentId}
+          source="diya-onboarding"
+          onConnect={handleConnect}
+          onMessage={handleMessage}
+          onUserSpeech={handleUserSpeech}
+          onDisconnect={handleDisconnect}
+          onError={handleError}
+        />
+      )}
         {expandedView && (
           <div className="h-screen flex flex-col p-2 md:p-4">
             {(sessionStarted || cumulativeSessionTime > 0) && (
@@ -1692,11 +1567,26 @@ const Onboarding = () => {
 
                                 <Button 
                                   onClick={startConversation} 
+                                  disabled={isLoadingAgent}
                                   size="lg" 
                                   className="mt-4"
                                 >
-                                  {cumulativeSessionTime > 0 || currentSessionNumber > 1 ? "Resume Conversation" : "Start Conversation"}
+                                  {isLoadingAgent ? 'Starting...' : (cumulativeSessionTime > 0 || currentSessionNumber > 1 ? "Resume Conversation" : "Start Conversation")}
                                 </Button>
+                                
+                                {agentError && (
+                                  <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                                    <p className="text-red-700 text-sm">{agentError}</p>
+                                    <Button 
+                                      onClick={() => setAgentError(null)}
+                                      variant="outline"
+                                      size="sm"
+                                      className="mt-2"
+                                    >
+                                      Try Again
+                                    </Button>
+                                  </div>
+                                )}
                                 
                                 <div className="mt-4 text-center">
                                   <button onClick={() => setShowInfoModal(true)} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors">

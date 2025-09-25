@@ -130,6 +130,98 @@ export interface Database {
           }
         ]
       }
+      conversation_metadata: {
+        Row: {
+          id: string
+          conversation_id: string
+          user_id: string
+          summary: string | null
+          transcript: string | null
+          audio_url: string | null
+          session_number: number | null
+          duration_seconds: number | null
+          message_count: number | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          conversation_id: string
+          user_id: string
+          summary?: string | null
+          transcript?: string | null
+          audio_url?: string | null
+          session_number?: number | null
+          duration_seconds?: number | null
+          message_count?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          conversation_id?: string
+          user_id?: string
+          summary?: string | null
+          transcript?: string | null
+          audio_url?: string | null
+          session_number?: number | null
+          duration_seconds?: number | null
+          message_count?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_metadata_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      conversation_messages: {
+        Row: {
+          id: string
+          conversation_id: string
+          user_id: string
+          source: string
+          text: string
+          timestamp: string
+          message_order: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          conversation_id: string
+          user_id: string
+          source: string
+          text: string
+          timestamp?: string
+          message_order: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          conversation_id?: string
+          user_id?: string
+          source?: string
+          text?: string
+          timestamp?: string
+          message_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_messages_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       conversation_tracking: {
         Row: {
           id: string

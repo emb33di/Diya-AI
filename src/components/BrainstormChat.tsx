@@ -31,7 +31,7 @@ interface BrainstormChatProps {
 const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSummaryGenerated }: BrainstormChatProps) => {
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [ephemeralKey, setEphemeralKey] = useState<string | null>(null);
+  const [agentId, setAgentId] = useState<string | null>(null);
   const [sessionStarted, setSessionStarted] = useState(false);
   const [studentName, setStudentName] = useState<string>('');
   const [onboardingTranscript, setOnboardingTranscript] = useState<string>('');
@@ -86,9 +86,15 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
     OutspeedAPI.initialize(import.meta.env.VITE_SUPABASE_URL);
   }, []);
 
-  // Outspeed React SDK integration - only initialize when we have an ephemeral key
-  const conversation = ephemeralKey ? useConversation({
-    ephemeralKey: ephemeralKey, // Use the ephemeral key from token generation
+  // Start session when agentId is available
+  useEffect(() => {
+    if (agentId && conversation && conversation.startSession) {
+      conversation.startSession({ agentId, source: 'diya-brainstorming' });
+    }
+  }, [agentId, conversation]);
+
+  // Outspeed React SDK integration - use agent-based approach
+  const conversation = useConversation({
     onConnect: async () => {
       console.log('🔗 Connected to Outspeed voice agent');
       console.log('📊 Current state before connect:', { sessionStarted: sessionStartedRef.current, showFullScreenChat: showFullScreenChatRef.current, messagesCount: messagesRef.current.length });
@@ -178,7 +184,7 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
         console.log('⚠️ User speech missing or invalid:', speech);
       }
     }
-  }) : null;
+  });
 
   // Audio analysis functions
   const startAudioAnalysis = async () => {
@@ -293,34 +299,21 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
       });
       console.log('Microphone access granted, starting Outspeed conversation');
 
-      // Create Outspeed session configuration for brainstorming
-      const sessionConfig = OutspeedAPI.createBrainstormingSessionConfig(essayTitle, essayPrompt, targetCollege);
+      // TODO: Implement brainstorming agent - for now, use a placeholder
+      // This will be implemented when we add the brainstorming agent
+      const brainstormingAgentId = 'agent_brainstorming_placeholder'; // Replace with actual brainstorming agent ID
       
-      // Generate token for Outspeed session
-      const tokenData = await OutspeedAPI.generateToken(sessionConfig);
+      console.log('🚀 Starting Outspeed brainstorming conversation with agent:', brainstormingAgentId);
       
-      console.log('🚀 Starting Outspeed brainstorming conversation with:');
-      console.log('Session Config:', JSON.stringify(sessionConfig, null, 2));
-      console.log('Token Data:', tokenData);
-      
-      // Set the ephemeral key to trigger the conversation connection
-      setEphemeralKey(tokenData.client_secret.value);
-      console.log('✅ Ephemeral key set:', tokenData.client_secret.value);
+      // Set the agent ID to trigger the conversation connection
+      setAgentId(brainstormingAgentId);
+      console.log('✅ Agent ID set:', brainstormingAgentId);
 
-      // Store session ID for later use
-      if (tokenData.id) {
-        console.log('Conversation ID captured:', tokenData.id);
-        setConversationId(tokenData.id);
-        createConversationRecord(tokenData.id);
-      } else {
-        console.error('Failed to get session ID from token data');
-        toast({
-          title: "Connection Error",
-          description: "Failed to start the brainstorming conversation. Please try again.",
-          variant: "destructive"
-        });
-        return;
-      }
+      // Create a temporary conversation ID for tracking
+      const tempConversationId = `temp_${Date.now()}`;
+      setConversationId(tempConversationId);
+      createConversationRecord(tempConversationId);
+      
     } catch (error) {
       console.error('Error starting conversation:', error);
       if (error instanceof DOMException && error.name === 'NotAllowedError') {

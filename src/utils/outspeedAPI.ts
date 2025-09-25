@@ -1,7 +1,8 @@
 import { supabase } from '@/integrations/supabase/client';
-import { loadPromptTemplate, processPromptTemplate } from './promptLoader';
 import { ApplyingToType } from './userProfileUtils';
+import { getAgentId, validateAgentConfiguration } from './agentManager';
 
+// Legacy interface - kept for backward compatibility during transition
 export interface SessionConfig {
   model: string;
   instructions: string;
@@ -52,9 +53,10 @@ export class OutspeedAPI {
   }
 
   /**
-   * Generate ephemeral token for Outspeed session
+   * Generate ephemeral token for Outspeed session using agent ID
+   * This is the new simplified approach that replaces the old generateToken method
    */
-  static async generateToken(sessionConfig: SessionConfig): Promise<OutspeedSessionData> {
+  static async generateToken(agentId: string, source: string = 'diya-onboarding'): Promise<OutspeedSessionData> {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -68,7 +70,10 @@ export class OutspeedAPI {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(sessionConfig),
+        body: JSON.stringify({
+          agentId,
+          source
+        }),
       });
 
       if (!response.ok) {
@@ -85,80 +90,50 @@ export class OutspeedAPI {
   }
 
   /**
-   * Create session configuration for onboarding
+   * Generate token for onboarding conversation
    */
-  static async createOnboardingSessionConfig(studentName?: string): Promise<SessionConfig> {
-    // Fetch user's applying_to field from their profile
-    let applyingTo: ApplyingToType | null = null;
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profileData, error } = await supabase
-          .from('user_profiles')
-          .select('applying_to')
-          .eq('user_id', user.id as any)
-          .single();
-
-        if (!error && profileData && 'applying_to' in profileData && profileData.applying_to) {
-          applyingTo = profileData.applying_to as ApplyingToType;
-        }
-      }
-    } catch (error) {
-      console.warn('Could not fetch applying_to field:', error);
-    }
-
-    // Load the appropriate prompt template based on application type
-    const promptTemplate = await loadPromptTemplate(applyingTo);
-    const processedInstructions = processPromptTemplate(promptTemplate, studentName);
-
-    // Create custom opening message based on applying_to field
-    const customOpeningMessage = applyingTo 
-      ? `Hi there! I'm excited to learn more about your application and goals! From your profile it looks like you are a ${applyingTo} applicant?`
-      : `Hello ${studentName || 'there'}! I'm Diya, your AI college counselor. I'm here to help you navigate your college application journey. Let's start by getting to know you better. What are you most excited about when you think about college?`;
-
-    return {
-      model: "outspeed-v1",
-      instructions: processedInstructions,
-      voice: "apoorva", // Always use apoorva voice
-      input_language: 'hi', // Hindi input
-      output_language: 'hi', // Hindi output
-      turn_detection: {
-        type: "semantic_vad",
-      },
-      first_message: customOpeningMessage,
-    };
+  static async generateOnboardingToken(): Promise<OutspeedSessionData> {
+    const agentId = await this.getOnboardingAgentId();
+    return this.generateToken(agentId, 'diya-onboarding');
   }
 
   /**
-   * Create session configuration for essay brainstorming
+   * Get agent ID for onboarding based on user's applying_to field
    */
-  static createBrainstormingSessionConfig(essayTitle: string, essayPrompt: string, targetCollege?: string): SessionConfig {
-    return {
-      model: "outspeed-v1",
-      instructions: `You are Diya, an AI essay counselor helping a student brainstorm ideas for their college application essay. 
+  static async getOnboardingAgentId(): Promise<string> {
+    try {
+      // Validate agent configuration first
+      if (!validateAgentConfiguration()) {
+        throw new Error('Agent configuration is incomplete. Please check agent IDs.');
+      }
 
-Essay Details:
-- Title: ${essayTitle}
-- Prompt: ${essayPrompt}
-- Target College: ${targetCollege || 'Not specified'}
+      // Fetch user's applying_to field from their profile
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('No authenticated user found');
+      }
 
-Your role is to:
-1. Help the student explore personal experiences and stories that relate to the essay prompt
-2. Guide them to identify unique angles and compelling narratives
-3. Ask probing questions to help them reflect on their values, growth, and character
-4. Suggest ways to make their essay stand out while staying authentic
-5. Help them structure their thoughts and organize their ideas
+      const { data: profileData, error } = await supabase
+        .from('user_profiles')
+        .select('applying_to')
+        .eq('user_id', user.id as any)
+        .single();
 
-Be encouraging and help them discover their authentic voice. Ask follow-up questions to dig deeper into their experiences and perspectives.`,
-      voice: "apoorva", // Always use apoorva voice
-      input_language: 'hi', // Hindi input
-      output_language: 'hi', // Hindi output
-      turn_detection: {
-        type: "semantic_vad",
-      },
-      first_message: `Hi! I'm excited to help you brainstorm ideas for your "${essayTitle}" essay. This is a great opportunity to share something meaningful about yourself. Let's start by exploring what this prompt means to you personally. What's your first reaction when you read this prompt?`,
-    };
+      if (error || !profileData || !('applying_to' in profileData) || !profileData.applying_to) {
+        console.warn('Could not fetch applying_to field, defaulting to Undergraduate agent');
+        return getAgentId('Undergraduate');
+      }
+
+      const applyingTo = profileData.applying_to as ApplyingToType;
+      return getAgentId(applyingTo);
+    } catch (error) {
+      console.error('Error getting onboarding agent ID:', error);
+      // Fallback to undergraduate agent
+      return getAgentId('Undergraduate');
+    }
   }
+
+  // Note: Brainstorming session configuration removed - will be implemented with agent-based approach later
 
   /**
    * Store conversation metadata in Supabase
@@ -272,6 +247,7 @@ Be encouraging and help them discover their authentic voice. Ask follow-up quest
         .insert([{
           conversation_id: conversationId,
           user_id: userId,
+          conversation_type: conversationType,
           conversation_ended_at: new Date().toISOString()
         }] as any);
 

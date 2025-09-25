@@ -28,6 +28,6 @@ BEGIN
     IF column_exists THEN
         RAISE NOTICE 'cumulative_onboarding_time column successfully added to user_profiles table';
     ELSE
-        RAISE ERROR 'Failed to add cumulative_onboarding_time column to user_profiles table';
+        RAISE EXCEPTION 'Failed to add cumulative_onboarding_time column to user_profiles table';
     END IF;
 END $$;
