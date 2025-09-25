@@ -116,10 +116,10 @@ const TranscriptViewer: React.FC<TranscriptViewerProps> = ({ conversationId }) =
                   </div>
                 </div>
                 
-                {metadata.transcript_summary && (
+                {metadata.summary && (
                   <div>
                     <span className="font-medium">Summary:</span>
-                    <p className="text-muted-foreground mt-1">{metadata.transcript_summary}</p>
+                    <p className="text-muted-foreground mt-1">{metadata.summary}</p>
                   </div>
                 )}
                 

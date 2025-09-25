@@ -23,7 +23,7 @@ export interface OutspeedSessionData {
 export interface OutspeedConversationData {
   conversation_id: string;
   user_id: string;
-  transcript_summary?: string;
+  summary?: string;
   transcript?: string;
   audio_url?: string;
   session_number?: number;
@@ -78,7 +78,7 @@ export class OutspeedAPI {
   /**
    * Create session configuration for onboarding
    */
-  static async createOnboardingSessionConfig(studentName?: string, inputLanguage?: string, outputLanguage?: string): Promise<SessionConfig> {
+  static async createOnboardingSessionConfig(studentName?: string): Promise<SessionConfig> {
     // Fetch user's applying_to field from their profile
     let applyingTo: ApplyingToType | null = null;
     try {
@@ -110,9 +110,9 @@ export class OutspeedAPI {
     return {
       model: "outspeed-v1",
       instructions: processedInstructions,
-      voice: outputLanguage === 'spanish' ? 'spanish_voice' : outputLanguage === 'chinese' ? 'chinese_voice' : outputLanguage === 'hindi' ? 'apoorva' : "david", // Default to david, can be changed based on language
-      input_language: inputLanguage || 'en',
-      output_language: outputLanguage || 'en',
+      voice: "apoorva", // Always use apoorva voice
+      input_language: 'hi', // Hindi input
+      output_language: 'hi', // Hindi output
       turn_detection: {
         type: "semantic_vad",
       },
@@ -123,7 +123,7 @@ export class OutspeedAPI {
   /**
    * Create session configuration for essay brainstorming
    */
-  static createBrainstormingSessionConfig(essayTitle: string, essayPrompt: string, targetCollege?: string, inputLanguage?: string, outputLanguage?: string): SessionConfig {
+  static createBrainstormingSessionConfig(essayTitle: string, essayPrompt: string, targetCollege?: string): SessionConfig {
     return {
       model: "outspeed-v1",
       instructions: `You are Diya, an AI essay counselor helping a student brainstorm ideas for their college application essay. 
@@ -141,9 +141,9 @@ Your role is to:
 5. Help them structure their thoughts and organize their ideas
 
 Be encouraging and help them discover their authentic voice. Ask follow-up questions to dig deeper into their experiences and perspectives.`,
-      voice: outputLanguage === 'spanish' ? 'spanish_voice' : outputLanguage === 'chinese' ? 'chinese_voice' : outputLanguage === 'hindi' ? 'apoorva' : "david",
-      input_language: inputLanguage || 'en',
-      output_language: outputLanguage || 'en',
+      voice: "apoorva", // Always use apoorva voice
+      input_language: 'hi', // Hindi input
+      output_language: 'hi', // Hindi output
       turn_detection: {
         type: "semantic_vad",
       },
@@ -163,7 +163,7 @@ Be encouraging and help them discover their authentic voice. Ask follow-up quest
         .upsert([{
           conversation_id: metadata.conversation_id,
           user_id: metadata.user_id,
-          transcript_summary: metadata.transcript_summary,
+          summary: metadata.summary,
           transcript: metadata.transcript,
           audio_url: metadata.audio_url,
           session_number: metadata.session_number || 1,

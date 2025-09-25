@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 export interface ConversationData {
   conversation_id: string;
-  transcript_summary: string | null;
+  summary: string | null;
   transcript: string | null;
   audio_url: string | null;
   created_at: string;
@@ -90,7 +90,7 @@ export class ConversationStorage {
         .insert([{
           conversation_id: metadata.conversation_id,
           user_id: metadata.user_id,
-          transcript_summary: metadata.transcript_summary,
+          summary: metadata.summary,
           transcript: metadata.transcript,
           audio_url: metadata.audio_url
         }]);

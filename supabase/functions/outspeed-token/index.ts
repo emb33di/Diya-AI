@@ -44,6 +44,7 @@ serve(async (req) => {
 
     // Get request body
     const requestBody = await req.json()
+    console.log('Request body:', JSON.stringify(requestBody, null, 2))
 
     // Generate ephemeral token using Outspeed API
     const response = await fetch("https://api.outspeed.com/v1/realtime/sessions", {
@@ -58,6 +59,8 @@ serve(async (req) => {
     if (!response.ok) {
       const error = await response.text();
       console.error("Failed to generate ephemeral key:", error);
+      console.error("Response status:", response.status);
+      console.error("Response headers:", Object.fromEntries(response.headers.entries()));
       return new Response(
         JSON.stringify({ error: "Failed to generate token" }),
         { 

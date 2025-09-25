@@ -31,6 +31,7 @@ interface BrainstormChatProps {
 const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSummaryGenerated }: BrainstormChatProps) => {
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [ephemeralKey, setEphemeralKey] = useState<string | null>(null);
   const [sessionStarted, setSessionStarted] = useState(false);
   const [studentName, setStudentName] = useState<string>('');
   const [onboardingTranscript, setOnboardingTranscript] = useState<string>('');
@@ -87,6 +88,7 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
 
   // Outspeed React SDK integration
   const conversation = useConversation({
+    ephemeralKey: ephemeralKey, // Use the ephemeral key from token generation
     onConnect: async () => {
       console.log('🔗 Connected to Outspeed voice agent');
       console.log('📊 Current state before connect:', { sessionStarted: sessionStartedRef.current, showFullScreenChat: showFullScreenChatRef.current, messagesCount: messagesRef.current.length });
@@ -299,20 +301,23 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
       console.log('Session Config:', JSON.stringify(sessionConfig, null, 2));
       console.log('Token Data:', tokenData);
       
-      const session = await conversation.startSession({
-        token: tokenData.token,
-        sessionId: tokenData.session_id
-      });
-      console.log('✅ Session started:', session);
+      // Set the ephemeral key to trigger the conversation connection
+      setEphemeralKey(tokenData.token);
+      console.log('✅ Ephemeral key set:', tokenData.token);
 
-      // The session object itself IS the conversation ID
-      if (session && typeof session === 'string') {
-        console.log('Conversation ID captured:', session);
-        setConversationId(session);
-        createConversationRecord(session);
+      // Store session ID for later use
+      if (tokenData.session_id) {
+        console.log('Conversation ID captured:', tokenData.session_id);
+        setConversationId(tokenData.session_id);
+        createConversationRecord(tokenData.session_id);
       } else {
-        console.log('Session object is not a string:', session);
-        console.log('Session type:', typeof session);
+        console.error('Failed to get session ID from token data');
+        toast({
+          title: "Connection Error",
+          description: "Failed to start the brainstorming conversation. Please try again.",
+          variant: "destructive"
+        });
+        return;
       }
     } catch (error) {
       console.error('Error starting conversation:', error);

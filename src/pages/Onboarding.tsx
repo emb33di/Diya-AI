@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Mic, MicOff, User, Sparkles, CheckCircle, MessageSquare, Target, Lightbulb, Heart, BookOpen, Briefcase, Trophy, Users, GraduationCap, DollarSign, X, Loader2, Clock, Info, Pause, Play, Lock } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import Header from '@/components/Header';
@@ -39,6 +38,7 @@ const Onboarding = () => {
   const [studentName, setStudentName] = useState('');
   const [loading, setLoading] = useState(true);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [ephemeralKey, setEphemeralKey] = useState<string | null>(null);
   const [messages, setMessages] = useState<Array<{
     source: 'ai' | 'user';
     text: string;
@@ -50,8 +50,6 @@ const Onboarding = () => {
   const [showLoadingModal, setShowLoadingModal] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [showSkipConfirmation, setShowSkipConfirmation] = useState(false);
-  const [inputLanguage, setInputLanguage] = useState('en');
-  const [outputLanguage, setOutputLanguage] = useState('en');
   const [isPaused, setIsPaused] = useState(false);
   const [currentSessionNumber, setCurrentSessionNumber] = useState(1);
   const [loadingStep, setLoadingStep] = useState(0);
@@ -346,6 +344,7 @@ const Onboarding = () => {
     fetchUserProfile();
   }, []);
   const conversation = useConversation({
+    ephemeralKey: ephemeralKey, // Use the ephemeral key from token generation
     onConnect: async () => {
       console.log('Connected to Outspeed voice agent');
       console.log('Conversation object:', conversation);
@@ -807,7 +806,7 @@ const Onboarding = () => {
       }
 
       // Create Outspeed session configuration
-      const sessionConfig = await OutspeedAPI.createOnboardingSessionConfig(studentName, inputLanguage, outputLanguage);
+      const sessionConfig = await OutspeedAPI.createOnboardingSessionConfig(studentName);
       
       // Generate token for Outspeed session
       const tokenData = await OutspeedAPI.generateToken(sessionConfig);
@@ -816,16 +815,14 @@ const Onboarding = () => {
       console.log('Session Config:', JSON.stringify(sessionConfig, null, 2));
       console.log('Token Data:', tokenData);
       
-      const session = await conversation.startSession({
-        token: tokenData.token,
-        sessionId: tokenData.session_id
-      });
-      console.log('✅ Session started:', session);
+      // Set the ephemeral key to trigger the conversation connection
+      setEphemeralKey(tokenData.token);
+      console.log('✅ Ephemeral key set:', tokenData.token);
 
-      // The session object itself IS the conversation ID
-      if (session && typeof session === 'string') {
-        console.log('Conversation ID captured:', session);
-        setConversationId(session);
+      // Store session ID for later use
+      if (tokenData.session_id) {
+        console.log('Conversation ID captured:', tokenData.session_id);
+        setConversationId(tokenData.session_id);
 
         // Update the temporary conversation record with the actual conversationId
         try {
@@ -833,13 +830,13 @@ const Onboarding = () => {
           if (tempConversationId) {
             const { error } = await supabase
               .from('conversation_tracking')
-              .update({ conversation_id: session })
+              .update({ conversation_id: tokenData.session_id })
               .eq('conversation_id', tempConversationId);
             
             if (error) {
               console.error('Error updating conversation ID:', error);
             } else {
-              console.log('✅ Updated conversation record with actual ID:', session);
+              console.log('✅ Updated conversation record with actual ID:', tokenData.session_id);
               localStorage.removeItem('temp_conversation_id');
             }
           }
@@ -850,8 +847,13 @@ const Onboarding = () => {
         // Increment session number for next conversation
         setCurrentSessionNumber(prev => prev + 1);
       } else {
-        console.log('Session object is not a string:', session);
-        console.log('Session type:', typeof session);
+        console.error('Failed to get session ID from token data');
+        toast({
+          title: "Connection Error",
+          description: "Failed to start the conversation. Please try again.",
+          variant: "destructive"
+        });
+        return;
       }
     } catch (error) {
       console.error('Error starting conversation:', error);
@@ -1012,7 +1014,7 @@ const Onboarding = () => {
       const {
         data: previousMetadata,
         error
-      } = await supabase.from('conversation_metadata').select('conversation_id, transcript_summary, transcript, created_at').eq('user_id', user.id).neq('transcript', '').order('created_at', {
+      } = await supabase.from('conversation_metadata').select('conversation_id, summary, transcript, created_at').eq('user_id', user.id).neq('transcript', '').order('created_at', {
         ascending: true
       });
       if (error) {
@@ -1031,7 +1033,7 @@ const Onboarding = () => {
         const sessionNumber = index + 1;
         return {
           session: `onboarding_${sessionNumber}`,
-          summary: metadata.transcript_summary || '',
+          summary: metadata.summary || '',
           transcript: metadata.transcript || ''
         };
       });
@@ -1193,7 +1195,7 @@ const Onboarding = () => {
             const metadata = {
               conversation_id: conversationId,
               user_id: user.id,
-              transcript_summary: `Conversation completed with ${stats.totalMessages} messages (${stats.userMessages} user, ${stats.aiMessages} AI)`,
+              summary: `Conversation completed with ${stats.totalMessages} messages (${stats.userMessages} user, ${stats.aiMessages} AI)`,
               transcript: transcript,
               audio_url: null,
               created_at: new Date().toISOString()
@@ -1203,7 +1205,7 @@ const Onboarding = () => {
             
             // Validate metadata presence (either Supabase or local)
             const stored = await ConversationStorage.getConversationMetadata(conversationId);
-            if (stored && (stored.transcript?.trim() || stored.transcript_summary?.trim())) {
+            if (stored && (stored.transcript?.trim() || stored.summary?.trim())) {
               metadataOk = true;
               console.log('✅ Metadata stored and validated successfully');
             } else {
@@ -1615,47 +1617,6 @@ const Onboarding = () => {
                             </p>
                             {!onboardingCompleted ? (
                               <>
-                                {/* Language Selection */}
-                                <div className="mt-6 space-y-4">
-                                  <div className="text-center">
-                                    <h4 className="text-sm font-medium text-muted-foreground mb-3">Choose your conversation language</h4>
-                                    <div className="flex gap-4 justify-center">
-                                      <div className="space-y-2">
-                                        <label className="text-xs text-muted-foreground">Input Language</label>
-                                        <Select value={inputLanguage} onValueChange={setInputLanguage}>
-                                          <SelectTrigger className="w-32">
-                                            <SelectValue />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="en">English</SelectItem>
-                                            <SelectItem value="hindi">हिंदी (Hindi)</SelectItem>
-                                            <SelectItem value="spanish">Español</SelectItem>
-                                            <SelectItem value="chinese">中文</SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                      </div>
-                                      <div className="space-y-2">
-                                        <label className="text-xs text-muted-foreground">Output Language</label>
-                                        <Select value={outputLanguage} onValueChange={setOutputLanguage}>
-                                          <SelectTrigger className="w-32">
-                                            <SelectValue />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="en">English</SelectItem>
-                                            <SelectItem value="hindi">हिंदी (Hindi)</SelectItem>
-                                            <SelectItem value="spanish">Español</SelectItem>
-                                            <SelectItem value="chinese">中文</SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                      </div>
-                                    </div>
-                                    {outputLanguage === 'hindi' && (
-                                      <p className="text-xs text-muted-foreground mt-2">
-                                        🎤 Diya will speak in Hindi using the Apoorva voice
-                                      </p>
-                                    )}
-                                  </div>
-                                </div>
 
                                 <Button 
                                   onClick={startConversation} 

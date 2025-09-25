@@ -5,7 +5,7 @@
 
 export interface ConversationData {
   conversation_id: string;
-  transcript_summary: string | null;
+  summary: string | null;
   transcript: string | null;
   audio_url: string | null;
   created_at: string;
@@ -98,7 +98,7 @@ export class ElevenLabsAPI {
         console.log('Conversation is still processing, summary not available yet');
         return {
           conversation_id: conversationId,
-          transcript_summary: null,
+          summary: null,
           transcript: null,
           audio_url: null,
           created_at: new Date().toISOString(),
@@ -126,7 +126,7 @@ export class ElevenLabsAPI {
 
       const metadata = {
         conversation_id: conversationId,
-        transcript_summary: conversationData.transcript_summary || null,
+        summary: conversationData.summary || null,
         transcript: transcriptText,
         audio_url: audioUrl,
         created_at: new Date().toISOString(),

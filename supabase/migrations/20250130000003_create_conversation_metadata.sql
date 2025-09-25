@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS conversation_metadata (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   conversation_id TEXT NOT NULL,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  transcript_summary TEXT,
+  summary TEXT,
   transcript TEXT,
   audio_url TEXT,
   session_number INTEGER DEFAULT 1,
