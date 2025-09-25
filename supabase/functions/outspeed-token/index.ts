@@ -53,7 +53,10 @@ serve(async (req) => {
         Authorization: `Bearer ${outspeedApiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify({
+        agent_id: requestBody.agentId,
+        source: requestBody.source || 'diya-onboarding'
+      }),
     });
 
     if (!response.ok) {

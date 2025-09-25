@@ -37,7 +37,52 @@ interface ConversationUIProps {
 
 const ConversationUI = ({ agentId, source, onConnect, onMessage, onUserSpeech, onDisconnect, onError }: ConversationUIProps) => {
   const conversation = useConversation({
-    onConnect,
+    onConnect: async () => {
+      // Create conversation tracking record when session starts
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          // Generate a unique conversation ID
+          const conversationId = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          
+          // Determine conversation type based on session number
+          let conversationType: "onboarding_1" | "onboarding_2" | "onboarding_3" | "onboarding_4" | "onboarding_5";
+          const currentSessionNumber = parseInt(localStorage.getItem('current_session_number') || '1');
+          switch (currentSessionNumber) {
+            case 1: conversationType = "onboarding_1"; break;
+            case 2: conversationType = "onboarding_2"; break;
+            case 3: conversationType = "onboarding_3"; break;
+            case 4: conversationType = "onboarding_4"; break;
+            case 5: conversationType = "onboarding_5"; break;
+            default: conversationType = "onboarding_1"; break;
+          }
+          
+          // Create conversation record
+          const { error } = await supabase
+            .from('conversation_tracking')
+            .insert({
+              conversation_id: conversationId,
+              user_id: user.id,
+              conversation_type: conversationType,
+              conversation_started_at: new Date().toISOString(),
+              metadata_retrieved: false
+            });
+          
+          if (error) {
+            console.error('Error creating conversation record:', error);
+          } else {
+            console.log('✅ Created conversation record:', conversationId);
+            // Store conversation ID for later use
+            localStorage.setItem('current_conversation_id', conversationId);
+          }
+        }
+      } catch (error) {
+        console.error('Error creating conversation record:', error);
+      }
+      
+      // Call the original onConnect callback
+      onConnect();
+    },
     onMessage,
     onUserSpeech,
     onDisconnect,
@@ -55,6 +100,7 @@ const ConversationUI = ({ agentId, source, onConnect, onMessage, onUserSpeech, o
       conversation.startSession({ agentId, source });
     }
   }, [agentId, source, conversation]);
+
 
   // Return null - the parent component will handle rendering
   return null;
@@ -76,7 +122,6 @@ const Onboarding = () => {
   const [loading, setLoading] = useState(true);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [agentId, setAgentId] = useState<string | null>(null);
-  const [conversation, setConversation] = useState<any>(null);
   const [isLoadingAgent, setIsLoadingAgent] = useState(false);
   const [agentError, setAgentError] = useState<string | null>(null);
   const [messages, setMessages] = useState<Array<{
@@ -98,7 +143,6 @@ const Onboarding = () => {
   const [cumulativeSessionTime, setCumulativeSessionTime] = useState(0);
   const [loadingMessages] = useState(["Retrieving conversation metadata", "Extracting profile information", "Generating recommendations"]);
   const [audioLevel, setAudioLevel] = useState(0);
-  const [endingMessagePending, setEndingMessagePending] = useState<string | null>(null);
   // NOTE: messageOrder state removed - no longer needed with Outspeed API approach
   
   // Initialize transcript saver hook for automatic message persistence
@@ -185,73 +229,7 @@ const Onboarding = () => {
     completed: false
   }]);
 
-  // End conversation with custom message when timer expires
-  const endConversationWithMessage = useCallback(async () => {
-    try {
-      console.log('⏰ 15-minute timer expired - preparing ending message');
-      
-      // Send custom ending message before terminating session
-      const endingMessage = "We've reached the 15-minute mark! Thank you for sharing your story with me. I have enough information to help you with your college application journey. If you have more questions, feel free to start a new session anytime. Goodbye!";
-      
-      // Wait for user to finish speaking before sending the ending message
-      const waitForUserToFinishSpeaking = () => {
-        return new Promise<void>((resolve) => {
-          const checkInterval = setInterval(() => {
-            // Check if user is not speaking (no audio input detected)
-            if (audioLevel < 0.1) {
-              clearInterval(checkInterval);
-              resolve();
-            }
-          }, 100); // Check every 100ms
-          
-          // Maximum wait time of 10 seconds to avoid infinite waiting
-          setTimeout(() => {
-            clearInterval(checkInterval);
-            resolve();
-          }, 10000);
-        });
-      };
-      
-      // Wait for user to finish speaking
-      await waitForUserToFinishSpeaking();
-      console.log('✅ User finished speaking, sending ending message');
-      
-      // Set a flag to indicate we need to send the ending message
-      // This will be handled by the conversation setup when it's available
-      setEndingMessagePending(endingMessage);
-      
-    } catch (error) {
-      console.error('Error preparing ending message:', error);
-      // Fallback: end conversation without message
-      setEndingMessagePending(null);
-    }
-  }, [audioLevel]);
 
-  // Timer effect
-  useEffect(() => {
-    if (sessionStarted && remainingTime > 0) {
-      timerRef.current = setInterval(() => {
-        setRemainingTime(prev => {
-          if (prev <= 1) {
-            // Time's up - send ending message and automatically end conversation
-            endConversationWithMessage();
-            return 0;
-          }
-          const newTime = prev - 1;
-          persistRemainingTime(newTime);
-          return newTime;
-        });
-      }, 1000);
-    } else if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-    };
-  }, [sessionStarted, remainingTime, persistRemainingTime, endConversationWithMessage]);
 
   // Update remaining time when cumulative time changes
   useEffect(() => {
@@ -394,9 +372,13 @@ const Onboarding = () => {
 
   // Callback functions for ConversationUI component
   const handleConnect = useCallback(async () => {
+    // Get conversation ID from localStorage (set by ConversationUI)
+    const currentConversationId = localStorage.getItem('current_conversation_id');
+    setConversationId(currentConversationId);
+    
     console.log('🎉 CONNECTED to Outspeed voice agent');
     console.log('📊 Connection details:', {
-      conversationId: conversationId,
+      conversationId: currentConversationId,
       agentId: agentId ? 'Set' : 'Not set',
       timestamp: new Date().toISOString()
     });
@@ -404,46 +386,11 @@ const Onboarding = () => {
     setSessionStartTime(new Date());
     setHasStartedOnce(true);
     
-    // Create conversation record when session starts
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        let conversationType: "onboarding_1" | "onboarding_2" | "onboarding_3" | "onboarding_4" | "onboarding_5";
-        switch (currentSessionNumber) {
-          case 1: conversationType = "onboarding_1"; break;
-          case 2: conversationType = "onboarding_2"; break;
-          case 3: conversationType = "onboarding_3"; break;
-          case 4: conversationType = "onboarding_4"; break;
-          case 5: conversationType = "onboarding_5"; break;
-          default: conversationType = "onboarding_1"; break;
-        }
-        
-        // Create conversation record with current timestamp as created_at
-        const { error } = await supabase
-          .from('conversation_tracking')
-          .insert({
-            conversation_id: conversationId || `temp_${Date.now()}`,
-            user_id: user.id,
-            conversation_type: conversationType,
-            conversation_started_at: new Date().toISOString(),
-            metadata_retrieved: false
-          });
-        
-        if (error) {
-          console.error('Error creating conversation record:', error);
-        } else {
-          console.log('✅ Created conversation record at session start');
-        }
-      }
-    } catch (error) {
-      console.error('Error creating conversation record:', error);
-    }
-    
     toast({
       title: "Connected",
       description: "Your conversation with Diya has started. Feel free to speak naturally!"
     });
-  }, [conversationId, agentId, currentSessionNumber, toast]);
+  }, [agentId, toast]);
 
   const handleMessage = useCallback(async (message: any) => {
     console.log('Message received:', message);
@@ -568,21 +515,9 @@ const Onboarding = () => {
       timestamp: new Date().toISOString()
     });
     
-    // Debug conversation object
-    if (conversation) {
-      console.log('🔍 Conversation object available:', {
-        type: typeof conversation,
-        keys: Object.keys(conversation),
-        hasConnect: typeof conversation.connect === 'function',
-        hasStart: typeof conversation.start === 'function',
-        hasStartSession: typeof conversation.startSession === 'function',
-        hasConnectSession: typeof conversation.connectSession === 'function'
-      });
-    }
-    
     // Note: useConversation hook will start session when agentId is provided
     // The ConversationUI component handles the startSession call
-  }, [agentId, conversation]);
+  }, [agentId]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -818,10 +753,8 @@ const Onboarding = () => {
       setAgentId(agentId);
       console.log('✅ Agent ID set:', agentId);
 
-      // Create a temporary conversation ID for tracking
-      const tempConversationId = `temp_${Date.now()}`;
-      setConversationId(tempConversationId);
-      localStorage.setItem('temp_conversation_id', tempConversationId);
+      // Store session number in localStorage for ConversationUI to use
+      localStorage.setItem('current_session_number', currentSessionNumber.toString());
 
       // Increment session number for next conversation
       setCurrentSessionNumber(prev => prev + 1);
@@ -1324,6 +1257,48 @@ const Onboarding = () => {
     }
   }, [conversationId, messages, toast, navigate, sessionStartTime, markOnboardingCompleted, cumulativeSessionTime, currentSessionNumber]);
   
+  // End conversation when timer expires
+  const endConversationWithMessage = useCallback(async () => {
+    try {
+      console.log('⏰ Timer expired - ending conversation');
+      
+      // Simply end the conversation
+      await endConversation();
+      
+      // Show completion popup with custom message
+      setShowCompletionPopup(true);
+      
+    } catch (error) {
+      console.error('Error ending conversation:', error);
+    }
+  }, [endConversation]);
+  
+  // Timer effect
+  useEffect(() => {
+    if (sessionStarted && remainingTime > 0) {
+      timerRef.current = setInterval(() => {
+        setRemainingTime(prev => {
+          if (prev <= 1) {
+            // Time's up - send ending message and automatically end conversation
+            endConversationWithMessage();
+            return 0;
+          }
+          const newTime = prev - 1;
+          persistRemainingTime(newTime);
+          return newTime;
+        });
+      }, 1000);
+    } else if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [sessionStarted, remainingTime, persistRemainingTime, endConversationWithMessage]);
+  
   // Show loading state while checking onboarding status
   if (onboardingLoading) {
     return (
@@ -1377,9 +1352,9 @@ const Onboarding = () => {
                 <div className="flex-1 w-full flex items-center justify-center min-h-0">
                                       <div className="w-80 h-80 max-w-full max-h-full aspect-square">
                       <VoiceOrb
-                        isListening={sessionStarted && conversation && !conversation.isSpeaking}
-                        isSpeaking={conversation?.isSpeaking || false}
-                        isThinking={sessionStarted && conversation && !conversation.isSpeaking && audioLevel < 0.1}
+                        isListening={sessionStarted}
+                        isSpeaking={false}
+                        isThinking={sessionStarted && audioLevel < 0.1}
                         audioLevel={audioLevel}
                         audioOutputLevel={audioOutputLevel}
                         className="w-full h-full"
@@ -1387,7 +1362,7 @@ const Onboarding = () => {
                     </div>
                 </div>
                 <div className="text-center mt-4 md:mt-6 flex-shrink-0">
-                  <h3 className="text-lg font-medium">{conversation?.isSpeaking ? 'Diya is speaking...' : 'Diya is listening...'}</h3>
+                  <h3 className="text-lg font-medium">Diya is listening...</h3>
                   <p className="text-sm text-muted-foreground">Share your thoughts and experiences naturally - just like talking to a friend!</p>
                   <div className="flex gap-2 justify-center mt-4">
                     <Button onClick={pauseConversation} variant="outline" disabled={isProcessingMetadata} size="sm">
@@ -1526,9 +1501,9 @@ const Onboarding = () => {
                   <div className="mx-auto flex items-center justify-center" style={{ width: landingOrbSize, height: landingOrbSize }}>
                     <div className="w-full h-full aspect-square">
                       <VoiceOrb
-                        isListening={sessionStarted && conversation && !conversation.isSpeaking}
-                        isSpeaking={conversation?.isSpeaking || false}
-                        isThinking={sessionStarted && conversation && !conversation.isSpeaking && audioLevel < 0.1}
+                        isListening={sessionStarted}
+                        isSpeaking={false}
+                        isThinking={sessionStarted && audioLevel < 0.1}
                         audioLevel={audioLevel}
                         audioOutputLevel={audioOutputLevel}
                         className="w-full h-full"
@@ -1619,7 +1594,7 @@ const Onboarding = () => {
                     ) : sessionStarted ? (
                       <>
                         <h3 className="text-lg font-medium">
-                          {conversation?.isSpeaking ? "Diya is speaking..." : "Diya is listening..."}
+                          Diya is listening...
                         </h3>
                         <p className="text-sm text-muted-foreground">
                           Share your thoughts and experiences naturally - just like talking to a friend!
@@ -1851,55 +1826,37 @@ const Onboarding = () => {
                 <X className="h-4 w-4" />
               </Button>
               <CardHeader className="text-center">
-                <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4 ${sessionDuration >= 900 ? 'bg-green-500/10' : 'bg-yellow-500/10'}`}>
-                  {sessionDuration >= 900 ? <CheckCircle className="w-8 h-8 text-green-500" /> : <Clock className="w-8 h-8 text-yellow-500" />}
+                <div className="mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4 bg-green-500/10">
+                  <CheckCircle className="w-8 h-8 text-green-500" />
                 </div>
                 <CardTitle className="text-2xl">
-                  {sessionDuration >= 900 ? 'Onboarding Complete!' : 'Onboarding Incomplete'}
+                  Thanks for chatting with Diya!
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-center">
-                {sessionDuration >= 900 ? (
-                  <>
-                    <p className="text-muted-foreground mb-6">
-                      Thank you for completing your 15-minute onboarding session with Diya! Your profile has been updated and your school recommendations are ready.
-                    </p>
-                    <div className="flex flex-col sm:flex-row gap-3 justify-center w-full">
-                      <Button size="lg" className="flex-1 sm:flex-initial" onClick={() => navigate('/schools')}>
-                        View School Recommendations
-                      </Button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-muted-foreground mb-4">
-                      You completed {Math.floor(sessionDuration / 60)} minutes of your onboarding conversation. 
-                      To unlock your personalized school recommendations, please complete the full 15-minute session.
-                    </p>
-                    <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 mb-6">
-                      <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                        <strong>Why 2 minutes?</strong> This is a testing duration to verify the Hindi voice functionality works correctly.
-                      </p>
-                    </div>
-                    <div className="flex flex-col sm:flex-row gap-3 justify-center w-full">
-                      <Button size="lg" className="flex-1 sm:flex-initial" onClick={() => {
-                        setShowCompletionPopup(false);
-                        setSessionStarted(false);
-                        setConversationCompleted(false);
-                        setRemainingTime(2 * 60);
-                        setConversationId(null);
-                        setMessages([]);
-                        setSessionStartTime(null);
-                        setSessionDuration(0);
-                      }}>
-                        Complete Onboarding
-                      </Button>
-                      <Button size="lg" variant="outline" className="flex-1 sm:flex-initial" onClick={() => navigate('/dashboard')}>
-                        Continue Later
-                      </Button>
-                    </div>
-                  </>
-                )}
+                <p className="text-lg mb-4">
+                  Your conversation has been processed and your profile information has been extracted.
+                </p>
+                <p className="text-sm text-muted-foreground mb-6">
+                  Once you confirm your profile details, you'll be able to see your personalized school recommendations and continue with your application journey.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center w-full">
+                  <Button size="lg" className="flex-1 sm:flex-initial" onClick={() => {
+                    setShowCompletionPopup(false);
+                    setSessionStarted(false);
+                    setConversationCompleted(false);
+                    setRemainingTime(2 * 60);
+                    setConversationId(null);
+                    setMessages([]);
+                    setSessionStartTime(null);
+                    setSessionDuration(0);
+                  }}>
+                    Continue to Profile
+                  </Button>
+                  <Button size="lg" variant="outline" className="flex-1 sm:flex-initial" onClick={() => navigate('/dashboard')}>
+                    Go to Dashboard
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </div>

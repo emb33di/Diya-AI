@@ -58,6 +58,16 @@ export class OutspeedAPI {
    */
   static async generateToken(agentId: string, source: string = 'diya-onboarding'): Promise<OutspeedSessionData> {
     try {
+      // Validate agent ID format
+      if (!agentId || !agentId.startsWith('agent_')) {
+        throw new Error(`Invalid agent ID format: ${agentId}`);
+      }
+
+      // Check if API is initialized
+      if (!this.tokenEndpoint) {
+        throw new Error('OutspeedAPI not initialized. Call initialize() first.');
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {

@@ -68,11 +68,12 @@ export function validateAgentConfiguration(): boolean {
   
   for (const type of requiredTypes) {
     const agentId = AGENT_ID_MAP[type];
-    if (!agentId || agentId.includes('xxxxx')) {
-      console.error(`Agent ID not configured for ${type}: ${agentId}`);
+    if (!agentId || agentId.includes('xxxxx') || !agentId.startsWith('agent_')) {
+      console.error(`Agent ID not properly configured for ${type}: ${agentId}`);
       return false;
     }
   }
   
+  console.log('✅ All agent configurations validated successfully');
   return true;
 }
