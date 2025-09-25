@@ -17,6 +17,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { MessagePersistenceService, ConversationMessage } from '@/services/messagePersistenceService';
 import { useTranscriptSaver } from '@/hooks/useTranscriptSaver';
+import { OutspeedEvent } from '@/types/outspeed';
+import { parseOutspeedMessage, isValidMessageItem } from '@/utils/outspeedUtils';
 import VoiceOrb from '@/components/VoiceOrb';
 // Debug: Log environment variables (remove in production)
 console.log('Environment check:', {
@@ -31,13 +33,12 @@ interface ConversationUIProps {
   sessionId?: string;
   onConnect: (conversationId: string) => void;
   onMessage: (message: any) => void;
-  onUserSpeech: (speech: any) => void;
   onDisconnect: () => void;
   onError: (error: any) => void;
   onContextRestored?: (items: any[]) => void;
 }
 
-const ConversationUI = ({ agentId, source, sessionId, onConnect, onMessage, onUserSpeech, onDisconnect, onError, onContextRestored }: ConversationUIProps) => {
+const ConversationUI = ({ agentId, source, sessionId, onConnect, onMessage, onDisconnect, onError, onContextRestored }: ConversationUIProps) => {
   const sessionStartedRef = useRef(false);
   
   const conversation = useConversation({
@@ -88,8 +89,6 @@ const ConversationUI = ({ agentId, source, sessionId, onConnect, onMessage, onUs
         onConnect(fallbackId);
       }
     },
-    onMessage,
-    onUserSpeech,
     onDisconnect,
     onError,
     onContextRestored
@@ -116,6 +115,52 @@ const ConversationUI = ({ agentId, source, sessionId, onConnect, onMessage, onUs
       conversation.startSession({ agentId, source });
     }
   }, [agentId, source, sessionId, conversation]);
+
+  // Unified event listener for conversation items
+  useEffect(() => {
+    if (!conversation) return;
+
+    const handleNewItem = (event: OutspeedEvent) => {
+      try {
+        console.log('📝 Conversation item created:', event);
+        
+        // Validate that this is a message item we should process
+        if (!isValidMessageItem(event.item)) {
+          console.log('⏭️ Skipping non-message item:', event.item.type);
+          return;
+        }
+        
+        // Parse the message using our robust utility
+        const parsedMessage = parseOutspeedMessage(event.item);
+        
+        console.log('📝 Parsed message:', parsedMessage);
+        
+        // Call the parent's message handler if it exists
+        if (onMessage) {
+          onMessage(parsedMessage);
+        }
+      } catch (error) {
+        console.error('❌ Error processing conversation item:', error, 'Event:', event);
+      }
+    };
+
+    // Set up the event listener
+    conversation.on('conversation.item.created', handleNewItem);
+
+    // Cleanup function with safe checks
+    return () => {
+      try {
+        if (conversation && typeof conversation.off === 'function') {
+          conversation.off('conversation.item.created', handleNewItem);
+          console.log('🧹 Event listener cleaned up successfully');
+        } else {
+          console.warn('⚠️ Conversation cleanup method not available');
+        }
+      } catch (error) {
+        console.error('❌ Error during event listener cleanup:', error);
+      }
+    };
+  }, [conversation, onMessage]);
 
 
   // Return null - the parent component will handle rendering
@@ -448,45 +493,37 @@ const Onboarding = () => {
   }, [agentId, toast, isResumingSession, storeSessionId]);
 
   const handleMessage = useCallback(async (message: any) => {
-    console.log('Message received:', message);
+    try {
+      console.log('📝 Unified message received:', message);
 
-    // Add message to conversation transcript
-    if (message.message && typeof message.message === 'string') {
-      const newMessage = {
-        source: message.source || 'ai',
-        text: message.message,
-        timestamp: new Date()
-      };
+      // Handle both old and new formats for backward compatibility
+      const messageText = message.text || message.message;
+      const messageSource = message.source || (message.role === 'assistant' ? 'ai' : 'user');
       
-      // Update local state for UI display only
-      setMessages(prev => [...prev, newMessage]);
-    }
+      if (messageText && typeof messageText === 'string') {
+        const newMessage = {
+          source: messageSource,
+          text: messageText,
+          timestamp: message.timestamp || new Date()
+        };
+        
+        // Update local state for UI display
+        setMessages(prev => [...prev, newMessage]);
+      }
 
-    // Mark topics as completed based on conversation flow
-    if (message.source === 'ai') {
-      const currentProgress = Math.min(progressPercentage + 2, 100);
-      const completedCount = Math.floor(currentProgress / 16.67);
-      setTopics(prev => prev.map((topic, index) => ({
-        ...topic,
-        completed: index < completedCount
-      })));
+      // Mark topics as completed based on conversation flow
+      if (messageSource === 'ai') {
+        const currentProgress = Math.min(progressPercentage + 2, 100);
+        const completedCount = Math.floor(currentProgress / 16.67);
+        setTopics(prev => prev.map((topic, index) => ({
+          ...topic,
+          completed: index < completedCount
+        })));
+      }
+    } catch (error) {
+      console.error('❌ Error handling message:', error, 'Message:', message);
     }
   }, [progressPercentage]);
-
-  const handleUserSpeech = useCallback(async (speech: any) => {
-    console.log('User speech detected:', speech);
-    // Add user speech to transcript if we have the text
-    if (speech.text && typeof speech.text === 'string') {
-      const newMessage = {
-        source: 'user' as const,
-        text: speech.text,
-        timestamp: new Date()
-      };
-      
-      // Update local state for UI display only
-      setMessages(prev => [...prev, newMessage]);
-    }
-  }, []);
 
   const handleDisconnect = useCallback(async () => {
     console.log('Disconnected from voice agent');
@@ -1436,7 +1473,6 @@ const Onboarding = () => {
           sessionId={getStoredSessionId()}
           onConnect={handleConnect}
           onMessage={handleMessage}
-          onUserSpeech={handleUserSpeech}
           onDisconnect={handleDisconnect}
           onError={handleError}
           onContextRestored={handleContextRestored}

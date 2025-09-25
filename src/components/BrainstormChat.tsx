@@ -11,6 +11,8 @@ import VoiceOrb from "@/components/VoiceOrb";
 import { ConversationProcessingService } from "@/services/conversationProcessingService";
 import { MessagePersistenceService, ConversationMessage } from '@/services/messagePersistenceService';
 import { useTranscriptSaver } from '@/hooks/useTranscriptSaver';
+import { OutspeedEvent } from '@/types/outspeed';
+import { parseOutspeedMessage, isValidMessageItem } from '@/utils/outspeedUtils';
 
 interface BrainstormSummary {
   key_themes: string[];
@@ -136,55 +138,56 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
     onError: (error) => {
       console.error('Outspeed error:', error);
       setConnectionError(error.toString());
-    },
-    onMessage: async (message: any) => {
-      console.log('🎯 AI Message received:', message);
-      console.log('📊 Message received at:', new Date().toISOString());
-      
-      // Add message to conversation transcript
-      if (message.message && typeof message.message === 'string') {
-        const newMessage = {
-          source: (message.source || 'ai') as 'ai' | 'user',
-          text: message.message,
-          timestamp: new Date()
-        };
-        
-        // Update local state
-        setMessages(prev => {
-          const newMessages = [...prev, newMessage];
-          console.log('📝 Updated messages array:', newMessages.length, 'messages');
-          return newMessages;
-        });
-        
-        // NOTE: Real-time message storage removed - will use Outspeed API instead
-      } else {
-        console.log('⚠️ AI message missing or invalid:', message);
-      }
-    },
-    onUserSpeech: async (speech: any) => {
-      console.log('🎤 User speech detected:', speech);
-      
-      // Add user speech to transcript if we have the text
-      if (speech.text && typeof speech.text === 'string') {
-        const newMessage = {
-          source: 'user' as const,
-          text: speech.text,
-          timestamp: new Date()
-        };
-        
-        // Update local state
-        setMessages(prev => {
-          const newMessages = [...prev, newMessage];
-          console.log('📝 Updated messages array:', newMessages.length, 'messages');
-          return newMessages;
-        });
-        
-        // NOTE: Real-time message storage removed - will use Outspeed API instead
-      } else {
-        console.log('⚠️ User speech missing or invalid:', speech);
-      }
     }
   });
+
+  // Unified event listener for conversation items
+  useEffect(() => {
+    if (!conversation) return;
+
+    const handleNewItem = (event: OutspeedEvent) => {
+      try {
+        console.log('📝 Conversation item created:', event);
+        
+        // Validate that this is a message item we should process
+        if (!isValidMessageItem(event.item)) {
+          console.log('⏭️ Skipping non-message item:', event.item.type);
+          return;
+        }
+        
+        // Parse the message using our robust utility
+        const parsedMessage = parseOutspeedMessage(event.item);
+        
+        console.log('📝 Parsed message:', parsedMessage);
+        
+        // Update local state
+        setMessages(prev => {
+          const newMessages = [...prev, parsedMessage];
+          console.log('📝 Updated messages array:', newMessages.length, 'messages');
+          return newMessages;
+        });
+      } catch (error) {
+        console.error('❌ Error processing conversation item:', error, 'Event:', event);
+      }
+    };
+
+    // Set up the event listener
+    conversation.on('conversation.item.created', handleNewItem);
+
+    // Cleanup function with safe checks
+    return () => {
+      try {
+        if (conversation && typeof conversation.off === 'function') {
+          conversation.off('conversation.item.created', handleNewItem);
+          console.log('🧹 Event listener cleaned up successfully');
+        } else {
+          console.warn('⚠️ Conversation cleanup method not available');
+        }
+      } catch (error) {
+        console.error('❌ Error during event listener cleanup:', error);
+      }
+    };
+  }, [conversation]);
 
   // Audio analysis functions
   const startAudioAnalysis = async () => {
