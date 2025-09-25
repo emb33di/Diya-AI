@@ -9,6 +9,173 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
+      user_profiles: {
+        Row: {
+          id: string
+          user_id: string
+          full_name: string | null
+          preferred_name: string | null
+          date_of_birth: string | null
+          email_address: string | null
+          phone_number: string | null
+          street_address: string | null
+          city: string | null
+          state: string | null
+          zip_code: string | null
+          citizenship_status: string | null
+          high_school_name: string | null
+          high_school_graduation_year: number | null
+          gpa_unweighted: number | null
+          gpa_weighted: number | null
+          class_rank: string | null
+          sat_score: number | null
+          act_score: number | null
+          intended_majors: string | null
+          secondary_major_minor_interests: string | null
+          career_interests: string | null
+          ideal_college_size: string | null
+          ideal_college_setting: string | null
+          geographic_preference: string | null
+          must_haves: string | null
+          deal_breakers: string | null
+          college_budget: string | null
+          financial_aid_importance: string | null
+          scholarship_interests: string[] | null
+          applying_to: string | null
+          onboarding_complete: boolean
+          cumulative_onboarding_time: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          full_name?: string | null
+          preferred_name?: string | null
+          date_of_birth?: string | null
+          email_address?: string | null
+          phone_number?: string | null
+          street_address?: string | null
+          city?: string | null
+          state?: string | null
+          zip_code?: string | null
+          citizenship_status?: string | null
+          high_school_name?: string | null
+          high_school_graduation_year?: number | null
+          gpa_unweighted?: number | null
+          gpa_weighted?: number | null
+          class_rank?: string | null
+          sat_score?: number | null
+          act_score?: number | null
+          intended_majors?: string | null
+          secondary_major_minor_interests?: string | null
+          career_interests?: string | null
+          ideal_college_size?: string | null
+          ideal_college_setting?: string | null
+          geographic_preference?: string | null
+          must_haves?: string | null
+          deal_breakers?: string | null
+          college_budget?: string | null
+          financial_aid_importance?: string | null
+          scholarship_interests?: string[] | null
+          applying_to?: string | null
+          onboarding_complete?: boolean
+          cumulative_onboarding_time?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          full_name?: string | null
+          preferred_name?: string | null
+          date_of_birth?: string | null
+          email_address?: string | null
+          phone_number?: string | null
+          street_address?: string | null
+          city?: string | null
+          state?: string | null
+          zip_code?: string | null
+          citizenship_status?: string | null
+          high_school_name?: string | null
+          high_school_graduation_year?: number | null
+          gpa_unweighted?: number | null
+          gpa_weighted?: number | null
+          class_rank?: string | null
+          sat_score?: number | null
+          act_score?: number | null
+          intended_majors?: string | null
+          secondary_major_minor_interests?: string | null
+          career_interests?: string | null
+          ideal_college_size?: string | null
+          ideal_college_setting?: string | null
+          geographic_preference?: string | null
+          must_haves?: string | null
+          deal_breakers?: string | null
+          college_budget?: string | null
+          financial_aid_importance?: string | null
+          scholarship_interests?: string[] | null
+          applying_to?: string | null
+          onboarding_complete?: boolean
+          cumulative_onboarding_time?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_profiles_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      conversation_tracking: {
+        Row: {
+          id: string
+          conversation_id: string
+          user_id: string
+          conversation_started_at: string | null
+          conversation_ended_at: string | null
+          metadata_retrieved: boolean | null
+          metadata_retrieved_at: string | null
+          conversation_type: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          conversation_id: string
+          user_id: string
+          conversation_started_at?: string | null
+          conversation_ended_at?: string | null
+          metadata_retrieved?: boolean | null
+          metadata_retrieved_at?: string | null
+          conversation_type?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          conversation_id?: string
+          user_id?: string
+          conversation_started_at?: string | null
+          conversation_ended_at?: string | null
+          metadata_retrieved?: boolean | null
+          metadata_retrieved_at?: string | null
+          conversation_type?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_tracking_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       resume_activities: {
         Row: {
           id: string
@@ -134,6 +301,16 @@ export interface Database {
     }
   }
 }
+
+// Helper types for user profiles
+export type UserProfile = Database['public']['Tables']['user_profiles']['Row']
+export type UserProfileInsert = Database['public']['Tables']['user_profiles']['Insert']
+export type UserProfileUpdate = Database['public']['Tables']['user_profiles']['Update']
+
+// Helper types for conversation tracking
+export type ConversationTracking = Database['public']['Tables']['conversation_tracking']['Row']
+export type ConversationTrackingInsert = Database['public']['Tables']['conversation_tracking']['Insert']
+export type ConversationTrackingUpdate = Database['public']['Tables']['conversation_tracking']['Update']
 
 // Helper types for resume data
 export type ResumeActivity = Database['public']['Tables']['resume_activities']['Row']
