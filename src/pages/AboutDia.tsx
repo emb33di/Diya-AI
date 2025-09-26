@@ -182,7 +182,7 @@ const AboutDiya = () => {
           </p>
           <Link to="/auth">
             <Button size="lg" variant="secondary" className="bg-white text-primary hover:bg-white/90">
-              Get Started with Diya
+              Get Started For Free
             </Button>
           </Link>
         </section>

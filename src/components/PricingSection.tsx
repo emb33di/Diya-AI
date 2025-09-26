@@ -67,7 +67,7 @@ const PricingSection = () => {
               onClick={() => navigate('/auth')}
               className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium mt-auto"
             >
-              Get Started Free
+              Get Started For Free
             </Button>
           </div>
 

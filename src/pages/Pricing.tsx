@@ -57,7 +57,7 @@ const Pricing = () => {
                 variant="outline"
                 onClick={() => navigate('/auth')}
               >
-                Get Started Free
+                Get Started For Free
               </Button>
             </CardContent>
           </Card>

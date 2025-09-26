@@ -20,7 +20,7 @@ const CTASection = () => {
                 size="lg" 
                 className="text-base sm:text-lg rounded-xl sm:rounded-2xl font-semibold text-white shadow-lg hover:shadow-[0_0_50px_hsl(var(--primary)/0.6)] transition-all duration-200 my-0 mx-0 px-4 sm:px-[10px] py-3 sm:py-[10px] touch-manipulation"
               >
-                Get Started
+                Get Started For Free
               </Button>
             </div>
           </div>

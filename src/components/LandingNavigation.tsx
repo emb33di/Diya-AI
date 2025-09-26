@@ -61,7 +61,7 @@ const Navigation = () => {
 
           {/* Get Started Button */}
           <Button onClick={() => navigate('/auth')} className="text-sm sm:text-base rounded-lg sm:rounded-xl font-semibold text-white shadow-lg hover:shadow-[0_0_30px_hsl(var(--primary)/0.6)] transition-all duration-200 my-0 mx-2 sm:mx-[40px] px-3 sm:px-[10px] py-2 sm:py-[10px] touch-manipulation">
-            Get Started
+            Get Started For Free
           </Button>
         </div>
       </div>
