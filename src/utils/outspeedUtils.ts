@@ -8,7 +8,10 @@ import { OutspeedMessageItem, ParsedMessage } from '@/types/outspeed';
  */
 function extractTextContent(item: OutspeedMessageItem): string {
   try {
-    console.log('🔍 Extracting text from item:', JSON.stringify(item, null, 2));
+    // Only log full JSON in development and for debugging
+    if (import.meta.env.DEV) {
+      console.log('🔍 Extracting text from item:', JSON.stringify(item, null, 2));
+    }
     
     // Case 0: common "delta" containers used by streaming outputs
     // e.g. { type: 'response.output_text.delta', delta: '...' }
@@ -85,11 +88,21 @@ function extractTextContent(item: OutspeedMessageItem): string {
     }
 
     // Case 7: Check for other possible text properties
-    const possibleTextProps = ['body', 'data', 'value', 'content_text'];
+    const possibleTextProps = ['body', 'data', 'value', 'content_text', 'transcript'];
     for (const prop of possibleTextProps) {
       if (prop in item && typeof (item as any)[prop] === 'string') {
         const text = (item as any)[prop];
         console.log(`✅ Found text in ${prop} property:`, text);
+        return text;
+      }
+    }
+
+    // Case 8: Check for audio-specific properties
+    if ('audio' in item && typeof (item as any).audio === 'object' && (item as any).audio !== null) {
+      const audioObj = (item as any).audio;
+      if ('transcript' in audioObj && typeof audioObj.transcript === 'string') {
+        const text = audioObj.transcript;
+        console.log('✅ Found text in audio.transcript:', text);
         return text;
       }
     }
@@ -151,15 +164,44 @@ export function parseOutspeedMessage(item: OutspeedMessageItem): ParsedMessage |
       type: item.type,
       role: item.role,
       contentType: typeof item.content,
-      contentIsArray: Array.isArray(item.content)
+      contentIsArray: Array.isArray(item.content),
+      status: (item as any).status
     });
     
     // Extract text content with fallback handling
     const text = extractTextContent(item);
+    const isInProgress = (item as any).status === 'in_progress';
     
-    // Return null for empty or whitespace-only messages
+    // Handle in_progress messages differently
+    if (isInProgress) {
+      console.log('🔄 Processing in_progress message:', item.id, 'Role:', item.role);
+      
+      // For in_progress messages, use placeholder text if no content
+      const displayText = text && text.trim().length > 0 
+        ? text 
+        : '[Diya is responding...]';
+      
+      // Map role to source with fallback handling
+      const source = mapRoleToSource(item.role);
+      
+      // Use provided ID or generate fallback
+      const id = item.id || generateFallbackId();
+      
+      const parsedMessage = {
+        id,
+        source,
+        text: displayText,
+        timestamp: new Date(),
+        isInProgress: true // Add flag to identify incomplete messages
+      };
+      
+      console.log('✅ Successfully parsed in_progress message:', parsedMessage);
+      return parsedMessage;
+    }
+    
+    // Return null for empty or whitespace-only completed messages
     if (!text || text.trim().length === 0) {
-      console.log('⏭️ Skipping empty message from item:', item.id, 'Role:', item.role);
+      console.log('⏭️ Skipping empty completed message from item:', item.id, 'Role:', item.role);
       return null;
     }
     
@@ -176,7 +218,7 @@ export function parseOutspeedMessage(item: OutspeedMessageItem): ParsedMessage |
       timestamp: new Date()
     };
     
-    console.log('✅ Successfully parsed message:', parsedMessage);
+    console.log('✅ Successfully parsed completed message:', parsedMessage);
     return parsedMessage;
   } catch (error) {
     console.error('❌ Error parsing Outspeed message:', error, 'Item:', item);
@@ -198,8 +240,22 @@ export function isValidMessageItem(item: OutspeedMessageItem): boolean {
     return false;
   }
 
+  // Check if this is a message-type item (regardless of status)
+  const isMessageType = item.type === 'message' || 
+                       (item as any).object === 'realtime.item' ||
+                       item.role === 'assistant' || 
+                       item.role === 'user';
+
+  if (!isMessageType) {
+    return false;
+  }
+
   const text = extractTextContent(item);
 
-  // Only process items with actual content
-  return !!(text && text.trim().length > 0);
+  // Process items with actual content OR in_progress messages (even if empty)
+  // This allows us to show incomplete AI responses
+  const hasContent = !!(text && text.trim().length > 0);
+  const isInProgress = (item as any).status === 'in_progress';
+  
+  return hasContent || isInProgress;
 }

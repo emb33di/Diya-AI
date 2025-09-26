@@ -29,6 +29,7 @@ export const useTranscriptSaver = (
 ) => {
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedMessagesRef = useRef<TranscriptMessage[]>([]);
+  const messagesRef = useRef<TranscriptMessage[]>(messages);
 
   /**
    * Save transcript to backend API with retry mechanism
@@ -92,9 +93,16 @@ export const useTranscriptSaver = (
   }, []);
 
   /**
-   * Debounced save function
+   * Update messagesRef whenever messages change
    */
-  const debouncedSaveTranscript = useCallback((messagesToSave: TranscriptMessage[]) => {
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  /**
+   * Debounced save function - now uses messagesRef to avoid stale closures
+   */
+  const debouncedSaveTranscript = useCallback(() => {
     // Clear existing timeout
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
@@ -102,13 +110,14 @@ export const useTranscriptSaver = (
 
     // Set new timeout
     saveTimeoutRef.current = setTimeout(async () => {
-      if (!conversationId || messagesToSave.length === 0) {
+      const currentMessages = messagesRef.current; // Always get the latest messages
+      if (!conversationId || currentMessages.length === 0) {
         console.log('⏭️ Skipping transcript save - no conversation ID or empty messages');
         return;
       }
 
       // Only send new messages since last successful save
-      const newMessages = messagesToSave.slice(lastSavedMessagesRef.current.length);
+      const newMessages = currentMessages.slice(lastSavedMessagesRef.current.length);
       if (newMessages.length === 0) {
         console.log('⏭️ Skipping transcript save - no new messages');
         return;
@@ -134,7 +143,7 @@ export const useTranscriptSaver = (
 
         const success = await saveTranscript(transcriptData);
         if (success) {
-          lastSavedMessagesRef.current = [...messagesToSave];
+          lastSavedMessagesRef.current = [...currentMessages];
         }
       } catch (error) {
         console.error('❌ Error in debounced save:', error);
@@ -153,7 +162,7 @@ export const useTranscriptSaver = (
         conversationId,
         sessionType
       });
-      debouncedSaveTranscript(messages);
+      debouncedSaveTranscript(); // No parameters needed - uses messagesRef internally
     }
   }, [messages, conversationId, debouncedSaveTranscript, sessionType]);
 
@@ -177,7 +186,8 @@ export const useTranscriptSaver = (
       saveTimeoutRef.current = null;
     }
 
-    if (!conversationId || !messages || messages.length === 0) {
+    const currentMessages = messagesRef.current; // Use ref to get latest messages
+    if (!conversationId || !currentMessages || currentMessages.length === 0) {
       console.log('⏭️ Force save skipped - no conversation ID or empty messages');
       return false;
     }
@@ -189,27 +199,27 @@ export const useTranscriptSaver = (
         return false;
       }
 
-      const totalLength = messages.reduce((sum, msg) => sum + msg.text.length, 0);
+      const totalLength = currentMessages.reduce((sum, msg) => sum + msg.text.length, 0);
       
       const transcriptData: TranscriptSaveData = {
         conversation_id: conversationId,
         user_id: user.id,
-        messages: messages,
+        messages: currentMessages,
         session_type: sessionType,
-        message_count: messages.length,
+        message_count: currentMessages.length,
         total_length: totalLength
       };
 
       const success = await saveTranscript(transcriptData);
       if (success) {
-        lastSavedMessagesRef.current = [...messages];
+        lastSavedMessagesRef.current = [...currentMessages];
       }
       return success;
     } catch (error) {
       console.error('❌ Error in force save:', error);
       return false;
     }
-  }, [conversationId, messages, sessionType, saveTranscript]);
+  }, [conversationId, sessionType, saveTranscript]);
 
   return {
     forceSaveTranscript

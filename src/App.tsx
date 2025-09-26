@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Header from "./components/Header";
 import AuthenticationGuard from "./components/AuthenticationGuard";
+import ScrollToTop from "./components/ScrollToTop";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Essays from "./pages/Essays";
@@ -34,7 +35,9 @@ const App = () => (
           v7_startTransition: true,
           v7_relativeSplatPath: true,
         }}
+        scrollRestoration="manual"
       >
+        <ScrollToTop />
         <Header />
         <Routes>
           {/* Public routes */}

@@ -16,6 +16,7 @@ export interface ParsedMessage {
   source: 'ai' | 'user';
   text: string;
   timestamp: Date;
+  isInProgress?: boolean; // Flag to identify incomplete/in_progress messages
 }
 
 export interface OutspeedMessageItem {

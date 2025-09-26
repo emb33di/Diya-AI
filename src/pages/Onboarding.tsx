@@ -186,13 +186,24 @@ const ConversationUI = ({ agentId, source, onConnect, onMessage, onDisconnect, o
         }
 
         const parsedMessage = parseOutspeedMessage(normalized);
-        if (parsedMessage && onMessageRef.current) {
-          try {
-            onMessageRef.current(parsedMessage);
-          } catch (messageError) {
-            console.error('❌ Error in message callback:', messageError, 'Message:', parsedMessage);
+        if (parsedMessage) {
+          console.log('📨 Parsed message ready for callback:', {
+            id: parsedMessage.id,
+            source: parsedMessage.source,
+            textLength: parsedMessage.text.length,
+            timestamp: parsedMessage.timestamp
+          });
+          
+          if (onMessageRef.current) {
+            try {
+              onMessageRef.current(parsedMessage);
+            } catch (messageError) {
+              console.error('❌ Error in message callback:', messageError, 'Message:', parsedMessage);
+            }
+          } else {
+            console.warn('⚠️ onMessageRef.current is null, but parsed message exists:', parsedMessage);
           }
-        } else if (!parsedMessage) {
+        } else {
           console.warn('⚠️ Failed to parse message item:', normalized);
         }
       } catch (error) {
@@ -239,6 +250,31 @@ const ConversationUI = ({ agentId, source, onConnect, onMessage, onDisconnect, o
       }, 'response.output_text.done');
     };
 
+    // Add additional event handlers for audio/speech events
+    const handleAudioTranscript = (payload: any) => {
+      console.log('🎵 Audio transcript received:', payload);
+      const text = payload?.transcript || payload?.text || payload?.content;
+      if (text) {
+        processItem({ 
+          id: `audio_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          type: 'response.output_audio.transcript',
+          role: 'assistant',
+          content: text,
+          timestamp: new Date()
+        }, 'response.output_audio.transcript');
+      }
+    };
+
+    const handleSpeechStart = (payload: any) => {
+      console.log('🎤 Speech started:', payload);
+      // Could add visual indicator here if needed
+    };
+
+    const handleSpeechEnd = (payload: any) => {
+      console.log('🔇 Speech ended:', payload);
+      // Could add visual indicator here if needed
+    };
+
     // Create cleanup function that can be called from both unmount and session end
     const cleanupEventListeners = () => {
       try {
@@ -249,6 +285,11 @@ const ConversationUI = ({ agentId, source, onConnect, onMessage, onDisconnect, o
             (conversation as any).off('input_audio_transcription.completed', handleUserTranscript);
             (conversation as any).off('response.output_text.delta', handleOutputDelta);
             (conversation as any).off('response.output_text.done', handleOutputDone);
+            (conversation as any).off('response.output_audio.transcript', handleAudioTranscript);
+            (conversation as any).off('response.speech.started', handleSpeechStart);
+            (conversation as any).off('response.speech.ended', handleSpeechEnd);
+            (conversation as any).off('response.output_audio.delta', handleAudioTranscript);
+            (conversation as any).off('response.output_audio.done', handleAudioTranscript);
           }
           console.log('🧹 Event listeners cleaned up successfully');
           listenerSetupRef.current = false; // Reset listener setup flag
@@ -268,6 +309,15 @@ const ConversationUI = ({ agentId, source, onConnect, onMessage, onDisconnect, o
       (conversation as any).on('input_audio_transcription.completed', handleUserTranscript);
       (conversation as any).on('response.output_text.delta', handleOutputDelta);
       (conversation as any).on('response.output_text.done', handleOutputDone);
+      
+      // Add audio/speech event listeners for Diya's speech
+      (conversation as any).on('response.output_audio.transcript', handleAudioTranscript);
+      (conversation as any).on('response.speech.started', handleSpeechStart);
+      (conversation as any).on('response.speech.ended', handleSpeechEnd);
+      
+      // Additional potential audio events
+      (conversation as any).on('response.output_audio.delta', handleAudioTranscript);
+      (conversation as any).on('response.output_audio.done', handleAudioTranscript);
     }
     
     listenerSetupRef.current = true; // Mark as set up
@@ -680,32 +730,115 @@ const Onboarding = () => {
     try {
       console.log('📝 Unified message received:', message);
 
-      // Handle both old and new formats for backward compatibility
-      const messageText = message.text || message.message;
-      const messageSource = message.source || (message.role === 'assistant' ? 'ai' : 'user');
-      const messageId = message.id || `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
-      if (messageText && typeof messageText === 'string') {
-        // MVP: Simple deduplication
-        if (processedMessageIds.has(messageId)) {
-          console.log('⏭️ Duplicate message skipped:', messageId);
-          return;
-        }
-        
-        const newMessage = {
-          id: messageId,
-          source: messageSource,
-          text: messageText,
-          timestamp: message.timestamp || new Date()
-        };
-        
-        // Update UI immediately
-        setMessages(prev => [...prev, newMessage]);
-        setProcessedMessageIds(prev => new Set([...prev, messageId]));
+      // Use the message exactly as parsed by parseOutspeedMessage
+      // This ensures consistent ID generation and prevents double processing
+      if (!message || !message.id || !message.text || !message.source) {
+        console.warn('⚠️ Invalid message format received:', message);
+        return;
       }
 
+      // Use the ID that was already generated by parseOutspeedMessage
+      const messageId = message.id;
+      
+      // Handle in_progress messages differently - they can update existing messages
+      if (message.isInProgress) {
+        console.log('🔄 Processing in_progress message:', {
+          id: messageId,
+          source: message.source,
+          text: message.text
+        });
+        
+        // For in_progress messages, update existing message or add new one
+        // --- START NEW LOGS ---
+        console.log(
+          `%c--- NEW IN_PROGRESS MESSAGE RECEIVED ---%c
+          Source: ${message.source}
+          ID: ${message.id}
+          Text: "${message.text.substring(0, 50)}..."`,
+          'color: #2e7d32; font-weight: bold;',
+          'color: inherit;'
+        );
+        
+        setMessages(prev => {
+          console.log('%cPREVIOUS STATE:', 'color: #c62828;', prev);
+          const existingIndex = prev.findIndex(msg => msg.id === messageId);
+          
+          if (existingIndex >= 0) {
+            // Update existing message
+            const updated = [...prev];
+            updated[existingIndex] = {
+              id: messageId,
+              source: message.source,
+              text: message.text,
+              timestamp: message.timestamp || new Date()
+            };
+            console.log(`🔄 Updated in_progress message: ${messageId}`);
+            console.log('%c   NEW STATE:', 'color: #00695c;', updated);
+            return updated;
+          } else {
+            // Add new in_progress message
+            const updated = [...prev, {
+              id: messageId,
+              source: message.source,
+              text: message.text,
+              timestamp: message.timestamp || new Date()
+            }];
+            console.log(`📊 Message count updated: ${prev.length} → ${updated.length} (${message.source} in_progress message added)`);
+            console.log('%c   NEW STATE:', 'color: #00695c;', updated);
+            return updated;
+          }
+        });
+        // --- END NEW LOGS ---
+        
+        // Don't add to processedMessageIds for in_progress messages
+        // as they might be updated later
+        return;
+      }
+      
+      // Check deduplication using the consistent ID for completed messages
+      if (processedMessageIds.has(messageId)) {
+        console.log('⏭️ Duplicate message skipped:', messageId, 'Source:', message.source);
+        return;
+      }
+      
+      // Use the message object as-is from parseOutspeedMessage
+      const newMessage = {
+        id: messageId,
+        source: message.source,
+        text: message.text,
+        timestamp: message.timestamp || new Date()
+      };
+      
+      console.log('✅ Adding completed message to transcript:', {
+        id: messageId,
+        source: message.source,
+        textLength: message.text.length,
+        timestamp: newMessage.timestamp
+      });
+      
+      // Update UI immediately
+      // --- START NEW LOGS ---
+      console.log(
+        `%c--- NEW COMPLETED MESSAGE RECEIVED ---%c
+        Source: ${newMessage.source}
+        ID: ${newMessage.id}
+        Text: "${newMessage.text.substring(0, 50)}..."`,
+        'color: #2e7d32; font-weight: bold;',
+        'color: inherit;'
+      );
+      
+      setMessages(prev => {
+        console.log('%cPREVIOUS STATE:', 'color: #c62828;', prev);
+        const updated = [...prev, newMessage];
+        console.log(`📊 Message count updated: ${prev.length} → ${updated.length} (${message.source} message added)`);
+        console.log('%c   NEW STATE:', 'color: #00695c;', updated);
+        return updated;
+      });
+      // --- END NEW LOGS ---
+      setProcessedMessageIds(prev => new Set([...prev, messageId]));
+
       // Mark topics as completed based on conversation flow
-      if (messageSource === 'ai') {
+      if (message.source === 'ai') {
         const currentProgress = Math.min(progressPercentage + 2, 100);
         const completedCount = Math.floor(currentProgress / 16.67);
         setTopics(prev => prev.map((topic, index) => ({
@@ -716,7 +849,7 @@ const Onboarding = () => {
     } catch (error) {
       console.error('❌ Error handling message:', error, 'Message:', message);
     }
-  }, [progressPercentage, processedMessageIds]);
+  }, [progressPercentage]); // Removed processedMessageIds to prevent infinite loop
 
   const handleDisconnect = useCallback(async () => {
     console.log('Disconnected from voice agent');

@@ -107,10 +107,10 @@ const Header = () => {
       const elementId = location.hash.substring(1); // Remove the # from hash
       const element = document.getElementById(elementId);
       if (element) {
-        // Small delay to ensure the page has loaded
+        // Small delay to ensure the page has loaded and ScrollToTop has run
         setTimeout(() => {
           element.scrollIntoView({ behavior: 'smooth' });
-        }, 100);
+        }, 200);
       }
     }
   }, [location.pathname, location.hash]);
