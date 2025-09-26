@@ -200,6 +200,7 @@ export class ConversationStorage {
 
   /**
    * Get conversation metadata for a specific conversation
+   * Handles duplicate records by fetching only the most recent one
    */
   static async getConversationMetadata(conversationId: string): Promise<ConversationData | null> {
     try {
@@ -207,7 +208,9 @@ export class ConversationStorage {
         .from('conversation_metadata')
         .select('*')
         .eq('conversation_id', conversationId)
-        .single();
+        .order('created_at', { ascending: false }) // Order by creation time, newest first
+        .limit(1)                                 // Get only the top one
+        .single();                                // This will now succeed
 
       if (error) {
         console.error('Error fetching metadata from Supabase:', error);

@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Mic, MicOff, User, Sparkles, CheckCircle, MessageSquare, Target, Lightbulb, Heart, BookOpen, Briefcase, Trophy, Users, GraduationCap, DollarSign, X, Loader2, Clock, Info, Pause, Play, Lock } from 'lucide-react';
+import { Mic, MicOff, User, Sparkles, CheckCircle, MessageSquare, Target, Lightbulb, Heart, BookOpen, Briefcase, Trophy, Users, GraduationCap, DollarSign, X, Loader2, Clock, Info, Lock } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import Header from '@/components/Header';
 import GradientBackground from '@/components/GradientBackground';
@@ -30,16 +30,23 @@ console.log('Environment check:', {
 interface ConversationUIProps {
   agentId: string;
   source: string;
-  sessionId?: string;
   onConnect: (conversationId: string) => void;
   onMessage: (message: any) => void;
   onDisconnect: () => void;
   onError: (error: any) => void;
   onContextRestored?: (items: any[]) => void;
+  onEndSession?: (endSessionFn: () => Promise<void>) => void;
 }
 
-const ConversationUI = ({ agentId, source, sessionId, onConnect, onMessage, onDisconnect, onError, onContextRestored }: ConversationUIProps) => {
+const ConversationUI = ({ agentId, source, onConnect, onMessage, onDisconnect, onError, onContextRestored, onEndSession }: ConversationUIProps) => {
   const sessionStartedRef = useRef(false);
+  const onMessageRef = useRef(onMessage);
+  const listenerSetupRef = useRef(false);
+  
+  // Update the ref when the callback changes
+  useEffect(() => {
+    onMessageRef.current = onMessage;
+  }, [onMessage]);
   
   const conversation = useConversation({
     onConnect: async () => {
@@ -108,21 +115,39 @@ const ConversationUI = ({ agentId, source, sessionId, onConnect, onMessage, onDi
   useEffect(() => {
     if (agentId && conversation.startSession && !sessionStartedRef.current) {
       console.log('🚀 ConversationUI: Starting session with agent:', agentId);
-      if (sessionId) {
-        console.log('🔄 Resuming session with ID:', sessionId);
-      }
       sessionStartedRef.current = true;
       conversation.startSession({ agentId, source });
     }
-  }, [agentId, source, sessionId, conversation]);
-
-  // Unified event listener for conversation items
+  }, [agentId, source, conversation]);
+  // Expose endSession function to parent component
   useEffect(() => {
-    if (!conversation) return;
+    if (conversation && onEndSession) {
+      onEndSession(async () => {
+        try {
+          console.log('🛑 Ending Outspeed session from parent...');
+          await conversation.endSession();
+          console.log('✅ Outspeed session ended successfully');
+        } catch (error) {
+          console.error('Error ending Outspeed session:', error);
+        }
+      });
+    }
+  }, [conversation, onEndSession]);
+
+  // Unified event listener for conversation items - fixed to prevent infinite loop
+  useEffect(() => {
+    // Exit if conversation isn't ready or if the listener is already set up
+    if (!conversation || listenerSetupRef.current) return;
 
     const handleNewItem = (event: OutspeedEvent) => {
       try {
         console.log('📝 Conversation item created:', event);
+        
+        // Add debugging for AI messages to inspect raw structure
+        if (event.item.role === 'assistant') {
+          console.log('--- RAW AI EVENT FOR DEBUGGING ---');
+          console.log(JSON.stringify(event.item, null, 2));
+        }
         
         // Validate that this is a message item we should process
         if (!isValidMessageItem(event.item)) {
@@ -133,11 +158,14 @@ const ConversationUI = ({ agentId, source, sessionId, onConnect, onMessage, onDi
         // Parse the message using our robust utility
         const parsedMessage = parseOutspeedMessage(event.item);
         
-        console.log('📝 Parsed message:', parsedMessage);
-        
-        // Call the parent's message handler if it exists
-        if (onMessage) {
-          onMessage(parsedMessage);
+        // Only process the message if it's not null (i.e., not empty)
+        if (parsedMessage) {
+          console.log('📝 Parsed message:', parsedMessage);
+          
+          // Call the parent's message handler if it exists
+          if (onMessageRef.current) {
+            onMessageRef.current(parsedMessage);
+          }
         }
       } catch (error) {
         console.error('❌ Error processing conversation item:', error, 'Event:', event);
@@ -146,6 +174,7 @@ const ConversationUI = ({ agentId, source, sessionId, onConnect, onMessage, onDi
 
     // Set up the event listener
     conversation.on('conversation.item.created', handleNewItem);
+    listenerSetupRef.current = true; // Mark as set up
 
     // Cleanup function with safe checks
     return () => {
@@ -156,11 +185,12 @@ const ConversationUI = ({ agentId, source, sessionId, onConnect, onMessage, onDi
         } else {
           console.warn('⚠️ Conversation cleanup method not available');
         }
+        listenerSetupRef.current = false; // Reset on unmount
       } catch (error) {
         console.error('❌ Error during event listener cleanup:', error);
       }
     };
-  }, [conversation, onMessage]);
+  }, [conversation]); // The dependency on `conversation` is correct, the ref prevents re-subs
 
 
   // Return null - the parent component will handle rendering
@@ -196,7 +226,6 @@ const Onboarding = () => {
   const [showLoadingModal, setShowLoadingModal] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [showSkipConfirmation, setShowSkipConfirmation] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
   const [currentSessionNumber, setCurrentSessionNumber] = useState(1);
   const [loadingStep, setLoadingStep] = useState(0);
   const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null);
@@ -233,8 +262,7 @@ const Onboarding = () => {
   const [hasStartedOnce, setHasStartedOnce] = useState(false);
   const [voiceOrbSize, setVoiceOrbSize] = useState(256);
   const [landingOrbSize, setLandingOrbSize] = useState(160);
-  const [showTranscript, setShowTranscript] = useState(true); // Control transcript visibility
-  const [isResumingSession, setIsResumingSession] = useState(false); // Track session resumption state
+  const [endSessionFn, setEndSessionFn] = useState<(() => Promise<void>) | null>(null);
   
   // Helper function to persist remaining time
   const persistRemainingTime = useCallback((time: number) => {
@@ -245,35 +273,8 @@ const Onboarding = () => {
     }
   }, []);
 
-  // Helper function to store session ID
-  const storeSessionId = useCallback((sessionId: string) => {
-    try {
-      localStorage.setItem('outspeed_session_id', sessionId);
-      console.log('✅ Stored session ID:', sessionId);
-    } catch (error) {
-      console.warn('Could not save session ID to localStorage:', error);
-    }
-  }, []);
 
-  // Helper function to retrieve session ID
-  const getStoredSessionId = useCallback((): string | null => {
-    try {
-      return localStorage.getItem('outspeed_session_id');
-    } catch (error) {
-      console.warn('Could not retrieve session ID from localStorage:', error);
-      return null;
-    }
-  }, []);
 
-  // Helper function to clear session ID
-  const clearSessionId = useCallback(() => {
-    try {
-      localStorage.removeItem('outspeed_session_id');
-      console.log('✅ Cleared session ID from localStorage');
-    } catch (error) {
-      console.warn('Could not clear session ID from localStorage:', error);
-    }
-  }, []);
 
 
 
@@ -451,8 +452,41 @@ const Onboarding = () => {
         setLoading(false);
       }
     };
-    fetchUserProfile();
-  }, []);
+  // Detect page refresh and show warning if onboarding is incomplete
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (sessionStarted && !conversationCompleted) {
+        e.preventDefault();
+        e.returnValue = 'Your onboarding call is in progress. If you leave now, Diya cannot generate a school list and profile for you.';
+        return 'Your onboarding call is in progress. If you leave now, Diya cannot generate a school list and profile for you.';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [sessionStarted, conversationCompleted]);
+
+  // Check if user refreshed during an active session
+  useEffect(() => {
+    if (!loading && !onboardingCompleted) {
+      // Check if there was an active session before refresh
+      const wasSessionActive = sessionStorage.getItem('onboarding_session_active');
+      if (wasSessionActive === 'true') {
+        setShowRefreshWarning(true);
+        // Clear the flag
+        sessionStorage.removeItem('onboarding_session_active');
+      }
+    }
+  }, [loading, onboardingCompleted]);
+
+  // Mark session as active when it starts
+  useEffect(() => {
+    if (sessionStarted) {
+      sessionStorage.setItem('onboarding_session_active', 'true');
+    } else if (conversationCompleted) {
+      sessionStorage.removeItem('onboarding_session_active');
+    }
+  }, [sessionStarted, conversationCompleted]);
 
   // Debug useConversation hook initialization
   useEffect(() => {
@@ -466,31 +500,22 @@ const Onboarding = () => {
   const handleConnect = useCallback(async (conversationId: string) => {
     setConversationId(conversationId);
 
-    // Store session ID for resumption only if this is a new conversation
-    if (conversationId && !isResumingSession) {
-      storeSessionId(conversationId);
-    }
     
     console.log('🎉 CONNECTED to Outspeed voice agent');
     console.log('📊 Connection details:', {
       conversationId: conversationId,
       agentId: agentId ? 'Set' : 'Not set',
-      isResuming: isResumingSession,
       timestamp: new Date().toISOString()
     });
     setSessionStarted(true);
     setSessionStartTime(new Date());
     setHasStartedOnce(true);
     
-    const connectionMessage = isResumingSession 
-      ? "Your conversation with Diya has been resumed. Previous context is being restored..."
-      : "Your conversation with Diya has started. Feel free to speak naturally!";
-    
     toast({
-      title: isResumingSession ? "Session Resumed" : "Connected",
-      description: connectionMessage
+      title: "Connected",
+      description: "Your conversation with Diya has started. Feel free to speak naturally!"
     });
-  }, [agentId, toast, isResumingSession, storeSessionId]);
+  }, [agentId, toast]);
 
   const handleMessage = useCallback(async (message: any) => {
     try {
@@ -611,8 +636,6 @@ const Onboarding = () => {
       title: "Session Restored",
       description: `Restored ${restoredMessages.length} previous messages from your conversation.`
     });
-    
-    setIsResumingSession(false);
   }, [toast]);
 
   // Debug conversation state changes
@@ -770,17 +793,6 @@ const Onboarding = () => {
     };
   }, [sessionStarted]);
 
-  // Check for stored session ID on component load and auto-resume if available
-  useEffect(() => {
-    if (!loading && !onboardingCompleted) {
-      const storedSessionId = getStoredSessionId();
-      if (storedSessionId) {
-        console.log('🔄 Found stored session ID, auto-resuming conversation:', storedSessionId);
-        // Auto-resume the conversation
-        startConversation(storedSessionId);
-      }
-    }
-  }, [loading, onboardingCompleted, getStoredSessionId]);
 
   // Redirect users who have already completed onboarding
   useEffect(() => {
@@ -836,16 +848,10 @@ const Onboarding = () => {
   }, []);
 
   // Start conversation using agent-based approach
-  const startConversation = useCallback(async (resumeSessionId?: string) => {
+  const startConversation = useCallback(async () => {
     setIsLoadingAgent(true);
     setAgentError(null);
     
-    // Check if we're resuming a session
-    const storedSessionId = resumeSessionId || getStoredSessionId();
-    if (storedSessionId) {
-      setIsResumingSession(true);
-      console.log('🔄 Resuming session with ID:', storedSessionId);
-    }
     
     try {
       // Check if environment variables are set
@@ -895,15 +901,10 @@ const Onboarding = () => {
       // Store session number in localStorage for ConversationUI to use
       localStorage.setItem('current_session_number', currentSessionNumber.toString());
 
-      // Increment session number for next conversation (only if not resuming)
-      if (!storedSessionId) {
-        setCurrentSessionNumber(prev => prev + 1);
-      }
       
     } catch (error) {
       console.error('Error starting conversation:', error);
       setExpandedView(false);
-      setIsResumingSession(false);
       if (error instanceof DOMException && error.name === 'NotAllowedError') {
         toast({
           title: "Microphone Access Required",
@@ -921,172 +922,28 @@ const Onboarding = () => {
     } finally {
       setIsLoadingAgent(false);
     }
-  }, [toast, studentName, getStoredSessionId]);
+  }, [toast, studentName]);
 
-  const pauseConversation = useCallback(async () => {
-    try {
-      console.log('Pausing conversation, current conversationId:', conversationId);
 
-      // Calculate session duration
-      const endTime = new Date();
-      const duration = sessionStartTime ? Math.max(0, (endTime.getTime() - sessionStartTime.getTime()) / 1000) : 0;
-      setSessionDuration(duration);
-
-      // Update cumulative session time
-      const newCumulativeTime = cumulativeSessionTime + duration;
-      setCumulativeSessionTime(newCumulativeTime);
-
-      // Store conversation tracking with session number
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user && conversationId) {
-          // Update existing conversation tracking or create new one
-          let conversationType: "onboarding_1" | "onboarding_2" | "onboarding_3" | "onboarding_4" | "onboarding_5";
-          switch (currentSessionNumber) {
-            case 1:
-              conversationType = "onboarding_1";
-              break;
-            case 2:
-              conversationType = "onboarding_2";
-              break;
-            case 3:
-              conversationType = "onboarding_3";
-              break;
-            case 4:
-              conversationType = "onboarding_4";
-              break;
-            case 5:
-              conversationType = "onboarding_5";
-              break;
-            default:
-              conversationType = "onboarding_1";
-              break;
-          }
-                  // Update conversation record with end time
-        const currentTime = new Date().toISOString();
-        const { error } = await supabase
-          .from('conversation_tracking')
-          .update({
-            conversation_ended_at: currentTime
-          })
-          .eq('conversation_id', conversationId);
-        
-        if (error) {
-          console.error('Error updating conversation tracking:', error);
-        } else {
-          console.log('✅ Updated conversation record with end time:', currentTime);
-        }
-
-          // Store cumulative time in database
-          await supabase
-            .from('user_profiles')
-            .update({ cumulative_onboarding_time: Math.round(newCumulativeTime) })
-            .eq('user_id', user.id);
-          console.log('✅ Pause: Updated cumulative time in database:', Math.round(newCumulativeTime), 'seconds');
-        }
-      } catch (error) {
-        console.error('Error storing conversation data:', error);
-      }
-
-      // Update remaining time immediately based on new cumulative time
-      const totalSecondsNeededLocal = 2 * 60; // 2 minutes for testing
-      setRemainingTime(Math.max(0, totalSecondsNeededLocal - newCumulativeTime));
-
-      // Ensure onDisconnect does not double count
-      sessionFinalizedRef.current = true;
-      // Note: Conversation ending is handled by the ConversationUI component
-
-      // Store local transcript as metadata since Outspeed API might not have it yet
-      if (conversationId) {
-        try {
-          const { data: { user } = {} } = await supabase.auth.getUser();
-          if (user) {
-            console.log('📝 Storing local transcript for paused session...');
-
-            // Create transcript from local messages
-            const transcriptText = messages.map(msg => `${msg.source === 'ai' ? 'Diya' : 'You'}: ${msg.text}`).join('\n');
-            console.log('Local transcript:', transcriptText);
-
-            // Store in conversation_metadata table
-            const { error } = await supabase.from('conversation_metadata').upsert({
-              conversation_id: conversationId,
-              user_id: user.id,
-              transcript: transcriptText || 'Conversation in progress',
-              summary: transcriptText || 'Conversation in progress',
-              // Use transcript as summary
-              created_at: new Date().toISOString()
-            });
-            if (error) {
-              console.error('Error storing local transcript:', error);
-            } else {
-              console.log('✅ Local transcript stored for paused session');
-            }
-          }
-        } catch (error) {
-          console.error('❌ Error storing local transcript:', error);
-        }
-      }
-
-      // Clear timer
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-      setIsPaused(true);
-      setSessionStarted(false);
-      setSessionStartTime(null);
-      setExpandedView(false);
-      toast({
-        title: "Conversation Paused",
-        description: "Your conversation has been paused. You can resume it later."
-      });
-    } catch (error) {
-      console.error('Error pausing conversation:', error);
-      toast({
-        title: "Pause Error",
-        description: "There was an error pausing your Outspeed conversation. Please try again.",
-        variant: "destructive"
-      });
-    }
-  }, [conversationId, sessionStartTime, cumulativeSessionTime, currentSessionNumber, messages, toast]);
-
-  const resumeConversation = useCallback(async () => {
-    try {
-      console.log('🔄 Resuming conversation, session number:', currentSessionNumber);
-      setExpandedView(true);
-
-      // Get previous session context using AI agent
-      const previousContext = await getPreviousSessionContext();
-      if (previousContext && previousContext.length > 0) {
-        console.log('📋 Found previous session context:', previousContext.length, 'sessions');
-        // Store context for the agent to use
-        localStorage.setItem('previous_onboarding_context', JSON.stringify(previousContext));
-      }
-
-      // Start new conversation session with current session number
-      await startConversation();
-      setIsPaused(false);
-      toast({
-        title: "Conversation Resumed",
-        description: "Welcome back! Your conversation with Diya has resumed with AI-enhanced context."
-      });
-    } catch (error) {
-      console.error('❌ Error resuming conversation:', error);
-      setExpandedView(false);
-      toast({
-        title: "Resume Error",
-        description: "There was an error resuming your Outspeed conversation. Please try again.",
-        variant: "destructive"
-      });
-    }
-  }, [currentSessionNumber, getPreviousSessionContext, toast]);
   const endConversation = useCallback(async () => {
     try {
       console.log('Ending conversation, current conversationId:', conversationId);
       setExpandedView(false);
 
-      // Clear session ID when conversation is intentionally ended
-      clearSessionId();
+      // First, properly end the Outspeed session to stop the agent from speaking
+      if (endSessionFn) {
+        try {
+          console.log('🛑 Ending Outspeed session...');
+          await endSessionFn();
+          console.log('✅ Outspeed session ended successfully');
+        } catch (error) {
+          console.error('Error ending Outspeed session:', error);
+        }
+      }
+
+      // Wait a moment for the session to fully end before proceeding
+      await new Promise(resolve => setTimeout(resolve, 500));
+
 
       // Calculate session duration
       const endTime = new Date();
@@ -1405,7 +1262,7 @@ const Onboarding = () => {
         variant: "destructive"
       });
     }
-  }, [conversationId, messages, toast, navigate, sessionStartTime, markOnboardingCompleted, cumulativeSessionTime, currentSessionNumber, clearSessionId]);
+  }, [conversationId, messages, toast, navigate, sessionStartTime, markOnboardingCompleted, cumulativeSessionTime, currentSessionNumber, endSessionFn]);
   
   // End conversation when timer expires
   const endConversationWithMessage = useCallback(async () => {
@@ -1470,12 +1327,12 @@ const Onboarding = () => {
         <ConversationUI
           agentId={agentId}
           source="diya-onboarding"
-          sessionId={getStoredSessionId()}
           onConnect={handleConnect}
           onMessage={handleMessage}
           onDisconnect={handleDisconnect}
           onError={handleError}
           onContextRestored={handleContextRestored}
+          onEndSession={setEndSessionFn}
         />
       )}
         {expandedView && (
@@ -1515,11 +1372,12 @@ const Onboarding = () => {
                 <div className="text-center mt-4 md:mt-6 flex-shrink-0">
                   <h3 className="text-lg font-medium">Diya is listening...</h3>
                   <p className="text-sm text-muted-foreground">Share your thoughts and experiences naturally - just like talking to a friend!</p>
+                  <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-xs text-blue-700 font-medium">
+                      ⚠️ Please do not leave this page until your conversation is complete. Diya needs the full conversation to generate your personalized school list and profile.
+                    </p>
+                  </div>
                   <div className="flex gap-2 justify-center mt-4">
-                    <Button onClick={pauseConversation} variant="outline" disabled={isProcessingMetadata} size="sm">
-                      <Pause className="h-4 w-4 mr-2" />
-                      Pause
-                    </Button>
                     <Button onClick={endConversation} variant="outline" disabled={isProcessingMetadata} size="sm">
                       {isProcessingMetadata ? 'Processing...' : 'End'}
                     </Button>
@@ -1672,16 +1530,6 @@ const Onboarding = () => {
                               Preparing your personalized conversation with Diya.
                             </p>
                           </div>
-                        ) : isResumingSession ? (
-                          <div className="space-y-4">
-                            <h3 className="text-lg font-medium">Resuming conversation...</h3>
-                            <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                              Restoring your previous conversation with Diya. Please wait while we reconnect.
-                            </p>
-                            <div className="flex justify-center">
-                              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-                            </div>
-                          </div>
                         ) : (
                           <>
                             <h3 className="text-lg font-medium">
@@ -1707,7 +1555,7 @@ const Onboarding = () => {
                                   size="lg" 
                                   className="mt-4"
                                 >
-                                  {isLoadingAgent ? 'Starting...' : (cumulativeSessionTime > 0 || currentSessionNumber > 1 ? "Resume Conversation" : "Start Conversation")}
+                                  {isLoadingAgent ? 'Starting...' : "Start Conversation"}
                                 </Button>
                                 
                                 {agentError && (
@@ -1760,27 +1608,17 @@ const Onboarding = () => {
                         <p className="text-sm text-muted-foreground">
                           Share your thoughts and experiences naturally - just like talking to a friend!
                         </p>
+                        <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                          <p className="text-xs text-blue-700 font-medium">
+                            ⚠️ Please do not leave this page until your conversation is complete. Diya needs the full conversation to generate your personalized school list and profile.
+                          </p>
+                        </div>
 
                         <div className="flex gap-2 justify-center">
-                          <Button onClick={pauseConversation} variant="outline" disabled={isProcessingMetadata}>
-                            <Pause className="h-4 w-4 mr-2" />
-                            Pause Conversation
-                          </Button>
                           <Button onClick={endConversation} variant="outline" disabled={isProcessingMetadata}>
                             {isProcessingMetadata ? "Processing..." : "End Conversation"}
                           </Button>
                         </div>
-                      </>
-                    ) : isPaused ? (
-                      <>
-                        <h3 className="text-lg font-medium">Conversation Paused</h3>
-                        <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                          Your conversation has been paused. You can resume it when you're ready to continue.
-                        </p>
-
-                        <Button onClick={resumeConversation} size="lg" className="mt-4">
-                          Resume Conversation
-                        </Button>
                       </>
                     ) : (
                       <>
@@ -2129,7 +1967,41 @@ const Onboarding = () => {
           </DialogContent>
         </Dialog>
 
-        {/* Footer Features */}
+        {/* Refresh Warning Modal */}
+        {showRefreshWarning && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <Card className="w-full max-w-md relative" style={{ backgroundColor: '#F4EDE2' }}>
+              <CardHeader className="text-center">
+                <div className="mx-auto w-16 h-16 bg-orange-500/10 rounded-full flex items-center justify-center mb-4">
+                  <Info className="w-8 h-8 text-orange-500" />
+                </div>
+                <CardTitle className="text-xl">Call Not Completed</CardTitle>
+              </CardHeader>
+              <CardContent className="text-center">
+                <p className="text-muted-foreground mb-4">
+                  It looks like you refreshed the page during your onboarding call. Your conversation with Diya was not completed.
+                </p>
+                <p className="text-sm text-muted-foreground mb-6">
+                  <strong>Important:</strong> If you don't complete the call, Diya cannot generate a school list and profile for you. Please start a new conversation to complete your onboarding.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center w-full">
+                  <Button size="lg" className="flex-1 sm:flex-initial" onClick={() => {
+                    setShowRefreshWarning(false);
+                    startConversation();
+                  }}>
+                    Start New Call
+                  </Button>
+                  <Button size="lg" variant="outline" className="flex-1 sm:flex-initial" onClick={() => {
+                    setShowRefreshWarning(false);
+                    navigate('/dashboard');
+                  }}>
+                    Go to Dashboard
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
         <div className="mt-16 mb-8 text-center">
           <div className="flex justify-center items-center gap-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -2151,4 +2023,5 @@ const Onboarding = () => {
     </GradientBackground>
   );
 };
+
 export default Onboarding;

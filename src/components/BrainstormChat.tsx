@@ -141,13 +141,22 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
     }
   });
 
-  // Unified event listener for conversation items
+  // Unified event listener for conversation items - fixed to prevent infinite loop
+  const listenerSetupRef = useRef(false);
+  
   useEffect(() => {
-    if (!conversation) return;
+    // Exit if conversation isn't ready or if the listener is already set up
+    if (!conversation || listenerSetupRef.current) return;
 
     const handleNewItem = (event: OutspeedEvent) => {
       try {
         console.log('📝 Conversation item created:', event);
+        
+        // Add debugging for AI messages to inspect raw structure
+        if (event.item.role === 'assistant') {
+          console.log('--- RAW AI EVENT FOR DEBUGGING ---');
+          console.log(JSON.stringify(event.item, null, 2));
+        }
         
         // Validate that this is a message item we should process
         if (!isValidMessageItem(event.item)) {
@@ -158,14 +167,17 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
         // Parse the message using our robust utility
         const parsedMessage = parseOutspeedMessage(event.item);
         
-        console.log('📝 Parsed message:', parsedMessage);
-        
-        // Update local state
-        setMessages(prev => {
-          const newMessages = [...prev, parsedMessage];
-          console.log('📝 Updated messages array:', newMessages.length, 'messages');
-          return newMessages;
-        });
+        // Only process the message if it's not null (i.e., not empty)
+        if (parsedMessage) {
+          console.log('📝 Parsed message:', parsedMessage);
+          
+          // Update local state
+          setMessages(prev => {
+            const newMessages = [...prev, parsedMessage];
+            console.log('📝 Updated messages array:', newMessages.length, 'messages');
+            return newMessages;
+          });
+        }
       } catch (error) {
         console.error('❌ Error processing conversation item:', error, 'Event:', event);
       }
@@ -173,6 +185,7 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
 
     // Set up the event listener
     conversation.on('conversation.item.created', handleNewItem);
+    listenerSetupRef.current = true; // Mark as set up
 
     // Cleanup function with safe checks
     return () => {
@@ -183,11 +196,12 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
         } else {
           console.warn('⚠️ Conversation cleanup method not available');
         }
+        listenerSetupRef.current = false; // Reset on unmount
       } catch (error) {
         console.error('❌ Error during event listener cleanup:', error);
       }
     };
-  }, [conversation]);
+  }, [conversation]); // The dependency on `conversation` is correct, the ref prevents re-subs
 
   // Audio analysis functions
   const startAudioAnalysis = async () => {
