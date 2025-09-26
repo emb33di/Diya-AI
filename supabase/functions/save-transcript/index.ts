@@ -56,14 +56,17 @@ serve(async (req) => {
       message_order: index + 1
     }))
 
-    // Insert messages into conversation_messages table
+    // Insert messages into conversation_messages table with conflict resolution
     const { error: messagesError } = await supabaseClient
       .from('conversation_messages')
-      .insert(messagesToInsert)
+      .upsert(messagesToInsert, { 
+        onConflict: 'conversation_id,message_order',
+        ignoreDuplicates: false 
+      })
 
     if (messagesError) {
-      console.error('Error inserting messages:', messagesError)
-      throw new Error(`Failed to insert messages: ${messagesError.message}`)
+      console.error('Error upserting messages:', messagesError)
+      throw new Error(`Failed to upsert messages: ${messagesError.message}`)
     }
 
     // Create transcript text
@@ -81,6 +84,8 @@ serve(async (req) => {
         transcript: transcriptText,
         message_count: transcriptData.message_count,
         session_number: transcriptData.session_type === 'onboarding' ? 1 : 1
+      }, {
+        onConflict: 'conversation_id'
       })
 
     if (metadataError) {

@@ -107,10 +107,10 @@ export const useTranscriptSaver = (
         return;
       }
 
-      // Check if messages have actually changed
-      const messagesChanged = JSON.stringify(messagesToSave) !== JSON.stringify(lastSavedMessagesRef.current);
-      if (!messagesChanged) {
-        console.log('⏭️ Skipping transcript save - no changes detected');
+      // Only send new messages since last successful save
+      const newMessages = messagesToSave.slice(lastSavedMessagesRef.current.length);
+      if (newMessages.length === 0) {
+        console.log('⏭️ Skipping transcript save - no new messages');
         return;
       }
 
@@ -121,14 +121,14 @@ export const useTranscriptSaver = (
           return;
         }
 
-        const totalLength = messagesToSave.reduce((sum, msg) => sum + msg.text.length, 0);
+        const totalLength = newMessages.reduce((sum, msg) => sum + msg.text.length, 0);
         
         const transcriptData: TranscriptSaveData = {
           conversation_id: conversationId,
           user_id: user.id,
-          messages: messagesToSave,
+          messages: newMessages,
           session_type: sessionType,
-          message_count: messagesToSave.length,
+          message_count: newMessages.length,
           total_length: totalLength
         };
 

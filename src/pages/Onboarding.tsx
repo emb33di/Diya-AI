@@ -149,6 +149,8 @@ const ConversationUI = ({ agentId, source, onConnect, onMessage, onDisconnect, o
   useEffect(() => {
     // Exit if conversation isn't ready or if the listener is already set up
     if (!conversation || listenerSetupRef.current) return;
+    
+    console.log('🔧 Setting up event listeners for conversation:', conversation);
 
     const processItem = (item: any, debugLabel: string) => {
       try {
@@ -193,14 +195,48 @@ const ConversationUI = ({ agentId, source, onConnect, onMessage, onDisconnect, o
       processItem(event.item, 'conversation.item.created');
     };
 
-    // Note: Additional event handlers removed due to TypeScript compatibility
-    // The main conversation.item.created event should handle most message processing
+    // Add back critical event handlers for user voice input
+    const handleUserTranscript = (payload: any) => {
+      console.log('🎤 User transcript received:', payload);
+      const text = payload?.transcript || payload?.text;
+      if (text) {
+        processItem({ 
+          id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          type: 'input_audio_transcription.completed',
+          role: 'user',
+          content: text,
+          timestamp: new Date()
+        }, 'input_audio_transcription.completed');
+      }
+    };
 
-    // Register listeners
+    const handleOutputDelta = (payload: any) => {
+      console.log('📝 Output delta received:', payload);
+      processItem({ 
+        ...payload, 
+        role: 'assistant', 
+        type: 'response.output_text.delta' 
+      }, 'response.output_text.delta');
+    };
+
+    const handleOutputDone = (payload: any) => {
+      console.log('✅ Output done received:', payload);
+      processItem({ 
+        ...payload, 
+        role: 'assistant', 
+        type: 'response.output_text.done' 
+      }, 'response.output_text.done');
+    };
+
+    // Register all event listeners
     conversation.on('conversation.item.created', handleNewItem);
     
-    // Note: Additional event listeners removed due to TypeScript compatibility issues
-    // The main conversation.item.created event should handle most message processing
+    // Add back user voice input listeners (with type casting for TypeScript)
+    if (conversation.on) {
+      (conversation as any).on('input_audio_transcription.completed', handleUserTranscript);
+      (conversation as any).on('response.output_text.delta', handleOutputDelta);
+      (conversation as any).on('response.output_text.done', handleOutputDone);
+    }
     
     listenerSetupRef.current = true; // Mark as set up
 
@@ -209,7 +245,13 @@ const ConversationUI = ({ agentId, source, onConnect, onMessage, onDisconnect, o
       try {
         if (conversation && typeof conversation.off === 'function') {
           conversation.off('conversation.item.created', handleNewItem);
-          console.log('🧹 Event listener cleaned up successfully');
+          // Clean up additional event listeners (with type casting for TypeScript)
+          if (conversation.off) {
+            (conversation as any).off('input_audio_transcription.completed', handleUserTranscript);
+            (conversation as any).off('response.output_text.delta', handleOutputDelta);
+            (conversation as any).off('response.output_text.done', handleOutputDone);
+          }
+          console.log('🧹 Event listeners cleaned up successfully (component unmount)');
         } else {
           console.warn('⚠️ Conversation cleanup method not available');
         }
@@ -218,7 +260,7 @@ const ConversationUI = ({ agentId, source, onConnect, onMessage, onDisconnect, o
         console.error('❌ Error during event listener cleanup:', error);
       }
     };
-  }, [conversation]);
+  }, []); // Remove conversation dependency to prevent re-render loop
 
 
   // Return null - the parent component will handle rendering
