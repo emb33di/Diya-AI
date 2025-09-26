@@ -153,6 +153,7 @@ const Onboarding = () => {
     setConversationCompleted,
     setShowCompletionPopup,
     setCurrentSessionNumber,
+    setShowTranscript,
     conversationId,
     messages,
     sessionStartTime,
@@ -237,9 +238,11 @@ const Onboarding = () => {
       conversationId: conversationId,
       sessionStarted: sessionStarted,
       agentId: agentId ? 'Set' : 'Not set',
+      messagesCount: messages.length,
+      expandedView: expandedView,
       timestamp: new Date().toISOString()
     });
-  }, [conversationId, sessionStarted, agentId]);
+  }, [conversationId, sessionStarted, agentId, messages.length, expandedView]);
 
   // Debug agentId changes
   useEffect(() => {
@@ -327,6 +330,14 @@ const Onboarding = () => {
     );
   }
 
+  // Debug: Log when ConversationEngine should be rendered
+  console.log('🔍 Onboarding render check:', {
+    agentId: agentId ? 'Set' : 'Not set',
+    expandedView,
+    messagesCount: messages.length,
+    sessionStarted
+  });
+
   return (
     <GradientBackground>
       {/* 4. CRITICAL: Only render the ConversationEngine when you have an agent ID */}
@@ -355,7 +366,7 @@ const Onboarding = () => {
           processedMessageIds={processedMessageIds}
           sessionFinalizedRef={sessionFinalizedRef}
           calculateProgressPercentage={calculateProgressPercentage}
-          forceSaveTranscript={forceSaveTranscript}
+          forceSaveTranscript={async () => { await forceSaveTranscript(); }}
           // Callbacks (now empty since handlers are in ConversationEngine)
           onConnect={() => {}}
           onMessage={() => {}}

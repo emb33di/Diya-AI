@@ -23,6 +23,7 @@ interface ConversationFlowProps {
   setConversationCompleted: (completed: boolean) => void;
   setShowCompletionPopup: (show: boolean) => void;
   setCurrentSessionNumber: (session: number) => void;
+  setShowTranscript: (show: boolean) => void;
   
   // State values
   conversationId: string | null;
@@ -59,6 +60,7 @@ export const useConversationFlow = ({
   setConversationCompleted,
   setShowCompletionPopup,
   setCurrentSessionNumber,
+  setShowTranscript,
   conversationId,
   messages,
   sessionStartTime,

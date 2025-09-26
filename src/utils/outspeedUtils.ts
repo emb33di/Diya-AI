@@ -165,7 +165,8 @@ export function parseOutspeedMessage(item: OutspeedMessageItem): ParsedMessage |
       role: item.role,
       contentType: typeof item.content,
       contentIsArray: Array.isArray(item.content),
-      status: (item as any).status
+      status: (item as any).status,
+      fullItem: item
     });
     
     // Extract text content with fallback handling

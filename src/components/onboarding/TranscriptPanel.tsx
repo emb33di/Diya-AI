@@ -29,6 +29,15 @@ const TranscriptPanel: React.FC<TranscriptPanelProps> = ({
   containerRef,
   conversationCompleted,
 }) => {
+  // Debug: Log when messages change
+  React.useEffect(() => {
+    console.log('📝 TranscriptPanel messages updated:', {
+      variant,
+      messageCount: messages.length,
+      messages: messages.map(m => ({ source: m.source, textLength: m.text.length, id: m.id }))
+    });
+  }, [messages, variant]);
+
   if (variant === 'expanded') {
     return (
       <div className="lg:col-span-1 h-full min-h-0">
@@ -45,14 +54,16 @@ const TranscriptPanel: React.FC<TranscriptPanelProps> = ({
               >
                 Clear
               </Button>
-              <Button 
-                onClick={onClose} 
-                variant="ghost" 
-                size="sm"
-                className="h-6 w-6 p-0"
-              >
-                <X className="h-3 w-3" />
-              </Button>
+              {onClose && (
+                <Button 
+                  onClick={onClose} 
+                  variant="ghost" 
+                  size="sm"
+                  className="h-6 w-6 p-0"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              )}
             </div>
           </div>
           <div className="flex-1 overflow-y-auto space-y-2 p-2 rounded-lg border min-h-0" ref={containerRef}>

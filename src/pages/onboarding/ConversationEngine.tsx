@@ -364,18 +364,22 @@ const ConversationEngine = ({
   const conversation = useConversation({
     onConnect: async () => {
       try {
+        console.log('🔗 Outspeed onConnect callback triggered');
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           const conversationId = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          console.log('📝 Generated conversation ID:', conversationId);
           
           // Call our new handleConnect with the generated conversationId
           await handleConnect(conversationId);
 
+          // Register endSession handler ONCE here to avoid repeated state updates
           if (onEndSession) {
             const endFn = async () => {
               try {
                 console.log('🛑 Ending Outspeed session from parent...');
-
+                
+                // Clean up event listeners before ending session
                 if (conversation && (conversation as any)._cleanupEventListeners) {
                   try {
                     (conversation as any)._cleanupEventListeners();
@@ -384,7 +388,7 @@ const ConversationEngine = ({
                     console.error('❌ Error cleaning up event listeners:', cleanupError);
                   }
                 }
-
+                
                 await conversation.endSession();
                 console.log('✅ Outspeed session ended successfully');
               } catch (error) {
@@ -393,7 +397,8 @@ const ConversationEngine = ({
             };
 
             try {
-              // @ts-ignore allow functional setter pattern if provided
+              // If parent provided a React state setter, use functional form
+              // @ts-ignore
               onEndSession((prev: any) => endFn);
             } catch {
               onEndSession(endFn);
@@ -408,16 +413,26 @@ const ConversationEngine = ({
     },
     onMessage: (event: OutspeedEvent) => {
       try {
-        console.log('📨 Raw Outspeed event received:', event);
+        console.log('📨 Raw Outspeed event received:', {
+          type: event.type,
+          hasData: !!event.data,
+          dataKeys: event.data ? Object.keys(event.data) : [],
+          timestamp: new Date().toISOString()
+        });
 
         if (event.type === 'message' && event.data) {
+          console.log('📝 Processing message event data:', event.data);
           const parsedMessage = parseOutspeedMessage(event.data);
-          console.log('📝 Parsed message:', parsedMessage);
+          console.log('📝 Parsed message result:', parsedMessage);
 
-          if (isValidMessageItem(parsedMessage)) {
+          if (parsedMessage && isValidMessageItem(parsedMessage)) {
+            console.log('✅ Message is valid, calling handleMessage');
             handleMessage(parsedMessage);
           } else {
-            console.warn('⚠️ Invalid message item after parsing:', parsedMessage);
+            console.warn('⚠️ Invalid message item after parsing:', {
+              parsedMessage,
+              isValid: parsedMessage ? isValidMessageItem(parsedMessage) : false
+            });
           }
         } else if (event.type === 'speaking_state_change' && event.data) {
           console.log('🎤 Speaking state change event:', event.data);
@@ -426,10 +441,10 @@ const ConversationEngine = ({
           console.log('🔄 Context restored event:', event.data);
           handleContextRestored(event.data.items || []);
         } else {
-          console.log('ℹ️ Unhandled event type:', event.type, event.data);
+          console.log('ℹ️ Unhandled event type:', event.type, 'Data:', event.data);
         }
       } catch (error) {
-        console.error('❌ Error processing Outspeed event:', error, event);
+        console.error('❌ Error processing Outspeed event:', error, 'Event:', event);
       }
     },
     onDisconnect: handleDisconnect,
@@ -447,8 +462,22 @@ const ConversationEngine = ({
   useEffect(() => {
     if (agentId && conversation.startSession && !sessionStartedRef.current) {
       console.log('🚀 ConversationEngine: Starting session with agent:', agentId);
+      console.log('📊 Session start details:', {
+        agentId,
+        source,
+        hasStartSession: !!conversation.startSession,
+        sessionStartedRef: sessionStartedRef.current,
+        timestamp: new Date().toISOString()
+      });
       sessionStartedRef.current = true;
-      conversation.startSession({ agentId, source });
+      
+      try {
+        conversation.startSession({ agentId, source });
+        console.log('✅ Session start call completed');
+      } catch (error) {
+        console.error('❌ Error starting session:', error);
+        sessionStartedRef.current = false; // Reset on error
+      }
     }
   }, [agentId, source, conversation]);
 

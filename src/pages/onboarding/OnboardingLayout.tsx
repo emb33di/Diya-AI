@@ -106,7 +106,7 @@ export const ExpandedViewLayout: React.FC<Pick<OnboardingLayoutProps,
       )}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 min-h-0">
         {/* Left: AI Circle (2/3 width) */}
-        <div className={`${showTranscript ? 'lg:col-span-2' : 'lg:col-span-3'} bg-background/60 border rounded-xl p-4 md:p-6 flex flex-col items-center justify-center min-h-0 transition-all duration-300 ease-in-out`}>
+        <div className="lg:col-span-2 bg-background/60 border rounded-xl p-4 md:p-6 flex flex-col items-center justify-center min-h-0">
           <div className="flex-1 w-full flex items-center justify-center min-h-0">
             <VoiceSection
               variant="expanded"
@@ -130,45 +130,17 @@ export const ExpandedViewLayout: React.FC<Pick<OnboardingLayoutProps,
               </Button>
             </div>
           </div>
-          
-          {/* Subtle indicator when transcript is hidden */}
-          {!showTranscript && (
-            <div className="absolute top-4 right-4">
-              <Badge variant="secondary" className="text-xs">
-                <MessageSquare className="h-3 w-3 mr-1" />
-                Transcript Hidden
-              </Badge>
-            </div>
-          )}
         </div>
 
-        {/* Right: Transcript (1/3 width) - conditionally shown */}
-        {showTranscript && (
-          <TranscriptPanel
-            variant="expanded"
-            messages={messages}
-            onClear={onClearTranscript}
-            onClose={() => onSetShowTranscript(false)}
-            endRef={messagesEndRef}
-            containerRef={transcriptScrollRef}
-          />
-        )}
+        {/* Right: Transcript (1/3 width) - always shown */}
+        <TranscriptPanel
+          variant="expanded"
+          messages={messages}
+          onClear={onClearTranscript}
+          endRef={messagesEndRef}
+          containerRef={transcriptScrollRef}
+        />
       </div>
-      
-      {/* Transcript toggle button when hidden */}
-      {!showTranscript && (
-        <div className="flex justify-center mt-4">
-          <Button 
-            onClick={() => onSetShowTranscript(true)} 
-            variant="outline" 
-            size="sm"
-            className="flex items-center gap-2"
-          >
-            <MessageSquare className="h-4 w-4" />
-            Show Transcript
-          </Button>
-        </div>
-      )}
     </div>
   );
 };
@@ -266,8 +238,8 @@ export const LandingViewLayout: React.FC<Pick<OnboardingLayoutProps,
             <div className="space-y-4">
               {isLoadingAgent ? (
                 <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Loading...</h3>
-                  <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                  <h3 className="text-lg font-medium text-center">Loading...</h3>
+                  <p className="text-sm text-muted-foreground max-w-md mx-auto text-center">
                     Preparing your personalized conversation with Diya.
                   </p>
                 </div>
