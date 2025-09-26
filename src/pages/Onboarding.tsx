@@ -98,6 +98,17 @@ const ConversationUI = ({ agentId, source, onConnect, onMessage, onDisconnect, o
             const endFn = async () => {
               try {
                 console.log('🛑 Ending Outspeed session from parent...');
+                
+                // Clean up event listeners before ending session
+                if (conversation && (conversation as any)._cleanupEventListeners) {
+                  try {
+                    (conversation as any)._cleanupEventListeners();
+                    console.log('🧹 Event listeners cleaned up before session end');
+                  } catch (cleanupError) {
+                    console.error('❌ Error cleaning up event listeners:', cleanupError);
+                  }
+                }
+                
                 await conversation.endSession();
                 console.log('✅ Outspeed session ended successfully');
               } catch (error) {
@@ -228,6 +239,27 @@ const ConversationUI = ({ agentId, source, onConnect, onMessage, onDisconnect, o
       }, 'response.output_text.done');
     };
 
+    // Create cleanup function that can be called from both unmount and session end
+    const cleanupEventListeners = () => {
+      try {
+        if (conversation && typeof conversation.off === 'function') {
+          conversation.off('conversation.item.created', handleNewItem);
+          // Clean up additional event listeners (with type casting for TypeScript)
+          if (conversation.off) {
+            (conversation as any).off('input_audio_transcription.completed', handleUserTranscript);
+            (conversation as any).off('response.output_text.delta', handleOutputDelta);
+            (conversation as any).off('response.output_text.done', handleOutputDone);
+          }
+          console.log('🧹 Event listeners cleaned up successfully');
+          listenerSetupRef.current = false; // Reset listener setup flag
+        } else {
+          console.warn('⚠️ Conversation cleanup method not available');
+        }
+      } catch (error) {
+        console.error('❌ Error during event listener cleanup:', error);
+      }
+    };
+
     // Register all event listeners
     conversation.on('conversation.item.created', handleNewItem);
     
@@ -240,25 +272,12 @@ const ConversationUI = ({ agentId, source, onConnect, onMessage, onDisconnect, o
     
     listenerSetupRef.current = true; // Mark as set up
 
-    // Cleanup function with safe checks
+    // Store cleanup function for use in endSession
+    (conversation as any)._cleanupEventListeners = cleanupEventListeners;
+
+    // Cleanup function for component unmount
     return () => {
-      try {
-        if (conversation && typeof conversation.off === 'function') {
-          conversation.off('conversation.item.created', handleNewItem);
-          // Clean up additional event listeners (with type casting for TypeScript)
-          if (conversation.off) {
-            (conversation as any).off('input_audio_transcription.completed', handleUserTranscript);
-            (conversation as any).off('response.output_text.delta', handleOutputDelta);
-            (conversation as any).off('response.output_text.done', handleOutputDone);
-          }
-          console.log('🧹 Event listeners cleaned up successfully (component unmount)');
-        } else {
-          console.warn('⚠️ Conversation cleanup method not available');
-        }
-        listenerSetupRef.current = false; // Reset on unmount
-      } catch (error) {
-        console.error('❌ Error during event listener cleanup:', error);
-      }
+      cleanupEventListeners();
     };
   }, []); // Remove conversation dependency to prevent re-render loop
 
@@ -298,6 +317,7 @@ const Onboarding = () => {
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [showSkipConfirmation, setShowSkipConfirmation] = useState(false);
   const [showRefreshWarning, setShowRefreshWarning] = useState(false);
+  const [showEndConfirmation, setShowEndConfirmation] = useState(false);
   const [currentSessionNumber, setCurrentSessionNumber] = useState(1);
   const [loadingStep, setLoadingStep] = useState(0);
   const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null);
@@ -1080,9 +1100,15 @@ const Onboarding = () => {
 
 
   const endConversation = useCallback(async () => {
+    // Show confirmation popup instead of ending immediately
+    setShowEndConfirmation(true);
+  }, []);
+
+  const endConversationConfirmed = useCallback(async () => {
     try {
       console.log('Ending conversation, current conversationId:', conversationId);
       setExpandedView(false);
+      setShowEndConfirmation(false);
 
       // First, properly end the Outspeed session to stop the agent from speaking
       if (endSessionFn) {
@@ -1374,8 +1400,7 @@ const Onboarding = () => {
           // Mark step 3 done
           setLoadingStep(3);
 
-                      // Mark onboarding as completed only for full sessions
-            if (isSessionComplete) {
+                      // Mark onboarding as completed (user chose to end anyway)
               await markOnboardingCompleted();
 
               // Clear stored context since onboarding is complete
@@ -1388,9 +1413,6 @@ const Onboarding = () => {
             // Navigate to profile page for AI-populated form review
             setShowLoadingModal(false);
             navigate('/profile');
-          } else {
-            setShowLoadingModal(false);
-          }
         } else if (user) {
           console.warn('No conversation ID captured');
           toast({
@@ -1424,7 +1446,7 @@ const Onboarding = () => {
       console.log('⏰ Timer expired - ending conversation');
       
       // Simply end the conversation
-      await endConversation();
+      await endConversationConfirmed();
       
       // Show completion popup with custom message
       setShowCompletionPopup(true);
@@ -1432,7 +1454,7 @@ const Onboarding = () => {
     } catch (error) {
       console.error('Error ending conversation:', error);
     }
-  }, [endConversation]);
+  }, [endConversationConfirmed]);
   
   // Timer effect
   useEffect(() => {
@@ -2151,6 +2173,42 @@ const Onboarding = () => {
                     navigate('/dashboard');
                   }}>
                     Go to Dashboard
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* End Confirmation Modal */}
+        {showEndConfirmation && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <Card className="w-full max-w-md relative" style={{ backgroundColor: '#F4EDE2' }}>
+              <CardHeader className="text-center">
+                <div className="mx-auto w-16 h-16 bg-orange-500/10 rounded-full flex items-center justify-center mb-4">
+                  <Info className="w-8 h-8 text-orange-500" />
+                </div>
+                <CardTitle className="text-xl">Are you sure you want to end the call?</CardTitle>
+              </CardHeader>
+              <CardContent className="text-center">
+                <p className="text-muted-foreground mb-6">
+                  Diya cannot generate your school list and profile unless you complete the full onboarding conversation.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center w-full">
+                  <Button 
+                    size="lg" 
+                    variant="outline" 
+                    className="flex-1 sm:flex-initial" 
+                    onClick={() => setShowEndConfirmation(false)}
+                  >
+                    Keep Chatting
+                  </Button>
+                  <Button 
+                    size="lg" 
+                    className="flex-1 sm:flex-initial" 
+                    onClick={endConversationConfirmed}
+                  >
+                    End Anyway
                   </Button>
                 </div>
               </CardContent>
