@@ -2,6 +2,7 @@ import { OutspeedMessageItem, ParsedMessage } from '@/types/outspeed';
 
 /**
  * Safely extracts text content from various possible Outspeed event structures
+ * Supports both finalized message shapes and streaming/delta shapes.
  * @param item - The message item from Outspeed event
  * @returns The extracted text or empty string if not found
  */
@@ -9,6 +10,14 @@ function extractTextContent(item: OutspeedMessageItem): string {
   try {
     console.log('🔍 Extracting text from item:', JSON.stringify(item, null, 2));
     
+    // Case 0: common "delta" containers used by streaming outputs
+    // e.g. { type: 'response.output_text.delta', delta: '...' }
+    if (typeof (item as any).delta === 'string' && (item as any).delta.trim().length > 0) {
+      const text = (item as any).delta as string;
+      console.log('✅ Found text in delta property:', text);
+      return text;
+    }
+
     // Case 1: content is an array with text property
     if (Array.isArray(item.content) && item.content.length > 0) {
       const firstItem = item.content[0];
@@ -60,6 +69,18 @@ function extractTextContent(item: OutspeedMessageItem): string {
           console.log('✅ Found text in nested array content:', text);
           return text;
         }
+        // Also handle delta nested inside content objects
+        if (typeof nestedItem === 'object' && nestedItem !== null && 'delta' in nestedItem && typeof nestedItem.delta === 'string') {
+          const text = nestedItem.delta as string;
+          console.log('✅ Found text in nested delta content:', text);
+          return text;
+        }
+      }
+      // Direct delta on content object
+      if ('delta' in contentObj && typeof contentObj.delta === 'string') {
+        const text = contentObj.delta as string;
+        console.log('✅ Found text in content.delta:', text);
+        return text;
       }
     }
 
@@ -171,12 +192,14 @@ export function parseOutspeedMessage(item: OutspeedMessageItem): ParsedMessage |
  * @returns true if the item should be processed as a message
  */
 export function isValidMessageItem(item: OutspeedMessageItem): boolean {
-  if (!item || typeof item !== 'object' || item.type !== 'message') {
+  // Accept any object-shaped event if we can extract non-empty text from it,
+  // regardless of the specific item.type. This supports streaming/delta events.
+  if (!item || typeof item !== 'object') {
     return false;
   }
-  
+
   const text = extractTextContent(item);
-  
-  // Only process messages with actual content
-  return text && text.trim().length > 0;
+
+  // Only process items with actual content
+  return !!(text && text.trim().length > 0);
 }

@@ -22,8 +22,8 @@ import { parseOutspeedMessage, isValidMessageItem } from '@/utils/outspeedUtils'
 import VoiceOrb from '@/components/VoiceOrb';
 // Debug: Log environment variables (remove in production)
 console.log('Environment check:', {
-  hasOutspeedKey: !!import.meta.env.VITE_OUTSPEED_ONBOARDING,
-  outspeedKeyLength: import.meta.env.VITE_OUTSPEED_ONBOARDING?.length || 0
+  hasSupabaseUrl: !!import.meta.env.VITE_SUPABASE_URL,
+  supabaseUrlLength: import.meta.env.VITE_SUPABASE_URL?.length || 0
 });
 
 // 1. Create a new component for the conversation itself
@@ -88,6 +88,27 @@ const ConversationUI = ({ agentId, source, onConnect, onMessage, onDisconnect, o
           
           // Call the parent onConnect callback with the conversationId
           onConnect(conversationId);
+
+          // Register endSession handler ONCE here to avoid repeated state updates
+          if (onEndSession) {
+            const endFn = async () => {
+              try {
+                console.log('🛑 Ending Outspeed session from parent...');
+                await conversation.endSession();
+                console.log('✅ Outspeed session ended successfully');
+              } catch (error) {
+                console.error('Error ending Outspeed session:', error);
+              }
+            };
+
+            try {
+              // If parent provided a React state setter, use functional form
+              // @ts-ignore
+              onEndSession((prev: any) => endFn);
+            } catch {
+              onEndSession(endFn);
+            }
+          }
         }
       } catch (error) {
         console.error('Error creating conversation record:', error);
@@ -97,8 +118,7 @@ const ConversationUI = ({ agentId, source, onConnect, onMessage, onDisconnect, o
       }
     },
     onDisconnect,
-    onError,
-    onContextRestored
+    onError
   });
 
   // Null check for the hook's return value
@@ -119,61 +139,64 @@ const ConversationUI = ({ agentId, source, onConnect, onMessage, onDisconnect, o
       conversation.startSession({ agentId, source });
     }
   }, [agentId, source, conversation]);
-  // Expose endSession function to parent component
-  useEffect(() => {
-    if (conversation && onEndSession) {
-      onEndSession(async () => {
-        try {
-          console.log('🛑 Ending Outspeed session from parent...');
-          await conversation.endSession();
-          console.log('✅ Outspeed session ended successfully');
-        } catch (error) {
-          console.error('Error ending Outspeed session:', error);
-        }
-      });
-    }
-  }, [conversation, onEndSession]);
+  // Removed effect-based onEndSession registration to avoid render loops
 
-  // Unified event listener for conversation items - fixed to prevent infinite loop
+  // Unified event listeners for conversation output and transcripts
   useEffect(() => {
     // Exit if conversation isn't ready or if the listener is already set up
     if (!conversation || listenerSetupRef.current) return;
 
-    const handleNewItem = (event: OutspeedEvent) => {
+    const processItem = (item: any, debugLabel: string) => {
       try {
-        console.log('📝 Conversation item created:', event);
-        
-        // Add debugging for AI messages to inspect raw structure
-        if (event.item.role === 'assistant') {
-          console.log('--- RAW AI EVENT FOR DEBUGGING ---');
-          console.log(JSON.stringify(event.item, null, 2));
-        }
-        
-        // Validate that this is a message item we should process
-        if (!isValidMessageItem(event.item)) {
-          console.log('⏭️ Skipping non-message item:', event.item.type);
+        if (!item) return;
+        console.log(`📝 ${debugLabel}:`, item);
+
+        // Normalize into OutspeedMessageItem shape
+        const normalized = {
+          id: item.id,
+          type: item.type || debugLabel,
+          role: item.role,
+          content: item.content ?? item.text ?? item.delta ?? item.transcript ?? ''
+        } as any;
+
+        if (!isValidMessageItem(normalized)) {
+          console.log('⏭️ Skipping non-text item:', normalized.type);
           return;
         }
-        
-        // Parse the message using our robust utility
-        const parsedMessage = parseOutspeedMessage(event.item);
-        
-        // Only process the message if it's not null (i.e., not empty)
-        if (parsedMessage) {
-          console.log('📝 Parsed message:', parsedMessage);
-          
-          // Call the parent's message handler if it exists
-          if (onMessageRef.current) {
-            onMessageRef.current(parsedMessage);
-          }
+
+        const parsedMessage = parseOutspeedMessage(normalized);
+        if (parsedMessage && onMessageRef.current) {
+          onMessageRef.current(parsedMessage);
         }
       } catch (error) {
-        console.error('❌ Error processing conversation item:', error, 'Event:', event);
+        console.error('❌ Error processing normalized item:', error, 'Raw:', item);
       }
     };
 
-    // Set up the event listener
+    const handleNewItem = (event: OutspeedEvent) => {
+      // Standard created items
+      processItem(event.item, 'conversation.item.created');
+    };
+
+    // Likely streaming/delta outputs from assistant
+    const handleOutputDelta = (payload: any) => {
+      processItem({ ...payload, role: 'assistant', type: 'response.output_text.delta' }, 'response.output_text.delta');
+    };
+    const handleOutputDone = (payload: any) => {
+      processItem({ ...payload, role: 'assistant', type: 'response.output_text.done' }, 'response.output_text.done');
+    };
+    // Likely final user transcription from ASR
+    const handleUserTranscript = (payload: any) => {
+      const text = payload?.transcript || payload?.text;
+      processItem({ ...payload, role: 'user', content: text, type: 'input_audio_transcription.completed' }, 'input_audio_transcription.completed');
+    };
+
+    // Register listeners
     conversation.on('conversation.item.created', handleNewItem);
+    // Best-effort additional events if the SDK emits them
+    conversation.on?.('response.output_text.delta', handleOutputDelta);
+    conversation.on?.('response.output_text.done', handleOutputDone);
+    conversation.on?.('input_audio_transcription.completed', handleUserTranscript);
     listenerSetupRef.current = true; // Mark as set up
 
     // Cleanup function with safe checks
@@ -181,6 +204,9 @@ const ConversationUI = ({ agentId, source, onConnect, onMessage, onDisconnect, o
       try {
         if (conversation && typeof conversation.off === 'function') {
           conversation.off('conversation.item.created', handleNewItem);
+          conversation.off?.('response.output_text.delta', handleOutputDelta);
+          conversation.off?.('response.output_text.done', handleOutputDone);
+          conversation.off?.('input_audio_transcription.completed', handleUserTranscript);
           console.log('🧹 Event listener cleaned up successfully');
         } else {
           console.warn('⚠️ Conversation cleanup method not available');
@@ -190,7 +216,7 @@ const ConversationUI = ({ agentId, source, onConnect, onMessage, onDisconnect, o
         console.error('❌ Error during event listener cleanup:', error);
       }
     };
-  }, [conversation]); // The dependency on `conversation` is correct, the ref prevents re-subs
+  }, [conversation]);
 
 
   // Return null - the parent component will handle rendering
@@ -234,6 +260,7 @@ const Onboarding = () => {
   const [cumulativeSessionTime, setCumulativeSessionTime] = useState(0);
   const [loadingMessages] = useState(["Retrieving conversation metadata", "Extracting profile information", "Generating recommendations"]);
   const [audioLevel, setAudioLevel] = useState(0);
+  const [showTranscript, setShowTranscript] = useState(false);
   // NOTE: messageOrder state removed - no longer needed with Outspeed API approach
   
   // Initialize transcript saver hook for automatic message persistence
@@ -859,10 +886,10 @@ const Onboarding = () => {
     
     try {
       // Check if environment variables are set
-      if (!import.meta.env.VITE_OUTSPEED_ONBOARDING) {
+      if (!import.meta.env.VITE_SUPABASE_URL) {
         toast({
           title: "Configuration Error",
-          description: "Outspeed voice agent is not properly configured. Please check your environment variables.",
+          description: "Supabase is not properly configured. Please check your environment variables.",
           variant: "destructive"
         });
         return;
