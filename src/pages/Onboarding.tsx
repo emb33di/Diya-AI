@@ -226,6 +226,7 @@ const Onboarding = () => {
   const [showLoadingModal, setShowLoadingModal] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [showSkipConfirmation, setShowSkipConfirmation] = useState(false);
+  const [showRefreshWarning, setShowRefreshWarning] = useState(false);
   const [currentSessionNumber, setCurrentSessionNumber] = useState(1);
   const [loadingStep, setLoadingStep] = useState(0);
   const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null);
@@ -452,6 +453,9 @@ const Onboarding = () => {
         setLoading(false);
       }
     };
+    // Invoke on mount
+    fetchUserProfile();
+  }, []);
   // Detect page refresh and show warning if onboarding is incomplete
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
