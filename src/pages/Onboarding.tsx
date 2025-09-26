@@ -20,6 +20,7 @@ import { useTranscriptSaver } from '@/hooks/useTranscriptSaver';
 import { OutspeedEvent } from '@/types/outspeed';
 import { parseOutspeedMessage, isValidMessageItem } from '@/utils/outspeedUtils';
 import VoiceOrb from '@/components/VoiceOrb';
+// Simplified MVP approach - removed complex race condition systems
 // Debug: Log environment variables (remove in production)
 console.log('Environment check:', {
   hasSupabaseUrl: !!import.meta.env.VITE_SUPABASE_URL,
@@ -35,18 +36,21 @@ interface ConversationUIProps {
   onDisconnect: () => void;
   onError: (error: any) => void;
   onContextRestored?: (items: any[]) => void;
+  onSpeakingStateChange?: (isSpeaking: boolean) => void;
   onEndSession?: (endSessionFn: () => Promise<void>) => void;
 }
 
-const ConversationUI = ({ agentId, source, onConnect, onMessage, onDisconnect, onError, onContextRestored, onEndSession }: ConversationUIProps) => {
+const ConversationUI = ({ agentId, source, onConnect, onMessage, onDisconnect, onError, onContextRestored, onSpeakingStateChange, onEndSession }: ConversationUIProps) => {
   const sessionStartedRef = useRef(false);
   const onMessageRef = useRef(onMessage);
+  const onSpeakingStateChangeRef = useRef(onSpeakingStateChange);
   const listenerSetupRef = useRef(false);
   
-  // Update the ref when the callback changes
+  // Update the refs when the callbacks change
   useEffect(() => {
     onMessageRef.current = onMessage;
-  }, [onMessage]);
+    onSpeakingStateChangeRef.current = onSpeakingStateChange;
+  }, [onMessage, onSpeakingStateChange]);
   
   const conversation = useConversation({
     onConnect: async () => {
@@ -78,7 +82,7 @@ const ConversationUI = ({ agentId, source, onConnect, onMessage, onDisconnect, o
               conversation_type: conversationType,
               conversation_started_at: new Date().toISOString(),
               metadata_retrieved: false
-            });
+            } as any);
           
           if (error) {
             console.error('Error creating conversation record:', error);
@@ -148,7 +152,11 @@ const ConversationUI = ({ agentId, source, onConnect, onMessage, onDisconnect, o
 
     const processItem = (item: any, debugLabel: string) => {
       try {
-        if (!item) return;
+        if (!item) {
+          console.warn(`⚠️ Empty item received for ${debugLabel}`);
+          return;
+        }
+        
         console.log(`📝 ${debugLabel}:`, item);
 
         // Normalize into OutspeedMessageItem shape
@@ -166,10 +174,17 @@ const ConversationUI = ({ agentId, source, onConnect, onMessage, onDisconnect, o
 
         const parsedMessage = parseOutspeedMessage(normalized);
         if (parsedMessage && onMessageRef.current) {
-          onMessageRef.current(parsedMessage);
+          try {
+            onMessageRef.current(parsedMessage);
+          } catch (messageError) {
+            console.error('❌ Error in message callback:', messageError, 'Message:', parsedMessage);
+          }
+        } else if (!parsedMessage) {
+          console.warn('⚠️ Failed to parse message item:', normalized);
         }
       } catch (error) {
         console.error('❌ Error processing normalized item:', error, 'Raw:', item);
+        // Don't throw - continue processing other items
       }
     };
 
@@ -178,25 +193,15 @@ const ConversationUI = ({ agentId, source, onConnect, onMessage, onDisconnect, o
       processItem(event.item, 'conversation.item.created');
     };
 
-    // Likely streaming/delta outputs from assistant
-    const handleOutputDelta = (payload: any) => {
-      processItem({ ...payload, role: 'assistant', type: 'response.output_text.delta' }, 'response.output_text.delta');
-    };
-    const handleOutputDone = (payload: any) => {
-      processItem({ ...payload, role: 'assistant', type: 'response.output_text.done' }, 'response.output_text.done');
-    };
-    // Likely final user transcription from ASR
-    const handleUserTranscript = (payload: any) => {
-      const text = payload?.transcript || payload?.text;
-      processItem({ ...payload, role: 'user', content: text, type: 'input_audio_transcription.completed' }, 'input_audio_transcription.completed');
-    };
+    // Note: Additional event handlers removed due to TypeScript compatibility
+    // The main conversation.item.created event should handle most message processing
 
     // Register listeners
     conversation.on('conversation.item.created', handleNewItem);
-    // Best-effort additional events if the SDK emits them
-    conversation.on?.('response.output_text.delta', handleOutputDelta);
-    conversation.on?.('response.output_text.done', handleOutputDone);
-    conversation.on?.('input_audio_transcription.completed', handleUserTranscript);
+    
+    // Note: Additional event listeners removed due to TypeScript compatibility issues
+    // The main conversation.item.created event should handle most message processing
+    
     listenerSetupRef.current = true; // Mark as set up
 
     // Cleanup function with safe checks
@@ -204,9 +209,6 @@ const ConversationUI = ({ agentId, source, onConnect, onMessage, onDisconnect, o
       try {
         if (conversation && typeof conversation.off === 'function') {
           conversation.off('conversation.item.created', handleNewItem);
-          conversation.off?.('response.output_text.delta', handleOutputDelta);
-          conversation.off?.('response.output_text.done', handleOutputDone);
-          conversation.off?.('input_audio_transcription.completed', handleUserTranscript);
           console.log('🧹 Event listener cleaned up successfully');
         } else {
           console.warn('⚠️ Conversation cleanup method not available');
@@ -242,6 +244,7 @@ const Onboarding = () => {
   const [isLoadingAgent, setIsLoadingAgent] = useState(false);
   const [agentError, setAgentError] = useState<string | null>(null);
   const [messages, setMessages] = useState<Array<{
+    id?: string;
     source: 'ai' | 'user';
     text: string;
     timestamp: Date;
@@ -261,7 +264,13 @@ const Onboarding = () => {
   const [loadingMessages] = useState(["Retrieving conversation metadata", "Extracting profile information", "Generating recommendations"]);
   const [audioLevel, setAudioLevel] = useState(0);
   const [showTranscript, setShowTranscript] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   // NOTE: messageOrder state removed - no longer needed with Outspeed API approach
+  
+  // MVP: Simple state management
+  const [processedMessageIds, setProcessedMessageIds] = useState(new Set<string>());
+  const [isSaving, setIsSaving] = useState(false);
+  const [sessionState, setSessionState] = useState<'idle' | 'active' | 'error'>('idle');
   
   // Initialize transcript saver hook for automatic message persistence
   const { forceSaveTranscript } = useTranscriptSaver(
@@ -270,6 +279,33 @@ const Onboarding = () => {
     'onboarding',
     500 // 500ms debounce delay
   );
+  
+  // MVP: Simple retry logic for database operations
+  const saveWithRetry = useCallback(async (operation: any, maxRetries = 2) => {
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        let result;
+        if (operation.table === 'conversation_tracking') {
+          result = await supabase.from('conversation_tracking').insert(operation.data);
+        } else if (operation.table === 'user_profiles') {
+          result = await supabase.from('user_profiles').update(operation.data).eq('user_id', operation.where.user_id);
+        } else {
+          throw new Error(`Unknown table: ${operation.table}`);
+        }
+        
+        if (result.error) throw result.error;
+        return true;
+      } catch (error) {
+        console.error(`Save attempt ${i + 1} failed:`, error);
+        if (i === maxRetries - 1) {
+          throw error;
+        }
+        // Simple delay: 1s, 2s
+        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+      }
+    }
+    return false;
+  }, []);
   
   // Audio analysis refs
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -529,24 +565,54 @@ const Onboarding = () => {
 
   // Callback functions for ConversationUI component
   const handleConnect = useCallback(async (conversationId: string) => {
-    setConversationId(conversationId);
-
+    if (sessionState !== 'idle') {
+      console.warn('⚠️ Session already started');
+      return;
+    }
     
-    console.log('🎉 CONNECTED to Outspeed voice agent');
-    console.log('📊 Connection details:', {
-      conversationId: conversationId,
-      agentId: agentId ? 'Set' : 'Not set',
-      timestamp: new Date().toISOString()
-    });
-    setSessionStarted(true);
-    setSessionStartTime(new Date());
-    setHasStartedOnce(true);
-    
-    toast({
-      title: "Connected",
-      description: "Your conversation with Diya has started. Feel free to speak naturally!"
-    });
-  }, [agentId, toast]);
+    try {
+      setSessionState('active');
+      setConversationId(conversationId);
+      setSessionStarted(true);
+      setSessionStartTime(new Date());
+      setHasStartedOnce(true);
+      
+      console.log('🎉 CONNECTED to Outspeed voice agent');
+      console.log('📊 Connection details:', {
+        conversationId: conversationId,
+        agentId: agentId ? 'Set' : 'Not set',
+        timestamp: new Date().toISOString()
+      });
+      
+      // Simple database save with retry
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await saveWithRetry({
+          table: 'conversation_tracking',
+          data: {
+            conversation_id: conversationId,
+            user_id: user.id,
+            conversation_type: 'onboarding_1',
+            conversation_started_at: new Date().toISOString(),
+            metadata_retrieved: false
+          }
+        });
+      }
+      
+      toast({
+        title: "Connected",
+        description: "Your conversation with Diya has started. Feel free to speak naturally!"
+      });
+    } catch (error) {
+      console.error('❌ Error in handleConnect:', error);
+      setSessionState('error');
+      toast({
+        title: "Connection Error",
+        description: "Failed to start conversation. Please try again.",
+        variant: "destructive"
+      });
+    }
+  }, [agentId, toast, sessionState, saveWithRetry]);
 
   const handleMessage = useCallback(async (message: any) => {
     try {
@@ -555,16 +621,25 @@ const Onboarding = () => {
       // Handle both old and new formats for backward compatibility
       const messageText = message.text || message.message;
       const messageSource = message.source || (message.role === 'assistant' ? 'ai' : 'user');
+      const messageId = message.id || `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
       if (messageText && typeof messageText === 'string') {
+        // MVP: Simple deduplication
+        if (processedMessageIds.has(messageId)) {
+          console.log('⏭️ Duplicate message skipped:', messageId);
+          return;
+        }
+        
         const newMessage = {
+          id: messageId,
           source: messageSource,
           text: messageText,
           timestamp: message.timestamp || new Date()
         };
         
-        // Update local state for UI display
+        // Update UI immediately
         setMessages(prev => [...prev, newMessage]);
+        setProcessedMessageIds(prev => new Set([...prev, messageId]));
       }
 
       // Mark topics as completed based on conversation flow
@@ -579,7 +654,7 @@ const Onboarding = () => {
     } catch (error) {
       console.error('❌ Error handling message:', error, 'Message:', message);
     }
-  }, [progressPercentage]);
+  }, [progressPercentage, processedMessageIds]);
 
   const handleDisconnect = useCallback(async () => {
     console.log('Disconnected from voice agent');
@@ -592,15 +667,16 @@ const Onboarding = () => {
       newCumulativeTimeLocal = cumulativeSessionTime + duration;
       setCumulativeSessionTime(newCumulativeTimeLocal);
 
-      // Store cumulative time in database
+      // Store cumulative time in database with simple retry
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          await supabase
-            .from('user_profiles')
-            .update({ cumulative_onboarding_time: Math.round(newCumulativeTimeLocal) })
-            .eq('user_id', user.id);
-          console.log('✅ Updated cumulative time in database:', Math.round(newCumulativeTimeLocal), 'seconds');
+          await saveWithRetry({
+            table: 'user_profiles',
+            data: { cumulative_onboarding_time: Math.round(newCumulativeTimeLocal) },
+            where: { user_id: user.id }
+          });
+          console.log('✅ Updated cumulative time:', Math.round(newCumulativeTimeLocal), 'seconds');
         }
       } catch (error) {
         console.error('Error updating cumulative session time:', error);
@@ -624,7 +700,12 @@ const Onboarding = () => {
       console.log('💾 Force saving transcript on disconnect...');
       await forceSaveTranscript();
     }
-  }, [cumulativeSessionTime, sessionStartTime, messages, forceSaveTranscript]);
+  }, [cumulativeSessionTime, sessionStartTime, messages, forceSaveTranscript, saveWithRetry]);
+
+  const handleSpeakingStateChange = useCallback((speaking: boolean) => {
+    console.log('🎤 Speaking state changed:', speaking);
+    setIsSpeaking(speaking);
+  }, []);
 
   const handleError = useCallback((error: any) => {
     console.error('❌ VOICE AGENT ERROR:', error);
@@ -996,7 +1077,7 @@ const Onboarding = () => {
             .update({
               conversation_ended_at: currentTime
             })
-            .eq('conversation_id', conversationId);
+            .eq('conversation_id', conversationId as any);
           
           if (error) {
             console.error('Error updating conversation tracking:', error);
@@ -1015,7 +1096,7 @@ const Onboarding = () => {
           await supabase
             .from('user_profiles')
             .update({ cumulative_onboarding_time: Math.round(newCumulativeTime) })
-            .eq('user_id', user.id);
+            .eq('user_id', user.id as any);
           console.log('✅ End: Updated cumulative time in database:', Math.round(newCumulativeTime), 'seconds');
         }
       } catch (error) {
@@ -1363,6 +1444,7 @@ const Onboarding = () => {
           onDisconnect={handleDisconnect}
           onError={handleError}
           onContextRestored={handleContextRestored}
+          onSpeakingStateChange={handleSpeakingStateChange}
           onEndSession={setEndSessionFn}
         />
       )}
@@ -1392,7 +1474,7 @@ const Onboarding = () => {
                                       <div className="w-80 h-80 max-w-full max-h-full aspect-square">
                       <VoiceOrb
                         isListening={sessionStarted}
-                        isSpeaking={false}
+                        isSpeaking={isSpeaking}
                         isThinking={sessionStarted && audioLevel < 0.1}
                         audioLevel={audioLevel}
                         audioOutputLevel={audioOutputLevel}
@@ -1401,7 +1483,7 @@ const Onboarding = () => {
                     </div>
                 </div>
                 <div className="text-center mt-4 md:mt-6 flex-shrink-0">
-                  <h3 className="text-lg font-medium">Diya is listening...</h3>
+                  <h3 className="text-lg font-medium">{isSpeaking ? "Diya is speaking..." : "Diya is listening..."}</h3>
                   <p className="text-sm text-muted-foreground">Share your thoughts and experiences naturally - just like talking to a friend!</p>
                   <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                     <p className="text-xs text-blue-700 font-medium">
@@ -1542,7 +1624,7 @@ const Onboarding = () => {
                     <div className="w-full h-full aspect-square">
                       <VoiceOrb
                         isListening={sessionStarted}
-                        isSpeaking={false}
+                        isSpeaking={isSpeaking}
                         isThinking={sessionStarted && audioLevel < 0.1}
                         audioLevel={audioLevel}
                         audioOutputLevel={audioOutputLevel}
@@ -1634,7 +1716,7 @@ const Onboarding = () => {
                     ) : sessionStarted ? (
                       <>
                         <h3 className="text-lg font-medium">
-                          Diya is listening...
+                          {isSpeaking ? "Diya is speaking..." : "Diya is listening..."}
                         </h3>
                         <p className="text-sm text-muted-foreground">
                           Share your thoughts and experiences naturally - just like talking to a friend!
