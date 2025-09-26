@@ -273,10 +273,10 @@ export const LandingViewLayout: React.FC<Pick<OnboardingLayoutProps,
                 </div>
               ) : (
                 <>
-                  <h3 className="text-lg font-medium">
+                  <h3 className="text-lg font-medium text-center">
                     {onboardingCompleted ? "Congratulations, you have completed your onboarding!" : "Ready to start your journey with Diya?"}
                   </h3>
-                  <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                  <p className="text-sm text-muted-foreground max-w-md mx-auto text-center">
                     {!onboardingCompleted && cumulativeSessionTime > 0 ? `You've completed ${Math.floor(cumulativeSessionTime / 60)} minutes. Continue your conversation with Diya to complete your onboarding.` : ''}
                     {!onboardingCompleted && <br />}
                     {!onboardingCompleted && (
