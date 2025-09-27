@@ -219,19 +219,19 @@ export default function Profile() {
       
       // Academic Profile
       high_school_name: "",
-      high_school_graduation_year: null,
+      high_school_graduation_year: undefined,
       school_board: undefined,
       year_of_study: undefined,
-      class_10_score: null,
-      class_11_score: null,
-      class_12_half_yearly_score: null,
-      undergraduate_cgpa: null,
+      class_10_score: undefined,
+      class_11_score: undefined,
+      class_12_half_yearly_score: undefined,
+      undergraduate_cgpa: undefined,
       intended_majors: "",
       college_name: "",
-      college_graduation_year: null,
-      college_gpa: null,
+      college_graduation_year: undefined,
+      college_gpa: undefined,
       test_type: "Not yet taken" as const,
-      test_score: null,
+      test_score: undefined,
       
       // College Preferences
       ideal_college_size: "not_specified",

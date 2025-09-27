@@ -284,9 +284,17 @@ export const useProfileData = () => {
           }
         }
 
-        console.log('📊 Profile data loaded and processed:', formData);
-        setProfileData(formData);
-        return formData;
+        // Sanitize null values to prevent React warnings
+        const sanitizedFormData = Object.fromEntries(
+          Object.entries(formData).map(([key, value]) => [
+            key,
+            value === null ? undefined : value
+          ])
+        );
+
+        console.log('📊 Profile data loaded and processed:', sanitizedFormData);
+        setProfileData(sanitizedFormData);
+        return sanitizedFormData;
       } else {
         setProfileData(null);
         return null;

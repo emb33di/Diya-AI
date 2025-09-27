@@ -562,7 +562,7 @@ function flattenProfileForDatabase(profile: any, schoolType: string): Record<str
   // Personal info - maps to all schema fields
   if (profile.personal_info) {
     flattened.full_name = profile.personal_info.full_name;
-    flattened.preferred_name = profile.personal_info.preferred_name;
+    // Note: preferred_name field was removed from database schema
     flattened.email_address = profile.personal_info.email_address;
     // Note: phone_number is excluded from extraction as per requirements
     flattened.country_code = profile.personal_info.country_code;
@@ -632,10 +632,7 @@ function flattenProfileForDatabase(profile: any, schoolType: string): Record<str
   if (profile.financial_considerations) {
     flattened.college_budget = profile.financial_considerations.college_budget;
     flattened.financial_aid_importance = profile.financial_considerations.financial_aid_importance;
-    // Ensure scholarship_interests is properly formatted as array for database
-    flattened.scholarship_interests = Array.isArray(profile.financial_considerations.scholarship_interests) 
-      ? profile.financial_considerations.scholarship_interests 
-      : [];
+    // Note: scholarship_interests field was removed from database schema
     flattened.looking_for_scholarships = profile.financial_considerations.looking_for_scholarships;
     flattened.looking_for_financial_aid = profile.financial_considerations.looking_for_financial_aid;
   }
