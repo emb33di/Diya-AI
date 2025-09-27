@@ -59,8 +59,7 @@ export class DeadlineService {
         throw new Error('User not authenticated');
       }
 
-      // Call the Supabase Edge Function
-      console.log('Calling sync-deadlines function for user:', userId);
+      // Call the Supabase Edge Function to sync deadlines
       const { data, error } = await supabase.functions.invoke('sync-deadlines', {
         body: {
           user_id: userId
@@ -70,21 +69,27 @@ export class DeadlineService {
         }
       });
 
-      console.log('Function response:', { data, error });
-
       if (error) {
+        console.error(`DeadlineService: Failed to sync deadlines for user ${userId} - ${error.message}`);
         throw new Error(`Edge Function error: ${error.message}`);
       }
 
-      return {
+      const result = {
         success: data.success,
         message: data.message,
         updatedCount: data.schools_updated || 0,
         schools_updated: data.schools_updated || 0,
         total_schools: data.total_schools || 0
       };
+
+      // Log success for user transparency
+      if (result.success) {
+        console.log(`DeadlineService: Successfully synced deadlines for user ${userId} - updated ${result.schools_updated} out of ${result.total_schools} schools`);
+      }
+
+      return result;
     } catch (error) {
-      console.error('Error syncing deadlines:', error);
+      console.error(`DeadlineService: Critical error syncing deadlines for user ${userId} - ${error.message}`);
       throw new Error(`Failed to sync deadlines: ${error.message}`);
     }
   }
@@ -94,9 +99,8 @@ export class DeadlineService {
    */
   static async getUserDeadlines(userId: string): Promise<UserDeadlinesResponse> {
     try {
-      // Get user's program type
+      // Get user's program type to filter appropriate schools
       const userProgramType = await getUserProgramType();
-      console.log(`User program type: ${userProgramType}`);
 
       // Get user's school recommendations with deadline data
       const { data: schoolRecommendations, error } = await supabase
@@ -105,10 +109,12 @@ export class DeadlineService {
         .eq('student_id', userId);
 
       if (error) {
+        console.error(`DeadlineService: Failed to fetch school recommendations for user ${userId} - ${error.message}`);
         throw new Error(`Failed to fetch school recommendations: ${error.message}`);
       }
 
       if (!schoolRecommendations || schoolRecommendations.length === 0) {
+        console.log(`DeadlineService: No school recommendations found for user ${userId} - user may need to complete onboarding or school selection`);
         return {
           success: true,
           deadlines: []
@@ -141,16 +147,14 @@ export class DeadlineService {
           return true; // For other program types, show all schools
         });
         
-        console.log(`Filtered ${schoolRecommendations.length} schools to ${filteredSchools.length} schools for ${userProgramType} program type`);
+        // Log filtering results for user transparency
+        if (filteredSchools.length !== schoolRecommendations.length) {
+          console.log(`DeadlineService: Filtered ${schoolRecommendations.length} schools to ${filteredSchools.length} schools for user ${userId} (${userProgramType} program type)`);
+        }
       }
 
       // Process each school into deadline format
       const deadlines: UserDeadline[] = filteredSchools.map(school => {
-        console.log(`Processing school: ${school.school}`);
-        console.log(`Raw deadline value:`, school.regular_decision_deadline);
-        console.log(`Deadline type:`, typeof school.regular_decision_deadline);
-        console.log(`Deadline length:`, school.regular_decision_deadline?.length);
-        
         const daysRemaining = school.regular_decision_deadline 
           ? this.calculateDaysRemaining(school.regular_decision_deadline)
           : null;
@@ -225,12 +229,18 @@ export class DeadlineService {
         return aDays - bDays;
       });
 
+      // Log final results for user transparency
+      const criticalDeadlines = deadlines.filter(d => d.urgencyLevel === 'critical').length;
+      const overdueDeadlines = deadlines.filter(d => d.urgencyLevel === 'overdue').length;
+      
+      console.log(`DeadlineService: Retrieved ${deadlines.length} deadlines for user ${userId} - ${criticalDeadlines} critical, ${overdueDeadlines} overdue`);
+
       return {
         success: true,
         deadlines
       };
     } catch (error) {
-      console.error('Error fetching user deadlines:', error);
+      console.error(`DeadlineService: Failed to fetch deadlines for user ${userId} - ${error.message}`);
       return {
         success: false,
         deadlines: [],
@@ -255,10 +265,15 @@ export class DeadlineService {
         })
         .eq('id', schoolId);
 
-      if (error) throw error;
+      if (error) {
+        console.error(`DeadlineService: Failed to update application status for school ${schoolId} - ${error.message}`);
+        throw error;
+      }
+      
+      console.log(`DeadlineService: Successfully updated application status to "${status}" for school ${schoolId}`);
       return true;
     } catch (error) {
-      console.error('Error updating application status:', error);
+      console.error(`DeadlineService: Error updating application status for school ${schoolId} - ${error.message}`);
       return false;
     }
   }
@@ -267,20 +282,17 @@ export class DeadlineService {
    * Calculate days remaining until deadline
    */
   static calculateDaysRemaining(deadline: string): number {
-    console.log(`Calculating days remaining for deadline: "${deadline}"`);
     const deadlineDate = new Date(deadline);
-    console.log(`Parsed deadline date:`, deadlineDate);
-    console.log(`Is valid date:`, !isNaN(deadlineDate.getTime()));
     
     if (isNaN(deadlineDate.getTime())) {
-      console.error(`Invalid date format: "${deadline}"`);
+      console.error(`DeadlineService: Invalid date format for deadline "${deadline}" - user may need to update their school deadline information`);
       return 0;
     }
     
     const today = new Date();
     const diffTime = deadlineDate.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    console.log(`Days remaining: ${diffDays}`);
+    
     return diffDays;
   }
 

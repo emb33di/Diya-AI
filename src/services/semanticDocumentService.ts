@@ -127,19 +127,15 @@ export class SemanticDocumentService {
    */
   async loadDocumentByEssayId(essayId: string): Promise<SemanticDocument | null> {
     try {
-      console.log('Searching for document with essay ID:', essayId);
-      
       // First try to get all documents and filter client-side as a fallback
       const { data: allDocs, error } = await supabase
         .from('semantic_documents')
         .select('*');
 
       if (error) {
-        console.error('Supabase query error:', error);
+        console.error(`SemanticDocumentService: Failed to load documents for essay ${essayId} - ${error.message}`);
         throw new Error(`Failed to load documents: ${error.message}`);
       }
-
-      console.log('Found', allDocs?.length || 0, 'total documents');
       
       // Filter client-side to find the document with matching essayId
       // Sort by updated_at descending to get the most recent document
@@ -150,18 +146,16 @@ export class SemanticDocumentService {
       const matchingDoc = matchingDocs?.[0]; // Get the most recent document
 
       if (!matchingDoc) {
-        console.log('No document found for essay ID:', essayId);
+        console.log(`SemanticDocumentService: No document found for essay ${essayId} - user may need to create a new document`);
         return null;
       }
 
-      console.log(`Found ${matchingDocs?.length || 0} documents for essay ${essayId}, using most recent:`, matchingDoc.id, 'updated at:', matchingDoc.updated_at);
-
       // Clean up duplicate documents if there are multiple
       if (matchingDocs && matchingDocs.length > 1) {
-        console.log(`Found ${matchingDocs.length} duplicate documents, cleaning up...`);
+        console.log(`SemanticDocumentService: Found ${matchingDocs.length} duplicate documents for essay ${essayId}, cleaning up duplicates`);
         const cleanupResult = await this.cleanupDuplicateDocuments(essayId);
         if (cleanupResult.success && cleanupResult.deletedCount > 0) {
-          console.log(`Cleaned up ${cleanupResult.deletedCount} duplicate documents`);
+          console.log(`SemanticDocumentService: Cleaned up ${cleanupResult.deletedCount} duplicate documents for essay ${essayId}`);
         }
       }
 
@@ -176,15 +170,13 @@ export class SemanticDocumentService {
       // Attach annotations to their respective blocks
       const blocks = (matchingDoc.blocks || []).map(block => {
         const blockAnnotations = annotations.filter(annotation => annotation.targetBlockId === block.id);
-        console.log(`Block ${block.id} has ${blockAnnotations.length} annotations:`, blockAnnotations);
         return {
           ...block,
           annotations: blockAnnotations
         };
       });
       
-      console.log(`Total annotations loaded: ${annotations.length}`);
-      console.log(`Total blocks: ${blocks.length}`);
+      console.log(`SemanticDocumentService: Successfully loaded document for essay ${essayId} - ${blocks.length} blocks, ${annotations.length} annotations`);
 
       return {
         id: matchingDoc.id,
@@ -209,8 +201,6 @@ export class SemanticDocumentService {
     errors: string[];
   }> {
     try {
-      console.log(`Cleaning up duplicate documents for essay: ${essayId}`);
-      
       // Get all documents for this essay
       const { data: allDocs, error } = await supabase
         .from('semantic_documents')
@@ -239,8 +229,6 @@ export class SemanticDocumentService {
       // Keep the most recent document, delete the rest
       const docsToDelete = matchingDocs.slice(1);
       const deleteIds = docsToDelete.map(doc => doc.id);
-
-      console.log(`Found ${matchingDocs.length} duplicate documents, deleting ${docsToDelete.length} older ones`);
 
       const { error: deleteError } = await supabase
         .from('semantic_documents')
@@ -275,7 +263,6 @@ export class SemanticDocumentService {
    */
   private async loadAnnotationsForDocument(documentId: string): Promise<Annotation[]> {
     try {
-      console.log(`Loading annotations for document: ${documentId}`);
       const { data, error } = await supabase
         .from('semantic_annotations')
         .select('*')
@@ -283,11 +270,10 @@ export class SemanticDocumentService {
         .order('created_at', { ascending: true });
 
       if (error) {
-        console.error('Error loading annotations:', error);
+        console.error(`SemanticDocumentService: Failed to load annotations for document ${documentId} - ${error.message}`);
         return [];
       }
 
-      console.log(`Found ${data?.length || 0} annotations in database:`, data);
       return (data || []).map(annotation => ({
         id: annotation.id,
         type: annotation.type as AnnotationType,
@@ -303,7 +289,7 @@ export class SemanticDocumentService {
         metadata: annotation.metadata
       }));
     } catch (error) {
-      console.error('Error loading annotations for document:', documentId, error);
+      console.error(`SemanticDocumentService: Error loading annotations for document ${documentId} - ${error.message}`);
       return [];
     }
   }
@@ -321,13 +307,13 @@ export class SemanticDocumentService {
         .single();
 
       if (checkError && checkError.code !== 'PGRST116') {
-        console.error('Error checking essay existence:', checkError);
+        console.error(`SemanticDocumentService: Error checking essay existence for essay ${essayId} - ${checkError.message}`);
         return;
       }
 
       // If essay doesn't exist, create it
       if (!existingEssay) {
-        console.log('Essay not found, creating essay record:', essayId);
+        console.log(`SemanticDocumentService: Creating essay record for essay ${essayId} - "${title}"`);
         
         const { error: insertError } = await supabase
           .from('essays')
@@ -341,13 +327,13 @@ export class SemanticDocumentService {
           });
 
         if (insertError) {
-          console.error('Failed to create essay record:', insertError);
+          console.error(`SemanticDocumentService: Failed to create essay record for essay ${essayId} - ${insertError.message}`);
         } else {
-          console.log('Essay record created successfully');
+          console.log(`SemanticDocumentService: Successfully created essay record for essay ${essayId}`);
         }
       }
     } catch (error) {
-      console.error('Error in ensureEssayExists:', error);
+      console.error(`SemanticDocumentService: Error in ensureEssayExists for essay ${essayId} - ${error.message}`);
     }
   }
 
@@ -356,13 +342,6 @@ export class SemanticDocumentService {
    */
   async saveDocument(document: SemanticDocument): Promise<void> {
     try {
-      console.log('Attempting to save document to database:', {
-        id: document.id,
-        title: document.title,
-        blocksCount: document.blocks.length,
-        metadata: document.metadata
-      });
-
       // Ensure the essay exists in essays table for RLS policies
       const essayId = document.metadata?.essayId;
       if (essayId) {
@@ -381,13 +360,13 @@ export class SemanticDocumentService {
         .select();
 
       if (error) {
-        console.error('Supabase save error:', error);
+        console.error(`SemanticDocumentService: Failed to save document ${document.id} for essay ${essayId} - ${error.message}`);
         throw new Error(`Failed to save document: ${error.message}`);
       }
 
-      console.log('Document saved successfully to database:', data);
+      console.log(`SemanticDocumentService: Successfully saved document ${document.id} for essay ${essayId} - ${document.blocks.length} blocks`);
     } catch (error) {
-      console.error('Error in saveDocument:', error);
+      console.error(`SemanticDocumentService: Error saving document ${document.id} - ${error.message}`);
       throw error;
     }
   }
@@ -778,7 +757,6 @@ export class SemanticDocumentService {
           continue;
         }
 
-        console.log(`Analyzing grammar for block ${blockIndex + 1}/${totalBlocks}: ${block.id}`);
 
         try {
           // Call the grammar agent edge function for this specific block
@@ -796,7 +774,7 @@ export class SemanticDocumentService {
           });
 
           if (error) {
-            console.error(`Grammar Agent error for block ${blockIndex + 1}:`, error);
+            console.error(`SemanticDocumentService: Grammar agent error for block ${blockIndex + 1}/${totalBlocks} - ${error.message}`);
             continue; // Continue with other blocks even if one fails
           }
 
@@ -808,10 +786,9 @@ export class SemanticDocumentService {
           }));
 
           allGrammarComments.push(...blockComments);
-          console.log(`Found ${blockComments.length} grammar issues in block ${blockIndex + 1}`);
 
         } catch (blockError) {
-          console.error(`Error analyzing block ${blockIndex + 1}:`, blockError);
+          console.error(`SemanticDocumentService: Error analyzing block ${blockIndex + 1}/${totalBlocks} - ${blockError.message}`);
           continue; // Continue with other blocks
         }
       }
@@ -844,7 +821,7 @@ export class SemanticDocumentService {
           .insert(annotationsToInsert);
 
         if (insertError) {
-          console.error('Error storing grammar comments:', insertError);
+          console.error(`SemanticDocumentService: Failed to store ${grammarComments.length} grammar comments for document ${request.documentId} - ${insertError.message}`);
           throw new Error('Failed to store grammar comments');
         }
       }
@@ -860,7 +837,7 @@ export class SemanticDocumentService {
         }
       };
     } catch (error) {
-      console.error('Error generating grammar comments:', error);
+      console.error(`SemanticDocumentService: Error generating grammar comments for document ${request.documentId} - ${error.message}`);
       return {
         success: false,
         comments: [],
@@ -897,6 +874,7 @@ export class SemanticDocumentService {
       });
 
       if (error) {
+        console.error(`SemanticDocumentService: Edge function error generating AI comments for document ${request.documentId} - ${error.message}`);
         throw new Error(`Edge Function error: ${error.message}`);
       }
 
@@ -911,7 +889,7 @@ export class SemanticDocumentService {
         }
       };
     } catch (error) {
-      console.error('Error generating AI comments:', error);
+      console.error(`SemanticDocumentService: Error generating AI comments for document ${request.documentId} - ${error.message}`);
       return {
         success: false,
         comments: [],

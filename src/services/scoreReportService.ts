@@ -44,7 +44,6 @@ export class ScoreReportService {
           return {};
         }
 
-        console.log('Raw annotations from database:', annotations);
         const scores: AgentScores = {};
 
         // Group annotations by agent type and get the most recent score for each
@@ -65,8 +64,6 @@ export class ScoreReportService {
             const latestAnnotation = agentAnnotations[0];
             const score = latestAnnotation.metadata?.qualityScore;
             
-            console.log(`Agent ${agentType}:`, { score, annotation: latestAnnotation });
-            
             if (score !== null && score !== undefined) {
               switch (agentType) {
                 case 'big-picture':
@@ -81,7 +78,6 @@ export class ScoreReportService {
               }
             } else {
               // If no quality score found, provide a default based on agent type
-              console.warn(`No quality score found for ${agentType} agent, using default`);
               switch (agentType) {
                 case 'big-picture':
                   scores.bigPicture = 75; // Default score
@@ -96,8 +92,6 @@ export class ScoreReportService {
             }
           }
         });
-
-        console.log('Final scores:', scores);
 
         return scores;
       };
