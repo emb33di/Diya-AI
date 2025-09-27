@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Sparkles, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -39,7 +38,6 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import OnboardingGuard from "@/components/OnboardingGuard";
 import GradientBackground from "@/components/GradientBackground";
-import { debugSupabase406, testCreateUserProfile } from "@/utils/debugSupabase";
 import { getValidApplyingToValues } from "@/utils/userProfileUtils";
 import { OnboardingApiService } from "@/services/onboarding.api";
 
@@ -197,7 +195,7 @@ export default function Profile() {
   const { scores: satScores, loadScores: loadSATScores, addScore: addSATScore, deleteScore: deleteSATScore } = useTestScores('SAT');
   const { scores: actScores, loadScores: loadACTScores, addScore: addACTScore, deleteScore: deleteACTScore } = useTestScores('ACT');
   const { preferences: geographicPreferences, loadPreferences: loadGeographicPreferences, addPreference: addGeographicPreference, deletePreference: deleteGeographicPreference } = useGeographicPreferences();
-  const { aiPopulatedFields, isTestingExtraction, isAIPopulated, clearAIData, convertAIProfileToFormData, testEnhancedProfileExtraction, setAIPopulatedFields } = useAIIntegration();
+  const { aiPopulatedFields, isAIPopulated, clearAIData, setAIPopulatedFields } = useAIIntegration();
   
   // Local state for form management
   const [isOnboardingCompletionFlow, setIsOnboardingCompletionFlow] = useState(false);
@@ -210,7 +208,6 @@ export default function Profile() {
     defaultValues: {
       // Personal Information
       full_name: "",
-      preferred_name: "",
       email_address: "",
       country_code: "+91",
       phone_number: "",
@@ -353,10 +350,6 @@ export default function Profile() {
       localStorage.removeItem('onboarding_completion_flow');
     }
     
-    // Debug Supabase 406 errors (temporarily disabled)
-    // debugSupabase406().then(result => {
-    //   console.log('🔍 Supabase debug result:', result);
-    // });
     
     loadProfile();
     loadSATScores();
@@ -648,7 +641,6 @@ export default function Profile() {
     }
   };
 
-  // Test Enhanced Profile Extraction Function is now handled by useAIIntegration hook
   // Test score functions are now handled by useTestScores hook
 
   // Geographic preferences functions are now handled by useGeographicPreferences hook
@@ -715,47 +707,6 @@ export default function Profile() {
           <AdditionalInfoSection form={form} />
 
           <div className="flex justify-end gap-4">
-            {/* Enhanced AI Profile Extraction Button */}
-            <Button 
-              type="button"
-              variant="outline"
-              disabled={isTestingExtraction}
-              onClick={async () => {
-                console.log('🎯 Profile Page: AI Extraction button clicked');
-                console.log('📋 Profile Page: Starting AI extraction process...');
-                
-                const result = await testEnhancedProfileExtraction(form);
-                
-                if (result) {
-                  console.log('🔄 Profile Page: AI extraction successful, reloading profile data...');
-                  
-                  // Reload profile data from database to show the filled profiles table
-                  await loadProfile();
-                  
-                  console.log('✅ Profile Page: Profile data reloaded successfully');
-                  toast({
-                    title: "Profile Updated",
-                    description: "AI extraction completed successfully. Your profile has been updated with the extracted data.",
-                  });
-                } else {
-                  console.log('❌ Profile Page: AI extraction failed');
-                }
-              }}
-              className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
-            >
-              {isTestingExtraction ? (
-                <>
-                  <Sparkles className="mr-2 h-4 w-4 animate-spin" />
-                  Extracting Profile...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  🤖 Extract Profile from Conversation
-                </>
-              )}
-            </Button>
-            
             <Button 
               type="submit" 
               disabled={loading}
