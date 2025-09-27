@@ -198,10 +198,10 @@ export function parseOutspeedMessage(item: OutspeedMessageItem, originalItem?: a
     if (isInProgress) {
       console.log('🔄 Processing in_progress message:', item.id, 'Role:', item.role);
       
-      // For in_progress messages, use placeholder text if no content
+      // For in_progress messages, only show if there's actual content
       const displayText = text && text.trim().length > 0 
         ? text 
-        : '[Diya is responding...]';
+        : '';
       
       // Map role to source with fallback handling
       const source = mapRoleToSource(item.role);
