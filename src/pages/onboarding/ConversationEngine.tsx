@@ -2,9 +2,10 @@ import React, { useEffect, useRef, useCallback } from 'react';
 import { useConversation } from '@outspeed/react';
 import { supabase } from '@/integrations/supabase/client';
 import { OutspeedEvent } from '@/types/outspeed';
-import { parseOutspeedMessage, isValidMessageItem } from '@/utils/outspeedUtils';
+import { parseOutspeedMessage, isValidMessageItem, safeCreateTimestamp } from '@/utils/outspeedUtils';
 import { OnboardingApiService } from '@/services/onboarding.api';
 import { useToast } from '@/components/ui/use-toast';
+
 
 interface ConversationEngineProps {
   agentId: string;
@@ -95,6 +96,7 @@ const ConversationEngine = ({
   const sessionStartedRef = useRef(false);
   const processedMessageIdsRef = useRef(processedMessageIds);
   const calculateProgressPercentageRef = useRef(calculateProgressPercentage);
+  const eventListenersSetupRef = useRef(false);
 
   // Update refs when values change
   useEffect(() => {
@@ -232,7 +234,7 @@ const ConversationEngine = ({
               id: messageId,
               source: message.source,
               text: message.text,
-              timestamp: message.timestamp || new Date()
+              timestamp: safeCreateTimestamp(message.timestamp)
             };
             console.log(`🔄 Updated in_progress message: ${messageId}`);
             console.log('🔍 AI VOICE DEBUG - Updated Existing In-Progress Message:', {
@@ -249,7 +251,7 @@ const ConversationEngine = ({
               id: messageId,
               source: message.source,
               text: message.text,
-              timestamp: message.timestamp || new Date()
+              timestamp: safeCreateTimestamp(message.timestamp)
             }];
             console.log(`📊 Message count updated: ${prev.length} → ${updated.length} (${message.source} in_progress message added)`);
             console.log('🔍 AI VOICE DEBUG - Added New In-Progress Message:', {
@@ -287,7 +289,7 @@ const ConversationEngine = ({
         id: messageId,
         source: message.source,
         text: message.text,
-        timestamp: message.timestamp || new Date()
+        timestamp: safeCreateTimestamp(message.timestamp)
       };
       
       console.log('✅ Adding completed message to transcript:', {
@@ -441,7 +443,7 @@ const ConversationEngine = ({
       return {
         source: isUserMessage ? 'user' as const : 'ai' as const,
         text: item.content || item.message || item.text || 'Restored message',
-        timestamp: item.timestamp ? new Date(item.timestamp) : new Date()
+        timestamp: safeCreateTimestamp(item.timestamp)
       };
     });
 
@@ -540,10 +542,11 @@ const ConversationEngine = ({
 
   // Unified event listeners for conversation output and transcripts (from backup file)
   useEffect(() => {
-    // Exit if conversation isn't ready
-    if (!conversation) return;
+    // Exit if conversation isn't ready or if listeners are already set up
+    if (!conversation || eventListenersSetupRef.current) return;
     
     console.log('🔧 Setting up event listeners for conversation:', conversation);
+    eventListenersSetupRef.current = true;
 
     const processItem = (item: any, debugLabel: string) => {
       try {
@@ -570,7 +573,6 @@ const ConversationEngine = ({
           type: item.type || 'message',
           role: item.role || (item.source === 'user' ? 'user' : 'assistant'),
           content: item.content || item.text || item.message || '',
-          timestamp: item.timestamp || new Date(),
           ...item
         };
 
@@ -580,7 +582,7 @@ const ConversationEngine = ({
           normalizedContent: normalized.content,
           normalizedContentLength: normalized.content.length,
           normalizedType: normalized.type,
-          timestamp: normalized.timestamp.toISOString()
+          timestamp: normalized.timestamp instanceof Date ? normalized.timestamp.toISOString() : normalized.timestamp
         });
 
         if (!isValidMessageItem(normalized)) {
@@ -594,7 +596,7 @@ const ConversationEngine = ({
           return;
         }
 
-        const parsedMessage = parseOutspeedMessage(normalized);
+        const parsedMessage = parseOutspeedMessage(normalized, item);
         if (parsedMessage) {
           console.log('📨 Parsed message ready for callback:', {
             id: parsedMessage.id,
@@ -785,6 +787,7 @@ const ConversationEngine = ({
             (conversation as any).off('response.output_audio.done', handleAudioTranscript);
           }
           console.log('🧹 Event listeners cleaned up successfully');
+          eventListenersSetupRef.current = false; // Reset the flag
         } else {
           console.warn('⚠️ Conversation cleanup method not available');
         }
@@ -818,6 +821,7 @@ const ConversationEngine = ({
     // Cleanup function for component unmount
     return () => {
       cleanupEventListeners();
+      eventListenersSetupRef.current = false; // Reset the flag on cleanup
     };
   }, [conversation]); // Removed handleMessage and handleSpeakingStateChange from dependencies
 

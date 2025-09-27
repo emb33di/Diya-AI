@@ -153,11 +153,45 @@ function generateFallbackId(): string {
 }
 
 /**
+ * Safely creates a Date object from various timestamp formats
+ * @param timestamp - The timestamp to parse (Date, string, number, or undefined)
+ * @returns A valid Date object, or current time if parsing fails
+ */
+export function safeCreateTimestamp(timestamp?: Date | string | number): Date {
+  try {
+    // If already a Date object, validate it
+    if (timestamp instanceof Date) {
+      return isNaN(timestamp.getTime()) ? new Date() : timestamp;
+    }
+    
+    // If undefined or null, return current time
+    if (timestamp === undefined || timestamp === null) {
+      return new Date();
+    }
+    
+    // Try to parse as Date
+    const parsedDate = new Date(timestamp);
+    
+    // Check if the parsed date is valid
+    if (isNaN(parsedDate.getTime())) {
+      console.warn('Invalid timestamp provided, using current time:', timestamp);
+      return new Date();
+    }
+    
+    return parsedDate;
+  } catch (error) {
+    console.warn('Error parsing timestamp, using current time:', error, 'Timestamp:', timestamp);
+    return new Date();
+  }
+}
+
+/**
  * Safely parses an Outspeed message item into our standardized message format
  * @param item - The message item from Outspeed event
+ * @param originalItem - Optional original item with timestamp information
  * @returns A parsed message object with standardized structure, or null if message is empty
  */
-export function parseOutspeedMessage(item: OutspeedMessageItem): ParsedMessage | null {
+export function parseOutspeedMessage(item: OutspeedMessageItem, originalItem?: any): ParsedMessage | null {
   try {
     console.log('🔍 Parsing Outspeed message item:', {
       id: item.id,
@@ -192,7 +226,7 @@ export function parseOutspeedMessage(item: OutspeedMessageItem): ParsedMessage |
         id,
         source,
         text: displayText,
-        timestamp: new Date(),
+        timestamp: safeCreateTimestamp(originalItem?.timestamp),
         isInProgress: true // Add flag to identify incomplete messages
       };
       
@@ -216,7 +250,7 @@ export function parseOutspeedMessage(item: OutspeedMessageItem): ParsedMessage |
       id,
       source,
       text,
-      timestamp: new Date()
+      timestamp: safeCreateTimestamp(originalItem?.timestamp)
     };
     
     console.log('✅ Successfully parsed completed message:', parsedMessage);

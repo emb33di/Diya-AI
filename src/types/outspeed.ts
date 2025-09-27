@@ -24,4 +24,5 @@ export interface OutspeedMessageItem {
   type: string;
   role?: string;
   content?: Array<{ text: string }> | string | { text: string };
+  timestamp?: Date | string | number;
 }
