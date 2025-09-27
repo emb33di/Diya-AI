@@ -244,6 +244,17 @@ const Onboarding = () => {
     });
   }, [conversationId, sessionStarted, agentId, messages.length, expandedView]);
 
+  // Debug messages changes
+  useEffect(() => {
+    if (messages.length > 0) {
+      console.log('📝 Messages updated in main component:', {
+        count: messages.length,
+        latestMessage: messages[messages.length - 1],
+        allMessages: messages.map(m => ({ id: m.id, source: m.source, textLength: m.text.length }))
+      });
+    }
+  }, [messages]);
+
   // Debug agentId changes
   useEffect(() => {
     console.log('🔑 AgentId changed:', {
@@ -291,7 +302,7 @@ const Onboarding = () => {
 
   
   
-  // Timer effect
+  // Timer effect - fixed to work with the hook's setRemainingTime
   useEffect(() => {
     if (sessionStarted && remainingTime > 0) {
       timerRef.current = setInterval(() => {
@@ -330,14 +341,6 @@ const Onboarding = () => {
     );
   }
 
-  // Debug: Log when ConversationEngine should be rendered
-  console.log('🔍 Onboarding render check:', {
-    agentId: agentId ? 'Set' : 'Not set',
-    expandedView,
-    messagesCount: messages.length,
-    sessionStarted
-  });
-
   return (
     <GradientBackground>
       {/* 4. CRITICAL: Only render the ConversationEngine when you have an agent ID */}
@@ -367,7 +370,7 @@ const Onboarding = () => {
           sessionFinalizedRef={sessionFinalizedRef}
           calculateProgressPercentage={calculateProgressPercentage}
           forceSaveTranscript={async () => { await forceSaveTranscript(); }}
-          // Callbacks (now empty since handlers are in ConversationEngine)
+          // Callbacks - these are handled internally by ConversationEngine
           onConnect={() => {}}
           onMessage={() => {}}
           onDisconnect={() => {}}

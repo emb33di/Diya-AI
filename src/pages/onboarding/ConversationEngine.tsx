@@ -93,6 +93,17 @@ const ConversationEngine = ({
 }: ConversationEngineProps) => {
   const { toast } = useToast();
   const sessionStartedRef = useRef(false);
+  const processedMessageIdsRef = useRef(processedMessageIds);
+  const calculateProgressPercentageRef = useRef(calculateProgressPercentage);
+
+  // Update refs when values change
+  useEffect(() => {
+    processedMessageIdsRef.current = processedMessageIds;
+  }, [processedMessageIds]);
+
+  useEffect(() => {
+    calculateProgressPercentageRef.current = calculateProgressPercentage;
+  }, [calculateProgressPercentage]);
 
   // Conversation handlers moved from Onboarding.tsx
   const handleConnect = useCallback(async (conversationId: string) => {
@@ -214,7 +225,7 @@ const ConversationEngine = ({
       }
       
       // Check deduplication using the consistent ID for completed messages
-      if (processedMessageIds.has(messageId)) {
+      if (processedMessageIdsRef.current.has(messageId)) {
         console.log('⏭️ Duplicate message skipped:', messageId, 'Source:', message.source);
         return;
       }
@@ -256,7 +267,7 @@ const ConversationEngine = ({
 
       // Mark topics as completed based on conversation flow
       if (message.source === 'ai') {
-        const currentProgress = Math.min(calculateProgressPercentage() + 2, 100);
+        const currentProgress = Math.min(calculateProgressPercentageRef.current() + 2, 100);
         const completedCount = Math.floor(currentProgress / 16.67);
         setTopics(prev => prev.map((topic, index) => ({
           ...topic,
@@ -266,7 +277,7 @@ const ConversationEngine = ({
     } catch (error) {
       console.error('❌ Error handling message:', error, 'Message:', message);
     }
-  }, [calculateProgressPercentage, processedMessageIds, setMessages, setProcessedMessageIds, setTopics]);
+  }, [setMessages, setProcessedMessageIds, setTopics]); // Removed calculateProgressPercentage and processedMessageIds from dependencies
 
   const handleDisconnect = useCallback(async () => {
     console.log('Disconnected from voice agent');
@@ -411,42 +422,6 @@ const ConversationEngine = ({
         await handleConnect(fallbackId);
       }
     },
-    onMessage: (event: OutspeedEvent) => {
-      try {
-        console.log('📨 Raw Outspeed event received:', {
-          type: event.type,
-          hasData: !!event.data,
-          dataKeys: event.data ? Object.keys(event.data) : [],
-          timestamp: new Date().toISOString()
-        });
-
-        if (event.type === 'message' && event.data) {
-          console.log('📝 Processing message event data:', event.data);
-          const parsedMessage = parseOutspeedMessage(event.data);
-          console.log('📝 Parsed message result:', parsedMessage);
-
-          if (parsedMessage && isValidMessageItem(parsedMessage)) {
-            console.log('✅ Message is valid, calling handleMessage');
-            handleMessage(parsedMessage);
-          } else {
-            console.warn('⚠️ Invalid message item after parsing:', {
-              parsedMessage,
-              isValid: parsedMessage ? isValidMessageItem(parsedMessage) : false
-            });
-          }
-        } else if (event.type === 'speaking_state_change' && event.data) {
-          console.log('🎤 Speaking state change event:', event.data);
-          handleSpeakingStateChange(event.data.is_speaking);
-        } else if (event.type === 'context_restored' && event.data) {
-          console.log('🔄 Context restored event:', event.data);
-          handleContextRestored(event.data.items || []);
-        } else {
-          console.log('ℹ️ Unhandled event type:', event.type, 'Data:', event.data);
-        }
-      } catch (error) {
-        console.error('❌ Error processing Outspeed event:', error, 'Event:', event);
-      }
-    },
     onDisconnect: handleDisconnect,
     onError: handleError,
   });
@@ -480,6 +455,181 @@ const ConversationEngine = ({
       }
     }
   }, [agentId, source, conversation]);
+
+  // Unified event listeners for conversation output and transcripts (from backup file)
+  useEffect(() => {
+    // Exit if conversation isn't ready
+    if (!conversation) return;
+    
+    console.log('🔧 Setting up event listeners for conversation:', conversation);
+
+    const processItem = (item: any, debugLabel: string) => {
+      try {
+        if (!item) {
+          console.warn(`⚠️ Empty item received for ${debugLabel}`);
+          return;
+        }
+        
+        console.log(`📝 ${debugLabel}:`, item);
+
+        // Normalize the item to ensure it has the expected structure
+        const normalized = {
+          id: item.id || `item_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          type: item.type || 'message',
+          role: item.role || (item.source === 'user' ? 'user' : 'assistant'),
+          content: item.content || item.text || item.message || '',
+          timestamp: item.timestamp || new Date(),
+          ...item
+        };
+
+        if (!isValidMessageItem(normalized)) {
+          console.log('⏭️ Skipping non-text item:', normalized.type);
+          return;
+        }
+
+        const parsedMessage = parseOutspeedMessage(normalized);
+        if (parsedMessage) {
+          console.log('📨 Parsed message ready for callback:', {
+            id: parsedMessage.id,
+            source: parsedMessage.source,
+            textLength: parsedMessage.text.length,
+            timestamp: parsedMessage.timestamp
+          });
+          
+          try {
+            handleMessage(parsedMessage);
+          } catch (messageError) {
+            console.error('❌ Error in message callback:', messageError, 'Message:', parsedMessage);
+          }
+        } else {
+          console.warn('⚠️ Failed to parse message item:', normalized);
+        }
+      } catch (error) {
+        console.error('❌ Error processing normalized item:', error, 'Raw:', item);
+        // Don't throw - continue processing other items
+      }
+    };
+
+    const handleNewItem = (event: OutspeedEvent) => {
+      // Standard created items
+      processItem(event.item, 'conversation.item.created');
+    };
+
+    const handleUserTranscript = (payload: any) => {
+      console.log('🎤 User transcript completed:', payload);
+      if (payload && payload.transcript) {
+        processItem({
+          id: `user_${Date.now()}`,
+          type: 'message',
+          role: 'user',
+          content: payload.transcript,
+          timestamp: new Date()
+        }, 'input_audio_transcription.completed');
+      }
+    };
+
+    const handleOutputDelta = (payload: any) => {
+      console.log('📝 Output delta:', payload);
+      if (payload && payload.delta) {
+        processItem({
+          id: `ai_delta_${Date.now()}`,
+          type: 'message',
+          role: 'assistant',
+          content: payload.delta,
+          timestamp: new Date(),
+          status: 'in_progress'
+        }, 'response.output_text.delta');
+      }
+    };
+
+    const handleOutputDone = (payload: any) => {
+      console.log('✅ Output done:', payload);
+      if (payload && payload.text) {
+        processItem({
+          id: `ai_done_${Date.now()}`,
+          type: 'message',
+          role: 'assistant',
+          content: payload.text,
+          timestamp: new Date()
+        }, 'response.output_text.done');
+      }
+    };
+
+    const handleAudioTranscript = (payload: any) => {
+      console.log('🎵 Audio transcript:', payload);
+      if (payload && payload.transcript) {
+        processItem({
+          id: `ai_audio_${Date.now()}`,
+          type: 'message',
+          role: 'assistant',
+          content: payload.transcript,
+          timestamp: new Date()
+        }, 'response.output_audio.transcript');
+      }
+    };
+
+    const handleSpeechStart = (payload: any) => {
+      console.log('🔊 Speech started:', payload);
+      handleSpeakingStateChange(true);
+    };
+
+    const handleSpeechEnd = (payload: any) => {
+      console.log('🔇 Speech ended:', payload);
+      handleSpeakingStateChange(false);
+    };
+
+    // Create cleanup function that can be called from both unmount and session end
+    const cleanupEventListeners = () => {
+      try {
+        if (conversation && typeof conversation.off === 'function') {
+          conversation.off('conversation.item.created', handleNewItem);
+          // Clean up additional event listeners (with type casting for TypeScript)
+          if (conversation.off) {
+            (conversation as any).off('input_audio_transcription.completed', handleUserTranscript);
+            (conversation as any).off('response.output_text.delta', handleOutputDelta);
+            (conversation as any).off('response.output_text.done', handleOutputDone);
+            (conversation as any).off('response.output_audio.transcript', handleAudioTranscript);
+            (conversation as any).off('response.speech.started', handleSpeechStart);
+            (conversation as any).off('response.speech.ended', handleSpeechEnd);
+            (conversation as any).off('response.output_audio.delta', handleAudioTranscript);
+            (conversation as any).off('response.output_audio.done', handleAudioTranscript);
+          }
+          console.log('🧹 Event listeners cleaned up successfully');
+        } else {
+          console.warn('⚠️ Conversation cleanup method not available');
+        }
+      } catch (error) {
+        console.error('❌ Error during event listener cleanup:', error);
+      }
+    };
+
+    // Register all event listeners
+    conversation.on('conversation.item.created', handleNewItem);
+    
+    // Add back user voice input listeners (with type casting for TypeScript)
+    if (conversation.on) {
+      (conversation as any).on('input_audio_transcription.completed', handleUserTranscript);
+      (conversation as any).on('response.output_text.delta', handleOutputDelta);
+      (conversation as any).on('response.output_text.done', handleOutputDone);
+      
+      // Add audio/speech event listeners for Diya's speech
+      (conversation as any).on('response.output_audio.transcript', handleAudioTranscript);
+      (conversation as any).on('response.speech.started', handleSpeechStart);
+      (conversation as any).on('response.speech.ended', handleSpeechEnd);
+      
+      // Additional potential audio events
+      (conversation as any).on('response.output_audio.delta', handleAudioTranscript);
+      (conversation as any).on('response.output_audio.done', handleAudioTranscript);
+    }
+
+    // Store cleanup function for use in endSession
+    (conversation as any)._cleanupEventListeners = cleanupEventListeners;
+
+    // Cleanup function for component unmount
+    return () => {
+      cleanupEventListeners();
+    };
+  }, [conversation]); // Removed handleMessage and handleSpeakingStateChange from dependencies
 
   return null;
 };

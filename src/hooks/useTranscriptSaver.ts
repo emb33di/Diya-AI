@@ -116,7 +116,7 @@ export const useTranscriptSaver = (
         return;
       }
 
-      // Only send new messages since last successful save
+      // Check if there are new messages since last successful save
       const newMessages = currentMessages.slice(lastSavedMessagesRef.current.length);
       if (newMessages.length === 0) {
         console.log('⏭️ Skipping transcript save - no new messages');
@@ -135,10 +135,10 @@ export const useTranscriptSaver = (
         const transcriptData: TranscriptSaveData = {
           conversation_id: conversationId,
           user_id: user.id,
-          messages: newMessages,
+          messages: currentMessages, // Send all messages, not just new ones
           session_type: sessionType,
-          message_count: newMessages.length,
-          total_length: totalLength
+          message_count: currentMessages.length, // Total message count
+          total_length: currentMessages.reduce((sum, msg) => sum + msg.text.length, 0) // Total length
         };
 
         const success = await saveTranscript(transcriptData);
