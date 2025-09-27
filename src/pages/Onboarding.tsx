@@ -441,16 +441,12 @@ const Onboarding = () => {
             if (success) {
               localStorage.removeItem('onboarding_remaining_time');
               localStorage.removeItem('previous_onboarding_context');
-              toast({
-                title: 'Onboarding Complete',
-                description: 'Onboarding has been marked as complete. Redirecting to your school list.'
-              });
               navigate('/schools');
             } else {
-              toast({
-                title: 'Error',
-                description: 'Failed to mark onboarding as complete. Please try again.',
-                variant: 'destructive'
+              console.error('[ONBOARDING_COMPLETION_ERROR] Failed to mark onboarding complete:', {
+                userId: user?.id,
+                timestamp: new Date().toISOString(),
+                error: 'Failed to mark onboarding as complete'
               });
             }
           }}

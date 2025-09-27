@@ -61,21 +61,9 @@ export const useResumeEditor = () => {
 
   // Load resume data from Supabase
   const loadResumeData = useCallback(async () => {
-    console.log('📥 [RESUME DEBUG] Loading resume data from Supabase...');
     setLoading(true);
     try {
       const backendData = await resumeActivitiesService.getResumeData();
-      
-      console.log('📊 [RESUME DEBUG] Data loaded from Supabase:', {
-        academic: backendData.academic?.length || 0,
-        experience: backendData.experience?.length || 0,
-        projects: backendData.projects?.length || 0,
-        extracurricular: backendData.extracurricular?.length || 0,
-        volunteering: backendData.volunteering?.length || 0,
-        skills: backendData.skills?.length || 0,
-        interests: backendData.interests?.length || 0,
-        languages: backendData.languages?.length || 0
-      });
       
       // Convert backend data to frontend format
       const frontendData: ResumeData = {
@@ -89,11 +77,16 @@ export const useResumeEditor = () => {
         languages: backendData.languages.map(convertBackendToFrontend)
       };
       
-      console.log('✅ [RESUME DEBUG] Resume data loaded and converted successfully');
       setResumeData(frontendData);
       isInitialLoad.current = false; // Mark initial load as complete
     } catch (error) {
-      console.error('❌ [RESUME DEBUG] Failed to load resume data:', error);
+      console.error('[RESUME_ERROR] Failed to load resume data:', {
+        userId: user?.id || 'unknown',
+        userEmail: user?.email || 'unknown',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User cannot load their resume activities and data'
+      });
       toast({
         title: "Error",
         description: "Failed to load resume data. Please try again.",
@@ -106,7 +99,6 @@ export const useResumeEditor = () => {
 
   // Auto-save function with specific data
   const autoSaveWithData = useCallback(async (dataToSave: ResumeData) => {
-    console.log('💾 [AUTO-SAVE] Starting auto-save with specific data...');
     setSaving(true);
     setSaveError(null);
     
@@ -138,12 +130,16 @@ export const useResumeEditor = () => {
         }));
       });
 
-      console.log('📤 [AUTO-SAVE] Sending data to save:', JSON.stringify(backendData, null, 2));
       await resumeActivitiesService.saveResumeData(backendData);
       setLastSaved(new Date());
-      console.log('✅ [AUTO-SAVE] Resume data saved successfully');
     } catch (error) {
-      console.error('❌ [AUTO-SAVE] Failed to save resume data:', error);
+      console.error('[RESUME_ERROR] Failed to save resume data:', {
+        userId: user?.id || 'unknown',
+        userEmail: user?.email || 'unknown',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User resume changes were not saved automatically'
+      });
       setSaveError(error instanceof Error ? error.message : 'Failed to save');
     } finally {
       setSaving(false);
@@ -153,7 +149,6 @@ export const useResumeEditor = () => {
   // Auto-save function
   const autoSave = useCallback(async () => {
     if (isInitialLoad.current) {
-      console.log('⏭️ [AUTO-SAVE] Skipping auto-save during initial load');
       isInitialLoad.current = false;
       return;
     }
@@ -164,11 +159,9 @@ export const useResumeEditor = () => {
   // Manual save function - only save when explicitly called
   const saveResumeData = useCallback(async () => {
     if (isInitialLoad.current) {
-      console.log('⏭️ [MANUAL SAVE] Skipping during initial load');
       return;
     }
 
-    console.log('💾 [MANUAL SAVE] Saving resume data...');
     await autoSaveWithData(resumeData);
   }, [resumeData, autoSaveWithData]);
 
@@ -196,12 +189,8 @@ export const useResumeEditor = () => {
         [category]: [...prevData[category as keyof ResumeData], newActivity]
       };
       
-      console.log('➕ [RESUME DEBUG] Activity added to category:', category);
-      console.log('📊 [RESUME DEBUG] New data state:', newData);
-      
       // Trigger immediate auto-save with the new data
       setTimeout(() => {
-        console.log('🔄 [AUTO-SAVE] Triggering immediate save for new activity');
         autoSaveWithData(newData);
       }, 200);
       
@@ -241,7 +230,6 @@ export const useResumeEditor = () => {
         autoSaveWithData(newData);
       }, 100);
       
-      console.log('🗑️ [RESUME DEBUG] Activity removed:', activityId);
       return newData;
     });
   }, [autoSaveWithData]);

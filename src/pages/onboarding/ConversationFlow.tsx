@@ -81,10 +81,10 @@ export const useConversationFlow = ({
     try {
       // Check if environment variables are set
       if (!import.meta.env.VITE_SUPABASE_URL) {
-        toast({
-          title: "Configuration Error",
-          description: "Supabase is not properly configured. Please check your environment variables.",
-          variant: "destructive"
+        console.error('[ONBOARDING_CONFIG_ERROR] Supabase configuration issue:', {
+          supabaseUrl: import.meta.env.VITE_SUPABASE_URL,
+          timestamp: new Date().toISOString(),
+          userAgent: navigator.userAgent
         });
         return;
       }

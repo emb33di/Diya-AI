@@ -424,11 +424,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
       insertMultipleBlocks(blockId, paragraphs);
       
       // Show user feedback
-      toast({
-        title: "Content Auto-Split",
-        description: `Pasted content automatically split into ${paragraphs.length} blocks for better organization.`,
-        duration: 3000,
-      });
+      // Content auto-split
     }
   }, [detectParagraphs, insertMultipleBlocks]);
 

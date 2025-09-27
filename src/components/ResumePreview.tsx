@@ -58,12 +58,10 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
 
   const loadResumePreview = async () => {
     setLoading(true);
-    console.log('🔄 Starting resume preview load...');
     
     try {
       // Check if we have local resume data first
       if (resumeData && Object.values(resumeData).some(activities => activities.length > 0)) {
-        console.log('📄 Using local resume data for preview');
         const html = generateResumeHtmlFromData(resumeData);
         setHtmlContent(html);
         return;
@@ -71,10 +69,8 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
 
       // Fall back to API call if no local data
       const { data: { session } } = await supabase.auth.getSession();
-      console.log('🔐 Session check:', session ? 'Found' : 'Not found');
       
       if (!session) {
-        console.log('❌ No session found');
         toast({
           title: "Authentication required",
           description: "Please log in to preview your resume.",
@@ -83,7 +79,6 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
         return;
       }
 
-      console.log('📡 Making request to /functions/v1/preview-resume');
       const response = await fetch('/functions/v1/preview-resume', {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -91,21 +86,21 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
         }
       });
       
-      console.log('📊 Response status:', response.status);
-      console.log('📊 Response headers:', Object.fromEntries(response.headers.entries()));
-      
       if (response.ok) {
         const html = await response.text();
-        console.log('✅ HTML received, length:', html.length);
-        console.log('📄 HTML content preview:', html.substring(0, 500) + '...');
         setHtmlContent(html);
       } else {
         const errorText = await response.text();
-        console.log('❌ Response error:', errorText);
         throw new Error(`Failed to generate preview: ${response.status} - ${errorText}`);
       }
     } catch (error) {
-      console.error('💥 Preview error:', error);
+      console.error('[RESUME_ERROR] Failed to generate resume preview:', {
+        userId: user?.id || 'unknown',
+        userEmail: user?.email || 'unknown',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User cannot preview their resume - HTML generation failed'
+      });
       toast({
         title: "Preview failed",
         description: `Failed to generate resume preview: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -113,7 +108,6 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
       });
     } finally {
       setLoading(false);
-      console.log('🏁 Preview load completed');
     }
   };
 
@@ -130,13 +124,14 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
       }
 
       await generateDocxFromResumeData(resumeData, userProfile || {});
-      
-      toast({
-        title: "DOCX Download Started",
-        description: "Your resume is being downloaded as a Word document.",
-      });
     } catch (error) {
-      console.error('DOCX generation error:', error);
+      console.error('[RESUME_ERROR] Failed to generate DOCX document:', {
+        userId: user?.id || 'unknown',
+        userEmail: user?.email || 'unknown',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User cannot download their resume as Word document'
+      });
       toast({
         title: "DOCX generation failed",
         description: "Failed to generate DOCX document. Please try again.",
@@ -297,14 +292,15 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
             printWindow.close();
           }, 500);
         };
-        
-        toast({
-          title: "Print Dialog Opened",
-          description: "Select 'Save as PDF' in your browser's print dialog for a perfect copy.",
-        });
       }
     } catch (error) {
-      console.error('PDF generation error:', error);
+      console.error('[RESUME_ERROR] Failed to generate PDF document:', {
+        userId: user?.id || 'unknown',
+        userEmail: user?.email || 'unknown',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User cannot download their resume as PDF - print dialog failed'
+      });
       toast({
         title: "PDF generation failed",
         description: "Failed to open print dialog. Please try again.",
@@ -330,12 +326,6 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
   // Generate HTML from local resume data
   const generateResumeHtmlFromData = (data: any) => {
     const { academic, experience, projects, extracurricular, volunteering, skills, interests, languages } = data;
-    
-    // Debug logging to see what's in the data
-    console.log('🔍 ResumePreview Debug - Full data:', data);
-    console.log('🔍 ResumePreview Debug - Languages:', languages);
-    console.log('🔍 ResumePreview Debug - Skills:', skills);
-    console.log('🔍 ResumePreview Debug - Interests:', interests);
 
     // Format date range
     const formatDateRange = (fromDate: string, toDate: string, isCurrent: boolean) => {

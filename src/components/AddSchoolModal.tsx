@@ -75,13 +75,18 @@ const AddSchoolModal: React.FC<AddSchoolModalProps> = ({ isOpen, onClose, onAddS
             break;
         }
 
-        console.log(`Loading schools for program type: ${userProgramType} from ${schoolFile}`);
-        
         const response = await fetch(schoolFile);
         const data = await response.json();
         setSchools(data.schools || []);
       } catch (error) {
-        console.error('Error loading schools:', error);
+        console.error('[SCHOOLS_ERROR] Failed to load schools data:', {
+          userId: user?.id || 'unknown',
+          userEmail: user?.email || 'unknown',
+          programType: userProgramType,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          timestamp: new Date().toISOString(),
+          message: 'User cannot see available schools to add'
+        });
         // Fallback to empty array
         setSchools([]);
       }
@@ -125,8 +130,6 @@ const AddSchoolModal: React.FC<AddSchoolModalProps> = ({ isOpen, onClose, onAddS
     setLoading(true);
     
     try {
-      console.log('handleAddAllSchools called with schools:', selectedSchools);
-      
       if (selectedSchools.length === 0) {
         return;
       }
@@ -152,7 +155,6 @@ const AddSchoolModal: React.FC<AddSchoolModalProps> = ({ isOpen, onClose, onAddS
         category: 'target' // Default category, user can change later
       }));
       
-      console.log('Adding multiple schools:', schoolsData);
       if (onAddMultipleSchools) {
         await onAddMultipleSchools(schoolsData);
       } else {
@@ -179,7 +181,14 @@ const AddSchoolModal: React.FC<AddSchoolModalProps> = ({ isOpen, onClose, onAddS
       
       onClose();
     } catch (error) {
-      console.error('Error adding schools:', error);
+      console.error('[SCHOOLS_ERROR] Failed to add multiple schools:', {
+        userId: user?.id || 'unknown',
+        userEmail: user?.email || 'unknown',
+        schoolCount: selectedSchools.length,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User cannot add multiple schools to their list'
+      });
     } finally {
       setLoading(false);
     }
@@ -203,7 +212,6 @@ const AddSchoolModal: React.FC<AddSchoolModalProps> = ({ isOpen, onClose, onAddS
         student_thesis: customSchoolData.notes,
         category: customSchoolData.category
       };
-      console.log('Adding custom school:', schoolData);
       await onAddSchool(schoolData);
       
       // Reset form
@@ -220,7 +228,14 @@ const AddSchoolModal: React.FC<AddSchoolModalProps> = ({ isOpen, onClose, onAddS
       
       onClose();
     } catch (error) {
-      console.error('Error adding custom school:', error);
+      console.error('[SCHOOLS_ERROR] Failed to add custom school:', {
+        userId: user?.id || 'unknown',
+        userEmail: user?.email || 'unknown',
+        schoolName: schoolData.school,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User cannot add custom school to their list'
+      });
     } finally {
       setLoading(false);
     }

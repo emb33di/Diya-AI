@@ -83,14 +83,19 @@ export const CreateEssayModal: React.FC<CreateEssayModalProps> = ({
       setPrompt('');
       setWordLimit('');
       
-      toast({
-        title: "Success",
-        description: "Custom essay created successfully"
-      });
+      // Custom essay created successfully
 
       onClose();
     } catch (error) {
-      console.error('Error creating custom essay:', error);
+      console.error('[ESSAY_ERROR] Failed to create custom essay:', {
+        userId: user?.id || 'unknown',
+        userEmail: user?.email || 'unknown',
+        schoolId: selectedSchool,
+        essayName: essayName,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User cannot create a new custom essay'
+      });
       toast({
         title: "Error",
         description: "Failed to create custom essay",

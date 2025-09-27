@@ -111,10 +111,8 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
   const handlePageVisible = async () => {
     if (document && essayId) {
       try {
-        console.log('Page became visible, refreshing document data...');
         const refreshedDocument = await semanticDocumentService.loadDocumentByEssayId(essayId);
         if (refreshedDocument && refreshedDocument.updatedAt > document.updatedAt) {
-          console.log('Document was updated externally, refreshing...');
           setDocument(refreshedDocument);
         }
       } catch (error) {
@@ -363,7 +361,14 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
       // Mark as complete
       setLoadingStep(AI_COMMENTS_LOADING_STEPS.length);
     } catch (error) {
-      console.error('Failed to generate AI comments:', error);
+      console.error('[ESSAY_ERROR] Failed to generate AI comments:', {
+        userId: user?.id || 'unknown',
+        userEmail: user?.email || 'unknown',
+        essayId: essayId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User cannot generate AI feedback for their essay'
+      });
     } finally {
       // Reset after a short delay to show completion
       setTimeout(() => {
@@ -421,7 +426,14 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
       // Mark as complete
       setGrammarLoadingStep(GRAMMAR_LOADING_STEPS.length);
     } catch (error) {
-      console.error('Failed to generate grammar comments:', error);
+      console.error('[ESSAY_ERROR] Failed to generate grammar comments:', {
+        userId: user?.id || 'unknown',
+        userEmail: user?.email || 'unknown',
+        essayId: essayId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User cannot generate grammar feedback for their essay'
+      });
     } finally {
       // Reset after a short delay to show completion
       setTimeout(() => {
@@ -445,10 +457,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
         wordLimit: wordLimit || document.metadata.wordLimit
       });
       
-      toast({
-        title: "Export Successful",
-        description: "Your essay has been exported as a DOCX file.",
-      });
+      // Export successful
     } catch (error) {
       console.error('Export error:', error);
       toast({
@@ -473,10 +482,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
         wordLimit: wordLimit || document.metadata.wordLimit
       });
       
-      toast({
-        title: "Export Successful",
-        description: "Your essay has been exported as a PDF file.",
-      });
+      // Export successful
     } catch (error) {
       console.error('Export error:', error);
       toast({

@@ -113,7 +113,13 @@ const SchoolList = () => {
       const { data: recommendations, error } = await fetchSchoolRecommendations(user.id);
 
       if (error) {
-        console.error('Error fetching school recommendations:', error);
+        console.error('[SCHOOLS_ERROR] Failed to load school recommendations:', {
+          userId: user?.id || 'unknown',
+          userEmail: user?.email || 'unknown',
+          error: error instanceof Error ? error.message : 'Unknown error',
+          timestamp: new Date().toISOString(),
+          message: 'User cannot see their school list'
+        });
         setError(error);
         return;
       }
@@ -134,11 +140,29 @@ const SchoolList = () => {
         notes: rec.notes || rec.student_thesis || 'No notes available'
       }));
 
-      console.log('Fetched recommendations:', recommendations);
-      console.log('Transformed schools:', transformedSchools);
+      const transformedSchools = recommendations.map((rec: any) => ({
+        id: rec.id,
+        name: rec.school,
+        location: rec.location || 'Unknown',
+        category: rec.category || 'target',
+        acceptanceRate: rec.acceptance_rate || 'N/A',
+        ranking: rec.ranking || 'N/A',
+        applicationDeadline: rec.application_deadline || 'TBD',
+        earlyActionDeadline: rec.early_action_deadline,
+        earlyDecision1Deadline: rec.early_decision_1_deadline,
+        regularDecisionDeadline: rec.regular_decision_deadline,
+        notes: rec.notes || ''
+      }));
+      
       setSchools(transformedSchools);
     } catch (err) {
-      console.error('Error fetching school recommendations:', err);
+      console.error('[SCHOOLS_ERROR] Failed to load school recommendations:', {
+        userId: user?.id || 'unknown',
+        userEmail: user?.email || 'unknown',
+        error: err instanceof Error ? err.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User cannot see their school list'
+      });
       setError("Failed to load school recommendations");
     } finally {
       setLoading(false);
@@ -190,15 +214,15 @@ const SchoolList = () => {
 
   const addSchool = async (schoolData: any) => {
     try {
-      console.log('addSchool called with data:', schoolData);
-      
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        console.error('User not authenticated');
+        console.error('[SCHOOLS_ERROR] User not authenticated:', {
+          timestamp: new Date().toISOString(),
+          message: 'User must be logged in to add schools to their list'
+        });
         return;
       }
-      console.log('Current user:', user.id);
 
       // Check if school already exists in the user's list
       const existingSchool = schools.find(school => 
@@ -206,7 +230,6 @@ const SchoolList = () => {
       );
 
       if (existingSchool) {
-        console.log('School already exists in list:', schoolData.school);
         toast({
           title: "School Already Added",
           description: `${schoolData.school} is already in your school list.`,
@@ -220,8 +243,6 @@ const SchoolList = () => {
         student_id: user.id,
         ...schoolData
       };
-      console.log('Inserting data:', insertData);
-      
       const { data: newSchoolData, error } = await supabase
         .from('school_recommendations')
         .insert(insertData)
@@ -229,15 +250,19 @@ const SchoolList = () => {
         .single();
 
       if (error) {
-        console.error('Error adding school:', error);
+        console.error('[SCHOOLS_ERROR] Failed to add school to database:', {
+          userId: user.id,
+          userEmail: user.email || 'unknown',
+          schoolName: schoolData.school,
+          error: error.message,
+          timestamp: new Date().toISOString(),
+          message: 'User cannot add school to their list - database error'
+        });
         return;
       }
 
-      console.log('Successfully added school:', newSchoolData);
-
       // Automatically sync regular decision deadline for the new school
       try {
-        console.log('Starting auto-sync for new school:', newSchoolData.school);
         const { data: deadlineSyncData, error: deadlineSyncError } = await supabase.functions.invoke('auto-sync-deadlines', {
           body: { user_id: user.id },
           headers: {
@@ -245,15 +270,25 @@ const SchoolList = () => {
           }
         });
 
-        console.log('Auto-sync response:', { deadlineSyncData, deadlineSyncError });
-
         if (deadlineSyncError) {
-          console.warn('Failed to auto-sync deadline for new school:', deadlineSyncError.message);
-        } else {
-          console.log('Auto-synced deadline for new school:', deadlineSyncData);
+          console.warn('[SCHOOLS_WARNING] Failed to auto-sync deadline for new school:', {
+            userId: user.id,
+            userEmail: user.email || 'unknown',
+            schoolName: newSchoolData.school,
+            error: deadlineSyncError.message,
+            timestamp: new Date().toISOString(),
+            message: 'User school deadline was not automatically synced'
+          });
         }
       } catch (deadlineError) {
-        console.warn('Error during auto-sync deadline for new school:', deadlineError);
+        console.warn('[SCHOOLS_WARNING] Error during auto-sync deadline for new school:', {
+          userId: user.id,
+          userEmail: user.email || 'unknown',
+          schoolName: newSchoolData.school,
+          error: deadlineError instanceof Error ? deadlineError.message : 'Unknown error',
+          timestamp: new Date().toISOString(),
+          message: 'User school deadline sync failed'
+        });
       }
 
       // Add to local state
@@ -272,24 +307,30 @@ const SchoolList = () => {
         notes: newSchoolData.notes || newSchoolData.student_thesis || 'Add your notes here'
       };
       
-      console.log('Adding to local state:', newSchool);
       setSchools([...schools, newSchool]);
     } catch (err) {
-      console.error('Error adding school:', err);
+      console.error('[SCHOOLS_ERROR] Failed to add school:', {
+        userId: user?.id || 'unknown',
+        userEmail: user?.email || 'unknown',
+        schoolName: schoolData.school,
+        error: err instanceof Error ? err.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User cannot add school to their list'
+      });
     }
   };
 
   const addMultipleSchools = async (schoolsData: any[]) => {
     try {
-      console.log('addMultipleSchools called with data:', schoolsData);
-      
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        console.error('User not authenticated');
+        console.error('[SCHOOLS_ERROR] User not authenticated:', {
+          timestamp: new Date().toISOString(),
+          message: 'User must be logged in to add schools to their list'
+        });
         return;
       }
-      console.log('Current user:', user.id);
 
       // Filter out schools that already exist in the user's list
       const existingSchoolNames = schools.map(school => school.name.toLowerCase());
@@ -309,7 +350,6 @@ const SchoolList = () => {
 
       // If no new schools to add, return early
       if (newSchoolsData.length === 0) {
-        console.log('No new schools to add after filtering duplicates');
         return;
       }
 
@@ -319,23 +359,25 @@ const SchoolList = () => {
         ...schoolData
       }));
       
-      console.log('Inserting multiple schools:', insertData);
-      
       const { data: newSchoolsDataResult, error } = await supabase
         .from('school_recommendations')
         .insert(insertData)
         .select();
 
       if (error) {
-        console.error('Error adding multiple schools:', error);
+        console.error('[SCHOOLS_ERROR] Failed to add multiple schools to database:', {
+          userId: user.id,
+          userEmail: user.email || 'unknown',
+          schoolCount: newSchoolsData.length,
+          error: error.message,
+          timestamp: new Date().toISOString(),
+          message: 'User cannot add multiple schools to their list - database error'
+        });
         return;
       }
 
-      console.log('Successfully added multiple schools:', newSchoolsDataResult);
-
       // Automatically sync regular decision deadlines for the new schools
       try {
-        console.log('Starting auto-sync for multiple new schools');
         const { data: deadlineSyncData, error: deadlineSyncError } = await supabase.functions.invoke('auto-sync-deadlines', {
           body: { user_id: user.id },
           headers: {
@@ -343,15 +385,25 @@ const SchoolList = () => {
           }
         });
 
-        console.log('Auto-sync response for multiple schools:', { deadlineSyncData, deadlineSyncError });
-
         if (deadlineSyncError) {
-          console.warn('Failed to auto-sync deadlines for new schools:', deadlineSyncError.message);
-        } else {
-          console.log('Auto-synced deadlines for new schools:', deadlineSyncData);
+          console.warn('[SCHOOLS_WARNING] Failed to auto-sync deadlines for new schools:', {
+            userId: user.id,
+            userEmail: user.email || 'unknown',
+            schoolCount: newSchoolsData.length,
+            error: deadlineSyncError.message,
+            timestamp: new Date().toISOString(),
+            message: 'User school deadlines were not automatically synced'
+          });
         }
       } catch (deadlineError) {
-        console.warn('Error during auto-sync deadlines for new schools:', deadlineError);
+        console.warn('[SCHOOLS_WARNING] Error during auto-sync deadlines for new schools:', {
+          userId: user.id,
+          userEmail: user.email || 'unknown',
+          schoolCount: newSchoolsData.length,
+          error: deadlineError instanceof Error ? deadlineError.message : 'Unknown error',
+          timestamp: new Date().toISOString(),
+          message: 'User school deadline sync failed'
+        });
       }
 
       // Add to local state
@@ -370,19 +422,18 @@ const SchoolList = () => {
         notes: newSchoolData.notes || newSchoolData.student_thesis || 'Add your notes here'
       }));
       
-      console.log('Adding multiple schools to local state:', newSchools);
       setSchools([...schools, ...newSchools]);
 
-      // Show success message for newly added schools
-      if (newSchoolsData.length > 0) {
-        toast({
-          title: "Schools Added Successfully",
-          description: `${newSchoolsData.length} school(s) have been added to your list.`,
-          variant: "default",
-        });
-      }
+      // Schools added successfully
     } catch (err) {
-      console.error('Error adding multiple schools:', err);
+      console.error('[SCHOOLS_ERROR] Failed to add multiple schools:', {
+        userId: user?.id || 'unknown',
+        userEmail: user?.email || 'unknown',
+        schoolCount: schoolsData.length,
+        error: err instanceof Error ? err.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User cannot add multiple schools to their list'
+      });
     }
   };
 
@@ -398,7 +449,14 @@ const SchoolList = () => {
         setError(result.message || 'Failed to archive school');
       }
     } catch (err) {
-      console.error('Error archiving school:', err);
+      console.error('[SCHOOLS_ERROR] Failed to archive school:', {
+        userId: user?.id || 'unknown',
+        userEmail: user?.email || 'unknown',
+        schoolId: id,
+        error: err instanceof Error ? err.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User cannot remove school from their list'
+      });
       setError('Failed to archive school');
     }
   };

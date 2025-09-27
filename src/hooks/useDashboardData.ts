@@ -90,10 +90,14 @@ export const useDashboardData = () => {
           ? schoolRecommendationsResult.value.data 
           : null;
         
-        console.log('School recommendations data:', schoolRecommendations);
-        
         if (schoolRecommendationsResult.status === 'rejected') {
-          console.error('Error fetching school recommendations:', schoolRecommendationsResult.reason);
+          console.error('[DASHBOARD_ERROR] Failed to load school list:', {
+            userId: userId,
+            userEmail: user?.email || 'unknown',
+            error: schoolRecommendationsResult.reason,
+            timestamp: new Date().toISOString(),
+            message: 'User cannot see their school recommendations on dashboard'
+          });
         }
 
         // Calculate essay progress
@@ -107,8 +111,6 @@ export const useDashboardData = () => {
         const reachCount = schoolRecommendations?.filter(s => s.category === 'reach').length || 0;
         const targetCount = schoolRecommendations?.filter(s => s.category === 'target').length || 0;
         const safetyCount = schoolRecommendations?.filter(s => s.category === 'safety').length || 0;
-        
-        console.log('School category counts:', { reachCount, targetCount, safetyCount, totalSchools: schoolRecommendations?.length || 0 });
         
         // If no schools have categories, show total count in "Target Schools" as default
         const hasCategorizedSchools = reachCount > 0 || targetCount > 0 || safetyCount > 0;
@@ -160,7 +162,14 @@ export const useDashboardData = () => {
           });
         }
       } catch (error) {
-        console.error('Error fetching dashboard data:', error);
+        console.error('[DASHBOARD_ERROR] Failed to load dashboard data:', {
+          userId: userId,
+          userEmail: user?.email || 'unknown',
+          error: error instanceof Error ? error.message : 'Unknown error',
+          errorType: error instanceof Error ? error.constructor.name : typeof error,
+          timestamp: new Date().toISOString(),
+          message: 'User cannot see their dashboard overview - essays, deadlines, and school progress'
+        });
         if (isMounted) {
           setData(prev => ({
             ...prev,

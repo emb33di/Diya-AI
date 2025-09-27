@@ -57,7 +57,13 @@ const Resume = () => {
         .single();
 
       if (error && error.code !== 'PGRST116') {
-        console.error('Failed to load user profile:', error);
+        console.error('[RESUME_ERROR] Failed to load user profile:', {
+          userId: user?.id || 'unknown',
+          userEmail: user?.email || 'unknown',
+          error: error.message,
+          timestamp: new Date().toISOString(),
+          message: 'User profile data could not be loaded for resume generation'
+        });
         return;
       }
 
@@ -65,7 +71,13 @@ const Resume = () => {
         setUserProfile(profileData as any);
       }
     } catch (error) {
-      console.error('Failed to load user profile:', error);
+      console.error('[RESUME_ERROR] Failed to load user profile:', {
+        userId: user?.id || 'unknown',
+        userEmail: user?.email || 'unknown',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User profile data could not be loaded for resume generation'
+      });
     }
   };
 

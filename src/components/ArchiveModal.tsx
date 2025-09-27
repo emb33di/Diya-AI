@@ -41,7 +41,13 @@ const ArchiveModal = ({ isOpen, onClose, onSchoolRestored }: ArchiveModalProps) 
         });
       }
     } catch (error) {
-      console.error('Error fetching archived schools:', error);
+      console.error('[SCHOOLS_ERROR] Failed to load archived schools:', {
+        userId: user?.id || 'unknown',
+        userEmail: user?.email || 'unknown',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User cannot see their archived schools'
+      });
       toast({
         title: "Error",
         description: "Failed to load archived schools",
@@ -57,10 +63,7 @@ const ArchiveModal = ({ isOpen, onClose, onSchoolRestored }: ArchiveModalProps) 
     try {
       const result = await SchoolArchiveService.restoreSchool(schoolId, category);
       if (result.success) {
-        toast({
-          title: "Success",
-          description: result.message
-        });
+        // School restored successfully
         onSchoolRestored();
         onClose();
       } else {
@@ -71,7 +74,14 @@ const ArchiveModal = ({ isOpen, onClose, onSchoolRestored }: ArchiveModalProps) 
         });
       }
     } catch (error) {
-      console.error('Error restoring school:', error);
+      console.error('[SCHOOLS_ERROR] Failed to restore school:', {
+        userId: user?.id || 'unknown',
+        userEmail: user?.email || 'unknown',
+        schoolId: schoolId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User cannot restore school from archive'
+      });
       toast({
         title: "Error",
         description: "Failed to restore school",
@@ -91,10 +101,7 @@ const ArchiveModal = ({ isOpen, onClose, onSchoolRestored }: ArchiveModalProps) 
     try {
       const result = await SchoolArchiveService.permanentlyDeleteSchool(schoolId);
       if (result.success) {
-        toast({
-          title: "Success",
-          description: result.message
-        });
+        // School permanently deleted
         // Remove from local state
         setArchivedSchools(prev => prev.filter(school => school.id !== schoolId));
       } else {
@@ -105,7 +112,14 @@ const ArchiveModal = ({ isOpen, onClose, onSchoolRestored }: ArchiveModalProps) 
         });
       }
     } catch (error) {
-      console.error('Error deleting school:', error);
+      console.error('[SCHOOLS_ERROR] Failed to delete school permanently:', {
+        userId: user?.id || 'unknown',
+        userEmail: user?.email || 'unknown',
+        schoolId: schoolId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User cannot permanently delete school from archive'
+      });
       toast({
         title: "Error",
         description: "Failed to delete school",

@@ -223,7 +223,14 @@ const Essays = () => {
             
             return transformedSchools;
           } catch (error) {
-            console.error(`Error fetching schools (attempt ${4 - retries}):`, error);
+            console.error('[ESSAYS_ERROR] Failed to load school list:', {
+              userId: user?.id || 'unknown',
+              userEmail: user?.email || 'unknown',
+              attempt: 4 - retries,
+              error: error instanceof Error ? error.message : 'Unknown error',
+              timestamp: new Date().toISOString(),
+              message: 'User cannot see their school list for essay writing'
+            });
             if (retries > 1) {
               // Wait before retry
               await new Promise(resolve => setTimeout(resolve, 1000 * (4 - retries)));
@@ -247,12 +254,24 @@ const Essays = () => {
             setOnboardingTranscript(conversations[0].transcript || '');
           }
         } catch (error) {
-          console.error('Error fetching onboarding transcript:', error);
+          console.error('[ESSAYS_ERROR] Failed to load onboarding transcript:', {
+            userId: user?.id || 'unknown',
+            userEmail: user?.email || 'unknown',
+            error: error instanceof Error ? error.message : 'Unknown error',
+            timestamp: new Date().toISOString(),
+            message: 'User onboarding conversation could not be loaded for essay context'
+          });
           // Don't block the main flow for this
         }
         
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error('[ESSAYS_ERROR] Failed to load essays page data:', {
+          userId: user?.id || 'unknown',
+          userEmail: user?.email || 'unknown',
+          error: error instanceof Error ? error.message : 'Unknown error',
+          timestamp: new Date().toISOString(),
+          message: 'User cannot access essays page - schools and data loading failed'
+        });
         // Set empty schools array to prevent UI crashes
         setSchools([]);
       } finally {
@@ -286,7 +305,14 @@ const Essays = () => {
             persistEssaySelection(null);
           }
         } catch (error) {
-          console.error('Error fetching new essays:', error);
+          console.error('[ESSAYS_ERROR] Failed to load essays for school:', {
+            userId: user?.id || 'unknown',
+            userEmail: user?.email || 'unknown',
+            schoolId: selectedSchool,
+            error: error instanceof Error ? error.message : 'Unknown error',
+            timestamp: new Date().toISOString(),
+            message: 'User cannot see their essays for the selected school'
+          });
         }
       };
       fetchNewEssays();
@@ -309,7 +335,13 @@ const Essays = () => {
           setCommonAppEssay(existingCommonAppEssay[0]);
         }
       } catch (error) {
-        console.error('Error fetching Common App prompts:', error);
+        console.error('[ESSAYS_ERROR] Failed to load Common App prompts:', {
+          userId: user?.id || 'unknown',
+          userEmail: user?.email || 'unknown',
+          error: error instanceof Error ? error.message : 'Unknown error',
+          timestamp: new Date().toISOString(),
+          message: 'User cannot see Common Application essay prompts'
+        });
       }
     };
 
@@ -355,9 +387,7 @@ const Essays = () => {
           }
           
           // Fetch user's existing selections for this school
-          console.log('Fetching selections for school:', selectedSchool);
           const selections = await EssayPromptService.getUserSelectionsForSchool(selectedSchool);
-          console.log('Retrieved selections:', selections);
           setUserSelections(selections);
 
           // Convert prompts to essays format
@@ -381,8 +411,14 @@ const Essays = () => {
 
           setEssays(essaysFromPrompts);
         } catch (error) {
-          console.error('Error fetching prompts:', error);
-          console.error('Error details:', error);
+          console.error('[ESSAYS_ERROR] Failed to load essay prompts:', {
+            userId: user?.id || 'unknown',
+            userEmail: user?.email || 'unknown',
+            schoolId: selectedSchool,
+            error: error instanceof Error ? error.message : 'Unknown error',
+            timestamp: new Date().toISOString(),
+            message: 'User cannot see essay prompts for the selected school'
+          });
           
           // Set empty arrays to prevent UI crashes
           setEssayPrompts([]);
@@ -436,12 +472,16 @@ const Essays = () => {
       persistEssaySelection(newEssay.id);
       setSelectedEssay(null); // Clear old essay selection
       
-      toast({
-        title: "Success",
-        description: "Custom essay created successfully"
-      });
+      // Custom essay created successfully
     } catch (error) {
-      console.error('Error creating custom essay:', error);
+      console.error('[ESSAYS_ERROR] Failed to create custom essay:', {
+        userId: user?.id || 'unknown',
+        userEmail: user?.email || 'unknown',
+        schoolId: selectedSchool,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User cannot create a new custom essay'
+      });
       toast({
         title: "Error",
         description: "Failed to create custom essay",
@@ -470,15 +510,19 @@ const Essays = () => {
         setSelectedEssay(null);
       }
       
-      toast({
-        title: "Success",
-        description: "Essay deleted successfully"
-      });
+      // Essay deleted successfully
       
       setShowDeleteDialog(false);
       setEssayToDelete(null);
     } catch (error) {
-      console.error('Error deleting essay:', error);
+      console.error('[ESSAYS_ERROR] Failed to delete essay:', {
+        userId: user?.id || 'unknown',
+        userEmail: user?.email || 'unknown',
+        essayId: essayToDelete.id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User cannot delete their essay'
+      });
       toast({
         title: "Error",
         description: "Failed to delete essay",
@@ -519,12 +563,16 @@ const Essays = () => {
       persistEssaySelection(newEssay.id);
       setSelectedEssay(null);
       
-      toast({
-        title: "Migration Successful",
-        description: "Your essay has been migrated to the new editor!"
-      });
+      // Migration successful
     } catch (error) {
-      console.error('Error migrating essay:', error);
+      console.error('[ESSAYS_ERROR] Failed to migrate essay:', {
+        userId: user?.id || 'unknown',
+        userEmail: user?.email || 'unknown',
+        essayId: essay.id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User essay could not be migrated to new editor'
+      });
       toast({
         title: "Migration Failed",
         description: "Failed to migrate essay. You can still use the old editor.",
@@ -555,12 +603,17 @@ const Essays = () => {
       persistEssaySelection(newEssay.id);
       setSelectedEssay(null);
       
-      toast({
-        title: "Success",
-        description: "New essay created from prompt!"
-      });
+      // New essay created from prompt
     } catch (error) {
-      console.error('Error creating essay from prompt:', error);
+      console.error('[ESSAYS_ERROR] Failed to create essay from prompt:', {
+        userId: user?.id || 'unknown',
+        userEmail: user?.email || 'unknown',
+        schoolId: selectedSchool,
+        promptId: selectedPrompt?.id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User cannot create essay from selected prompt'
+      });
       toast({
         title: "Error",
         description: "Failed to create essay from prompt",
@@ -597,12 +650,16 @@ const Essays = () => {
       persistEssaySelection(newEssay.id);
       setSelectedEssay(null);
       
-      toast({
-        title: "Success",
-        description: "Common App essay created!"
-      });
+      // Common App essay created
     } catch (error) {
-      console.error('Error creating Common App essay:', error);
+      console.error('[ESSAYS_ERROR] Failed to create Common App essay:', {
+        userId: user?.id || 'unknown',
+        userEmail: user?.email || 'unknown',
+        promptId: selectedCommonAppPrompt?.id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User cannot create Common Application essay'
+      });
       toast({
         title: "Error",
         description: "Failed to create Common App essay",
@@ -685,10 +742,7 @@ const Essays = () => {
         persistEssaySelection(newEssay.id);
         setSelectedEssay(null);
         
-        toast({
-          title: "Success",
-          description: "Common App essay created!"
-        });
+        // Common App essay created
       }
       return;
     }
@@ -740,7 +794,14 @@ const Essays = () => {
       // Update saved timestamp
       setLastSaved(new Date());
     } catch (error) {
-      console.error('Error saving essay content:', error);
+      console.error('[ESSAYS_ERROR] Failed to save essay content:', {
+        userId: user?.id || 'unknown',
+        userEmail: user?.email || 'unknown',
+        essayId: selectedEssay?.id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User essay changes were not saved'
+      });
       toast({
         title: "Error",
         description: "Failed to save essay content.",
@@ -1151,12 +1212,17 @@ const Essays = () => {
                               persistEssaySelection(newEssay.id);
                               setSelectedEssay(null);
                               
-                              toast({
-                                title: "Success",
-                                description: `Switched to ${newPrompt.prompt_number ? `Prompt ${newPrompt.prompt_number}` : 'Custom Prompt'}`
-                              });
+                              // Switched to new prompt
                             } catch (error) {
-                              console.error('Error creating essay:', error);
+                              console.error('[ESSAYS_ERROR] Failed to switch prompt:', {
+                                userId: user?.id || 'unknown',
+                                userEmail: user?.email || 'unknown',
+                                schoolId: selectedSchool,
+                                promptId: newPrompt.id,
+                                error: error instanceof Error ? error.message : 'Unknown error',
+                                timestamp: new Date().toISOString(),
+                                message: 'User cannot switch to different essay prompt'
+                              });
                               toast({
                                 title: "Error",
                                 description: "Failed to switch prompt. Please try again.",
@@ -1178,12 +1244,17 @@ const Essays = () => {
                               persistEssaySelection(newEssay.id);
                               setSelectedEssay(null);
                               
-                              toast({
-                                title: "Success",
-                                description: `Created new essay for ${newPrompt.prompt_number ? `Prompt ${newPrompt.prompt_number}` : 'Custom Prompt'}`
-                              });
+                              // Created new essay for prompt
                             } catch (error) {
-                              console.error('Error creating essay:', error);
+                              console.error('[ESSAYS_ERROR] Failed to create essay for prompt:', {
+                                userId: user?.id || 'unknown',
+                                userEmail: user?.email || 'unknown',
+                                schoolId: selectedSchool,
+                                promptId: newPrompt.id,
+                                error: error instanceof Error ? error.message : 'Unknown error',
+                                timestamp: new Date().toISOString(),
+                                message: 'User cannot create new essay for selected prompt'
+                              });
                               toast({
                                 title: "Error",
                                 description: "Failed to create essay. Please try again.",
@@ -1348,12 +1419,17 @@ const Essays = () => {
                         persistEssaySelection(newEssay.id);
                         setSelectedEssay(null);
                         
-                        toast({
-                          title: "Success",
-                          description: `Switched to ${newPrompt.prompt_number ? `Prompt ${newPrompt.prompt_number}` : 'Custom Prompt'}`
-                        });
+                        // Switched to new prompt
                       } catch (error) {
-                        console.error('Error creating essay:', error);
+                        console.error('[ESSAYS_ERROR] Failed to switch prompt:', {
+                          userId: user?.id || 'unknown',
+                          userEmail: user?.email || 'unknown',
+                          schoolId: selectedSchool,
+                          promptId: newPrompt.id,
+                          error: error instanceof Error ? error.message : 'Unknown error',
+                          timestamp: new Date().toISOString(),
+                          message: 'User cannot switch to different essay prompt'
+                        });
                         toast({
                           title: "Error",
                           description: "Failed to switch prompt. Please try again.",
@@ -1375,12 +1451,17 @@ const Essays = () => {
                         persistEssaySelection(newEssay.id);
                         setSelectedEssay(null);
                         
-                        toast({
-                          title: "Success",
-                          description: `Created new essay for ${newPrompt.prompt_number ? `Prompt ${newPrompt.prompt_number}` : 'Custom Prompt'}`
-                        });
+                        // Created new essay for prompt
                       } catch (error) {
-                        console.error('Error creating essay:', error);
+                        console.error('[ESSAYS_ERROR] Failed to create essay for prompt:', {
+                          userId: user?.id || 'unknown',
+                          userEmail: user?.email || 'unknown',
+                          schoolId: selectedSchool,
+                          promptId: newPrompt.id,
+                          error: error instanceof Error ? error.message : 'Unknown error',
+                          timestamp: new Date().toISOString(),
+                          message: 'User cannot create new essay for selected prompt'
+                        });
                         toast({
                           title: "Error",
                           description: "Failed to create essay. Please try again.",

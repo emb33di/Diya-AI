@@ -45,13 +45,6 @@ const Dashboard = () => {
     return 'Student';
   })();
 
-  // Debug logging for name display
-  console.log('Dashboard name display debug:', {
-    profileFullName: profile?.full_name,
-    userEmail: user?.email,
-    finalDisplayName: displayName
-  });
-
   // Profile completion is now calculated by the useProfileCompletion hook
 
   const progressData = [

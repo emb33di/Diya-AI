@@ -36,7 +36,14 @@ export const useEssayEditor = (essayId: string | null) => {
         setHasUnsavedChanges(false);
         isInitialLoadRef.current = false;
       } catch (error) {
-        console.error('Error loading essay:', error);
+        console.error('[ESSAY_ERROR] Failed to load essay:', {
+          userId: user?.id || 'unknown',
+          userEmail: user?.email || 'unknown',
+          essayId: essayId,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          timestamp: new Date().toISOString(),
+          message: 'User cannot load their essay for editing'
+        });
         toast({
           title: "Error",
           description: "Failed to load essay",
@@ -60,7 +67,14 @@ export const useEssayEditor = (essayId: string | null) => {
       setLastSaved(new Date());
       setHasUnsavedChanges(false);
     } catch (error) {
-      console.error('Error saving essay:', error);
+      console.error('[ESSAY_ERROR] Failed to save essay:', {
+        userId: user?.id || 'unknown',
+        userEmail: user?.email || 'unknown',
+        essayId: essayId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User essay changes were not saved'
+      });
       toast({
         title: "Save Error",
         description: "Failed to save changes. Your work may be lost.",

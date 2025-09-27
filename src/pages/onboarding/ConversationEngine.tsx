@@ -101,10 +101,7 @@ const ConversationEngine = ({
         }
       }
       
-      toast({
-        title: "Connected",
-        description: "Your conversation with Diya has started. Feel free to speak naturally!"
-      });
+      // Connection successful - no toast needed, UI provides visual feedback
     } catch (error) {
       const { data: { user } } = await supabase.auth.getUser();
       console.error('❌ CONVERSATION_CONNECT_ERROR:', {
