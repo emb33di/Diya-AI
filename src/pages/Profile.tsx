@@ -93,16 +93,6 @@ const profileSchema = z.object({
 
 // ProfileFormData type is imported from hooks
 
-const scholarshipOptions = [
-  "Merit-based",
-  "Need-based", 
-  "Athletic",
-  "Artistic Talent",
-  "STEM",
-  "First-generation",
-  "Community Service",
-  "Ethnicity"
-];
 
 // popularMajorsForIndianStudents array removed - handled by MajorSelector component
 
@@ -229,19 +219,19 @@ export default function Profile() {
       
       // Academic Profile
       high_school_name: "",
-      high_school_graduation_year: undefined,
+      high_school_graduation_year: null,
       school_board: undefined,
       year_of_study: undefined,
-      class_10_score: undefined,
-      class_11_score: undefined,
-      class_12_half_yearly_score: undefined,
-      undergraduate_cgpa: undefined,
+      class_10_score: null,
+      class_11_score: null,
+      class_12_half_yearly_score: null,
+      undergraduate_cgpa: null,
       intended_majors: "",
       college_name: "",
-      college_graduation_year: undefined,
-      college_gpa: undefined,
+      college_graduation_year: null,
+      college_gpa: null,
       test_type: "Not yet taken" as const,
-      test_score: undefined,
+      test_score: null,
       
       // College Preferences
       ideal_college_size: "not_specified",
@@ -265,44 +255,8 @@ export default function Profile() {
   // Note: We intentionally don't use local storage for auto-saving
   // Users must manually save their changes to persist them
 
-  // Check for AI extracted profile data from onboarding and auto-populate form
-  useEffect(() => {
-    const aiProfileData = localStorage.getItem('ai_extracted_profile');
-    if (aiProfileData) {
-      try {
-        const parsedData = JSON.parse(aiProfileData);
-        
-        // Auto-populate form with AI data
-        const formData = convertAIProfileToFormData(parsedData.profile);
-        const populatedFields = new Set<string>();
-        
-        // Populate form fields and track which ones were AI-populated
-        Object.keys(formData).forEach(key => {
-          if (formData[key] !== undefined && formData[key] !== null && formData[key] !== '') {
-            form.setValue(key as keyof ProfileFormData, formData[key]);
-            populatedFields.add(key);
-          }
-        });
-        
-        setAIPopulatedFields(populatedFields);
-        
-        console.log('AI profile data auto-populated:', {
-          fieldsPopulated: populatedFields.size,
-          confidenceScore: parsedData.confidence_score,
-          schoolType: parsedData.school_type
-        });
-        
-        toast({
-          title: "Profile Auto-Populated",
-          description: `Your profile has been populated with ${parsedData.confidence_score}% confidence from your conversation with Diya. Please review and complete any missing fields.`
-        });
-        
-      } catch (error) {
-        console.error('Error parsing AI extracted profile data:', error);
-        localStorage.removeItem('ai_extracted_profile');
-      }
-    }
-  }, [form, toast]);
+  // Note: AI profile data is now handled directly through database updates
+  // The edge function saves to user_profiles table, and the form loads from there
 
   // AI Data Management Functions are now handled by useAIIntegration hook
 
@@ -359,7 +313,7 @@ export default function Profile() {
   useEffect(() => {
     const testType = form.watch("test_type");
     if (testType === "Not yet taken") {
-      form.setValue("test_score", "");
+      form.setValue("test_score", undefined);
     }
   }, [form.watch("test_type")]);
 
@@ -409,6 +363,24 @@ export default function Profile() {
     loadACTScores();
     loadGeographicPreferences();
   }, []);
+
+  // Populate form when profileData is loaded
+  useEffect(() => {
+    if (profileData) {
+      console.log('📊 Profile Page: Loading profile data into form:', {
+        profileDataKeys: Object.keys(profileData),
+        hasData: Object.values(profileData).some(value => 
+          value !== undefined && value !== null && value !== ''
+        )
+      });
+      console.log('🔧 Profile Page: Resetting form with loaded profile data');
+      // Reset form with loaded data
+      form.reset(profileData);
+      console.log('✅ Profile Page: Form reset with profile data complete');
+    } else {
+      console.log('ℹ️ Profile Page: No profile data available to load into form');
+    }
+  }, [profileData, form]);
 
   // Check if user has completed onboarding but not profile
   useEffect(() => {
@@ -585,11 +557,11 @@ export default function Profile() {
 
       // Check if user_profiles record exists
       console.log("Checking for existing profile...");
-      const { data: existingProfile, error: checkError } = await supabase
+      const { data: existingProfile, error: checkError } = await (supabase
         .from("user_profiles")
         .select("id")
-        .eq("user_id", user.id)
-        .maybeSingle();
+        .eq("user_id", user.id as any)
+        .maybeSingle() as any);
 
       if (checkError) {
         console.warn("Error checking existing profile:", checkError);
@@ -604,7 +576,7 @@ export default function Profile() {
       try {
         const { data, error: userProfileError } = await supabase
           .from("user_profiles")
-          .upsert(profileData, {
+          .upsert(profileData as any, {
             onConflict: 'user_id'
           })
           .select();
@@ -706,7 +678,7 @@ export default function Profile() {
       </div>
 
       <Form {...form}>
-        <form key={profileData ? 'loaded' : 'loading'} onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           {/* Personal Information */}
           <PersonalInfoSection
             form={form}
@@ -732,37 +704,54 @@ export default function Profile() {
           <CollegePreferencesSection
             form={form}
             geographicPreferences={geographicPreferences}
-            addGeographicPreference={addGeographicPreference}
+            addGeographicPreference={(preference) => addGeographicPreference(preference.preference)}
             deleteGeographicPreference={deleteGeographicPreference}
           />
 
           {/* Financial Information */}
-          <FinancialInfoSection
-            form={form}
-            scholarshipOptions={scholarshipOptions}
-          />
+          <FinancialInfoSection form={form} />
 
           {/* Additional Undergraduate Information */}
           <AdditionalInfoSection form={form} />
 
           <div className="flex justify-end gap-4">
-            {/* Temporary Test Button for Enhanced Profile Extraction */}
+            {/* Enhanced AI Profile Extraction Button */}
             <Button 
               type="button"
               variant="outline"
               disabled={isTestingExtraction}
-              onClick={() => testEnhancedProfileExtraction(form)}
+              onClick={async () => {
+                console.log('🎯 Profile Page: AI Extraction button clicked');
+                console.log('📋 Profile Page: Starting AI extraction process...');
+                
+                const result = await testEnhancedProfileExtraction(form);
+                
+                if (result) {
+                  console.log('🔄 Profile Page: AI extraction successful, reloading profile data...');
+                  
+                  // Reload profile data from database to show the filled profiles table
+                  await loadProfile();
+                  
+                  console.log('✅ Profile Page: Profile data reloaded successfully');
+                  toast({
+                    title: "Profile Updated",
+                    description: "AI extraction completed successfully. Your profile has been updated with the extracted data.",
+                  });
+                } else {
+                  console.log('❌ Profile Page: AI extraction failed');
+                }
+              }}
               className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
             >
               {isTestingExtraction ? (
                 <>
                   <Sparkles className="mr-2 h-4 w-4 animate-spin" />
-                  Testing Extraction...
+                  Extracting Profile...
                 </>
               ) : (
                 <>
                   <Sparkles className="mr-2 h-4 w-4" />
-                  🧪 Test AI Extraction
+                  🤖 Extract Profile from Conversation
                 </>
               )}
             </Button>

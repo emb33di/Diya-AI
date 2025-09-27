@@ -73,7 +73,7 @@ export const debugSupabase406 = async () => {
     // Test 3: Select specific fields
     const { data: specificFields, error: specificError } = await supabase
       .from('user_profiles')
-      .select('full_name, preferred_name')
+      .select('full_name')
       .eq('user_id', user.id)
       .maybeSingle();
     

@@ -6,7 +6,6 @@ import { useNavigate } from 'react-router-dom';
 export interface ProfileFormData {
   // Personal Information
   full_name?: string;
-  preferred_name?: string;
   email_address?: string;
   country_code?: string;
   phone_number?: string;
@@ -285,6 +284,7 @@ export const useProfileData = () => {
           }
         }
 
+        console.log('📊 Profile data loaded and processed:', formData);
         setProfileData(formData);
         return formData;
       } else {

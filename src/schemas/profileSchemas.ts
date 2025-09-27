@@ -6,7 +6,6 @@ export interface BaseProfileSchema {
   // Common fields across all school types
   personal_info: {
     full_name?: string;
-    preferred_name?: string;
     email_address?: string;
     phone_number?: string;
     date_of_birth?: string;

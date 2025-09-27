@@ -3,17 +3,14 @@ import { UseFormReturn } from 'react-hook-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import { ProfileFormData } from '@/hooks/profile';
 
 interface FinancialInfoSectionProps {
   form: UseFormReturn<ProfileFormData>;
-  scholarshipOptions: string[];
 }
 
 export const FinancialInfoSection: React.FC<FinancialInfoSectionProps> = ({
-  form,
-  scholarshipOptions
+  form
 }) => {
   return (
     <Card>
@@ -67,54 +64,6 @@ export const FinancialInfoSection: React.FC<FinancialInfoSectionProps> = ({
           />
         </div>
 
-        <FormField
-          control={form.control}
-          name="scholarship_interests"
-          render={() => (
-            <FormItem>
-              <div className="mb-4">
-                <FormLabel className="text-base">Scholarship Interests</FormLabel>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {scholarshipOptions.map((item) => (
-                  <FormField
-                    key={item}
-                    control={form.control}
-                    name="scholarship_interests"
-                    render={({ field }) => {
-                      return (
-                        <FormItem
-                          key={item}
-                          className="flex flex-row items-start space-x-3 space-y-0"
-                        >
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value?.includes(item)}
-                              onCheckedChange={(checked) => {
-                                const currentValue = field.value || [];
-                                if (checked) {
-                                  field.onChange([...currentValue, item]);
-                                } else {
-                                  field.onChange(
-                                    currentValue.filter((value) => value !== item)
-                                  );
-                                }
-                              }}
-                            />
-                          </FormControl>
-                          <FormLabel className="text-sm font-normal">
-                            {item}
-                          </FormLabel>
-                        </FormItem>
-                      );
-                    }}
-                  />
-                ))}
-              </div>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
       </CardContent>
     </Card>
   );

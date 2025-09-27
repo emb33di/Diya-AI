@@ -40,7 +40,7 @@ const SCHOOL_TYPE_MAPPING = {
   'MBA': 'mba', 
   'Masters': 'masters',
   'PhD': 'phd',
-  'LLM': 'masters' // LLM uses masters schema with law-specific fields
+  'LLM': 'llm' // LLM has its own schema with law-specific fields
 } as const;
 
 type SchoolType = keyof typeof SCHOOL_TYPE_MAPPING;
@@ -120,7 +120,9 @@ function generateSchoolSpecificPrompt(schoolType: string, transcript: string): s
   3. If information is not mentioned, use null or empty arrays
   4. Be precise and avoid making assumptions
   5. Extract exact quotes when possible for authenticity
-  6. Pay special attention to personal stories, achievements, and goals`;
+  6. Pay special attention to personal stories, achievements, and goals
+  7. Extract ALL fields listed in the JSON schema - be comprehensive
+  8. For financial fields, infer from context (e.g., if scholarships mentioned, set looking_for_scholarships to "yes")`;
 
   switch (schoolType) {
     case 'Undergraduate Colleges':
@@ -132,8 +134,8 @@ function generateSchoolSpecificPrompt(schoolType: string, transcript: string): s
           "full_name": "string or null",
           "preferred_name": "string or null",
           "email_address": "string or null", 
-          "phone_number": "string or null",
-          "country_code": "string or null (e.g., US, IN, CA, etc.)"
+          "country_code": "string or null (e.g., +1, +91, +44, etc.)",
+          "applying_to": "Undergraduate Colleges"
         },
         "academic_background": {
           "high_school_name": "string or null",
@@ -164,13 +166,16 @@ function generateSchoolSpecificPrompt(schoolType: string, transcript: string): s
         "preferences": {
           "ideal_college_size": "Small (< 2,000 students) | Medium (2,000 - 15,000 students) | Large (> 15,000 students) or null",
           "ideal_college_setting": "Urban | Suburban | Rural | College Town or null",
+          "geographic_preference": "In-state | Out-of-state | Northeast | West Coast | No Preference or null",
           "must_haves": ["array of essential features"],
           "deal_breakers": ["array of undesirable features"]
         },
         "financial_considerations": {
           "college_budget": "< $20,000 | $20,000 - $35,000 | $35,000 - $50,000 | $50,000 - $70,000 | > $70,000 or null",
           "financial_aid_importance": "Crucial | Very Important | Somewhat Important | Not a factor or null",
-          "scholarship_interests": ["array of scholarship types"]
+          "scholarship_interests": ["array of scholarship types"],
+          "looking_for_scholarships": "yes | no | null",
+          "looking_for_financial_aid": "yes | no | null"
         },
         "additional_info": {
           "application_concerns": ["array of application concerns"],
@@ -187,8 +192,8 @@ function generateSchoolSpecificPrompt(schoolType: string, transcript: string): s
           "full_name": "string or null",
           "preferred_name": "string or null",
           "email_address": "string or null",
-          "phone_number": "string or null",
-          "country_code": "string or null (e.g., US, IN, CA, etc.)"
+          "country_code": "string or null (e.g., +1, +91, +44, etc.)",
+          "applying_to": "MBA"
         },
         "academic_background": {
           "college_name": "string or null",
@@ -210,13 +215,18 @@ function generateSchoolSpecificPrompt(schoolType: string, transcript: string): s
           "career_interests": ["array of career fields of interest"]
         },
         "preferences": {
+          "ideal_college_size": "Small (< 2,000 students) | Medium (2,000 - 15,000 students) | Large (> 15,000 students) or null",
+          "ideal_college_setting": "Urban | Suburban | Rural | College Town or null",
+          "geographic_preference": "In-state | Out-of-state | Northeast | West Coast | No Preference or null",
           "must_haves": ["array of essential features"],
           "deal_breakers": ["array of undesirable features"]
         },
         "financial_considerations": {
           "college_budget": "< $20,000 | $20,000 - $35,000 | $35,000 - $50,000 | $50,000 - $70,000 | > $70,000 or null",
           "financial_aid_importance": "Crucial | Very Important | Somewhat Important | Not a factor or null",
-          "scholarship_interests": ["array of scholarship types"]
+          "scholarship_interests": ["array of scholarship types"],
+          "looking_for_scholarships": "yes | no | null",
+          "looking_for_financial_aid": "yes | no | null"
         },
         "additional_info": {
           "application_concerns": ["array of application concerns"],
@@ -233,8 +243,8 @@ function generateSchoolSpecificPrompt(schoolType: string, transcript: string): s
           "full_name": "string or null",
           "preferred_name": "string or null",
           "email_address": "string or null",
-          "phone_number": "string or null",
-          "country_code": "string or null (e.g., US, IN, CA, etc.)"
+          "country_code": "string or null (e.g., +1, +91, +44, etc.)",
+          "applying_to": "Masters"
         },
         "academic_background": {
           "college_name": "string or null",
@@ -256,13 +266,18 @@ function generateSchoolSpecificPrompt(schoolType: string, transcript: string): s
           "career_interests": ["array of career fields of interest"]
         },
         "preferences": {
+          "ideal_college_size": "Small (< 2,000 students) | Medium (2,000 - 15,000 students) | Large (> 15,000 students) or null",
+          "ideal_college_setting": "Urban | Suburban | Rural | College Town or null",
+          "geographic_preference": "In-state | Out-of-state | Northeast | West Coast | No Preference or null",
           "must_haves": ["array of essential features"],
           "deal_breakers": ["array of undesirable features"]
         },
         "financial_considerations": {
           "college_budget": "< $20,000 | $20,000 - $35,000 | $35,000 - $50,000 | $50,000 - $70,000 | > $70,000 or null",
           "financial_aid_importance": "Crucial | Very Important | Somewhat Important | Not a factor or null",
-          "scholarship_interests": ["array of scholarship types"]
+          "scholarship_interests": ["array of scholarship types"],
+          "looking_for_scholarships": "yes | no | null",
+          "looking_for_financial_aid": "yes | no | null"
         },
         "additional_info": {
           "application_concerns": ["array of application concerns"],
@@ -279,8 +294,8 @@ function generateSchoolSpecificPrompt(schoolType: string, transcript: string): s
           "full_name": "string or null",
           "preferred_name": "string or null",
           "email_address": "string or null",
-          "phone_number": "string or null",
-          "country_code": "string or null (e.g., US, IN, CA, etc.)"
+          "country_code": "string or null (e.g., +1, +91, +44, etc.)",
+          "applying_to": "PhD"
         },
         "academic_background": {
           "college_name": "string or null",
@@ -302,13 +317,69 @@ function generateSchoolSpecificPrompt(schoolType: string, transcript: string): s
           "career_interests": ["array of career fields of interest"]
         },
         "preferences": {
+          "ideal_college_size": "Small (< 2,000 students) | Medium (2,000 - 15,000 students) | Large (> 15,000 students) or null",
+          "ideal_college_setting": "Urban | Suburban | Rural | College Town or null",
+          "geographic_preference": "In-state | Out-of-state | Northeast | West Coast | No Preference or null",
           "must_haves": ["array of essential features"],
           "deal_breakers": ["array of undesirable features"]
         },
         "financial_considerations": {
           "college_budget": "< $20,000 | $20,000 - $35,000 | $35,000 - $50,000 | $50,000 - $70,000 | > $70,000 or null",
           "financial_aid_importance": "Crucial | Very Important | Somewhat Important | Not a factor or null",
-          "scholarship_interests": ["array of scholarship types"]
+          "scholarship_interests": ["array of scholarship types"],
+          "looking_for_scholarships": "yes | no | null",
+          "looking_for_financial_aid": "yes | no | null"
+        },
+        "additional_info": {
+          "application_concerns": ["array of application concerns"],
+          "specific_questions": ["array of specific questions mentioned"]
+        }
+      }`;
+
+    case 'LLM':
+      return `${basePrompt}
+
+      RESPONSE FORMAT (JSON only):
+      {
+        "personal_info": {
+          "full_name": "string or null",
+          "preferred_name": "string or null",
+          "email_address": "string or null",
+          "country_code": "string or null (e.g., +1, +91, +44, etc.)",
+          "applying_to": "LLM"
+        },
+        "academic_background": {
+          "college_name": "string or null",
+          "college_graduation_year": "number or null",
+          "college_gpa": "number or null",
+          "undergraduate_cgpa": "number or null",
+          "masters_field_of_focus": "string or null"
+        },
+        "test_scores": {
+          "test_type": "LSAT | GRE | Not yet taken or null",
+          "test_score": "number or null"
+        },
+        "extracurricular_activities": {
+          "activities": ["array of activities mentioned"],
+          "leadership_roles": ["array of leadership positions"],
+          "personal_projects": ["array of personal projects mentioned"]
+        },
+        "career_goals": {
+          "career_interests": ["array of career fields of interest"]
+        },
+        "preferences": {
+          "ideal_college_size": "Small (< 2,000 students) | Medium (2,000 - 15,000 students) | Large (> 15,000 students) or null",
+          "ideal_college_setting": "Urban | Suburban | Rural | College Town or null",
+          "geographic_preference": "In-state | Out-of-state | Northeast | West Coast | No Preference or null",
+          "must_haves": ["array of essential features"],
+          "deal_breakers": ["array of undesirable features"]
+        },
+        "financial_considerations": {
+          "college_budget": "< $20,000 | $20,000 - $35,000 | $35,000 - $50,000 | $50,000 - $70,000 | > $70,000 or null",
+          "financial_aid_importance": "Crucial | Very Important | Somewhat Important | Not a factor or null",
+          "scholarship_interests": ["array of scholarship types"],
+          "looking_for_scholarships": "yes | no | null",
+          "looking_for_financial_aid": "yes | no | null"
         },
         "additional_info": {
           "application_concerns": ["array of application concerns"],
@@ -493,8 +564,9 @@ function flattenProfileForDatabase(profile: any, schoolType: string): Record<str
     flattened.full_name = profile.personal_info.full_name;
     flattened.preferred_name = profile.personal_info.preferred_name;
     flattened.email_address = profile.personal_info.email_address;
-    flattened.phone_number = profile.personal_info.phone_number;
+    // Note: phone_number is excluded from extraction as per requirements
     flattened.country_code = profile.personal_info.country_code;
+    flattened.applying_to = profile.personal_info.applying_to;
   }
 
   // Academic background - maps to all schema fields based on school type
@@ -551,6 +623,7 @@ function flattenProfileForDatabase(profile: any, schoolType: string): Record<str
   if (profile.preferences) {
     flattened.ideal_college_size = profile.preferences.ideal_college_size;
     flattened.ideal_college_setting = profile.preferences.ideal_college_setting;
+    flattened.geographic_preference = profile.preferences.geographic_preference;
     flattened.must_haves = profile.preferences.must_haves?.join(', ');
     flattened.deal_breakers = profile.preferences.deal_breakers?.join(', ');
   }
@@ -563,6 +636,8 @@ function flattenProfileForDatabase(profile: any, schoolType: string): Record<str
     flattened.scholarship_interests = Array.isArray(profile.financial_considerations.scholarship_interests) 
       ? profile.financial_considerations.scholarship_interests 
       : [];
+    flattened.looking_for_scholarships = profile.financial_considerations.looking_for_scholarships;
+    flattened.looking_for_financial_aid = profile.financial_considerations.looking_for_financial_aid;
   }
 
   // Additional info - maps to schema fields

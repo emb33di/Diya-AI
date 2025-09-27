@@ -18,7 +18,6 @@ const PROFILE_FIELDS = [
   { key: 'applying_to', category: 'Personal Information', weight: 1 },
   
   // Optional fields (not counted in completion)
-  { key: 'preferred_name', category: 'Personal Information', weight: 0 },
   { key: 'masters_field_of_focus', category: 'Personal Information', weight: 0 },
   
   // Academic Profile (core required fields)

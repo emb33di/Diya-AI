@@ -34,10 +34,7 @@ const Dashboard = () => {
 
   // Get user's display name with consistent fallback logic
   const displayName = (() => {
-    // Priority order: preferred_name -> full_name -> email username -> 'Student'
-    if (profile?.preferred_name && profile.preferred_name.trim()) {
-      return profile.preferred_name.trim();
-    }
+    // Priority order: full_name -> email username -> 'Student'
     if (profile?.full_name && profile.full_name.trim()) {
       return profile.full_name.trim();
     }
@@ -50,7 +47,6 @@ const Dashboard = () => {
 
   // Debug logging for name display
   console.log('Dashboard name display debug:', {
-    profilePreferredName: profile?.preferred_name,
     profileFullName: profile?.full_name,
     userEmail: user?.email,
     finalDisplayName: displayName

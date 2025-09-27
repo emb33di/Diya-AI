@@ -5,7 +5,6 @@ import { supabase } from '@/integrations/supabase/client';
 export interface UserProfile {
   id: string;
   full_name: string | null;
-  preferred_name: string | null;
   email_address: string | null;
   onboarding_complete: boolean;
 }
@@ -79,7 +78,7 @@ export const useAuth = () => {
         // Fetch profile from user_profiles table only
         const { data: profile, error } = await supabase
           .from('user_profiles')
-          .select('id, full_name, preferred_name, email_address, onboarding_complete')
+          .select('id, full_name, email_address, onboarding_complete')
           .eq('user_id', user.id)
           .maybeSingle();
 
@@ -98,7 +97,7 @@ export const useAuth = () => {
               email_address: user.email,
               onboarding_complete: false,
             })
-            .select('id, full_name, preferred_name, email_address, onboarding_complete')
+            .select('id, full_name, email_address, onboarding_complete')
             .single();
 
           if (createError) throw createError;
@@ -112,7 +111,6 @@ export const useAuth = () => {
         const combinedProfile: UserProfile = {
           id: finalProfile.id,
           full_name: finalProfile.full_name || user.user_metadata?.full_name || null,
-          preferred_name: finalProfile.preferred_name || null,
           email_address: finalProfile.email_address || user.email || null,
           onboarding_complete: finalProfile.onboarding_complete || false,
         };

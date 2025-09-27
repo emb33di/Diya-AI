@@ -50,19 +50,6 @@ export const PersonalInfoSection: React.FC<PersonalInfoSectionProps> = ({
               )}
             />
           </AIFormField>
-          <FormField
-            control={form.control}
-            name="preferred_name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Preferred Name</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

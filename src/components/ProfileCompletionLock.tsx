@@ -35,7 +35,6 @@ const ProfileCompletionLock: React.FC<ProfileCompletionLockProps> = ({
   const getFieldDisplayName = (fieldKey: string): string => {
     const fieldMap: Record<string, string> = {
       'full_name': 'Full Name',
-      'preferred_name': 'Preferred Name',
       'email_address': 'Email Address',
       'country_code': 'Country Code',
       'phone_number': 'Phone Number',
@@ -73,7 +72,6 @@ const ProfileCompletionLock: React.FC<ProfileCompletionLockProps> = ({
   const getFieldCategory = (fieldKey: string): string => {
     const categoryMap: Record<string, string> = {
       'full_name': 'Personal Information',
-      'preferred_name': 'Personal Information',
       'email_address': 'Personal Information',
       'country_code': 'Personal Information',
       'phone_number': 'Personal Information',

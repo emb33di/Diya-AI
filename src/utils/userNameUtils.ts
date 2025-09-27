@@ -2,40 +2,34 @@ import { User } from '@supabase/supabase-js';
 
 export interface UserProfile {
   full_name?: string | null;
-  preferred_name?: string | null;
 }
 
 /**
  * Centralized utility for getting user display names with consistent fallback logic
- * Priority order: preferred_name -> full_name -> user_metadata.full_name -> email username -> 'Student'
+ * Priority order: full_name -> user_metadata.full_name -> email username -> 'Student'
  */
 export const getUserDisplayName = (
   profile: UserProfile | null | undefined,
   user: User | null | undefined,
   fallback: string = 'Student'
 ): string => {
-  // Priority 1: Preferred name from profile
-  if (profile?.preferred_name && profile.preferred_name.trim()) {
-    return profile.preferred_name.trim();
-  }
-
-  // Priority 2: Full name from profile
+  // Priority 1: Full name from profile
   if (profile?.full_name && profile.full_name.trim()) {
     return profile.full_name.trim();
   }
 
-  // Priority 3: Full name from user metadata (signup data)
+  // Priority 2: Full name from user metadata (signup data)
   if (user?.user_metadata?.full_name && user.user_metadata.full_name.trim()) {
     return user.user_metadata.full_name.trim();
   }
 
-  // Priority 4: Email username
+  // Priority 3: Email username
   if (user?.email) {
     const emailUsername = user.email.split('@')[0];
     return emailUsername || fallback;
   }
 
-  // Priority 5: Fallback
+  // Priority 4: Fallback
   return fallback;
 };
 
@@ -74,7 +68,7 @@ export const fetchUserProfileData = async (userId: string): Promise<UserProfile 
       import('@/integrations/supabase/client').then(({ supabase }) =>
         supabase
           .from('user_profiles')
-          .select('full_name, preferred_name')
+          .select('full_name')
           .eq('user_id', userId)
           .maybeSingle()
       ),
@@ -95,7 +89,6 @@ export const fetchUserProfileData = async (userId: string): Promise<UserProfile 
     // Return the profile data
     return {
       full_name: profile?.full_name || null,
-      preferred_name: profile?.preferred_name || null,
     };
   } catch (error) {
     console.error('Error fetching user profile data:', error);

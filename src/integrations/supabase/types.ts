@@ -14,7 +14,6 @@ export interface Database {
           id: string
           user_id: string
           full_name: string | null
-          preferred_name: string | null
           date_of_birth: string | null
           email_address: string | null
           phone_number: string | null
@@ -51,7 +50,6 @@ export interface Database {
           id?: string
           user_id: string
           full_name?: string | null
-          preferred_name?: string | null
           date_of_birth?: string | null
           email_address?: string | null
           phone_number?: string | null
@@ -88,7 +86,6 @@ export interface Database {
           id?: string
           user_id?: string
           full_name?: string | null
-          preferred_name?: string | null
           date_of_birth?: string | null
           email_address?: string | null
           phone_number?: string | null

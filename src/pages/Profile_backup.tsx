@@ -26,7 +26,6 @@ import { OnboardingApiService } from "@/services/onboarding.api";
 const profileSchema = z.object({
   // Personal Information
   full_name: z.string().min(1, "Full name is required"),
-  preferred_name: z.string().optional(),
   email_address: z.string().email("Valid email address is required").min(1, "Email address is required"),
   country_code: z.string().min(1, "Country code is required"),
   phone_number: z.string().min(1, "Phone number is required"),
@@ -319,7 +318,6 @@ export default function Profile() {
     defaultValues: {
       // Personal Information
       full_name: "",
-      preferred_name: "",
       email_address: "",
       country_code: "+91",
       phone_number: "",
@@ -450,7 +448,6 @@ export default function Profile() {
     // Personal info
     if (aiProfile.personal_info) {
       formData.full_name = aiProfile.personal_info.full_name;
-      formData.preferred_name = aiProfile.personal_info.preferred_name;
       formData.email_address = aiProfile.personal_info.email_address;
       formData.phone_number = aiProfile.personal_info.phone_number;
     }
@@ -786,7 +783,6 @@ export default function Profile() {
           ...formData,
           // Personal Information
           full_name: formData.full_name ?? "",
-          preferred_name: formData.preferred_name ?? "",
           email_address: formData.email_address ?? "",
           phone_number: formData.phone_number ?? "",
           country_code: formData.country_code ?? "+91",
@@ -1155,10 +1151,6 @@ export default function Profile() {
             formData.full_name = extractedProfile.personal_info.full_name;
             newAIPopulatedFields.add('full_name');
           }
-          if (extractedProfile.personal_info.preferred_name) {
-            formData.preferred_name = extractedProfile.personal_info.preferred_name;
-            newAIPopulatedFields.add('preferred_name');
-          }
           if (extractedProfile.personal_info.email_address) {
             formData.email_address = extractedProfile.personal_info.email_address;
             newAIPopulatedFields.add('email_address');
@@ -1521,7 +1513,7 @@ export default function Profile() {
 
         // Show which fields were NOT populated
         const allPossibleFields = [
-          'full_name', 'preferred_name', 'email_address', 'phone_number', 'country_code',
+          'full_name', 'email_address', 'phone_number', 'country_code',
           'high_school_name', 'high_school_graduation_year', 'gpa_unweighted', 'gpa_weighted', 
           'class_rank', 'school_board', 'year_of_study', 'class_10_score', 'class_11_score', 
           'class_12_half_yearly_score', 'intended_majors', 'secondary_major_minor_interests',
@@ -1872,19 +1864,6 @@ export default function Profile() {
                     )}
                   />
                 </AIFormField>
-                <FormField
-                  control={form.control}
-                  name="preferred_name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Preferred Name</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </div>
 
 

@@ -123,7 +123,6 @@ export class AIProfileExtractionService {
         {
           "personal_info": {
             "full_name": "string or null",
-            "preferred_name": "string or null",
             "email_address": "string or null",
             "phone_number": "string or null",
             "citizenship_status": "U.S. Citizen | Permanent Resident | International Student | Other or null"
@@ -187,7 +186,6 @@ export class AIProfileExtractionService {
         {
           "personal_info": {
             "full_name": "string or null",
-            "preferred_name": "string or null",
             "email_address": "string or null",
             "phone_number": "string or null",
             "citizenship_status": "U.S. Citizen | Permanent Resident | International Student | Other or null"
@@ -248,7 +246,6 @@ export class AIProfileExtractionService {
         {
           "personal_info": {
             "full_name": "string or null",
-            "preferred_name": "string or null",
             "email_address": "string or null",
             "phone_number": "string or null",
             "citizenship_status": "U.S. Citizen | Permanent Resident | International Student | Other or null"
@@ -316,7 +313,6 @@ export class AIProfileExtractionService {
         {
           "personal_info": {
             "full_name": "string or null",
-            "preferred_name": "string or null",
             "email_address": "string or null",
             "phone_number": "string or null",
             "citizenship_status": "U.S. Citizen | Permanent Resident | International Student | Other or null"
@@ -632,7 +628,6 @@ export class AIProfileExtractionService {
     // Personal info
     if (profile.personal_info) {
       flattened.full_name = profile.personal_info.full_name;
-      flattened.preferred_name = profile.personal_info.preferred_name;
       flattened.email_address = profile.personal_info.email_address;
       flattened.phone_number = profile.personal_info.phone_number;
       flattened.citizenship_status = profile.personal_info.citizenship_status;
