@@ -140,20 +140,6 @@ const SchoolList = () => {
         notes: rec.notes || rec.student_thesis || 'No notes available'
       }));
 
-      const transformedSchools = recommendations.map((rec: any) => ({
-        id: rec.id,
-        name: rec.school,
-        location: rec.location || 'Unknown',
-        category: rec.category || 'target',
-        acceptanceRate: rec.acceptance_rate || 'N/A',
-        ranking: rec.ranking || 'N/A',
-        applicationDeadline: rec.application_deadline || 'TBD',
-        earlyActionDeadline: rec.early_action_deadline,
-        earlyDecision1Deadline: rec.early_decision_1_deadline,
-        regularDecisionDeadline: rec.regular_decision_deadline,
-        notes: rec.notes || ''
-      }));
-      
       setSchools(transformedSchools);
     } catch (err) {
       console.error('[SCHOOLS_ERROR] Failed to load school recommendations:', {
