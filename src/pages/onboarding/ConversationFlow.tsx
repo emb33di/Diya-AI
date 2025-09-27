@@ -89,46 +89,39 @@ export const useConversationFlow = ({
         return;
       }
 
-      // Debug WebRTC support
-      console.log('🔍 WebRTC Debug Info:');
-      console.log('- WebRTC supported:', !!window.RTCPeerConnection);
-      console.log('- getUserMedia supported:', !!navigator.mediaDevices?.getUserMedia);
-      console.log('- MediaDevices available:', !!navigator.mediaDevices);
-      console.log('- User agent:', navigator.userAgent);
-
       // Request microphone access
-      console.log('🎤 Requesting microphone access...');
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: true
-      });
-      console.log('✅ Microphone access granted:', {
-        streamId: stream.id,
-        tracks: stream.getTracks().length,
-        audioTracks: stream.getAudioTracks().length,
-        videoTracks: stream.getVideoTracks().length
       });
       
       // Stop the stream immediately as we just needed permission
       stream.getTracks().forEach(track => track.stop());
-      console.log('🛑 Microphone stream stopped (permission test complete)');
 
       // Expand UI into conversation layout
       setExpandedView(true);
 
       // Get the appropriate agent ID based on user's applying_to field
       const agentId = await OutspeedAPI.getOnboardingAgentId();
-      console.log('🚀 Starting Outspeed conversation with agent:', agentId);
       
       // Set the agent ID to trigger the conversation connection
       setAgentId(agentId);
-      console.log('✅ Agent ID set:', agentId);
 
       // Store session number in localStorage for ConversationUI to use
       localStorage.setItem('current_session_number', currentSessionNumber.toString());
 
       
     } catch (error) {
-      console.error('Error starting conversation:', error);
+      // Get user context for debugging
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id || 'unknown';
+      const userEmail = user?.email || 'unknown';
+      
+      console.error(`[CONVERSATION_START_ERROR] User: ${userId} (${userEmail}) - Failed to start conversation:`, {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        errorType: error instanceof Error ? error.constructor.name : typeof error,
+        userAgent: navigator.userAgent,
+        timestamp: new Date().toISOString()
+      });
       setExpandedView(false);
       if (error instanceof DOMException && error.name === 'NotAllowedError') {
         toast({
@@ -163,11 +156,18 @@ export const useConversationFlow = ({
       // First, properly end the Outspeed session to stop the agent from speaking
       if (endSessionFn) {
         try {
-          console.log('🛑 Ending Outspeed session...');
           await endSessionFn();
-          console.log('✅ Outspeed session ended successfully');
         } catch (error) {
-          console.error('Error ending Outspeed session:', error);
+          // Get user context for debugging
+          const { data: { user } } = await supabase.auth.getUser();
+          const userId = user?.id || 'unknown';
+          const userEmail = user?.email || 'unknown';
+          
+          console.error(`[OUTSPEED_SESSION_END_ERROR] User: ${userId} (${userEmail}) - Failed to end Outspeed session:`, {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            conversationId: conversationId || 'unknown',
+            timestamp: new Date().toISOString()
+          });
         }
       }
 
@@ -179,7 +179,6 @@ export const useConversationFlow = ({
       const endTime = new Date();
       const duration = sessionStartTime ? Math.max(0, (endTime.getTime() - sessionStartTime.getTime()) / 1000) : 0;
       setSessionDuration(duration);
-      console.log('Final session duration:', duration, 'seconds');
 
       // Compute cumulative time and completion
       const newCumulativeTime = cumulativeSessionTime + duration;
@@ -192,14 +191,24 @@ export const useConversationFlow = ({
           const currentTime = new Date().toISOString();
           const response = await OnboardingApiService.updateConversationEndTime(conversationId, currentTime);
           
-          if (response.success) {
-            console.log('✅ Updated conversation record with end time:', currentTime);
-          } else {
-            console.error('Error updating conversation tracking:', response.error);
+          if (!response.success) {
+            console.error(`[CONVERSATION_TRACKING_ERROR] User: ${user.id} (${user.email}) - Failed to update conversation end time:`, {
+              error: response.error,
+              conversationId: conversationId,
+              timestamp: new Date().toISOString()
+            });
           }
         }
       } catch (error) {
-        console.error('Error updating conversation tracking:', error);
+        const { data: { user } } = await supabase.auth.getUser();
+        const userId = user?.id || 'unknown';
+        const userEmail = user?.email || 'unknown';
+        
+        console.error(`[CONVERSATION_TRACKING_ERROR] User: ${userId} (${userEmail}) - Exception updating conversation tracking:`, {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          conversationId: conversationId || 'unknown',
+          timestamp: new Date().toISOString()
+        });
       }
 
       // Persist cumulative time immediately using API service
@@ -207,14 +216,24 @@ export const useConversationFlow = ({
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           const response = await OnboardingApiService.updateCumulativeOnboardingTime(user.id, newCumulativeTime);
-          if (response.success) {
-            console.log('✅ End: Updated cumulative time in database:', Math.round(newCumulativeTime), 'seconds');
-          } else {
-            console.error('Failed to update cumulative time:', response.error);
+          if (!response.success) {
+            console.error(`[CUMULATIVE_TIME_UPDATE_ERROR] User: ${user.id} (${user.email}) - Failed to update cumulative time:`, {
+              error: response.error,
+              cumulativeTime: newCumulativeTime,
+              timestamp: new Date().toISOString()
+            });
           }
         }
       } catch (error) {
-        console.error('Error updating cumulative session time (end):', error);
+        const { data: { user } } = await supabase.auth.getUser();
+        const userId = user?.id || 'unknown';
+        const userEmail = user?.email || 'unknown';
+        
+        console.error(`[CUMULATIVE_TIME_UPDATE_ERROR] User: ${userId} (${userEmail}) - Exception updating cumulative session time:`, {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          cumulativeTime: newCumulativeTime,
+          timestamp: new Date().toISOString()
+        });
       }
       setCumulativeSessionTime(newCumulativeTime);
 
@@ -242,38 +261,45 @@ export const useConversationFlow = ({
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user && conversationId) {
-          console.log('Storing conversation ID for later retrieval:', conversationId);
-
           // Store conversation ID using API service
           const storeResponse = await OnboardingApiService.storeConversationId(conversationId, user.id, currentSessionNumber);
           if (!storeResponse.success) {
-            console.error('Failed to store conversation ID:', storeResponse.error);
+            console.error(`[CONVERSATION_ID_STORAGE_ERROR] User: ${user.id} (${user.email}) - Failed to store conversation ID:`, {
+              error: storeResponse.error,
+              conversationId: conversationId,
+              sessionNumber: currentSessionNumber,
+              timestamp: new Date().toISOString()
+            });
           }
 
           // Also store the live transcript locally (for potential fallback)
           if (messages.length > 0) {
             const transcript = messages.map(msg => `${msg.source === 'ai' ? 'Diya' : 'You'}: ${msg.text}`).join('\n');
-            console.log('Live transcript captured:', transcript);
             localStorage.setItem(`transcript_${conversationId}`, transcript);
           }
-          console.log('Conversation ID captured:', conversationId);
-          console.log('User ID:', user.id);
 
           // Step 1: Process metadata using API service
           setIsProcessingMetadata(true);
           let metadataOk = false;
           try {
-            console.log('📝 Processing conversation metadata...');
             const response = await OnboardingApiService.processConversationMetadata(conversationId, user.id, messages);
             metadataOk = response.success;
             
-            if (response.success) {
-              console.log('✅ Metadata processed successfully');
-            } else {
-              console.error('❌ Error processing metadata:', response.error);
+            if (!response.success) {
+              console.error(`[METADATA_PROCESSING_ERROR] User: ${user.id} (${user.email}) - Failed to process conversation metadata:`, {
+                error: response.error,
+                conversationId: conversationId,
+                messageCount: messages.length,
+                timestamp: new Date().toISOString()
+              });
             }
           } catch (error) {
-            console.error('❌ Error processing metadata:', error);
+            console.error(`[METADATA_PROCESSING_ERROR] User: ${user.id} (${user.email}) - Exception processing metadata:`, {
+              error: error instanceof Error ? error.message : 'Unknown error',
+              conversationId: conversationId,
+              messageCount: messages.length,
+              timestamp: new Date().toISOString()
+            });
           } finally {
             setIsProcessingMetadata(false);
           }
@@ -307,22 +333,21 @@ export const useConversationFlow = ({
 
           // Step 2: Extract profile information using API service
           try {
-            console.log('👤 Extracting profile information from conversation:', conversationId);
             const response = await OnboardingApiService.extractProfileInformation(conversationId, user.id);
             
             if (response.success && response.data) {
               const profileData = response.data;
-              console.log('✅ Enhanced profile information extracted successfully');
-              console.log('Confidence Score:', profileData.confidence_score);
-              console.log('Fields Extracted:', profileData.fields_extracted?.length);
-              console.log('Fields Missing:', profileData.fields_missing?.length);
               
               toast({
                 title: "AI Profile Extraction Complete",
                 description: `Profile extracted with ${profileData.confidence_score}% confidence. Ready for your review!`
               });
             } else {
-              console.log('❌ Enhanced profile extraction failed:', response.error);
+              console.error(`[PROFILE_EXTRACTION_ERROR] User: ${user.id} (${user.email}) - Failed to extract profile information:`, {
+                error: response.error,
+                conversationId: conversationId,
+                timestamp: new Date().toISOString()
+              });
               toast({
                 title: "Profile Extraction Warning",
                 description: response.error || "Could not extract profile information. You can fill it manually.",
@@ -330,7 +355,11 @@ export const useConversationFlow = ({
               });
             }
           } catch (error) {
-            console.error('❌ Error extracting profile:', error);
+            console.error(`[PROFILE_EXTRACTION_ERROR] User: ${user.id} (${user.email}) - Exception extracting profile:`, {
+              error: error instanceof Error ? error.message : 'Unknown error',
+              conversationId: conversationId,
+              timestamp: new Date().toISOString()
+            });
             toast({
               title: "Profile Extraction Error",
               description: "Failed to extract profile information. You can fill it manually.",
@@ -340,17 +369,19 @@ export const useConversationFlow = ({
 
           // Step 3: Generate school recommendations using API service
           try {
-            console.log('🎓 Generating school recommendations for conversation:', conversationId);
             const response = await OnboardingApiService.generateSchoolRecommendations(conversationId, user.id);
             
             if (response.success && response.data) {
-              console.log('✅ Generated recommendations:', response.data.recommendations.length);
               toast({
                 title: "Recommendations Generated",
                 description: `Successfully generated ${response.data.recommendations.length} school recommendations!`
               });
             } else {
-              console.log('❌ No recommendations generated:', response.error);
+              console.error(`[RECOMMENDATIONS_ERROR] User: ${user.id} (${user.email}) - Failed to generate recommendations:`, {
+                error: response.error,
+                conversationId: conversationId,
+                timestamp: new Date().toISOString()
+              });
               toast({
                 title: "No Recommendations",
                 description: response.error || "No recommendations could be generated",
@@ -358,7 +389,11 @@ export const useConversationFlow = ({
               });
             }
           } catch (error) {
-            console.error('❌ Error generating recommendations:', error);
+            console.error(`[RECOMMENDATIONS_ERROR] User: ${user.id} (${user.email}) - Exception generating recommendations:`, {
+              error: error instanceof Error ? error.message : 'Unknown error',
+              conversationId: conversationId,
+              timestamp: new Date().toISOString()
+            });
             toast({
               title: "Recommendation Error",
               description: "Failed to generate recommendations. You can try again later.",
@@ -372,7 +407,10 @@ export const useConversationFlow = ({
                       // Mark onboarding as completed (user chose to end anyway)
               const success = await markOnboardingCompleted();
               if (!success) {
-                console.error('Failed to mark onboarding as completed');
+                console.error(`[ONBOARDING_COMPLETION_ERROR] User: ${user.id} (${user.email}) - Failed to mark onboarding as completed:`, {
+                  conversationId: conversationId,
+                  timestamp: new Date().toISOString()
+                });
               }
 
               // Clear stored context since onboarding is complete
@@ -386,7 +424,9 @@ export const useConversationFlow = ({
             setShowLoadingModal(false);
             navigate('/profile');
         } else if (user) {
-          console.warn('No conversation ID captured');
+          console.error(`[CONVERSATION_ID_MISSING] User: ${user.id} (${user.email}) - No conversation ID captured during session end:`, {
+            timestamp: new Date().toISOString()
+          });
           toast({
             title: "Session Error",
             description: "Unable to save your session. Please try again.",
@@ -395,12 +435,28 @@ export const useConversationFlow = ({
           setShowLoadingModal(false);
         }
       } catch (error) {
-        console.error('Error storing conversation ID:', error);
+        const { data: { user } } = await supabase.auth.getUser();
+        const userId = user?.id || 'unknown';
+        const userEmail = user?.email || 'unknown';
+        
+        console.error(`[CONVERSATION_STORAGE_ERROR] User: ${userId} (${userEmail}) - Exception storing conversation data:`, {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          conversationId: conversationId || 'unknown',
+          timestamp: new Date().toISOString()
+        });
         setShowLoadingModal(false);
       }
       setConversationCompleted(true);
     } catch (error) {
-      console.error('Error ending conversation:', error);
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id || 'unknown';
+      const userEmail = user?.email || 'unknown';
+      
+      console.error(`[CONVERSATION_END_ERROR] User: ${userId} (${userEmail}) - Failed to end conversation:`, {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        conversationId: conversationId || 'unknown',
+        timestamp: new Date().toISOString()
+      });
       setShowLoadingModal(false);
       setConversationCompleted(true);
       setShowCompletionPopup(true);
@@ -438,8 +494,6 @@ export const useConversationFlow = ({
   // End conversation when timer expires
   const endConversationWithMessage = useCallback(async () => {
     try {
-      console.log('⏰ Timer expired - ending conversation');
-      
       // Simply end the conversation
       await endConversationConfirmed();
       
@@ -447,9 +501,17 @@ export const useConversationFlow = ({
       setShowCompletionPopup(true);
       
     } catch (error) {
-      console.error('Error ending conversation:', error);
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id || 'unknown';
+      const userEmail = user?.email || 'unknown';
+      
+      console.error(`[TIMER_EXPIRATION_ERROR] User: ${userId} (${userEmail}) - Failed to end conversation on timer expiration:`, {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        conversationId: conversationId || 'unknown',
+        timestamp: new Date().toISOString()
+      });
     }
-  }, [endConversationConfirmed, setShowCompletionPopup]);
+  }, [endConversationConfirmed, setShowCompletionPopup, conversationId]);
   
   return {
     startConversation,

@@ -249,17 +249,6 @@ export default function Profile() {
     },
   });
 
-  // Note: We intentionally don't use local storage for auto-saving
-  // Users must manually save their changes to persist them
-
-  // Note: AI profile data is now handled directly through database updates
-  // The edge function saves to user_profiles table, and the form loads from there
-
-  // AI Data Management Functions are now handled by useAIIntegration hook
-
-  // AIFormField component is now imported from shared components
-
-  // Convert AI extracted profile to form data format is now handled by useAIIntegration hook
 
   // Handle profile completion flow
   const handleProfileCompletion = async () => {
@@ -360,18 +349,8 @@ export default function Profile() {
   // Populate form when profileData is loaded
   useEffect(() => {
     if (profileData) {
-      console.log('📊 Profile Page: Loading profile data into form:', {
-        profileDataKeys: Object.keys(profileData),
-        hasData: Object.values(profileData).some(value => 
-          value !== undefined && value !== null && value !== ''
-        )
-      });
-      console.log('🔧 Profile Page: Resetting form with loaded profile data');
       // Reset form with loaded data
       form.reset(profileData);
-      console.log('✅ Profile Page: Form reset with profile data complete');
-    } else {
-      console.log('ℹ️ Profile Page: No profile data available to load into form');
     }
   }, [profileData, form]);
 
@@ -382,8 +361,6 @@ export default function Profile() {
     }
   }, [onboardingCompleted, profileData]);
 
-  // Note: We intentionally don't load from local storage on mount
-  // Users must manually save their changes to persist them
 
   // Warn user before leaving page with unsaved changes
   useEffect(() => {
@@ -399,34 +376,21 @@ export default function Profile() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasUnsavedChanges]);
 
-  // loadProfile function is now handled by useProfileData hook
 
 
 
   const onSubmit = async (data: ProfileFormData) => {
-    console.log("onSubmit called with data:", data);
-    console.log("Supabase URL:", import.meta.env.VITE_SUPABASE_URL);
-    console.log("Supabase Key:", import.meta.env.VITE_SUPABASE_ANON_KEY ? "Present" : "Missing");
+    let user: any = null;
     try {
       // Loading state is managed by the hook
-      const { data: { user } } = await supabase.auth.getUser();
-      console.log("User:", user);
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      user = authUser;
       if (!user) {
-        console.log("No user found, returning");
+        console.error(`[AUTH_ERROR] ${new Date().toISOString()} - No user found when trying to save profile`);
         return;
       }
 
-      console.log("Starting validation...");
       const errors: Record<string, string> = {};
-      
-      // Always required fields
-      console.log("Validating required fields:", {
-        full_name: data.full_name,
-        email_address: data.email_address,
-        country_code: data.country_code,
-        phone_number: data.phone_number,
-        applying_to: data.applying_to
-      });
 
       if (!data.full_name) errors.full_name = "Full name is required";
       if (!data.email_address) {
@@ -503,7 +467,6 @@ export default function Profile() {
 
       // If there are validation errors, set them and return
       if (Object.keys(errors).length > 0) {
-        console.log("Validation errors found:", errors);
         Object.keys(errors).forEach(field => {
           form.setError(field as keyof ProfileFormData, {
             type: "manual",
@@ -513,7 +476,6 @@ export default function Profile() {
         // Loading state is managed by the hook
         return;
       }
-      console.log("Validation passed successfully");
 
       // Combine country code and phone number into a single field
       const combinedPhoneNumber = data.country_code && data.phone_number 
@@ -549,7 +511,6 @@ export default function Profile() {
       };
 
       // Check if user_profiles record exists
-      console.log("Checking for existing profile...");
       const { data: existingProfile, error: checkError } = await (supabase
         .from("user_profiles")
         .select("id")
@@ -557,14 +518,11 @@ export default function Profile() {
         .maybeSingle() as any);
 
       if (checkError) {
-        console.warn("Error checking existing profile:", checkError);
-        console.error("Check error details:", JSON.stringify(checkError, null, 2));
+        console.error(`[PROFILE_CHECK_ERROR] ${new Date().toISOString()} - Failed to check existing profile for user ${user.id} (${data.email_address})`);
+        console.error(`Error details: ${checkError.message}`);
       }
 
-      console.log("Existing profile check result:", { existingProfile, checkError });
-
       // Save detailed profile to user_profiles table
-      console.log("Attempting to save profile data:", JSON.stringify(profileData, null, 2));
       let savedProfile;
       try {
         const { data, error: userProfileError } = await supabase
@@ -574,24 +532,23 @@ export default function Profile() {
           })
           .select();
         
-        console.log("Upsert response:", { data, userProfileError });
         savedProfile = data;
 
         if (userProfileError) {
-          console.error("Detailed error from upsert:", {
-            code: userProfileError.code,
-            message: userProfileError.message,
-            details: userProfileError.details,
-            hint: userProfileError.hint
-          });
+          console.error(`[PROFILE_SAVE_ERROR] ${new Date().toISOString()} - Failed to save profile to database`);
+          console.error(`User: ${user.id} (${profileData.email_address})`);
+          console.error(`Error Code: ${userProfileError.code}`);
+          console.error(`Error Message: ${userProfileError.message}`);
+          if (userProfileError.details) console.error(`Details: ${userProfileError.details}`);
+          if (userProfileError.hint) console.error(`Hint: ${userProfileError.hint}`);
           throw userProfileError;
         }
       } catch (error) {
-        console.error("Exception during upsert:", error);
+        console.error(`[PROFILE_SAVE_EXCEPTION] ${new Date().toISOString()} - Unexpected error while saving profile`);
+        console.error(`User: ${user.id} (${profileData.email_address})`);
+        console.error(`Exception:`, error);
         throw error;
       }
-
-      console.log("Profile saved successfully:", savedProfile);
 
       // Clear any existing form errors
       form.clearErrors();
@@ -608,7 +565,6 @@ export default function Profile() {
 
       // Trigger a profile completion refresh to update navbar state
       // This will cause the useProfileCompletion hook to recalculate completion percentage
-      console.log("Triggering profile completion refresh...");
       window.dispatchEvent(new CustomEvent('profileUpdated'));
 
       // If this is the onboarding completion flow or profile review, mark onboarding as complete and navigate to dashboard
@@ -629,8 +585,9 @@ export default function Profile() {
         }
       }
     } catch (error) {
-      console.error("Error saving profile:", error);
-      console.error("Error details:", JSON.stringify(error, null, 2));
+      console.error(`[PROFILE_SUBMIT_ERROR] ${new Date().toISOString()} - Profile submission failed`);
+      console.error(`User: ${user?.id || 'Not authenticated'} (${profileData?.email_address || 'No email provided'})`);
+      console.error(`Error:`, error);
       toast({
         title: "Error",
         description: "Failed to save profile. Please try again.",
@@ -641,11 +598,6 @@ export default function Profile() {
     }
   };
 
-  // Test score functions are now handled by useTestScores hook
-
-  // Geographic preferences functions are now handled by useGeographicPreferences hook
-
-  // Geographic preferences functions are now handled by useGeographicPreferences hook
 
   return (
     <OnboardingGuard pageName="Profile">
@@ -713,8 +665,6 @@ export default function Profile() {
               onClick={() => {
                 if (isOnboardingCompletionFlow || profileMode === 'review') {
                   handleProfileCompletion();
-                } else {
-                  console.log("Save Profile button clicked");
                 }
               }}
             >
