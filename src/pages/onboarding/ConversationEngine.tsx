@@ -70,20 +70,13 @@ const ConversationEngine = ({
   // Conversation handlers moved from Onboarding.tsx
   const handleConnect = useCallback(async (conversationId: string) => {
     if (sessionState !== 'idle') {
-      console.warn('⚠️ Session already started');
+      console.warn('⚠️ Session already started - preventing duplicate session initialization');
       return;
     }
     
     try {
       // Use Zustand action to start session
       startSession(conversationId);
-      
-      console.log('🎉 CONNECTED to Outspeed voice agent');
-      console.log('📊 Connection details:', {
-        conversationId: conversationId,
-        agentId: agentId ? 'Set' : 'Not set',
-        timestamp: new Date().toISOString()
-      });
       
       // Save conversation tracking using API service
       const { data: { user } } = await supabase.auth.getUser();
@@ -97,7 +90,14 @@ const ConversationEngine = ({
         });
         
         if (!response.success) {
-          console.error('Failed to save conversation tracking:', response.error);
+          console.error('❌ CONVERSATION_TRACKING_SAVE_FAILED:', {
+            error: response.error,
+            userId: user.id,
+            conversationId: conversationId,
+            agentId: agentId,
+            timestamp: new Date().toISOString(),
+            message: 'Failed to save conversation tracking to database - user onboarding session may not be properly recorded'
+          });
         }
       }
       
@@ -106,7 +106,15 @@ const ConversationEngine = ({
         description: "Your conversation with Diya has started. Feel free to speak naturally!"
       });
     } catch (error) {
-      console.error('❌ Error in handleConnect:', error);
+      const { data: { user } } = await supabase.auth.getUser();
+      console.error('❌ CONVERSATION_CONNECT_ERROR:', {
+        error: error.message,
+        userId: user?.id || 'unknown',
+        conversationId: conversationId,
+        agentId: agentId,
+        timestamp: new Date().toISOString(),
+        message: 'Critical error during conversation connection - user unable to start onboarding session'
+      });
       endSession(); // Use Zustand action to end session on error
       toast({
         title: "Connection Error",
@@ -118,26 +126,17 @@ const ConversationEngine = ({
 
   const handleMessage = useCallback(async (message: any) => {
     try {
-      console.log('📝 Unified message received:', message);
-      console.log('🔍 MESSAGE TRACKING:', {
-        messageId: message?.id,
-        messageSource: message?.source,
-        messageText: message?.text?.substring(0, 50) + (message?.text?.length > 50 ? '...' : ''),
-        messageTextLength: message?.text?.length || 0,
-        isInProgress: message?.isInProgress || false,
-        timestamp: new Date().toISOString()
-      });
-
       // Use the message exactly as parsed by parseOutspeedMessage
       // This ensures consistent ID generation and prevents double processing
       if (!message || !message.id || !message.text || !message.source) {
-        console.warn('⚠️ Invalid message format received:', message);
-        console.warn('🔍 AI VOICE DEBUG - Invalid Message Format:', {
-          hasMessage: !!message,
-          hasId: !!message?.id,
+        const { data: { user } } = await supabase.auth.getUser();
+        console.warn('⚠️ MESSAGE_VALIDATION_FAILED:', {
+          userId: user?.id || 'unknown',
+          messageId: message?.id || 'missing',
           hasText: !!message?.text,
           hasSource: !!message?.source,
-          message: message
+          message: 'Received invalid message format - message processing skipped to prevent data corruption',
+          timestamp: new Date().toISOString()
         });
         return;
       }
@@ -147,23 +146,6 @@ const ConversationEngine = ({
       
       // Handle in_progress messages differently - they can update existing messages
       if (message.isInProgress) {
-        console.log('🔄 TRANSCRIPT UPDATE - Processing in_progress message:', {
-          id: messageId,
-          source: message.source,
-          textPreview: message.text.substring(0, 50) + (message.text.length > 50 ? '...' : ''),
-          textLength: message.text.length,
-          totalMessages: messages.length
-        });
-        
-        console.log('🔍 AI VOICE DEBUG - Processing In-Progress Message:', {
-          messageId: messageId,
-          messageSource: message.source,
-          messageText: message.text,
-          messageTextLength: message.text.length,
-          isAI: message.source === 'ai',
-          timestamp: new Date().toISOString()
-        });
-        
         // For in_progress messages, use Zustand action
         const transcriptMessage: TranscriptMessage = {
           id: messageId,
@@ -182,12 +164,6 @@ const ConversationEngine = ({
       
       // Check deduplication using Zustand store
       if (processedMessageIds.has(messageId)) {
-        console.log('⏭️ Duplicate message skipped:', messageId, 'Source:', message.source);
-        console.log('🔍 AI VOICE DEBUG - Duplicate Message Skipped:', {
-          messageId: messageId,
-          messageSource: message.source,
-          processedIdsCount: processedMessageIds.size
-        });
         return;
       }
       
@@ -200,15 +176,6 @@ const ConversationEngine = ({
         isInProgress: false
       };
       
-      console.log('✅ TRANSCRIPT UPDATE - Adding completed message:', {
-        id: messageId,
-        source: message.source,
-        textPreview: message.text.substring(0, 50) + (message.text.length > 50 ? '...' : ''),
-        textLength: message.text.length,
-        timestamp: completedMessage.timestamp,
-        totalMessages: messages.length + 1
-      });
-      
       // Use Zustand action to add completed message (includes deduplication)
       addCompletedMessage(completedMessage);
 
@@ -217,10 +184,17 @@ const ConversationEngine = ({
         const currentProgress = Math.min(calculateProgressPercentageRef.current() + 2, 100);
         const completedCount = Math.floor(currentProgress / 16.67);
         // TODO: Add topics to Zustand store if needed
-        console.log('Progress update:', { currentProgress, completedCount });
       }
     } catch (error) {
-      console.error('❌ Error handling message:', error, 'Message:', message);
+      const { data: { user } } = await supabase.auth.getUser();
+      console.error('❌ MESSAGE_PROCESSING_ERROR:', {
+        error: error.message,
+        userId: user?.id || 'unknown',
+        messageId: message?.id || 'unknown',
+        messageSource: message?.source || 'unknown',
+        timestamp: new Date().toISOString(),
+        message: 'Critical error during message processing - user conversation data may be lost'
+      });
     }
   }, [processedMessageIds, addCompletedMessage, updateInProgressMessage, calculateProgressPercentage]);
 
@@ -242,14 +216,27 @@ const ConversationEngine = ({
           if (response.success) {
             console.log('✅ Updated cumulative time:', Math.round(newCumulativeTimeLocal), 'seconds');
           } else {
-            console.error('Failed to update cumulative time:', response.error);
+            console.error('❌ CUMULATIVE_TIME_UPDATE_FAILED:', {
+              error: response.error,
+              userId: user.id,
+              cumulativeTime: newCumulativeTimeLocal,
+              sessionDuration: duration,
+              timestamp: new Date().toISOString(),
+              message: 'Failed to save cumulative onboarding time to database - user progress may not be properly tracked'
+            });
           }
         }
       } catch (error) {
-        console.error('Error updating cumulative session time:', error);
+        const { data: { user } } = await supabase.auth.getUser();
+        console.error('❌ CUMULATIVE_TIME_SAVE_ERROR:', {
+          error: error.message,
+          userId: user?.id || 'unknown',
+          cumulativeTime: newCumulativeTimeLocal,
+          sessionDuration: duration,
+          timestamp: new Date().toISOString(),
+          message: 'Critical error saving cumulative session time - user onboarding progress may be lost'
+        });
       }
-      console.log('Session duration:', duration, 'seconds');
-      console.log('Cumulative session time:', newCumulativeTimeLocal, 'seconds');
     } else {
       console.log('Session already finalized; skipping time accounting.');
     }
@@ -271,15 +258,21 @@ const ConversationEngine = ({
   }, [setIsSpeaking]);
 
   const handleError = useCallback((error: any) => {
-    console.error('❌ VOICE AGENT ERROR:', error);
-    console.error('🔍 Error details:', {
-      errorType: typeof error,
-      errorMessage: error?.message || 'No message',
-      errorStack: error?.stack || 'No stack',
-      errorName: error?.name || 'No name',
-      agentId: agentId ? 'Set' : 'Not set',
-      timestamp: new Date().toISOString()
-    });
+    const getUserForError = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      console.error('❌ VOICE_AGENT_ERROR:', {
+        error: error.message,
+        errorType: typeof error,
+        errorStack: error?.stack || 'No stack trace',
+        errorName: error?.name || 'Unknown error type',
+        userId: user?.id || 'unknown',
+        agentId: agentId,
+        timestamp: new Date().toISOString(),
+        message: 'Critical voice agent error - user conversation may be interrupted or lost'
+      });
+    };
+    getUserForError();
+    
     toast({
       title: "Connection Error",
       description: "There was an issue with the voice connection. Please try again.",
@@ -336,14 +329,26 @@ const ConversationEngine = ({
                     (conversation as any)._cleanupEventListeners();
                     console.log('🧹 Event listeners cleaned up before session end');
                   } catch (cleanupError) {
-                    console.error('❌ Error cleaning up event listeners:', cleanupError);
+                    const { data: { user } } = await supabase.auth.getUser();
+                    console.error('❌ EVENT_CLEANUP_ERROR:', {
+                      error: cleanupError.message,
+                      userId: user?.id || 'unknown',
+                      timestamp: new Date().toISOString(),
+                      message: 'Failed to clean up event listeners before session end - may cause memory leaks'
+                    });
                   }
                 }
                 
                 await conversation.endSession();
                 console.log('✅ Outspeed session ended successfully');
               } catch (error) {
-                console.error('Error ending Outspeed session:', error);
+                const { data: { user } } = await supabase.auth.getUser();
+                console.error('❌ SESSION_END_ERROR:', {
+                  error: error.message,
+                  userId: user?.id || 'unknown',
+                  timestamp: new Date().toISOString(),
+                  message: 'Critical error ending Outspeed session - user may experience connection issues'
+                });
               }
             };
 
@@ -357,7 +362,13 @@ const ConversationEngine = ({
           }
         }
       } catch (error) {
-        console.error('Error creating conversation record:', error);
+        const { data: { user } } = await supabase.auth.getUser();
+        console.error('❌ CONVERSATION_CREATION_ERROR:', {
+          error: error.message,
+          userId: user?.id || 'unknown',
+          timestamp: new Date().toISOString(),
+          message: 'Failed to create conversation record - user onboarding session may not start properly'
+        });
         const fallbackId = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         await handleConnect(fallbackId);
       }
@@ -381,15 +392,6 @@ const ConversationEngine = ({
 
   useEffect(() => {
     if (agentId && conversation.startSession && !sessionStartedRef.current) {
-      console.log('🚀 ConversationEngine: Starting session with agent:', agentId);
-      console.log('📊 Session start details:', {
-        agentId,
-        source,
-        hasStartSession: !!conversation.startSession,
-        sessionStartedRef: sessionStartedRef.current,
-        conversationId: conversationInstanceRef.current?.id || 'unknown',
-        timestamp: new Date().toISOString()
-      });
       sessionStartedRef.current = true;
       
       try {
@@ -410,31 +412,30 @@ const ConversationEngine = ({
         } as any);
         console.log('✅ Session start call completed with transcription enabled');
       } catch (error) {
-        console.error('❌ Error starting session:', error);
+        const getUserForError = async () => {
+          const { data: { user } } = await supabase.auth.getUser();
+          console.error('❌ SESSION_START_ERROR:', {
+            error: error.message,
+            userId: user?.id || 'unknown',
+            agentId: agentId,
+            source: source,
+            timestamp: new Date().toISOString(),
+            message: 'Failed to start Outspeed session - user onboarding conversation cannot begin'
+          });
+        };
+        getUserForError();
         sessionStartedRef.current = false; // Reset on error
       }
     }
   }, [agentId, source]); // Remove conversation from dependencies to prevent re-mounting
 
-  // Unified event listeners for conversation output and transcripts (from backup file)
+  // Unified event listeners for conversation output and transcripts
   useEffect(() => {
     // Exit if conversation isn't ready
     if (!conversation) return;
     
-    // Always set up event listeners for new conversation instances
-    console.log('🔧 Setting up event listeners for conversation:', conversation);
-    console.log('🔍 CONVERSATION CAPABILITIES:', {
-      hasOn: !!conversation.on,
-      hasOff: !!conversation.off,
-      hasStartSession: !!conversation.startSession,
-      hasEndSession: !!conversation.endSession,
-      conversationKeys: Object.keys(conversation),
-      eventListenersSetupRef: eventListenersSetupRef.current
-    });
-    
     // Clean up previous listeners if they exist
     if (eventListenersSetupRef.current && conversationInstanceRef.current) {
-      console.log('🧹 Cleaning up previous event listeners...');
       try {
         if (conversationInstanceRef.current && typeof conversationInstanceRef.current.off === 'function') {
           conversationInstanceRef.current.off('conversation.item.created', () => {});
@@ -453,7 +454,16 @@ const ConversationEngine = ({
           }
         }
       } catch (error) {
-        console.error('❌ Error cleaning up previous listeners:', error);
+        const getUserForError = async () => {
+          const { data: { user } } = await supabase.auth.getUser();
+          console.error('❌ EVENT_LISTENER_CLEANUP_ERROR:', {
+            error: error.message,
+            userId: user?.id || 'unknown',
+            timestamp: new Date().toISOString(),
+            message: 'Failed to clean up previous event listeners - may cause memory leaks or duplicate handlers'
+          });
+        };
+        getUserForError();
       }
     }
     
@@ -466,18 +476,6 @@ const ConversationEngine = ({
           console.warn(`⚠️ Empty item received for ${debugLabel}`);
           return;
         }
-        
-        console.log(`📝 ${debugLabel}:`, item);
-        console.log('🔍 AI VOICE DEBUG - ProcessItem Called:', {
-          debugLabel: debugLabel,
-          itemId: item.id,
-          itemType: item.type,
-          itemRole: item.role,
-          hasContent: !!(item.content || item.text || item.message),
-          contentLength: (item.content || item.text || item.message || '').length,
-          isInProgress: item.status === 'in_progress',
-          timestamp: new Date().toISOString()
-        });
 
         // Normalize the item to ensure it has the expected structure
         const normalized = {
@@ -488,69 +486,43 @@ const ConversationEngine = ({
           ...item
         };
 
-        console.log('🔍 AI VOICE DEBUG - Normalized Item:', {
-          normalizedId: normalized.id,
-          normalizedRole: normalized.role,
-          normalizedContent: normalized.content,
-          normalizedContentLength: normalized.content.length,
-          normalizedType: normalized.type,
-          timestamp: normalized.timestamp instanceof Date ? normalized.timestamp.toISOString() : normalized.timestamp
-        });
-
         if (!isValidMessageItem(normalized)) {
-          console.log('⏭️ Skipping non-text item:', normalized.type);
-          console.log('🔍 AI VOICE DEBUG - Item Validation Failed:', {
-            reason: 'Not a valid message item',
-            itemType: normalized.type,
-            itemRole: normalized.role,
-            hasContent: !!normalized.content
-          });
           return;
         }
 
         const parsedMessage = parseOutspeedMessage(normalized, item);
         if (parsedMessage) {
-          console.log('📨 Parsed message ready for callback:', {
-            id: parsedMessage.id,
-            source: parsedMessage.source,
-            textLength: parsedMessage.text.length,
-            timestamp: parsedMessage.timestamp
-          });
-          
-          console.log('🔍 AI VOICE DEBUG - Parsed Message Details:', {
-            parsedId: parsedMessage.id,
-            parsedSource: parsedMessage.source,
-            parsedText: parsedMessage.text,
-            parsedTextLength: parsedMessage.text.length,
-            parsedTimestamp: parsedMessage.timestamp.toISOString(),
-            isInProgress: parsedMessage.isInProgress || false
-          });
-          
           try {
             handleMessage(parsedMessage);
           } catch (messageError) {
-            console.error('❌ Error in message callback:', messageError, 'Message:', parsedMessage);
-            console.error('🔍 AI VOICE DEBUG - Message Callback Error:', {
-              error: messageError.message,
-              messageId: parsedMessage.id,
-              messageSource: parsedMessage.source,
-              messageText: parsedMessage.text
-            });
+            const getUserForError = async () => {
+              const { data: { user } } = await supabase.auth.getUser();
+              console.error('❌ MESSAGE_CALLBACK_ERROR:', {
+                error: messageError.message,
+                userId: user?.id || 'unknown',
+                messageId: parsedMessage.id,
+                messageSource: parsedMessage.source,
+                timestamp: new Date().toISOString(),
+                message: 'Error in message callback handler - user conversation data may be lost'
+              });
+            };
+            getUserForError();
           }
         } else {
           console.warn('⚠️ Failed to parse message item:', normalized);
-          console.warn('🔍 AI VOICE DEBUG - Parse Failed:', {
-            reason: 'parseOutspeedMessage returned null',
-            normalizedItem: normalized
-          });
         }
       } catch (error) {
-        console.error('❌ Error processing normalized item:', error, 'Raw:', item);
-        console.error('🔍 AI VOICE DEBUG - ProcessItem Error:', {
-          error: error.message,
-          debugLabel: debugLabel,
-          rawItem: item
-        });
+        const getUserForError = async () => {
+          const { data: { user } } = await supabase.auth.getUser();
+          console.error('❌ ITEM_PROCESSING_ERROR:', {
+            error: error.message,
+            userId: user?.id || 'unknown',
+            debugLabel: debugLabel,
+            timestamp: new Date().toISOString(),
+            message: 'Critical error processing conversation item - user message may be lost'
+          });
+        };
+        getUserForError();
         // Don't throw - continue processing other items
       }
     };
@@ -561,14 +533,6 @@ const ConversationEngine = ({
     };
 
     const handleUserTranscript = (payload: any) => {
-      console.log('🎤 USER TRANSCRIPT EVENT:', payload);
-      console.log('🔍 USER MESSAGE TRACKING:', {
-        hasTranscript: !!(payload && payload.transcript),
-        transcriptLength: payload?.transcript?.length || 0,
-        transcriptPreview: payload?.transcript?.substring(0, 50) + (payload?.transcript?.length > 50 ? '...' : ''),
-        timestamp: new Date().toISOString()
-      });
-      
       if (payload && payload.transcript) {
         processItem({
           id: `user_${Date.now()}`,
@@ -581,15 +545,6 @@ const ConversationEngine = ({
     };
 
     const handleOutputDelta = (payload: any) => {
-      console.log('📝 AI DELTA EVENT:', payload);
-      console.log('🔍 AI DELTA TRACKING:', {
-        eventType: 'response.audio_transcript.delta',
-        hasDelta: !!(payload && payload.delta),
-        deltaLength: payload?.delta?.length || 0,
-        deltaPreview: payload?.delta?.substring(0, 50) + (payload?.delta?.length > 50 ? '...' : ''),
-        timestamp: new Date().toISOString()
-      });
-      
       if (payload && payload.delta) {
         const aiMessage = {
           id: `ai_delta_${Date.now()}`,
@@ -600,30 +555,11 @@ const ConversationEngine = ({
           status: 'in_progress'
         };
         
-        console.log('🔍 AI VOICE DEBUG - Processing Delta Message:', {
-          messageId: aiMessage.id,
-          content: aiMessage.content,
-          contentLength: aiMessage.content.length,
-          isInProgress: true,
-          timestamp: aiMessage.timestamp.toISOString()
-        });
-        
         processItem(aiMessage, 'response.audio_transcript.delta');
-      } else {
-        console.warn('⚠️ AI VOICE DEBUG - Invalid delta payload:', payload);
       }
     };
 
     const handleOutputDone = (payload: any) => {
-      console.log('✅ Output done:', payload);
-      console.log('🔍 AI VOICE DEBUG - Output Done Event:', {
-        eventType: 'response.output_text.done',
-        payload: payload,
-        hasText: !!(payload && payload.text),
-        textLength: payload?.text?.length || 0,
-        timestamp: new Date().toISOString()
-      });
-      
       if (payload && payload.text) {
         const aiMessage = {
           id: `ai_done_${Date.now()}`,
@@ -633,30 +569,11 @@ const ConversationEngine = ({
           timestamp: new Date()
         };
         
-        console.log('🔍 AI VOICE DEBUG - Processing Done Message:', {
-          messageId: aiMessage.id,
-          content: aiMessage.content,
-          contentLength: aiMessage.content.length,
-          isInProgress: false,
-          timestamp: aiMessage.timestamp.toISOString()
-        });
-        
         processItem(aiMessage, 'response.output_text.done');
-      } else {
-        console.warn('⚠️ AI VOICE DEBUG - Invalid done payload:', payload);
       }
     };
 
     const handleAudioTranscript = (payload: any) => {
-      console.log('🎵 Audio transcript:', payload);
-      console.log('🔍 AI VOICE DEBUG - Audio Transcript Event:', {
-        eventType: 'response.audio_transcript.delta',
-        payload: payload,
-        hasTranscript: !!(payload && payload.transcript),
-        transcriptLength: payload?.transcript?.length || 0,
-        timestamp: new Date().toISOString()
-      });
-      
       if (payload && payload.transcript) {
         const aiMessage = {
           id: `ai_audio_${Date.now()}`,
@@ -666,16 +583,7 @@ const ConversationEngine = ({
           timestamp: new Date()
         };
         
-        console.log('🔍 AI VOICE DEBUG - Processing Audio Transcript Message:', {
-          messageId: aiMessage.id,
-          content: aiMessage.content,
-          contentLength: aiMessage.content.length,
-          timestamp: aiMessage.timestamp.toISOString()
-        });
-        
         processItem(aiMessage, 'response.audio_transcript.delta');
-      } else {
-        console.warn('⚠️ AI VOICE DEBUG - Invalid audio transcript payload:', payload);
       }
     };
 
@@ -707,12 +615,18 @@ const ConversationEngine = ({
             (conversation as any).off('input_audio_buffer.speech_started', () => {});
             (conversation as any).off('input_audio_buffer.speech_stopped', () => {});
           }
-          console.log('🧹 Event listeners cleaned up successfully');
-        } else {
-          console.warn('⚠️ Conversation cleanup method not available');
         }
       } catch (error) {
-        console.error('❌ Error during event listener cleanup:', error);
+        const getUserForError = async () => {
+          const { data: { user } } = await supabase.auth.getUser();
+          console.error('❌ EVENT_LISTENER_CLEANUP_ERROR:', {
+            error: error.message,
+            userId: user?.id || 'unknown',
+            timestamp: new Date().toISOString(),
+            message: 'Failed to clean up event listeners during component unmount - may cause memory leaks'
+          });
+        };
+        getUserForError();
       }
     };
 
@@ -723,22 +637,14 @@ const ConversationEngine = ({
     if (conversation.on) {
       // User transcript events
       (conversation as any).on('input_audio_transcription.completed', handleUserTranscript);
-      (conversation as any).on('input_audio_transcription.delta', (payload: any) => {
-        console.log('🔍 USER TRANSCRIPT DELTA:', payload);
-      });
-      (conversation as any).on('input_audio_transcription.done', (payload: any) => {
-        console.log('🔍 USER TRANSCRIPT DONE:', payload);
-      });
+      (conversation as any).on('input_audio_transcription.delta', () => {});
+      (conversation as any).on('input_audio_transcription.done', () => {});
       
       // AI response events
       (conversation as any).on('response.audio_transcript.delta', handleOutputDelta);
       (conversation as any).on('response.output_text.done', handleOutputDone);
-      (conversation as any).on('response.text.delta', (payload: any) => {
-        console.log('🔍 AI TEXT DELTA:', payload);
-      });
-      (conversation as any).on('response.text.done', (payload: any) => {
-        console.log('🔍 AI TEXT DONE:', payload);
-      });
+      (conversation as any).on('response.text.delta', () => {});
+      (conversation as any).on('response.text.done', () => {});
       
       // Add audio/speech event listeners for Diya's speech
       (conversation as any).on('response.audio_transcript.delta', handleAudioTranscript);
@@ -749,25 +655,9 @@ const ConversationEngine = ({
       (conversation as any).on('response.output_audio.delta', handleAudioTranscript);
       (conversation as any).on('response.output_audio.done', handleAudioTranscript);
       
-      
       // Add new listeners for user speech detection
-      (conversation as any).on('input_audio_buffer.speech_started', (payload: any) => {
-        console.log('🎤 USER SPEECH STARTED:', payload);
-        console.log('🔍 USER SPEECH DEBUG:', {
-          eventType: 'input_audio_buffer.speech_started',
-          hasPayload: !!payload,
-          timestamp: new Date().toISOString()
-        });
-      });
-      
-      (conversation as any).on('input_audio_buffer.speech_stopped', (payload: any) => {
-        console.log('🎤 USER SPEECH STOPPED:', payload);
-        console.log('🔍 USER SPEECH DEBUG:', {
-          eventType: 'input_audio_buffer.speech_stopped',
-          hasPayload: !!payload,
-          timestamp: new Date().toISOString()
-        });
-      });
+      (conversation as any).on('input_audio_buffer.speech_started', () => {});
+      (conversation as any).on('input_audio_buffer.speech_stopped', () => {});
     }
 
     // Store cleanup function for use in endSession
