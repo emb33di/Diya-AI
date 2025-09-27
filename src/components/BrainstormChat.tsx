@@ -91,7 +91,21 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
   // Start session when agentId is available
   useEffect(() => {
     if (agentId && conversation && conversation.startSession) {
-      conversation.startSession({ agentId, source: 'diya-brainstorming' });
+      conversation.startSession({ 
+        agentId, 
+        source: 'diya-brainstorming',
+        // Enable live transcription with Whisper-1 model
+        input_audio_transcription: {
+          model: 'whisper-1'
+        },
+        // Configure voice activity detection for real-time processing
+        turn_detection: {
+          type: 'server_vad',
+          threshold: 0.5,
+          prefix_padding_ms: 300,
+          silence_duration_ms: 500
+        }
+      } as any);
     }
   }, [agentId, conversation]);
 
@@ -138,7 +152,7 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
     onError: (error) => {
       console.error('Outspeed error:', error);
       setConnectionError(error.toString());
-    }
+    },
   });
 
   // Unified event listener for conversation items - fixed to prevent infinite loop

@@ -119,10 +119,10 @@ const ConversationEngine = ({
   const handleMessage = useCallback(async (message: any) => {
     try {
       console.log('📝 Unified message received:', message);
-      console.log('🔍 AI VOICE DEBUG - HandleMessage Called:', {
+      console.log('🔍 MESSAGE TRACKING:', {
         messageId: message?.id,
         messageSource: message?.source,
-        messageText: message?.text,
+        messageText: message?.text?.substring(0, 50) + (message?.text?.length > 50 ? '...' : ''),
         messageTextLength: message?.text?.length || 0,
         isInProgress: message?.isInProgress || false,
         timestamp: new Date().toISOString()
@@ -147,10 +147,12 @@ const ConversationEngine = ({
       
       // Handle in_progress messages differently - they can update existing messages
       if (message.isInProgress) {
-        console.log('🔄 Processing in_progress message:', {
+        console.log('🔄 TRANSCRIPT UPDATE - Processing in_progress message:', {
           id: messageId,
           source: message.source,
-          text: message.text
+          textPreview: message.text.substring(0, 50) + (message.text.length > 50 ? '...' : ''),
+          textLength: message.text.length,
+          totalMessages: messages.length
         });
         
         console.log('🔍 AI VOICE DEBUG - Processing In-Progress Message:', {
@@ -198,11 +200,13 @@ const ConversationEngine = ({
         isInProgress: false
       };
       
-      console.log('✅ Adding completed message to transcript:', {
+      console.log('✅ TRANSCRIPT UPDATE - Adding completed message:', {
         id: messageId,
         source: message.source,
+        textPreview: message.text.substring(0, 50) + (message.text.length > 50 ? '...' : ''),
         textLength: message.text.length,
-        timestamp: completedMessage.timestamp
+        timestamp: completedMessage.timestamp,
+        totalMessages: messages.length + 1
       });
       
       // Use Zustand action to add completed message (includes deduplication)
@@ -383,26 +387,76 @@ const ConversationEngine = ({
         source,
         hasStartSession: !!conversation.startSession,
         sessionStartedRef: sessionStartedRef.current,
+        conversationId: conversationInstanceRef.current?.id || 'unknown',
         timestamp: new Date().toISOString()
       });
       sessionStartedRef.current = true;
       
       try {
-        conversation.startSession({ agentId, source });
-        console.log('✅ Session start call completed');
+        conversation.startSession({ 
+          agentId, 
+          source,
+          // Enable live transcription with Whisper-1 model
+          input_audio_transcription: {
+            model: 'whisper-1'
+          },
+          // Configure voice activity detection for real-time processing
+          turn_detection: {
+            type: 'server_vad',
+            threshold: 0.5,
+            prefix_padding_ms: 300,
+            silence_duration_ms: 500
+          }
+        } as any);
+        console.log('✅ Session start call completed with transcription enabled');
       } catch (error) {
         console.error('❌ Error starting session:', error);
         sessionStartedRef.current = false; // Reset on error
       }
     }
-  }, [agentId, source, conversation]);
+  }, [agentId, source]); // Remove conversation from dependencies to prevent re-mounting
 
   // Unified event listeners for conversation output and transcripts (from backup file)
   useEffect(() => {
-    // Exit if conversation isn't ready or if listeners are already set up for this instance
-    if (!conversation || eventListenersSetupRef.current) return;
+    // Exit if conversation isn't ready
+    if (!conversation) return;
     
+    // Always set up event listeners for new conversation instances
     console.log('🔧 Setting up event listeners for conversation:', conversation);
+    console.log('🔍 CONVERSATION CAPABILITIES:', {
+      hasOn: !!conversation.on,
+      hasOff: !!conversation.off,
+      hasStartSession: !!conversation.startSession,
+      hasEndSession: !!conversation.endSession,
+      conversationKeys: Object.keys(conversation),
+      eventListenersSetupRef: eventListenersSetupRef.current
+    });
+    
+    // Clean up previous listeners if they exist
+    if (eventListenersSetupRef.current && conversationInstanceRef.current) {
+      console.log('🧹 Cleaning up previous event listeners...');
+      try {
+        if (conversationInstanceRef.current && typeof conversationInstanceRef.current.off === 'function') {
+          conversationInstanceRef.current.off('conversation.item.created', () => {});
+          // Clean up additional event listeners
+          if (conversationInstanceRef.current.off) {
+            (conversationInstanceRef.current as any).off('input_audio_transcription.completed', () => {});
+            (conversationInstanceRef.current as any).off('response.audio_transcript.delta', () => {});
+            (conversationInstanceRef.current as any).off('response.output_text.done', () => {});
+            (conversationInstanceRef.current as any).off('response.audio_transcript.delta', () => {});
+            (conversationInstanceRef.current as any).off('output_audio_buffer.started', () => {});
+            (conversationInstanceRef.current as any).off('output_audio_buffer.stopped', () => {});
+            (conversationInstanceRef.current as any).off('response.output_audio.delta', () => {});
+            (conversationInstanceRef.current as any).off('response.output_audio.done', () => {});
+            (conversationInstanceRef.current as any).off('input_audio_buffer.speech_started', () => {});
+            (conversationInstanceRef.current as any).off('input_audio_buffer.speech_stopped', () => {});
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error cleaning up previous listeners:', error);
+      }
+    }
+    
     eventListenersSetupRef.current = true;
     conversationInstanceRef.current = conversation;
 
@@ -507,7 +561,14 @@ const ConversationEngine = ({
     };
 
     const handleUserTranscript = (payload: any) => {
-      console.log('🎤 User transcript completed:', payload);
+      console.log('🎤 USER TRANSCRIPT EVENT:', payload);
+      console.log('🔍 USER MESSAGE TRACKING:', {
+        hasTranscript: !!(payload && payload.transcript),
+        transcriptLength: payload?.transcript?.length || 0,
+        transcriptPreview: payload?.transcript?.substring(0, 50) + (payload?.transcript?.length > 50 ? '...' : ''),
+        timestamp: new Date().toISOString()
+      });
+      
       if (payload && payload.transcript) {
         processItem({
           id: `user_${Date.now()}`,
@@ -520,12 +581,12 @@ const ConversationEngine = ({
     };
 
     const handleOutputDelta = (payload: any) => {
-      console.log('📝 Output delta:', payload);
-      console.log('🔍 AI VOICE DEBUG - Output Delta Event:', {
-        eventType: 'response.text.delta',
-        payload: payload,
+      console.log('📝 AI DELTA EVENT:', payload);
+      console.log('🔍 AI DELTA TRACKING:', {
+        eventType: 'response.audio_transcript.delta',
         hasDelta: !!(payload && payload.delta),
         deltaLength: payload?.delta?.length || 0,
+        deltaPreview: payload?.delta?.substring(0, 50) + (payload?.delta?.length > 50 ? '...' : ''),
         timestamp: new Date().toISOString()
       });
       
@@ -547,7 +608,7 @@ const ConversationEngine = ({
           timestamp: aiMessage.timestamp.toISOString()
         });
         
-        processItem(aiMessage, 'response.text.delta');
+        processItem(aiMessage, 'response.audio_transcript.delta');
       } else {
         console.warn('⚠️ AI VOICE DEBUG - Invalid delta payload:', payload);
       }
@@ -636,11 +697,11 @@ const ConversationEngine = ({
           // Clean up additional event listeners (with type casting for TypeScript)
           if (conversation.off) {
             (conversation as any).off('input_audio_transcription.completed', handleUserTranscript);
-            (conversation as any).off('response.text.delta', handleOutputDelta);
+            (conversation as any).off('response.audio_transcript.delta', handleOutputDelta);
             (conversation as any).off('response.output_text.done', handleOutputDone);
             (conversation as any).off('response.audio_transcript.delta', handleAudioTranscript);
-            (conversation as any).off('response.speech.started', handleSpeechStart);
-            (conversation as any).off('response.speech.ended', handleSpeechEnd);
+            (conversation as any).off('output_audio_buffer.started', handleSpeechStart);
+            (conversation as any).off('output_audio_buffer.stopped', handleSpeechEnd);
             (conversation as any).off('response.output_audio.delta', handleAudioTranscript);
             (conversation as any).off('response.output_audio.done', handleAudioTranscript);
             (conversation as any).off('input_audio_buffer.speech_started', () => {});
@@ -660,26 +721,52 @@ const ConversationEngine = ({
     
     // Add back user voice input listeners (with type casting for TypeScript)
     if (conversation.on) {
+      // User transcript events
       (conversation as any).on('input_audio_transcription.completed', handleUserTranscript);
-      (conversation as any).on('response.text.delta', handleOutputDelta);
+      (conversation as any).on('input_audio_transcription.delta', (payload: any) => {
+        console.log('🔍 USER TRANSCRIPT DELTA:', payload);
+      });
+      (conversation as any).on('input_audio_transcription.done', (payload: any) => {
+        console.log('🔍 USER TRANSCRIPT DONE:', payload);
+      });
+      
+      // AI response events
+      (conversation as any).on('response.audio_transcript.delta', handleOutputDelta);
       (conversation as any).on('response.output_text.done', handleOutputDone);
+      (conversation as any).on('response.text.delta', (payload: any) => {
+        console.log('🔍 AI TEXT DELTA:', payload);
+      });
+      (conversation as any).on('response.text.done', (payload: any) => {
+        console.log('🔍 AI TEXT DONE:', payload);
+      });
       
       // Add audio/speech event listeners for Diya's speech
       (conversation as any).on('response.audio_transcript.delta', handleAudioTranscript);
-      (conversation as any).on('response.speech.started', handleSpeechStart);
-      (conversation as any).on('response.speech.ended', handleSpeechEnd);
+      (conversation as any).on('output_audio_buffer.started', handleSpeechStart);
+      (conversation as any).on('output_audio_buffer.stopped', handleSpeechEnd);
       
       // Additional potential audio events
       (conversation as any).on('response.output_audio.delta', handleAudioTranscript);
       (conversation as any).on('response.output_audio.done', handleAudioTranscript);
       
+      
       // Add new listeners for user speech detection
-      (conversation as any).on('input_audio_buffer.speech_started', () => {
-        console.log('User started speaking');
+      (conversation as any).on('input_audio_buffer.speech_started', (payload: any) => {
+        console.log('🎤 USER SPEECH STARTED:', payload);
+        console.log('🔍 USER SPEECH DEBUG:', {
+          eventType: 'input_audio_buffer.speech_started',
+          hasPayload: !!payload,
+          timestamp: new Date().toISOString()
+        });
       });
       
-      (conversation as any).on('input_audio_buffer.speech_stopped', () => {
-        console.log('User stopped speaking');
+      (conversation as any).on('input_audio_buffer.speech_stopped', (payload: any) => {
+        console.log('🎤 USER SPEECH STOPPED:', payload);
+        console.log('🔍 USER SPEECH DEBUG:', {
+          eventType: 'input_audio_buffer.speech_stopped',
+          hasPayload: !!payload,
+          timestamp: new Date().toISOString()
+        });
       });
     }
 

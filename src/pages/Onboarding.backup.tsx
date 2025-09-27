@@ -133,7 +133,7 @@ const ConversationUI = ({ agentId, source, onConnect, onMessage, onDisconnect, o
       }
     },
     onDisconnect,
-    onError
+    onError,
   });
 
   // Null check for the hook's return value
@@ -151,7 +151,21 @@ const ConversationUI = ({ agentId, source, onConnect, onMessage, onDisconnect, o
     if (agentId && conversation.startSession && !sessionStartedRef.current) {
       console.log('🚀 ConversationUI: Starting session with agent:', agentId);
       sessionStartedRef.current = true;
-      conversation.startSession({ agentId, source });
+      conversation.startSession({ 
+        agentId, 
+        source,
+        // Enable live transcription with Whisper-1 model
+        input_audio_transcription: {
+          model: 'whisper-1'
+        },
+        // Configure voice activity detection for real-time processing
+        turn_detection: {
+          type: 'server_vad',
+          threshold: 0.5,
+          prefix_padding_ms: 300,
+          silence_duration_ms: 500
+        }
+      } as any);
     }
   }, [agentId, source, conversation]);
   // Removed effect-based onEndSession registration to avoid render loops

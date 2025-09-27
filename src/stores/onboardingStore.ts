@@ -87,7 +87,7 @@ export const useOnboardingStore = create<OnboardingState>()(
         });
       },
 
-      setIsSpeaking: (speaking) => set({ isSpeaking }),
+      setIsSpeaking: (speaking) => set({ isSpeaking: speaking }),
       
       setCumulativeTime: (time) => set({ cumulativeSessionTime: time }),
 
