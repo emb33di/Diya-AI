@@ -2,11 +2,31 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Trash2, Sparkles, CheckCircle } from "lucide-react";
+import { Sparkles, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { 
+  useTestScores, 
+  useGeographicPreferences, 
+  useAIIntegration, 
+  useProfileData,
+  type TestScore,
+  type GeographicPreference,
+  type ProfileFormData
+} from "@/hooks/profile";
+import { 
+  AIFormField, 
+  TestScoreManager, 
+  GeographicPreferencesManager, 
+  MajorSelector,
+  PersonalInfoSection,
+  AcademicProfileSection,
+  CollegePreferencesSection,
+  FinancialInfoSection,
+  AdditionalInfoSection
+} from "@/components/profile/shared";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +41,7 @@ import OnboardingGuard from "@/components/OnboardingGuard";
 import GradientBackground from "@/components/GradientBackground";
 import { debugSupabase406, testCreateUserProfile } from "@/utils/debugSupabase";
 import { getValidApplyingToValues } from "@/utils/userProfileUtils";
+import { OnboardingApiService } from "@/services/onboarding.api";
 
 const profileSchema = z.object({
   // Personal Information
@@ -59,9 +80,8 @@ const profileSchema = z.object({
   deal_breakers: z.string().optional(),
   
   // Financial Information
-  college_budget: z.enum(["not_specified", "< $20,000", "$20,000 - $35,000", "$35,000 - $50,000", "$50,000 - $70,000", "> $70,000"]).optional(),
-  financial_aid_importance: z.enum(["not_specified", "Crucial", "Very Important", "Somewhat Important", "Not a factor"]).optional(),
-  scholarship_interests: z.array(z.string()).optional(),
+  looking_for_scholarships: z.enum(["yes", "no"]).optional(),
+  looking_for_financial_aid: z.enum(["yes", "no"]).optional(),
   
   // Additional Undergraduate Prompt Fields
   extracurricular_activities: z.string().optional(),
@@ -71,19 +91,7 @@ const profileSchema = z.object({
   specific_questions: z.string().optional(),
 });
 
-type ProfileFormData = z.infer<typeof profileSchema>;
-
-
-interface TestScore {
-  id?: string;
-  score: number;
-  year_taken: number;
-}
-
-interface GeographicPreference {
-  id?: string;
-  preference: string;
-}
+// ProfileFormData type is imported from hooks
 
 const scholarshipOptions = [
   "Merit-based",
@@ -96,110 +104,7 @@ const scholarshipOptions = [
   "Ethnicity"
 ];
 
-const popularMajorsForIndianStudents = [
-  "Computer Science",
-  "Data Science",
-  "Artificial Intelligence",
-  "Machine Learning",
-  "Software Engineering",
-  "Information Technology",
-  "Cybersecurity",
-  "Computer Engineering",
-  "Electrical Engineering",
-  "Mechanical Engineering",
-  "Civil Engineering",
-  "Chemical Engineering",
-  "Aerospace Engineering",
-  "Biomedical Engineering",
-  "Industrial Engineering",
-  "Materials Science Engineering",
-  "Environmental Engineering",
-  "Petroleum Engineering",
-  "Nuclear Engineering",
-  "Robotics Engineering",
-  "Business Administration",
-  "Finance",
-  "Accounting",
-  "Marketing",
-  "Management",
-  "International Business",
-  "Economics",
-  "Supply Chain Management",
-  "Human Resources",
-  "Operations Research",
-  "Statistics",
-  "Mathematics",
-  "Applied Mathematics",
-  "Actuarial Science",
-  "Physics",
-  "Chemistry",
-  "Biology",
-  "Biochemistry",
-  "Biotechnology",
-  "Microbiology",
-  "Genetics",
-  "Neuroscience",
-  "Psychology",
-  "Public Health",
-  "Health Administration",
-  "Nursing",
-  "Pharmacy",
-  "Medicine (Pre-med)",
-  "Dentistry (Pre-dental)",
-  "Veterinary Science",
-  "Architecture",
-  "Urban Planning",
-  "Graphic Design",
-  "Digital Media",
-  "Film Studies",
-  "Journalism",
-  "Mass Communication",
-  "Public Relations",
-  "Advertising",
-  "English Literature",
-  "Creative Writing",
-  "Political Science",
-  "International Relations",
-  "Public Policy",
-  "Law (Pre-law)",
-  "Criminal Justice",
-  "Social Work",
-  "Sociology",
-  "Anthropology",
-  "History",
-  "Geography",
-  "Philosophy",
-  "Religious Studies",
-  "Education",
-  "Elementary Education",
-  "Secondary Education",
-  "Special Education",
-  "Educational Psychology",
-  "Agricultural Sciences",
-  "Food Science",
-  "Nutrition",
-  "Hospitality Management",
-  "Tourism Management",
-  "Sports Management",
-  "Exercise Science",
-  "Kinesiology",
-  "Music",
-  "Fine Arts",
-  "Art History",
-  "Theater",
-  "Dance",
-  "Fashion Design",
-  "Interior Design",
-  "Landscape Architecture",
-  "Environmental Science",
-  "Sustainability Studies",
-  "Renewable Energy",
-  "Geology",
-  "Meteorology",
-  "Astronomy",
-  "Astrophysics",
-  "Other"
-];
+// popularMajorsForIndianStudents array removed - handled by MajorSelector component
 
 const countryCodes = [
   { code: "+91", country: "India", flag: "🇮🇳" },
@@ -296,21 +201,18 @@ export default function Profile() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { markOnboardingCompleted, onboardingCompleted } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [satScores, setSatScores] = useState<TestScore[]>([]);
-  const [actScores, setActScores] = useState<TestScore[]>([]);
-  const [geographicPreferences, setGeographicPreferences] = useState<GeographicPreference[]>([]);
-  const [newSatScore, setNewSatScore] = useState<TestScore>({ score: 0, year_taken: new Date().getFullYear() });
-  const [newActScore, setNewActScore] = useState<TestScore>({ score: 0, year_taken: new Date().getFullYear() });
-  const [newGeographicPreference, setNewGeographicPreference] = useState<string>("");
+  
+  // Use extracted hooks
+  const { profileData, loading, isCreatingProfile, loadProfile, saveProfile, setProfileData } = useProfileData();
+  const { scores: satScores, loadScores: loadSATScores, addScore: addSATScore, deleteScore: deleteSATScore } = useTestScores('SAT');
+  const { scores: actScores, loadScores: loadACTScores, addScore: addACTScore, deleteScore: deleteACTScore } = useTestScores('ACT');
+  const { preferences: geographicPreferences, loadPreferences: loadGeographicPreferences, addPreference: addGeographicPreference, deletePreference: deleteGeographicPreference } = useGeographicPreferences();
+  const { aiPopulatedFields, isTestingExtraction, isAIPopulated, clearAIData, convertAIProfileToFormData, testEnhancedProfileExtraction, setAIPopulatedFields } = useAIIntegration();
+  
+  // Local state for form management
   const [isOnboardingCompletionFlow, setIsOnboardingCompletionFlow] = useState(false);
-  const [majorSearchQuery, setMajorSearchQuery] = useState("");
-  const [showOtherMajorInput, setShowOtherMajorInput] = useState(false);
-  const [isCreatingProfile, setIsCreatingProfile] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [profileMode, setProfileMode] = useState<'edit' | 'review'>('edit');
-  const [profileData, setProfileData] = useState<ProfileFormData | null>(null);
-  const [aiPopulatedFields, setAIPopulatedFields] = useState<Set<string>>(new Set());
 
   const form = useForm<ProfileFormData>({
     // Remove zodResolver to prevent automatic validation
@@ -327,19 +229,19 @@ export default function Profile() {
       
       // Academic Profile
       high_school_name: "",
-      high_school_graduation_year: "",
-      school_board: "",
-      year_of_study: "",
-      class_10_score: "",
-      class_11_score: "",
-      class_12_half_yearly_score: "",
-      undergraduate_cgpa: "",
+      high_school_graduation_year: undefined,
+      school_board: undefined,
+      year_of_study: undefined,
+      class_10_score: undefined,
+      class_11_score: undefined,
+      class_12_half_yearly_score: undefined,
+      undergraduate_cgpa: undefined,
       intended_majors: "",
       college_name: "",
-      college_graduation_year: "",
-      college_gpa: "",
+      college_graduation_year: undefined,
+      college_gpa: undefined,
       test_type: "Not yet taken" as const,
-      test_score: "",
+      test_score: undefined,
       
       // College Preferences
       ideal_college_size: "not_specified",
@@ -348,9 +250,8 @@ export default function Profile() {
       deal_breakers: "",
       
       // Financial Information
-      college_budget: "not_specified",
-      financial_aid_importance: "not_specified",
-      scholarship_interests: [],
+      looking_for_scholarships: undefined,
+      looking_for_financial_aid: undefined,
       
       // Additional Undergraduate Prompt Fields
       extracurricular_activities: "",
@@ -403,111 +304,11 @@ export default function Profile() {
     }
   }, [form, toast]);
 
-  // AI Data Management Functions
-  const clearAIData = () => {
-    setAIPopulatedFields(new Set());
-    localStorage.removeItem('ai_extracted_profile');
-    
-    toast({
-      title: "AI Data Cleared",
-      description: "All AI-populated fields have been cleared. You can fill out your profile manually."
-    });
-  };
+  // AI Data Management Functions are now handled by useAIIntegration hook
 
-  // Helper function to check if a field was AI-populated
-  const isAIPopulated = (fieldName: string) => {
-    return aiPopulatedFields.has(fieldName);
-  };
+  // AIFormField component is now imported from shared components
 
-  // Helper component for form fields with AI indicators
-  const AIFormField = ({ 
-    children, 
-    fieldName, 
-    className = "" 
-  }: { 
-    children: React.ReactNode; 
-    fieldName: string; 
-    className?: string;
-  }) => {
-    const isAI = isAIPopulated(fieldName);
-    
-    return (
-      <div className={cn("relative", className)}>
-        {children}
-        {isAI && (
-          <div className="absolute -top-1 -right-1 w-5 h-5 bg-primary/10 rounded-full flex items-center justify-center">
-            <Sparkles className="w-3 h-3 text-primary" />
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // Convert AI extracted profile to form data format
-  const convertAIProfileToFormData = (aiProfile: any): Partial<ProfileFormData> => {
-    const formData: Partial<ProfileFormData> = {};
-    
-    // Personal info
-    if (aiProfile.personal_info) {
-      formData.full_name = aiProfile.personal_info.full_name;
-      formData.preferred_name = aiProfile.personal_info.preferred_name;
-      formData.email_address = aiProfile.personal_info.email_address;
-      formData.phone_number = aiProfile.personal_info.phone_number;
-    }
-    
-    // Academic background
-    if (aiProfile.academic_background) {
-      formData.high_school_name = aiProfile.academic_background.high_school_name;
-      formData.high_school_graduation_year = aiProfile.academic_background.high_school_graduation_year;
-      formData.school_board = aiProfile.academic_background.school_board as any;
-      formData.year_of_study = aiProfile.academic_background.year_of_study as any;
-      formData.class_10_score = aiProfile.academic_background.class_10_score;
-      formData.class_11_score = aiProfile.academic_background.class_11_score;
-      formData.class_12_half_yearly_score = aiProfile.academic_background.class_12_half_yearly_score;
-      formData.undergraduate_cgpa = aiProfile.academic_background.undergraduate_gpa;
-      formData.intended_majors = aiProfile.academic_background.intended_majors?.join(', ');
-      formData.college_name = aiProfile.academic_background.undergraduate_institution;
-      formData.college_graduation_year = aiProfile.academic_background.undergraduate_graduation_year;
-      formData.college_gpa = aiProfile.academic_background.undergraduate_gpa;
-      formData.masters_field_of_focus = aiProfile.academic_background.masters_field_of_focus;
-    }
-    
-    // Test scores
-    if (aiProfile.test_scores) {
-      formData.test_type = aiProfile.test_scores.test_type as any;
-      formData.test_score = aiProfile.test_scores.sat_score || aiProfile.test_scores.act_score || 
-                          aiProfile.test_scores.gmat_score || aiProfile.test_scores.gre_score;
-    }
-    
-    // Preferences
-    if (aiProfile.preferences) {
-      formData.ideal_college_size = aiProfile.preferences.ideal_college_size as any;
-      formData.ideal_college_setting = aiProfile.preferences.ideal_college_setting as any;
-      formData.must_haves = aiProfile.preferences.must_haves?.join(', ');
-      formData.deal_breakers = aiProfile.preferences.deal_breakers?.join(', ');
-    }
-    
-    // Financial considerations
-    if (aiProfile.financial_considerations) {
-      formData.college_budget = aiProfile.financial_considerations.college_budget as any;
-      formData.financial_aid_importance = aiProfile.financial_considerations.financial_aid_importance as any;
-      formData.scholarship_interests = aiProfile.financial_considerations.scholarship_interests;
-    }
-    
-    // Extracurricular activities
-    if (aiProfile.extracurricular_activities) {
-      formData.extracurricular_activities = aiProfile.extracurricular_activities.activities?.join(', ');
-      formData.leadership_roles = aiProfile.extracurricular_activities.leadership_roles?.join(', ');
-    }
-    
-    // Additional info
-    if (aiProfile.additional_info) {
-      formData.personal_projects = aiProfile.additional_info.unique_experiences?.join(', ');
-      formData.application_concerns = aiProfile.additional_info.questions_concerns?.join(', ');
-    }
-    
-    return formData;
-  };
+  // Convert AI extracted profile to form data format is now handled by useAIIntegration hook
 
   // Handle profile completion flow
   const handleProfileCompletion = async () => {
@@ -587,22 +388,7 @@ export default function Profile() {
   };
 
   // Filter majors based on search query
-  const filteredMajors = popularMajorsForIndianStudents.filter(major =>
-    major.toLowerCase().includes(majorSearchQuery.toLowerCase())
-  );
-
-  // Handle major selection
-  const handleMajorSelection = (selectedMajor: string) => {
-    if (selectedMajor === "Other") {
-      setShowOtherMajorInput(true);
-      form.setValue("intended_majors", "");
-    } else {
-      setShowOtherMajorInput(false);
-      form.setValue("intended_majors", selectedMajor);
-      clearFieldError("intended_majors");
-    }
-    setMajorSearchQuery("");
-  };
+  // Major selection functions are now handled by MajorSelector component
 
   useEffect(() => {
     // Check if user is coming from onboarding completion
@@ -648,191 +434,7 @@ export default function Profile() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasUnsavedChanges]);
 
-  const loadProfile = async () => {
-    try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError) {
-        console.error('❌ Auth error in loadProfile:', userError);
-        return;
-      }
-      if (!user) {
-        console.warn('⚠️ No user found in loadProfile - user might not be authenticated');
-        // Redirect to auth page if not authenticated
-        navigate('/auth');
-        return;
-      }
-      console.log('✅ User found in loadProfile:', user.id);
-
-      // Load profile from user_profiles table only
-      let { data: profile, error: profileError } = await supabase
-        .from("user_profiles")
-        .select("*")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (profileError && profileError.code !== "PGRST116") {
-        console.warn("Error loading profile:", profileError);
-        // Don't throw error, just log it and continue
-      }
-
-      // If no profile exists, create one
-      if (!profile && !isCreatingProfile) {
-        console.log("Creating initial user_profiles record...");
-        setIsCreatingProfile(true);
-        
-        // Use upsert to prevent duplicates and handle race conditions
-        const { data: upsertedProfile, error: createError } = await supabase
-          .from("user_profiles")
-          .upsert({
-            user_id: user.id,
-            full_name: user.user_metadata?.full_name || "",
-            email_address: user.email || "",
-            onboarding_complete: false,
-          }, {
-            onConflict: 'user_id'
-          })
-          .select("*")
-          .single();
-
-        if (createError) {
-          console.warn("Error creating initial user_profiles record:", createError);
-          // If it's a duplicate key error, that's actually fine - just reload the existing record
-          if (createError.code === '23505') { // Unique violation
-            console.log("Record already exists, reloading...");
-            const { data: existingProfile } = await supabase
-              .from("user_profiles")
-              .select("*")
-              .eq("user_id", user.id)
-              .maybeSingle();
-            
-            if (existingProfile) {
-              profile = existingProfile;
-            }
-          }
-        } else {
-          console.log("Initial user_profiles record created successfully:", upsertedProfile);
-          profile = upsertedProfile;
-          
-          // Show a subtle notification that the profile was initialized
-          toast({
-            title: "Profile initialized",
-            description: "Your profile has been set up successfully.",
-          });
-        }
-        
-        setIsCreatingProfile(false);
-      }
-
-      // Use profile data directly (no need to combine from multiple tables)
-      const combinedProfile = profile;
-
-      if (combinedProfile) {
-      // Convert database values to form values
-      const formData: any = { ...combinedProfile };
-        if (combinedProfile.high_school_graduation_year) {
-          formData.high_school_graduation_year = Number(combinedProfile.high_school_graduation_year);
-        }
-        if (combinedProfile.class_10_score) {
-          formData.class_10_score = Number(combinedProfile.class_10_score);
-        }
-        if (combinedProfile.class_11_score) {
-          formData.class_11_score = Number(combinedProfile.class_11_score);
-        }
-        if (combinedProfile.class_12_half_yearly_score) {
-          formData.class_12_half_yearly_score = Number(combinedProfile.class_12_half_yearly_score);
-        }
-        if (combinedProfile.undergraduate_cgpa) {
-          formData.undergraduate_cgpa = Number(combinedProfile.undergraduate_cgpa);
-        }
-        
-        // Parse combined phone number back into country code and phone number
-        if (combinedProfile.phone_number) {
-          const phoneNumber = combinedProfile.phone_number;
-          // Check if phone number starts with a country code (starts with +)
-          if (phoneNumber.startsWith('+')) {
-            // Find the country code by matching against our country codes list
-            const matchingCountry = countryCodes.find(country => 
-              phoneNumber.startsWith(country.code)
-            );
-            
-            if (matchingCountry) {
-              formData.country_code = matchingCountry.code;
-              formData.phone_number = phoneNumber.substring(matchingCountry.code.length);
-            } else {
-              // If no matching country code found, default to +91 and treat entire number as phone
-              formData.country_code = "+91";
-              formData.phone_number = phoneNumber.substring(1); // Remove the + if present
-            }
-          } else {
-            // If no + prefix, assume it's just the phone number and default to +91
-            formData.country_code = "+91";
-            formData.phone_number = phoneNumber;
-          }
-        }
-        
-        // Check if the intended_majors value is in our popular majors list
-        if (formData.intended_majors && !popularMajorsForIndianStudents.includes(formData.intended_majors)) {
-          // If it's not in the list, it's a custom "Other" major
-          setShowOtherMajorInput(true);
-        }
-
-        // Sanitize form data to prevent controlled/uncontrolled input warnings
-        const sanitizedFormData = {
-          ...formData,
-          // Personal Information
-          full_name: formData.full_name ?? "",
-          preferred_name: formData.preferred_name ?? "",
-          email_address: formData.email_address ?? "",
-          phone_number: formData.phone_number ?? "",
-          country_code: formData.country_code ?? "+91",
-          applying_to: formData.applying_to ?? "Undergraduate",
-          masters_field_of_focus: formData.masters_field_of_focus ?? "",
-          
-          // Academic Profile
-          high_school_name: formData.high_school_name ?? "",
-          high_school_graduation_year: formData.high_school_graduation_year ?? "",
-          school_board: formData.school_board ?? "",
-          year_of_study: formData.year_of_study ?? "",
-          class_10_score: formData.class_10_score ?? "",
-          class_11_score: formData.class_11_score ?? "",
-          class_12_half_yearly_score: formData.class_12_half_yearly_score ?? "",
-          undergraduate_cgpa: formData.undergraduate_cgpa ?? "",
-          intended_majors: formData.intended_majors ?? "",
-          college_name: formData.college_name ?? "",
-          college_graduation_year: formData.college_graduation_year ?? "",
-          college_gpa: formData.college_gpa ?? "",
-          test_type: formData.test_type ?? "Not yet taken",
-          test_score: formData.test_score ?? "",
-          
-          // College Preferences
-          ideal_college_size: formData.ideal_college_size ?? "not_specified",
-          ideal_college_setting: formData.ideal_college_setting ?? "not_specified",
-          must_haves: formData.must_haves ?? "",
-          deal_breakers: formData.deal_breakers ?? "",
-          
-          // Financial Information - convert null to not_specified for enum fields
-          college_budget: formData.college_budget ?? "not_specified",
-          financial_aid_importance: formData.financial_aid_importance ?? "not_specified",
-          scholarship_interests: Array.isArray(formData.scholarship_interests) ? formData.scholarship_interests : [],
-          
-          // Additional Undergraduate Prompt Fields
-          extracurricular_activities: formData.extracurricular_activities ?? "",
-          leadership_roles: formData.leadership_roles ?? "",
-          personal_projects: formData.personal_projects ?? "",
-          application_concerns: formData.application_concerns ?? "",
-          specific_questions: formData.specific_questions ?? "",
-        };
-
-        // Load server data directly (no local storage merging)
-        form.reset(sanitizedFormData);
-        setProfileData(sanitizedFormData);
-      } else {
-        console.log("No profile data found to load");
-      }
-    } catch (error) {
-      console.error("Error loading profile:", error);
-    }
-  };
+  // loadProfile function is now handled by useProfileData hook
 
 
 
@@ -841,7 +443,7 @@ export default function Profile() {
     console.log("Supabase URL:", import.meta.env.VITE_SUPABASE_URL);
     console.log("Supabase Key:", import.meta.env.VITE_SUPABASE_ANON_KEY ? "Present" : "Missing");
     try {
-      setLoading(true);
+      // Loading state is managed by the hook
       const { data: { user } } = await supabase.auth.getUser();
       console.log("User:", user);
       if (!user) {
@@ -943,7 +545,7 @@ export default function Profile() {
             message: errors[field]
           });
         });
-        setLoading(false);
+        // Loading state is managed by the hook
         return;
       }
       console.log("Validation passed successfully");
@@ -958,7 +560,7 @@ export default function Profile() {
       
       // Convert "not_specified" values to null for database storage
       const processedData = { ...dataWithoutGeographicPreference };
-      const notSpecifiedFields = ['college_budget', 'financial_aid_importance', 'ideal_college_size', 'ideal_college_setting'];
+      const notSpecifiedFields = ['ideal_college_size', 'ideal_college_setting'];
       
       notSpecifiedFields.forEach(field => {
         if (processedData[field] === 'not_specified') {
@@ -1070,261 +672,16 @@ export default function Profile() {
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      // Loading state is managed by the hook
     }
   };
 
-  const loadSATScores = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+  // Test Enhanced Profile Extraction Function is now handled by useAIIntegration hook
+  // Test score functions are now handled by useTestScores hook
 
-      const { data: scores, error } = await supabase
-        .from("sat_scores")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("year_taken", { ascending: false });
+  // Geographic preferences functions are now handled by useGeographicPreferences hook
 
-      if (error) {
-        console.error("Error loading SAT scores:", error);
-        return;
-      }
-
-      setSatScores(scores || []);
-    } catch (error) {
-      console.error("Error loading SAT scores:", error);
-    }
-  };
-
-  const loadACTScores = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: scores, error } = await supabase
-        .from("act_scores")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("year_taken", { ascending: false });
-
-      if (error) {
-        console.error("Error loading ACT scores:", error);
-        return;
-      }
-
-      setActScores(scores || []);
-    } catch (error) {
-      console.error("Error loading ACT scores:", error);
-    }
-  };
-
-  const addSATScore = async () => {
-    if (!newSatScore.score || !newSatScore.year_taken) {
-      toast({
-        title: "Error",
-        description: "Please fill in all SAT score fields.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { error } = await supabase
-        .from("sat_scores")
-        .insert({
-          ...newSatScore,
-          user_id: user.id,
-        });
-
-      if (error) throw error;
-
-      setNewSatScore({ score: 0, year_taken: new Date().getFullYear() });
-      loadSATScores();
-      toast({
-        title: "SAT score added",
-        description: "SAT score has been added successfully.",
-      });
-    } catch (error) {
-      console.error("Error adding SAT score:", error);
-      toast({
-        title: "Error",
-        description: "Failed to add SAT score. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const deleteSATScore = async (scoreId: string) => {
-    try {
-      const { error } = await supabase
-        .from("sat_scores")
-        .delete()
-        .eq("id", scoreId);
-
-      if (error) throw error;
-
-      loadSATScores();
-      toast({
-        title: "SAT score deleted",
-        description: "SAT score has been deleted successfully.",
-      });
-    } catch (error) {
-      console.error("Error deleting SAT score:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete SAT score. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const addACTScore = async () => {
-    if (!newActScore.score || !newActScore.year_taken) {
-      toast({
-        title: "Error",
-        description: "Please fill in all ACT score fields.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { error } = await supabase
-        .from("act_scores")
-        .insert({
-          ...newActScore,
-          user_id: user.id,
-        });
-
-      if (error) throw error;
-
-      setNewActScore({ score: 0, year_taken: new Date().getFullYear() });
-      loadACTScores();
-      toast({
-        title: "ACT score added",
-        description: "ACT score has been added successfully.",
-      });
-    } catch (error) {
-      console.error("Error adding ACT score:", error);
-      toast({
-        title: "Error",
-        description: "Failed to add ACT score. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const deleteACTScore = async (scoreId: string) => {
-    try {
-      const { error } = await supabase
-        .from("act_scores")
-        .delete()
-        .eq("id", scoreId);
-
-      if (error) throw error;
-
-      loadACTScores();
-      toast({
-        title: "ACT score deleted",
-        description: "ACT score has been deleted successfully.",
-      });
-    } catch (error) {
-      console.error("Error deleting ACT score:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete ACT score. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const loadGeographicPreferences = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: preferences, error } = await supabase
-        .from("geographic_preferences")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-
-      setGeographicPreferences(preferences || []);
-    } catch (error) {
-      console.error("Error loading geographic preferences:", error);
-    }
-  };
-
-  const addGeographicPreference = async () => {
-    if (!newGeographicPreference) {
-      toast({
-        title: "Error",
-        description: "Please select a geographic preference.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { error } = await supabase
-        .from("geographic_preferences")
-        .insert({
-          user_id: user.id,
-          preference: newGeographicPreference,
-        });
-
-      if (error) throw error;
-
-      setNewGeographicPreference("");
-      loadGeographicPreferences();
-      toast({
-        title: "Geographic preference added",
-        description: "Geographic preference has been added successfully.",
-      });
-    } catch (error) {
-      console.error("Error adding geographic preference:", error);
-      toast({
-        title: "Error",
-        description: "Failed to add geographic preference. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const deleteGeographicPreference = async (preferenceId: string) => {
-    try {
-      const { error } = await supabase
-        .from("geographic_preferences")
-        .delete()
-        .eq("id", preferenceId);
-
-      if (error) throw error;
-
-      loadGeographicPreferences();
-      toast({
-        title: "Geographic preference deleted",
-        description: "Geographic preference has been deleted successfully.",
-      });
-    } catch (error) {
-      console.error("Error deleting geographic preference:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete geographic preference. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
+  // Geographic preferences functions are now handled by useGeographicPreferences hook
 
   return (
     <OnboardingGuard pageName="Profile">
@@ -1351,1086 +708,65 @@ export default function Profile() {
       <Form {...form}>
         <form key={profileData ? 'loaded' : 'loading'} onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           {/* Personal Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Personal Information</CardTitle>
-              <CardDescription>Basic details about yourself</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <AIFormField fieldName="full_name">
-                  <FormField
-                    control={form.control}
-                    name="full_name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Full Name <span className="text-red-500">*</span></FormLabel>
-                        <FormControl>
-                          <Input 
-                            {...field} 
-                            onChange={(e) => {
-                              field.onChange(e);
-                              clearFieldError('full_name');
-                            }}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </AIFormField>
-                <FormField
-                  control={form.control}
-                  name="preferred_name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Preferred Name</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <AIFormField fieldName="email_address">
-                  <FormField
-                    control={form.control}
-                    name="email_address"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email Address <span className="text-red-500">*</span></FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="email" 
-                            {...field} 
-                            onChange={(e) => {
-                              field.onChange(e);
-                              clearFieldError('email_address');
-                            }}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </AIFormField>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="country_code"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Country Code <span className="text-red-500">*</span></FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select country code" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent className="max-h-60">
-                            {countryCodes.map((country) => (
-                              <SelectItem key={country.code} value={country.code}>
-                                {country.code}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="phone_number"
-                    render={({ field }) => (
-                      <FormItem className="md:col-span-2">
-                        <FormLabel>Phone Number <span className="text-red-500">*</span></FormLabel>
-                        <FormControl>
-                          <Input 
-                            {...field} 
-                            placeholder="Enter phone number"
-                            onChange={(e) => {
-                              field.onChange(e);
-                              clearFieldError('phone_number');
-                            }}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </div>
-
-              {/* Applying To Section - Read Only */}
-              <div className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="applying_to"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Program Type</FormLabel>
-                      <div className="flex items-center space-x-2">
-                        <div className="px-3 py-2 bg-muted rounded-md text-sm font-medium">
-                          {field.value || "Not set"}
-                        </div>
-                        <span className="text-xs text-muted-foreground">
-                          Set during account creation
-                        </span>
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Conditional Field: Field of Focus for Masters and PhD */}
-                {(form.watch("applying_to") === "Masters" || form.watch("applying_to") === "PhD") && (
-                  <FormField
-                    control={form.control}
-                    name="masters_field_of_focus"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Field of Focus <span className="text-red-500">*</span></FormLabel>
-                        <FormControl>
-                          <Input 
-                            {...field} 
-                            placeholder="e.g., Computer Science, Business Analytics, Data Science"
-                            onChange={(e) => {
-                              field.onChange(e);
-                              clearFieldError('masters_field_of_focus');
-                            }}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-
-                {/* Conditional Field: Intended Majors (only for Undergraduate) */}
-                {form.watch("applying_to") === "Undergraduate" && (
-                  <AIFormField fieldName="intended_majors">
-                    <FormField
-                      control={form.control}
-                      name="intended_majors"
-                      render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Intended Major(s) <span className="text-red-500">*</span></FormLabel>
-                        <FormControl>
-                          <div className="space-y-2">
-                            {!showOtherMajorInput ? (
-                              <div className="relative">
-                                <Input
-                                  placeholder="Search for your intended major..."
-                                  value={field.value || majorSearchQuery}
-                                  onChange={(e) => {
-                                    setMajorSearchQuery(e.target.value);
-                                    if (!e.target.value) {
-                                      field.onChange("");
-                                    }
-                                  }}
-                                  onFocus={() => {
-                                    if (field.value) {
-                                      setMajorSearchQuery(field.value);
-                                    }
-                                  }}
-                                />
-                                {majorSearchQuery && filteredMajors.length > 0 && (
-                                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                                    {filteredMajors.map((major) => (
-                                      <div
-                                        key={major}
-                                        className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
-                                        onClick={() => handleMajorSelection(major)}
-                                      >
-                                        {major}
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                                {majorSearchQuery && filteredMajors.length === 0 && (
-                                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
-                                    <div className="px-3 py-2 text-sm text-gray-500">
-                                      No majors found. Try selecting "Other" below.
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <Input
-                                placeholder="Enter your custom major..."
-                                {...field}
-                                onChange={(e) => {
-                                  field.onChange(e);
-                                  clearFieldError("intended_majors");
-                                }}
-                              />
-                            )}
-                            {field.value && !showOtherMajorInput && (
-                              <div className="flex items-center justify-between p-2 bg-green-50 border border-green-200 rounded-md">
-                                <span className="text-sm text-green-800">Selected: {field.value}</span>
-                                <button
-                                  type="button"
-                                  className="text-xs text-green-600 hover:text-green-800 underline"
-                                  onClick={() => {
-                                    field.onChange("");
-                                    setMajorSearchQuery("");
-                                  }}
-                                >
-                                  Clear
-                                </button>
-                              </div>
-                            )}
-                            {!showOtherMajorInput && (
-                              <div className="text-sm">
-                                <span className="text-gray-600">Popular majors: </span>
-                                <button
-                                  type="button"
-                                  className="text-blue-600 hover:text-blue-800 underline mr-2"
-                                  onClick={() => handleMajorSelection("Computer Science")}
-                                >
-                                  Computer Science
-                                </button>
-                                <button
-                                  type="button"
-                                  className="text-blue-600 hover:text-blue-800 underline mr-2"
-                                  onClick={() => handleMajorSelection("Business Administration")}
-                                >
-                                  Business
-                                </button>
-                                <button
-                                  type="button"
-                                  className="text-blue-600 hover:text-blue-800 underline mr-2"
-                                  onClick={() => handleMajorSelection("Engineering")}
-                                >
-                                  Engineering
-                                </button>
-                                <button
-                                  type="button"
-                                  className="text-blue-600 hover:text-blue-800 underline mr-2"
-                                  onClick={() => handleMajorSelection("Other")}
-                                >
-                                  Other
-                                </button>
-                              </div>
-                            )}
-                            {showOtherMajorInput && (
-                              <button
-                                type="button"
-                                className="text-sm text-blue-600 hover:text-blue-800 underline"
-                                onClick={() => {
-                                  setShowOtherMajorInput(false);
-                                  form.setValue("intended_majors", "");
-                                }}
-                              >
-                                ← Back to popular majors
-                              </button>
-                            )}
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  </AIFormField>
-                )}
-              </div>
-
-            </CardContent>
-          </Card>
+          <PersonalInfoSection
+            form={form}
+            isAIPopulated={isAIPopulated}
+            clearFieldError={clearFieldError}
+            countryCodes={countryCodes}
+          />
 
           {/* Academic Profile */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Academic Profile</CardTitle>
-              <CardDescription>Your academic background and achievements</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Conditional Academic Fields based on Applying To */}
-              {form.watch("applying_to") === "Undergraduate" ? (
+          <AcademicProfileSection
+            form={form}
+            isAIPopulated={isAIPopulated}
+            clearFieldError={clearFieldError}
+            satScores={satScores}
+            actScores={actScores}
+            addSATScore={addSATScore}
+            deleteSATScore={deleteSATScore}
+            addACTScore={addACTScore}
+            deleteACTScore={deleteACTScore}
+          />
+
+          {/* College Preferences */}
+          <CollegePreferencesSection
+            form={form}
+            geographicPreferences={geographicPreferences}
+            addGeographicPreference={addGeographicPreference}
+            deleteGeographicPreference={deleteGeographicPreference}
+          />
+
+          {/* Financial Information */}
+          <FinancialInfoSection
+            form={form}
+            scholarshipOptions={scholarshipOptions}
+          />
+
+          {/* Additional Undergraduate Information */}
+          <AdditionalInfoSection form={form} />
+
+          <div className="flex justify-end gap-4">
+            {/* Temporary Test Button for Enhanced Profile Extraction */}
+            <Button 
+              type="button"
+              variant="outline"
+              disabled={isTestingExtraction}
+              onClick={() => testEnhancedProfileExtraction(form)}
+              className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+            >
+              {isTestingExtraction ? (
                 <>
-                  {/* Undergraduate Fields */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <AIFormField fieldName="high_school_name">
-                      <FormField
-                        control={form.control}
-                        name="high_school_name"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>High School Name <span className="text-red-500">*</span></FormLabel>
-                            <FormControl>
-                              <Input {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </AIFormField>
-                    <FormField
-                      control={form.control}
-                      name="high_school_graduation_year"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>
-                            High School Graduation Year
-                            {form.watch("applying_to") === "Undergraduate" && <span className="text-red-500">*</span>}
-                          </FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              {...field}
-                              onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="school_board"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>School Board <span className="text-red-500">*</span></FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select your school board" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="ICSE">ICSE</SelectItem>
-                              <SelectItem value="CBSE">CBSE</SelectItem>
-                              <SelectItem value="IB">IB</SelectItem>
-                              <SelectItem value="NIOS">NIOS</SelectItem>
-                              <SelectItem value="CISCE">CISCE</SelectItem>
-                              <SelectItem value="Other">Other</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="year_of_study"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Year of Study <span className="text-red-500">*</span></FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select your year of study" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="11th">11th</SelectItem>
-                              <SelectItem value="12th">12th</SelectItem>
-                              <SelectItem value="Graduate">Graduate</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  {/* Conditional Academic Fields based on Year of Study */}
-                  {form.watch("year_of_study") === "Graduate" ? (
-                    <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="undergraduate_cgpa"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Undergraduate CGPA <span className="text-red-500">*</span></FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="number" 
-                                step="0.01"
-                                min="0"
-                                max="10"
-                                {...field}
-                                onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                                placeholder="e.g., 8.5"
-                                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="class_10_score"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Class 10 Grade <span className="text-red-500">*</span></FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="number" 
-                                step="0.01"
-                                min="0"
-                                max="100"
-                                {...field}
-                                onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                                placeholder="e.g., 85.5%"
-                                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="class_11_score"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Class 11 Grade <span className="text-red-500">*</span></FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="number" 
-                                step="0.01"
-                                min="0"
-                                max="100"
-                                {...field}
-                                onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                                placeholder="e.g., 87.2%"
-                                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="class_12_half_yearly_score"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Class 12 Half-Yearly Grade <span className="text-red-500">*</span></FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="number" 
-                                step="0.01"
-                                min="0"
-                                max="100"
-                                {...field}
-                                onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                                placeholder="e.g., 89.1%"
-                                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  )}
-
-                  {/* SAT Scores Section */}
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="text-lg font-semibold mb-2">SAT Scores</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-4">
-                        <div className="space-y-1">
-                          <label className="text-sm font-medium text-gray-700">SAT Score</label>
-                          <Input
-                            type="number"
-                            placeholder="Enter your SAT score"
-                            min="400"
-                            max="1600"
-                            value={newSatScore.score || ""}
-                            onChange={(e) => setNewSatScore({ ...newSatScore, score: parseInt(e.target.value) || 0 })}
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-sm font-medium text-gray-700">Year Taken</label>
-                          <Input
-                            type="number"
-                            placeholder="Year you took the test"
-                            value={newSatScore.year_taken}
-                            onChange={(e) => setNewSatScore({ ...newSatScore, year_taken: parseInt(e.target.value) || new Date().getFullYear() })}
-                          />
-                        </div>
-                        <div className="flex items-end">
-                          <Button type="button" onClick={addSATScore} size="sm" className="w-full">
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add SAT Score
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {satScores.length > 0 && (
-                      <div className="space-y-2">
-                        {satScores.map((score) => (
-                          <div key={score.id} className="flex items-center justify-between p-3 bg-muted rounded-md">
-                            <span>SAT Score: {score.score} ({score.year_taken})</span>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => score.id && deleteSATScore(score.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* ACT Scores Section */}
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="text-lg font-semibold mb-2">ACT Scores</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-4">
-                        <div className="space-y-1">
-                          <label className="text-sm font-medium text-gray-700">ACT Score</label>
-                          <Input
-                            type="number"
-                            placeholder="Enter your ACT score"
-                            min="1"
-                            max="36"
-                            value={newActScore.score || ""}
-                            onChange={(e) => setNewActScore({ ...newActScore, score: parseInt(e.target.value) || 0 })}
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-sm font-medium text-gray-700">Year Taken</label>
-                          <Input
-                            type="number"
-                            placeholder="Year you took the test"
-                            value={newActScore.year_taken}
-                            onChange={(e) => setNewActScore({ ...newActScore, year_taken: parseInt(e.target.value) || new Date().getFullYear() })}
-                          />
-                        </div>
-                        <div className="flex items-end">
-                          <Button type="button" onClick={addACTScore} size="sm" className="w-full">
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add ACT Score
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {actScores.length > 0 && (
-                      <div className="space-y-2">
-                        {actScores.map((score) => (
-                          <div key={score.id} className="flex items-center justify-between p-3 bg-muted rounded-md">
-                            <span>ACT Score: {score.score} ({score.year_taken})</span>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => score.id && deleteACTScore(score.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  <Sparkles className="mr-2 h-4 w-4 animate-spin" />
+                  Testing Extraction...
                 </>
               ) : (
                 <>
-                  {/* Graduate School Fields (MBA, LLM, PhD, Masters) */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="college_name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>College Name <span className="text-red-500">*</span></FormLabel>
-                          <FormControl>
-                            <Input 
-                              {...field} 
-                              placeholder="e.g., University of Delhi"
-                              onChange={(e) => {
-                                field.onChange(e);
-                                clearFieldError('college_name');
-                              }}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="college_graduation_year"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>College Graduation Year <span className="text-red-500">*</span></FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              {...field}
-                              placeholder="e.g., 2023"
-                              onChange={(e) => {
-                                field.onChange(e.target.value ? parseInt(e.target.value) : undefined);
-                                clearFieldError('college_graduation_year');
-                              }}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="college_gpa"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>College GPA <span className="text-red-500">*</span></FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              step="0.01"
-                              {...field}
-                              placeholder="e.g., 8.5"
-                              onChange={(e) => {
-                                field.onChange(e.target.value ? parseFloat(e.target.value) : undefined);
-                                clearFieldError('college_gpa');
-                              }}
-                              className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="test_type"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Test Type <span className="text-red-500">*</span></FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select test type" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="GRE">GRE</SelectItem>
-                              <SelectItem value="GMAT">GMAT</SelectItem>
-                              <SelectItem value="LSAT">LSAT</SelectItem>
-                              <SelectItem value="Not yet taken">Not yet taken</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="test_score"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>
-                            Test Score 
-                            {form.watch("test_type") !== "Not yet taken" && <span className="text-red-500">*</span>}
-                          </FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              {...field}
-                              placeholder={form.watch("test_type") === "Not yet taken" ? "Test not taken yet" : "Enter your test score"}
-                              disabled={form.watch("test_type") === "Not yet taken"}
-                              className={form.watch("test_type") === "Not yet taken" ? "bg-gray-100 text-gray-500" : ""}
-                              onChange={(e) => {
-                                if (form.watch("test_type") !== "Not yet taken") {
-                                  field.onChange(e.target.value ? parseInt(e.target.value) : undefined);
-                                  clearFieldError('test_score');
-                                }
-                              }}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  🧪 Test AI Extraction
                 </>
               )}
-            </CardContent>
-          </Card>
-
-          {/* College Preferences */}
-          <Card>
-            <CardHeader>
-              <CardTitle>College Preferences</CardTitle>
-              <CardDescription>What you're looking for in a college</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="ideal_college_size"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Ideal College Size</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select college size" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="not_specified">Not specified</SelectItem>
-                          <SelectItem value="Small (< 2,000 students)">Small (&lt; 2,000 students)</SelectItem>
-                          <SelectItem value="Medium (2,000 - 15,000 students)">Medium (2,000 - 15,000 students)</SelectItem>
-                          <SelectItem value="Large (> 15,000 students)">Large (&gt; 15,000 students)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="ideal_college_setting"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Ideal College Setting</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select college setting" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="not_specified">Not specified</SelectItem>
-                          <SelectItem value="Urban">Urban</SelectItem>
-                          <SelectItem value="Suburban">Suburban</SelectItem>
-                          <SelectItem value="Rural">Rural</SelectItem>
-                          <SelectItem value="College Town">College Town</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {/* Geographic Preferences Section */}
-              <div className="space-y-4">
-                <div>
-                  <h4 className="text-lg font-semibold mb-2">Geographic Preferences</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-4">
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium text-gray-700">Country Preference</label>
-                      <Select value={newGeographicPreference} onValueChange={setNewGeographicPreference}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a country preference" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="US">US</SelectItem>
-                          <SelectItem value="UK">UK</SelectItem>
-                          <SelectItem value="Canada">Canada</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex items-end">
-                      <Button type="button" onClick={addGeographicPreference} size="sm" className="w-full">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Preference
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-                
-                {geographicPreferences.length > 0 && (
-                  <div className="space-y-2">
-                    {geographicPreferences.map((preference) => (
-                      <div key={preference.id} className="flex items-center justify-between p-3 bg-muted rounded-md">
-                        <span>{preference.preference}</span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => preference.id && deleteGeographicPreference(preference.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <FormField
-                control={form.control}
-                name="must_haves"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Must-Haves</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} placeholder="What features are essential for your ideal college?" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="deal_breakers"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Deal-Breakers</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} placeholder="What would make you not want to attend a college?" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-          </Card>
-
-          {/* Financial Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Financial Information</CardTitle>
-              <CardDescription>Budget and financial aid preferences</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="college_budget"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>College Budget (Per Year)</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select budget range" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="not_specified">Not specified</SelectItem>
-                          <SelectItem value="< $20,000">&lt; $20,000</SelectItem>
-                          <SelectItem value="$20,000 - $35,000">$20,000 - $35,000</SelectItem>
-                          <SelectItem value="$35,000 - $50,000">$35,000 - $50,000</SelectItem>
-                          <SelectItem value="$50,000 - $70,000">$50,000 - $70,000</SelectItem>
-                          <SelectItem value="> $70,000">&gt; $70,000</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="financial_aid_importance"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Financial Aid Importance</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select importance level" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="not_specified">Not specified</SelectItem>
-                          <SelectItem value="Crucial">Crucial</SelectItem>
-                          <SelectItem value="Very Important">Very Important</SelectItem>
-                          <SelectItem value="Somewhat Important">Somewhat Important</SelectItem>
-                          <SelectItem value="Not a factor">Not a factor</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <FormField
-                control={form.control}
-                name="scholarship_interests"
-                render={() => (
-                  <FormItem>
-                    <div className="mb-4">
-                      <FormLabel className="text-base">Scholarship Interests</FormLabel>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      {scholarshipOptions.map((item) => (
-                        <FormField
-                          key={item}
-                          control={form.control}
-                          name="scholarship_interests"
-                          render={({ field }) => {
-                            return (
-                              <FormItem
-                                key={item}
-                                className="flex flex-row items-start space-x-3 space-y-0"
-                              >
-                                <FormControl>
-                                  <Checkbox
-                                    checked={field.value?.includes(item)}
-                                    onCheckedChange={(checked) => {
-                                      const currentValue = field.value || [];
-                                      if (checked) {
-                                        field.onChange([...currentValue, item]);
-                                      } else {
-                                        field.onChange(
-                                          currentValue.filter((value) => value !== item)
-                                        );
-                                      }
-                                    }}
-                                  />
-                                </FormControl>
-                                <FormLabel className="text-sm font-normal">
-                                  {item}
-                                </FormLabel>
-                              </FormItem>
-                            );
-                          }}
-                        />
-                      ))}
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-          </Card>
-
-          {/* Additional Undergraduate Information */}
-          {form.watch("applying_to") === "Undergraduate" && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Additional Information</CardTitle>
-                <CardDescription>Help us understand your goals and preferences better</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Extracurricular Activities */}
-                <FormField
-                  control={form.control}
-                  name="extracurricular_activities"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Extracurricular Activities & Interests</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Tell us about your activities, passions, and accomplishments outside of academics..."
-                          className="resize-none"
-                          rows={3}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Leadership Roles */}
-                <FormField
-                  control={form.control}
-                  name="leadership_roles"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Leadership Roles & Experiences</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Describe any leadership roles, responsibilities, or experiences you've had..."
-                          className="resize-none"
-                          rows={3}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Personal Projects */}
-                <FormField
-                  control={form.control}
-                  name="personal_projects"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Personal Projects & Initiatives</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Share any personal projects, initiatives, or creative work you're proud of..."
-                          className="resize-none"
-                          rows={3}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Application Concerns */}
-                <FormField
-                  control={form.control}
-                  name="application_concerns"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Application Concerns</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Any specific concerns or anxieties about the application process?"
-                          className="resize-none"
-                          rows={3}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Specific Questions */}
-                <FormField
-                  control={form.control}
-                  name="specific_questions"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Specific Questions</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Any specific questions you'd like addressed in your personalized report?"
-                          className="resize-none"
-                          rows={3}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </CardContent>
-            </Card>
-          )}
-
-          <div className="flex justify-end">
+            </Button>
+            
             <Button 
               type="submit" 
               disabled={loading}

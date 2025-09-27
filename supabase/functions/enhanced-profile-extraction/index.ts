@@ -133,7 +133,7 @@ function generateSchoolSpecificPrompt(schoolType: string, transcript: string): s
           "preferred_name": "string or null",
           "email_address": "string or null", 
           "phone_number": "string or null",
-          "citizenship_status": "U.S. Citizen | Permanent Resident | International Student | Other or null"
+          "country_code": "string or null (e.g., US, IN, CA, etc.)"
         },
         "academic_background": {
           "high_school_name": "string or null",
@@ -146,31 +146,24 @@ function generateSchoolSpecificPrompt(schoolType: string, transcript: string): s
           "class_10_score": "number or null",
           "class_11_score": "number or null", 
           "class_12_half_yearly_score": "number or null",
-          "academic_interests": ["array of subjects/fields mentioned"],
-          "intended_majors": ["array of majors mentioned"],
-          "secondary_major_minor_interests": ["array of secondary interests"]
+          "intended_majors": "string or null (comma-separated list)",
+          "secondary_major_minor_interests": "string or null (comma-separated list)"
         },
         "test_scores": {
           "sat_score": "number or null",
-          "act_score": "number or null",
-          "test_status": "taken | planning_to_take | not_taking or null"
+          "act_score": "number or null"
         },
         "extracurricular_activities": {
           "activities": ["array of activities mentioned"],
           "leadership_roles": ["array of leadership positions"],
-          "achievements": ["array of awards/achievements"],
-          "community_service": ["array of volunteer work"]
+          "personal_projects": ["array of personal projects mentioned"]
         },
         "career_goals": {
-          "short_term_goals": ["array of immediate goals"],
-          "long_term_aspirations": ["array of future aspirations"],
           "career_interests": ["array of career fields of interest"]
         },
         "preferences": {
           "ideal_college_size": "Small (< 2,000 students) | Medium (2,000 - 15,000 students) | Large (> 15,000 students) or null",
           "ideal_college_setting": "Urban | Suburban | Rural | College Town or null",
-          "geographic_preference": "In-state | Out-of-state | Northeast | West Coast | No Preference or null",
-          "program_preferences": ["array of program preferences"],
           "must_haves": ["array of essential features"],
           "deal_breakers": ["array of undesirable features"]
         },
@@ -180,10 +173,8 @@ function generateSchoolSpecificPrompt(schoolType: string, transcript: string): s
           "scholarship_interests": ["array of scholarship types"]
         },
         "additional_info": {
-          "personal_values": ["array of values mentioned"],
-          "challenges_overcome": ["array of challenges discussed"],
-          "unique_experiences": ["array of unique experiences"],
-          "questions_concerns": ["array of questions or concerns"]
+          "application_concerns": ["array of application concerns"],
+          "specific_questions": ["array of specific questions mentioned"]
         }
       }`;
 
@@ -197,54 +188,39 @@ function generateSchoolSpecificPrompt(schoolType: string, transcript: string): s
           "preferred_name": "string or null",
           "email_address": "string or null",
           "phone_number": "string or null",
-          "citizenship_status": "U.S. Citizen | Permanent Resident | International Student | Other or null"
+          "country_code": "string or null (e.g., US, IN, CA, etc.)"
         },
         "academic_background": {
-          "undergraduate_institution": "string or null",
-          "undergraduate_major": "string or null",
-          "undergraduate_graduation_year": "number or null",
-          "undergraduate_gpa": "number or null",
-          "academic_interests": ["array of academic interests"]
-        },
-        "professional_experience": {
-          "years_of_experience": "number or null",
-          "current_role": "string or null",
-          "current_company": "string or null",
-          "industry": "string or null",
-          "work_experience_summary": ["array of work experiences"],
-          "leadership_experience": ["array of leadership roles"],
-          "achievements": ["array of professional achievements"]
+          "college_name": "string or null",
+          "college_graduation_year": "number or null",
+          "college_gpa": "number or null",
+          "undergraduate_cgpa": "number or null",
+          "masters_field_of_focus": "string or null"
         },
         "test_scores": {
-          "gmat_score": "number or null",
-          "gre_score": "number or null",
           "test_type": "GMAT | GRE | Not yet taken or null",
-          "test_status": "taken | planning_to_take | not_taking or null"
+          "test_score": "number or null"
+        },
+        "extracurricular_activities": {
+          "activities": ["array of activities mentioned"],
+          "leadership_roles": ["array of leadership positions"],
+          "personal_projects": ["array of personal projects mentioned"]
         },
         "career_goals": {
-          "post_mba_goals": ["array of post-MBA goals"],
-          "target_industry": ["array of target industries"],
-          "target_function": ["array of target functions"],
-          "career_switch_goals": ["array of career change goals"]
+          "career_interests": ["array of career fields of interest"]
         },
         "preferences": {
-          "program_type": "Full-time | Part-time | Executive | Online or null",
-          "geographic_preference": ["array of location preferences"],
-          "school_preferences": ["array of school preferences"],
           "must_haves": ["array of essential features"],
           "deal_breakers": ["array of undesirable features"]
         },
         "financial_considerations": {
-          "budget_range": "string or null",
-          "funding_sources": ["array of funding sources"],
+          "college_budget": "< $20,000 | $20,000 - $35,000 | $35,000 - $50,000 | $50,000 - $70,000 | > $70,000 or null",
           "financial_aid_importance": "Crucial | Very Important | Somewhat Important | Not a factor or null",
           "scholarship_interests": ["array of scholarship types"]
         },
         "additional_info": {
-          "personal_values": ["array of values mentioned"],
-          "challenges_overcome": ["array of challenges discussed"],
-          "unique_experiences": ["array of unique experiences"],
-          "questions_concerns": ["array of questions or concerns"]
+          "application_concerns": ["array of application concerns"],
+          "specific_questions": ["array of specific questions mentioned"]
         }
       }`;
 
@@ -258,61 +234,39 @@ function generateSchoolSpecificPrompt(schoolType: string, transcript: string): s
           "preferred_name": "string or null",
           "email_address": "string or null",
           "phone_number": "string or null",
-          "citizenship_status": "U.S. Citizen | Permanent Resident | International Student | Other or null"
+          "country_code": "string or null (e.g., US, IN, CA, etc.)"
         },
         "academic_background": {
-          "undergraduate_institution": "string or null",
-          "undergraduate_major": "string or null",
-          "undergraduate_graduation_year": "number or null",
-          "undergraduate_gpa": "number or null",
-          "masters_field_of_focus": "string or null",
-          "academic_interests": ["array of academic interests"],
-          "research_interests": ["array of research interests"]
-        },
-        "professional_experience": {
-          "years_of_experience": "number or null",
-          "current_role": "string or null",
-          "current_company": "string or null",
-          "industry": "string or null",
-          "relevant_experience": ["array of relevant experiences"],
-          "research_experience": ["array of research experiences"],
-          "internships": ["array of internships"],
-          "projects": ["array of projects"]
+          "college_name": "string or null",
+          "college_graduation_year": "number or null",
+          "college_gpa": "number or null",
+          "undergraduate_cgpa": "number or null",
+          "masters_field_of_focus": "string or null"
         },
         "test_scores": {
-          "gre_score": "number or null",
           "test_type": "GRE | Not yet taken or null",
-          "test_status": "taken | planning_to_take | not_taking or null",
-          "english_proficiency": {
-            "toefl_score": "number or null",
-            "ielts_score": "number or null",
-            "test_status": "taken | planning_to_take | not_taking or null"
-          }
+          "test_score": "number or null"
+        },
+        "extracurricular_activities": {
+          "activities": ["array of activities mentioned"],
+          "leadership_roles": ["array of leadership positions"],
+          "personal_projects": ["array of personal projects mentioned"]
         },
         "career_goals": {
-          "masters_motivation": ["array of motivations for masters"],
-          "career_goals": ["array of career goals"],
-          "research_goals": ["array of research goals"],
-          "academic_goals": ["array of academic goals"]
+          "career_interests": ["array of career fields of interest"]
         },
         "preferences": {
-          "program_type": "Research-based | Coursework-based | Professional or null",
-          "geographic_preference": ["array of location preferences"],
-          "university_preferences": ["array of university preferences"],
           "must_haves": ["array of essential features"],
           "deal_breakers": ["array of undesirable features"]
         },
         "financial_considerations": {
-          "budget_range": "string or null",
-          "funding_sources": ["array of funding sources"],
+          "college_budget": "< $20,000 | $20,000 - $35,000 | $35,000 - $50,000 | $50,000 - $70,000 | > $70,000 or null",
           "financial_aid_importance": "Crucial | Very Important | Somewhat Important | Not a factor or null",
           "scholarship_interests": ["array of scholarship types"]
         },
         "additional_info": {
-          "personal_values": ["array of values mentioned"],
-          "challenges_overcome": ["array of challenges discussed"],
-          "unique_experiences": ["array of unique experiences"],
-          "questions_concerns": ["array of questions or concerns"]
+          "application_concerns": ["array of application concerns"],
+          "specific_questions": ["array of specific questions mentioned"]
         }
       }`;
 
@@ -326,67 +280,39 @@ function generateSchoolSpecificPrompt(schoolType: string, transcript: string): s
           "preferred_name": "string or null",
           "email_address": "string or null",
           "phone_number": "string or null",
-          "citizenship_status": "U.S. Citizen | Permanent Resident | International Student | Other or null"
+          "country_code": "string or null (e.g., US, IN, CA, etc.)"
         },
         "academic_background": {
-          "undergraduate_institution": "string or null",
-          "undergraduate_major": "string or null",
-          "undergraduate_graduation_year": "number or null",
-          "undergraduate_gpa": "number or null",
-          "masters_institution": "string or null",
-          "masters_major": "string or null",
-          "masters_graduation_year": "number or null",
-          "masters_gpa": "number or null",
-          "phd_field_of_focus": "string or null",
-          "academic_interests": ["array of academic interests"],
-          "research_interests": ["array of research interests"],
-          "specific_research_questions": ["array of specific research questions"]
-        },
-        "research_experience": {
-          "years_of_research": "number or null",
-          "research_projects": ["array of research projects"],
-          "publications": ["array of publications"],
-          "conference_presentations": ["array of presentations"],
-          "thesis_projects": ["array of thesis work"],
-          "lab_experience": ["array of lab experiences"],
-          "research_achievements": ["array of research achievements"]
+          "college_name": "string or null",
+          "college_graduation_year": "number or null",
+          "college_gpa": "number or null",
+          "undergraduate_cgpa": "number or null",
+          "masters_field_of_focus": "string or null"
         },
         "test_scores": {
-          "gre_score": "number or null",
           "test_type": "GRE | Not yet taken or null",
-          "test_status": "taken | planning_to_take | not_taking or null",
-          "english_proficiency": {
-            "toefl_score": "number or null",
-            "ielts_score": "number or null",
-            "test_status": "taken | planning_to_take | not_taking or null"
-          }
+          "test_score": "number or null"
+        },
+        "extracurricular_activities": {
+          "activities": ["array of activities mentioned"],
+          "leadership_roles": ["array of leadership positions"],
+          "personal_projects": ["array of personal projects mentioned"]
         },
         "career_goals": {
-          "phd_motivation": ["array of motivations for PhD"],
-          "career_aspirations": "Academia | Industry Research | Government | Other or null",
-          "research_goals": ["array of research goals"],
-          "academic_goals": ["array of academic goals"],
-          "long_term_vision": ["array of long-term vision"]
+          "career_interests": ["array of career fields of interest"]
         },
-        "advisor_preferences": {
-          "potential_advisors": ["array of potential advisors mentioned"],
-          "research_lab_preferences": ["array of lab preferences"],
-          "university_preferences": ["array of university preferences"],
-          "geographic_preference": ["array of location preferences"],
+        "preferences": {
           "must_haves": ["array of essential features"],
           "deal_breakers": ["array of undesirable features"]
         },
         "financial_considerations": {
-          "funding_expectations": "Fully funded | Partially funded | Self-funded or null",
-          "assistantship_preferences": ["array of assistantship preferences"],
-          "fellowship_interests": ["array of fellowship interests"],
-          "financial_aid_importance": "Crucial | Very Important | Somewhat Important | Not a factor or null"
+          "college_budget": "< $20,000 | $20,000 - $35,000 | $35,000 - $50,000 | $50,000 - $70,000 | > $70,000 or null",
+          "financial_aid_importance": "Crucial | Very Important | Somewhat Important | Not a factor or null",
+          "scholarship_interests": ["array of scholarship types"]
         },
         "additional_info": {
-          "personal_values": ["array of values mentioned"],
-          "challenges_overcome": ["array of challenges discussed"],
-          "unique_experiences": ["array of unique experiences"],
-          "questions_concerns": ["array of questions or concerns"]
+          "application_concerns": ["array of application concerns"],
+          "specific_questions": ["array of specific questions mentioned"]
         }
       }`;
 
@@ -436,13 +362,19 @@ async function callGeminiAPI(prompt: string): Promise<any> {
       throw new Error('No content generated from Google API');
     }
 
-    // Parse the JSON response
+    // Parse the JSON response with better error handling
     const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       throw new Error('No valid JSON found in response');
     }
 
-    return JSON.parse(jsonMatch[0]);
+    try {
+      return JSON.parse(jsonMatch[0]);
+    } catch (parseError) {
+      console.error('JSON parsing error:', parseError);
+      console.error('Raw response:', generatedText);
+      throw new Error(`Failed to parse JSON response: ${parseError.message}`);
+    }
   } catch (error) {
     console.error('Error calling Gemini API:', error);
     throw error;
@@ -556,16 +488,16 @@ function hasValue(obj: any, path: string): boolean {
 function flattenProfileForDatabase(profile: any, schoolType: string): Record<string, any> {
   const flattened: Record<string, any> = {};
 
-  // Personal info
+  // Personal info - maps to all schema fields
   if (profile.personal_info) {
     flattened.full_name = profile.personal_info.full_name;
     flattened.preferred_name = profile.personal_info.preferred_name;
     flattened.email_address = profile.personal_info.email_address;
     flattened.phone_number = profile.personal_info.phone_number;
-    flattened.citizenship_status = profile.personal_info.citizenship_status;
+    flattened.country_code = profile.personal_info.country_code;
   }
 
-  // Academic background - varies by school type
+  // Academic background - maps to all schema fields based on school type
   if (profile.academic_background) {
     if (schoolType === 'Undergraduate Colleges') {
       const bg = profile.academic_background;
@@ -579,73 +511,64 @@ function flattenProfileForDatabase(profile: any, schoolType: string): Record<str
       flattened.class_10_score = bg.class_10_score;
       flattened.class_11_score = bg.class_11_score;
       flattened.class_12_half_yearly_score = bg.class_12_half_yearly_score;
-      flattened.intended_majors = bg.intended_majors?.join(', ');
-      flattened.secondary_major_minor_interests = bg.secondary_major_minor_interests?.join(', ');
+      flattened.intended_majors = bg.intended_majors;
+      flattened.secondary_major_minor_interests = bg.secondary_major_minor_interests;
     } else {
       // Graduate programs
-      flattened.college_name = profile.academic_background.undergraduate_institution;
-      flattened.college_graduation_year = profile.academic_background.undergraduate_graduation_year;
-      flattened.college_gpa = profile.academic_background.undergraduate_gpa;
-      if (profile.academic_background.masters_field_of_focus) {
-        flattened.masters_field_of_focus = profile.academic_background.masters_field_of_focus;
-      }
+      flattened.college_name = profile.academic_background.college_name;
+      flattened.college_graduation_year = profile.academic_background.college_graduation_year;
+      flattened.college_gpa = profile.academic_background.college_gpa;
+      flattened.undergraduate_cgpa = profile.academic_background.undergraduate_cgpa;
+      flattened.masters_field_of_focus = profile.academic_background.masters_field_of_focus;
     }
-    
-    flattened.academic_interests = profile.academic_background.academic_interests?.join(', ');
   }
 
-  // Test scores
+  // Test scores - maps to all schema fields
   if (profile.test_scores) {
     if (schoolType === 'Undergraduate Colleges') {
       flattened.sat_score = profile.test_scores.sat_score;
       flattened.act_score = profile.test_scores.act_score;
-    } else if (schoolType === 'MBA') {
-      flattened.test_type = profile.test_scores.test_type;
-      flattened.test_score = profile.test_scores.gmat_score || profile.test_scores.gre_score;
     } else {
-      // Masters/PhD
+      // Graduate programs
       flattened.test_type = profile.test_scores.test_type;
-      flattened.test_score = profile.test_scores.gre_score;
+      flattened.test_score = profile.test_scores.test_score;
     }
   }
 
-  // Extracurricular activities
+  // Extracurricular activities - maps to schema fields
   if (profile.extracurricular_activities) {
     flattened.extracurricular_activities = profile.extracurricular_activities.activities?.join(', ');
     flattened.leadership_roles = profile.extracurricular_activities.leadership_roles?.join(', ');
+    flattened.personal_projects = profile.extracurricular_activities.personal_projects?.join(', ');
   }
 
-  // Career goals
+  // Career goals - maps to schema fields
   if (profile.career_goals) {
     flattened.career_interests = profile.career_goals.career_interests?.join(', ');
   }
 
-  // Preferences
+  // Preferences - maps to all schema fields
   if (profile.preferences) {
-    if (schoolType === 'Undergraduate Colleges') {
-      flattened.ideal_college_size = profile.preferences.ideal_college_size;
-      flattened.ideal_college_setting = profile.preferences.ideal_college_setting;
-      flattened.geographic_preference = profile.preferences.geographic_preference;
-    }
-    
+    flattened.ideal_college_size = profile.preferences.ideal_college_size;
+    flattened.ideal_college_setting = profile.preferences.ideal_college_setting;
     flattened.must_haves = profile.preferences.must_haves?.join(', ');
     flattened.deal_breakers = profile.preferences.deal_breakers?.join(', ');
   }
 
-  // Financial considerations
+  // Financial considerations - maps to all schema fields
   if (profile.financial_considerations) {
-    if (schoolType === 'Undergraduate Colleges') {
-      flattened.college_budget = profile.financial_considerations.college_budget;
-    }
-    
+    flattened.college_budget = profile.financial_considerations.college_budget;
     flattened.financial_aid_importance = profile.financial_considerations.financial_aid_importance;
-    flattened.scholarship_interests = profile.financial_considerations.scholarship_interests;
+    // Ensure scholarship_interests is properly formatted as array for database
+    flattened.scholarship_interests = Array.isArray(profile.financial_considerations.scholarship_interests) 
+      ? profile.financial_considerations.scholarship_interests 
+      : [];
   }
 
-  // Additional info
+  // Additional info - maps to schema fields
   if (profile.additional_info) {
-    flattened.personal_projects = profile.additional_info.unique_experiences?.join(', ');
-    flattened.application_concerns = profile.additional_info.questions_concerns?.join(', ');
+    flattened.application_concerns = profile.additional_info.application_concerns?.join(', ');
+    flattened.specific_questions = profile.additional_info.specific_questions?.join(', ');
   }
 
   return flattened;
@@ -656,6 +579,11 @@ function flattenProfileForDatabase(profile: any, schoolType: string): Record<str
  */
 async function saveProfileToDatabase(userId: string, extractedProfile: any, schoolType: string): Promise<boolean> {
   try {
+    // Validate required fields
+    if (!userId || !schoolType) {
+      throw new Error('Missing required fields: userId and schoolType are required');
+    }
+
     // Flatten the profile structure for database storage
     const flattenedProfile = flattenProfileForDatabase(extractedProfile, schoolType);
     
@@ -734,8 +662,8 @@ serve(async (req) => {
     // Get user's school type if not provided
     let userSchoolType = school_type;
     if (!userSchoolType) {
-      userSchoolType = await getUserSchoolType(user_id);
-      if (!userSchoolType) {
+      const fetchedSchoolType = await getUserSchoolType(user_id);
+      if (!fetchedSchoolType) {
         return new Response(
           JSON.stringify({
             success: false,
@@ -749,6 +677,7 @@ serve(async (req) => {
           }
         )
       }
+      userSchoolType = fetchedSchoolType;
     }
 
     // Get conversation transcript
