@@ -80,7 +80,13 @@ const LOR = () => {
       setStats(statsData);
       setSchoolOptions(schoolOptionsData);
     } catch (err) {
-      console.error('Error fetching LOR data:', err);
+      console.error('[LOR_ERROR] Failed to load LOR data:', {
+        userId: user?.id || 'unknown',
+        userEmail: user?.email || 'unknown',
+        error: err instanceof Error ? err.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User cannot see their letters of recommendation data'
+      });
       setError("Failed to load LOR data");
     } finally {
       setLoading(false);
@@ -104,7 +110,14 @@ const LOR = () => {
       resetForm();
       await fetchData();
     } catch (err) {
-      console.error('Error adding recommender:', err);
+      console.error('[LOR_ERROR] Failed to add recommender:', {
+        userId: user?.id || 'unknown',
+        userEmail: user?.email || 'unknown',
+        recommenderName: formData.name,
+        error: err instanceof Error ? err.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User cannot add recommender to their list'
+      });
       setError("Failed to add recommender");
     }
   };
@@ -120,7 +133,15 @@ const LOR = () => {
       resetForm();
       await fetchData();
     } catch (err) {
-      console.error('Error updating recommender:', err);
+      console.error('[LOR_ERROR] Failed to update recommender:', {
+        userId: user?.id || 'unknown',
+        userEmail: user?.email || 'unknown',
+        recommenderId: editingRecommender.id,
+        recommenderName: editingRecommender.name,
+        error: err instanceof Error ? err.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User cannot update recommender information'
+      });
       setError("Failed to update recommender");
     }
   };
@@ -130,7 +151,14 @@ const LOR = () => {
       await LORService.deleteRecommender(id);
       await fetchData();
     } catch (err) {
-      console.error('Error deleting recommender:', err);
+      console.error('[LOR_ERROR] Failed to delete recommender:', {
+        userId: user?.id || 'unknown',
+        userEmail: user?.email || 'unknown',
+        recommenderId: id,
+        error: err instanceof Error ? err.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User cannot remove recommender from their list'
+      });
       setError("Failed to delete recommender");
     }
   };
@@ -181,7 +209,16 @@ const LOR = () => {
       setAllocationNotes('');
       await fetchData();
     } catch (err) {
-      console.error('Error adding school allocation:', err);
+      console.error('[LOR_ERROR] Failed to add school allocation:', {
+        userId: user?.id || 'unknown',
+        userEmail: user?.email || 'unknown',
+        recommenderId: selectedRecommender.id,
+        recommenderName: selectedRecommender.name,
+        schoolId: selectedSchoolId,
+        error: err instanceof Error ? err.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User cannot assign school to recommender'
+      });
       setError("Failed to add school allocation");
     }
   };
@@ -191,7 +228,15 @@ const LOR = () => {
       await LORService.updateSchoolAllocation(allocationId, { allocationStatus: newStatus as any });
       await fetchData();
     } catch (err) {
-      console.error('Error updating allocation status:', err);
+      console.error('[LOR_ERROR] Failed to update allocation status:', {
+        userId: user?.id || 'unknown',
+        userEmail: user?.email || 'unknown',
+        allocationId: allocationId,
+        newStatus: newStatus,
+        error: err instanceof Error ? err.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User cannot update school allocation status'
+      });
       setError("Failed to update allocation status");
     }
   };
@@ -201,7 +246,14 @@ const LOR = () => {
       await LORService.removeSchoolAllocation(allocationId);
       await fetchData();
     } catch (err) {
-      console.error('Error removing school allocation:', err);
+      console.error('[LOR_ERROR] Failed to remove school allocation:', {
+        userId: user?.id || 'unknown',
+        userEmail: user?.email || 'unknown',
+        allocationId: allocationId,
+        error: err instanceof Error ? err.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User cannot remove school allocation from recommender'
+      });
       setError("Failed to remove school allocation");
     }
   };

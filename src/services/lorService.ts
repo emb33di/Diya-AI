@@ -83,7 +83,12 @@ export class LORService {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching LOR recommenders:', error);
+        console.error('[LOR_SERVICE_ERROR] Failed to fetch LOR recommenders:', {
+          userId: userId,
+          error: error.message,
+          timestamp: new Date().toISOString(),
+          message: 'User cannot load their recommenders list'
+        });
         throw new Error('Failed to fetch recommenders');
       }
 
@@ -104,7 +109,12 @@ export class LORService {
 
       return recommenders;
     } catch (error) {
-      console.error('Error in getUserRecommenders:', error);
+      console.error('[LOR_SERVICE_ERROR] Failed to get user recommenders:', {
+        userId: userId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User cannot access their recommenders data'
+      });
       throw error;
     }
   }
@@ -140,13 +150,25 @@ export class LORService {
         .single();
 
       if (error) {
-        console.error('Error adding LOR recommender:', error);
+        console.error('[LOR_SERVICE_ERROR] Failed to add LOR recommender:', {
+          userId: recommender.userId,
+          recommenderName: recommender.name,
+          error: error.message,
+          timestamp: new Date().toISOString(),
+          message: 'User cannot add recommender to their list'
+        });
         throw new Error('Failed to add recommender');
       }
 
       return data;
     } catch (error) {
-      console.error('Error in addRecommender:', error);
+      console.error('[LOR_SERVICE_ERROR] Failed to add recommender:', {
+        userId: recommender.userId,
+        recommenderName: recommender.name,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User cannot create new recommender'
+      });
       throw error;
     }
   }
@@ -365,7 +387,13 @@ export class LORService {
         .single();
 
       if (error) {
-        console.error('Error adding school allocation:', error);
+        console.error('[LOR_SERVICE_ERROR] Failed to add school allocation:', {
+          lorRecommenderId: lorRecommenderId,
+          schoolRecommendationId: schoolRecommendationId,
+          error: error.message,
+          timestamp: new Date().toISOString(),
+          message: 'User cannot assign school to recommender'
+        });
         throw new Error('Failed to add school allocation');
       }
 
@@ -408,7 +436,12 @@ export class LORService {
         .single();
 
       if (error) {
-        console.error('Error updating school allocation:', error);
+        console.error('[LOR_SERVICE_ERROR] Failed to update school allocation:', {
+          allocationId: allocationId,
+          error: error.message,
+          timestamp: new Date().toISOString(),
+          message: 'User cannot update school allocation status'
+        });
         throw new Error('Failed to update school allocation');
       }
 
@@ -423,7 +456,12 @@ export class LORService {
         updatedAt: data.updated_at
       };
     } catch (error) {
-      console.error('Error in updateSchoolAllocation:', error);
+      console.error('[LOR_SERVICE_ERROR] Failed to update school allocation:', {
+        allocationId: allocationId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User cannot modify school allocation'
+      });
       throw error;
     }
   }
@@ -439,13 +477,23 @@ export class LORService {
         .eq('id', allocationId);
 
       if (error) {
-        console.error('Error removing school allocation:', error);
+        console.error('[LOR_SERVICE_ERROR] Failed to remove school allocation:', {
+          allocationId: allocationId,
+          error: error.message,
+          timestamp: new Date().toISOString(),
+          message: 'User cannot remove school allocation from recommender'
+        });
         throw new Error('Failed to remove school allocation');
       }
 
       return true;
     } catch (error) {
-      console.error('Error in removeSchoolAllocation:', error);
+      console.error('[LOR_SERVICE_ERROR] Failed to remove school allocation:', {
+        allocationId: allocationId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User cannot delete school allocation'
+      });
       throw error;
     }
   }
