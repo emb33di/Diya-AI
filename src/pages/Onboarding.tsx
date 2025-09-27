@@ -30,6 +30,7 @@ import { OnboardingApiService } from '@/services/onboarding.api';
 import { useConversationFlow } from '@/pages/onboarding/ConversationFlow';
 import { useOnboardingInitialization } from '@/pages/onboarding/OnboardingInitialization';
 import { ExpandedViewLayout, LandingViewLayout, FooterLayout } from '@/pages/onboarding/OnboardingLayout';
+import { useOnboardingStore } from '@/stores';
 // Simplified MVP approach - removed complex race condition systems
 // Debug: Log environment variables (remove in production)
 console.log('Environment check:', {
@@ -48,23 +49,15 @@ const Onboarding = () => {
     markOnboardingCompleted
   } = useAuth();
   
-  // Use the onboarding state hook
+  // Use the onboarding state hook for UI-specific state
   const onboardingState = useOnboardingState();
   const {
-    sessionStarted,
-    setSessionStarted,
     remainingTime,
     setRemainingTime,
-    sessionStartTime,
-    setSessionStartTime,
     sessionDuration,
     setSessionDuration,
     cumulativeSessionTime,
     setCumulativeSessionTime,
-    sessionState,
-    setSessionState,
-    hasStartedOnce,
-    setHasStartedOnce,
     expandedView,
     setExpandedView,
     showTranscript,
@@ -75,8 +68,6 @@ const Onboarding = () => {
     setAudioLevel,
     audioOutputLevel,
     setAudioOutputLevel,
-    isSpeaking,
-    setIsSpeaking,
     frequencyData,
     setFrequencyData,
     audioContextRef,
@@ -85,7 +76,6 @@ const Onboarding = () => {
     micStreamRef,
     messagesEndRef,
     transcriptScrollRef,
-    sessionFinalizedRef,
     topics,
     setTopics,
     formatTime,
@@ -94,19 +84,28 @@ const Onboarding = () => {
     timerRef
   } = onboardingState;
   
-  // Local state not handled by the hook
+  // Zustand store state and actions
+  const sessionState = useOnboardingStore(state => state.sessionState);
+  const sessionStarted = useOnboardingStore(state => state.sessionState === 'active');
+  const sessionStartTime = useOnboardingStore(state => state.sessionStartTime);
+  const messages = useOnboardingStore(state => state.messages);
+  const processedMessageIds = useOnboardingStore(state => state.processedMessageIds);
+  const isSpeaking = useOnboardingStore(state => state.isSpeaking);
+  const conversationId = useOnboardingStore(state => state.conversationId);
+  
+  // Derived state
+  const hasStartedOnce = sessionStartTime !== null;
+  
+  const startSession = useOnboardingStore(state => state.startSession);
+  const endSession = useOnboardingStore(state => state.endSession);
+  const resetConversation = useOnboardingStore(state => state.resetConversation);
+  
+  // Local state not handled by Zustand or the hook
   const [studentName, setStudentName] = useState('');
   const [loading, setLoading] = useState(true);
-  const [conversationId, setConversationId] = useState<string | null>(null);
   const [agentId, setAgentId] = useState<string | null>(null);
   const [isLoadingAgent, setIsLoadingAgent] = useState(false);
   const [agentError, setAgentError] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Array<{
-    id?: string;
-    source: 'ai' | 'user';
-    text: string;
-    timestamp: Date;
-  }>>([]);
   const [showCompletionPopup, setShowCompletionPopup] = useState(false);
   const [conversationCompleted, setConversationCompleted] = useState(false);
   const [isProcessingMetadata, setIsProcessingMetadata] = useState(false);
@@ -118,9 +117,11 @@ const Onboarding = () => {
   const [currentSessionNumber, setCurrentSessionNumber] = useState(1);
   const [loadingStep, setLoadingStep] = useState(0);
   const [loadingMessages] = useState(["Retrieving conversation metadata", "Extracting profile information", "Generating recommendations"]);
-  const [processedMessageIds, setProcessedMessageIds] = useState(new Set<string>());
   const [isSaving, setIsSaving] = useState(false);
   const [endSessionFn, setEndSessionFn] = useState<(() => Promise<void>) | null>(null);
+  
+  // Local refs for this component
+  const sessionFinalizedRef = useRef<boolean>(false);
   
   // Initialize transcript saver hook for automatic message persistence
   const { forceSaveTranscript } = useTranscriptSaver(
@@ -146,7 +147,7 @@ const Onboarding = () => {
     setCumulativeSessionTime,
     setRemainingTime,
     setSessionFinalizedRef: (finalized) => { sessionFinalizedRef.current = finalized; },
-    setSessionStartTime,
+    setSessionStartTime: () => {}, // Placeholder - session time is managed by Zustand
     setShowLoadingModal,
     setLoadingStep,
     setIsProcessingMetadata,
@@ -180,9 +181,9 @@ const Onboarding = () => {
 
   // Function to clear transcript from UI only
   const handleClearTranscript = useCallback(() => {
-    setMessages([]);
+    resetConversation();
     // Note: This only clears the UI, backend data remains intact
-  }, []);
+  }, [resetConversation]);
 
 
 
@@ -348,26 +349,6 @@ const Onboarding = () => {
         <ConversationEngine
           agentId={agentId}
           source="diya-onboarding"
-          // State setters
-          setSessionState={setSessionState}
-          setConversationId={setConversationId}
-          setSessionStarted={setSessionStarted}
-          setSessionStartTime={setSessionStartTime}
-          setHasStartedOnce={setHasStartedOnce}
-          setMessages={setMessages}
-          setProcessedMessageIds={setProcessedMessageIds}
-          setTopics={setTopics}
-          setSessionDuration={setSessionDuration}
-          setCumulativeSessionTime={setCumulativeSessionTime}
-          setRemainingTime={setRemainingTime}
-          setIsSpeaking={setIsSpeaking}
-          // State values
-          sessionState={sessionState}
-          cumulativeSessionTime={cumulativeSessionTime}
-          sessionStartTime={sessionStartTime}
-          messages={messages}
-          processedMessageIds={processedMessageIds}
-          sessionFinalizedRef={sessionFinalizedRef}
           calculateProgressPercentage={calculateProgressPercentage}
           forceSaveTranscript={async () => { await forceSaveTranscript(); }}
           // Callbacks - these are handled internally by ConversationEngine
@@ -437,12 +418,10 @@ const Onboarding = () => {
           }}
           onContinueProfile={() => {
             setShowCompletionPopup(false);
-            setSessionStarted(false);
+            endSession(); // Use Zustand action to end session
             setConversationCompleted(false);
             setRemainingTime(2 * 60);
-            setConversationId(null);
-            setMessages([]);
-            setSessionStartTime(null);
+            resetConversation(); // Use Zustand action to reset conversation
             setSessionDuration(0);
           }}
           onGoToDashboard={() => navigate('/dashboard')}

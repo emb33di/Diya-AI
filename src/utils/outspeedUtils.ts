@@ -157,32 +157,19 @@ function generateFallbackId(): string {
  * @param timestamp - The timestamp to parse (Date, string, number, or undefined)
  * @returns A valid Date object, or current time if parsing fails
  */
-export function safeCreateTimestamp(timestamp?: Date | string | number): Date {
-  try {
-    // If already a Date object, validate it
-    if (timestamp instanceof Date) {
-      return isNaN(timestamp.getTime()) ? new Date() : timestamp;
-    }
-    
-    // If undefined or null, return current time
-    if (timestamp === undefined || timestamp === null) {
-      return new Date();
-    }
-    
-    // Try to parse as Date
-    const parsedDate = new Date(timestamp);
-    
-    // Check if the parsed date is valid
-    if (isNaN(parsedDate.getTime())) {
-      console.warn('Invalid timestamp provided, using current time:', timestamp);
-      return new Date();
-    }
-    
-    return parsedDate;
-  } catch (error) {
-    console.warn('Error parsing timestamp, using current time:', error, 'Timestamp:', timestamp);
+export function safeCreateTimestamp(timestamp: any): Date {
+  if (!timestamp) {
     return new Date();
   }
+  if (timestamp instanceof Date) {
+    return timestamp;
+  }
+  // If it's a number (likely seconds), multiply by 1000 to convert to milliseconds.
+  if (typeof timestamp === 'number') {
+    return new Date(timestamp * 1000);
+  }
+  // Fallback for string or other formats the Date constructor can handle.
+  return new Date(timestamp);
 }
 
 /**

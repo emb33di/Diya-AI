@@ -5,50 +5,16 @@ import { OutspeedEvent } from '@/types/outspeed';
 import { parseOutspeedMessage, isValidMessageItem, safeCreateTimestamp } from '@/utils/outspeedUtils';
 import { OnboardingApiService } from '@/services/onboarding.api';
 import { useToast } from '@/components/ui/use-toast';
+import { useOnboardingStore, TranscriptMessage } from '@/stores';
 
 
 interface ConversationEngineProps {
   agentId: string;
   source: string;
-  // State setters from Onboarding component
-  setSessionState: (state: 'idle' | 'active' | 'error') => void;
-  setConversationId: (id: string | null) => void;
-  setSessionStarted: (started: boolean) => void;
-  setSessionStartTime: (time: Date | null) => void;
-  setHasStartedOnce: (started: boolean) => void;
-  setMessages: React.Dispatch<React.SetStateAction<Array<{
-    id?: string;
-    source: 'ai' | 'user';
-    text: string;
-    timestamp: Date;
-  }>>>;
-  setProcessedMessageIds: React.Dispatch<React.SetStateAction<Set<string>>>;
-  setTopics: React.Dispatch<React.SetStateAction<Array<{
-    name: string;
-    icon: any;
-    color: string;
-    bgColor: string;
-    completed: boolean;
-  }>>>;
-  setSessionDuration: (duration: number) => void;
-  setCumulativeSessionTime: (time: number) => void;
-  setRemainingTime: (time: number) => void;
-  setIsSpeaking: (speaking: boolean) => void;
-  // State values needed for handlers
-  sessionState: 'idle' | 'active' | 'error';
-  cumulativeSessionTime: number;
-  sessionStartTime: Date | null;
-  messages: Array<{
-    id?: string;
-    source: 'ai' | 'user';
-    text: string;
-    timestamp: Date;
-  }>;
-  processedMessageIds: Set<string>;
-  sessionFinalizedRef: React.MutableRefObject<boolean>;
+  // Only essential props that can't be managed by Zustand
   calculateProgressPercentage: () => number;
   forceSaveTranscript: () => Promise<void>;
-  // Callbacks
+  // Callbacks for parent component
   onConnect: (conversationId: string) => void;
   onMessage: (message: any) => void;
   onDisconnect: () => void;
@@ -61,29 +27,8 @@ interface ConversationEngineProps {
 const ConversationEngine = ({
   agentId,
   source,
-  // State setters
-  setSessionState,
-  setConversationId,
-  setSessionStarted,
-  setSessionStartTime,
-  setHasStartedOnce,
-  setMessages,
-  setProcessedMessageIds,
-  setTopics,
-  setSessionDuration,
-  setCumulativeSessionTime,
-  setRemainingTime,
-  setIsSpeaking,
-  // State values
-  sessionState,
-  cumulativeSessionTime,
-  sessionStartTime,
-  messages,
-  processedMessageIds,
-  sessionFinalizedRef,
   calculateProgressPercentage,
   forceSaveTranscript,
-  // Callbacks
   onConnect,
   onMessage,
   onDisconnect,
@@ -93,16 +38,31 @@ const ConversationEngine = ({
   onEndSession,
 }: ConversationEngineProps) => {
   const { toast } = useToast();
+  
+  // Zustand store state and actions
+  const sessionState = useOnboardingStore(state => state.sessionState);
+  const conversationId = useOnboardingStore(state => state.conversationId);
+  const sessionStartTime = useOnboardingStore(state => state.sessionStartTime);
+  const messages = useOnboardingStore(state => state.messages);
+  const processedMessageIds = useOnboardingStore(state => state.processedMessageIds);
+  const isSpeaking = useOnboardingStore(state => state.isSpeaking);
+  const cumulativeSessionTime = useOnboardingStore(state => state.cumulativeSessionTime);
+  
+  const startSession = useOnboardingStore(state => state.startSession);
+  const endSession = useOnboardingStore(state => state.endSession);
+  const addCompletedMessage = useOnboardingStore(state => state.addCompletedMessage);
+  const updateInProgressMessage = useOnboardingStore(state => state.updateInProgressMessage);
+  const setIsSpeaking = useOnboardingStore(state => state.setIsSpeaking);
+  const setCumulativeTime = useOnboardingStore(state => state.setCumulativeTime);
+  
+  // Local refs for this component
   const sessionStartedRef = useRef(false);
-  const processedMessageIdsRef = useRef(processedMessageIds);
+  const sessionFinalizedRef = useRef<boolean>(false);
   const calculateProgressPercentageRef = useRef(calculateProgressPercentage);
   const eventListenersSetupRef = useRef(false);
+  const conversationInstanceRef = useRef<any>(null);
 
   // Update refs when values change
-  useEffect(() => {
-    processedMessageIdsRef.current = processedMessageIds;
-  }, [processedMessageIds]);
-
   useEffect(() => {
     calculateProgressPercentageRef.current = calculateProgressPercentage;
   }, [calculateProgressPercentage]);
@@ -115,11 +75,8 @@ const ConversationEngine = ({
     }
     
     try {
-      setSessionState('active');
-      setConversationId(conversationId);
-      setSessionStarted(true);
-      setSessionStartTime(new Date());
-      setHasStartedOnce(true);
+      // Use Zustand action to start session
+      startSession(conversationId);
       
       console.log('🎉 CONNECTED to Outspeed voice agent');
       console.log('📊 Connection details:', {
@@ -150,14 +107,14 @@ const ConversationEngine = ({
       });
     } catch (error) {
       console.error('❌ Error in handleConnect:', error);
-      setSessionState('error');
+      endSession(); // Use Zustand action to end session on error
       toast({
         title: "Connection Error",
         description: "Failed to start conversation. Please try again.",
         variant: "destructive"
       });
     }
-  }, [agentId, toast, sessionState, setSessionState, setConversationId, setSessionStarted, setSessionStartTime, setHasStartedOnce]);
+  }, [agentId, toast, sessionState, startSession, endSession]);
 
   const handleMessage = useCallback(async (message: any) => {
     try {
@@ -205,163 +162,63 @@ const ConversationEngine = ({
           timestamp: new Date().toISOString()
         });
         
-        // For in_progress messages, update existing message or add new one
-        console.log(
-          `%c--- NEW IN_PROGRESS MESSAGE RECEIVED ---%c
-          Source: ${message.source}
-          ID: ${message.id}
-          Text: "${message.text.substring(0, 50)}..."`,
-          'color: #2e7d32; font-weight: bold;',
-          'color: inherit;'
-        );
+        // For in_progress messages, use Zustand action
+        const transcriptMessage: TranscriptMessage = {
+          id: messageId,
+          source: message.source,
+          text: message.text,
+          timestamp: safeCreateTimestamp(message.timestamp),
+          isInProgress: true
+        };
         
-        setMessages(prev => {
-          console.log('%cPREVIOUS STATE:', 'color: #c62828;', prev);
-          console.log('🔍 AI VOICE DEBUG - Previous Messages State:', {
-            totalMessages: prev.length,
-            aiMessages: prev.filter(m => m.source === 'ai').length,
-            userMessages: prev.filter(m => m.source === 'user').length,
-            lastMessageId: prev[prev.length - 1]?.id,
-            lastMessageSource: prev[prev.length - 1]?.source
-          });
-          
-          const existingIndex = prev.findIndex(msg => msg.id === messageId);
-          
-          if (existingIndex >= 0) {
-            // Update existing message
-            const updated = [...prev];
-            updated[existingIndex] = {
-              id: messageId,
-              source: message.source,
-              text: message.text,
-              timestamp: safeCreateTimestamp(message.timestamp)
-            };
-            console.log(`🔄 Updated in_progress message: ${messageId}`);
-            console.log('🔍 AI VOICE DEBUG - Updated Existing In-Progress Message:', {
-              messageId: messageId,
-              updatedText: message.text,
-              updatedTextLength: message.text.length,
-              messageIndex: existingIndex
-            });
-            console.log('%c   NEW STATE:', 'color: #00695c;', updated);
-            return updated;
-          } else {
-            // Add new in_progress message
-            const updated = [...prev, {
-              id: messageId,
-              source: message.source,
-              text: message.text,
-              timestamp: safeCreateTimestamp(message.timestamp)
-            }];
-            console.log(`📊 Message count updated: ${prev.length} → ${updated.length} (${message.source} in_progress message added)`);
-            console.log('🔍 AI VOICE DEBUG - Added New In-Progress Message:', {
-              messageId: messageId,
-              messageSource: message.source,
-              messageText: message.text,
-              messageTextLength: message.text.length,
-              newTotalMessages: updated.length,
-              newAIMessages: updated.filter(m => m.source === 'ai').length,
-              newUserMessages: updated.filter(m => m.source === 'user').length
-            });
-            console.log('%c   NEW STATE:', 'color: #00695c;', updated);
-            return updated;
-          }
-        });
+        updateInProgressMessage(transcriptMessage);
         
         // Don't add to processedMessageIds for in_progress messages
         // as they might be updated later
         return;
       }
       
-      // Check deduplication using the consistent ID for completed messages
-      if (processedMessageIdsRef.current.has(messageId)) {
+      // Check deduplication using Zustand store
+      if (processedMessageIds.has(messageId)) {
         console.log('⏭️ Duplicate message skipped:', messageId, 'Source:', message.source);
         console.log('🔍 AI VOICE DEBUG - Duplicate Message Skipped:', {
           messageId: messageId,
           messageSource: message.source,
-          processedIdsCount: processedMessageIdsRef.current.size
+          processedIdsCount: processedMessageIds.size
         });
         return;
       }
       
-      // Use the message object as-is from parseOutspeedMessage
-      const newMessage = {
+      // Create completed message for Zustand store
+      const completedMessage: TranscriptMessage = {
         id: messageId,
         source: message.source,
         text: message.text,
-        timestamp: safeCreateTimestamp(message.timestamp)
+        timestamp: safeCreateTimestamp(message.timestamp),
+        isInProgress: false
       };
       
       console.log('✅ Adding completed message to transcript:', {
         id: messageId,
         source: message.source,
         textLength: message.text.length,
-        timestamp: newMessage.timestamp
+        timestamp: completedMessage.timestamp
       });
       
-      console.log('🔍 AI VOICE DEBUG - Processing Completed Message:', {
-        messageId: messageId,
-        messageSource: message.source,
-        messageText: message.text,
-        messageTextLength: message.text.length,
-        isAI: message.source === 'ai',
-        timestamp: newMessage.timestamp.toISOString()
-      });
-      
-      // Update UI immediately
-      console.log(
-        `%c--- NEW COMPLETED MESSAGE RECEIVED ---%c
-        Source: ${newMessage.source}
-        ID: ${newMessage.id}
-        Text: "${newMessage.text.substring(0, 50)}..."`,
-        'color: #2e7d32; font-weight: bold;',
-        'color: inherit;'
-      );
-      
-      setMessages(prev => {
-        console.log('%cPREVIOUS STATE:', 'color: #c62828;', prev);
-        console.log('🔍 AI VOICE DEBUG - Previous Messages State (Completed):', {
-          totalMessages: prev.length,
-          aiMessages: prev.filter(m => m.source === 'ai').length,
-          userMessages: prev.filter(m => m.source === 'user').length,
-          lastMessageId: prev[prev.length - 1]?.id,
-          lastMessageSource: prev[prev.length - 1]?.source
-        });
-        
-        const updated = [...prev, newMessage];
-        console.log(`📊 Message count updated: ${prev.length} → ${updated.length} (${message.source} message added)`);
-        console.log('🔍 AI VOICE DEBUG - Added Completed Message:', {
-          messageId: messageId,
-          messageSource: message.source,
-          messageText: message.text,
-          messageTextLength: message.text.length,
-          newTotalMessages: updated.length,
-          newAIMessages: updated.filter(m => m.source === 'ai').length,
-          newUserMessages: updated.filter(m => m.source === 'user').length
-        });
-        console.log('%c   NEW STATE:', 'color: #00695c;', updated);
-        return updated;
-      });
-      
-      setProcessedMessageIds(prev => new Set([...prev, messageId]));
-      console.log('🔍 AI VOICE DEBUG - Added to Processed IDs:', {
-        messageId: messageId,
-        newProcessedIdsCount: processedMessageIdsRef.current.size + 1
-      });
+      // Use Zustand action to add completed message (includes deduplication)
+      addCompletedMessage(completedMessage);
 
       // Mark topics as completed based on conversation flow
       if (message.source === 'ai') {
         const currentProgress = Math.min(calculateProgressPercentageRef.current() + 2, 100);
         const completedCount = Math.floor(currentProgress / 16.67);
-        setTopics(prev => prev.map((topic, index) => ({
-          ...topic,
-          completed: index < completedCount
-        })));
+        // TODO: Add topics to Zustand store if needed
+        console.log('Progress update:', { currentProgress, completedCount });
       }
     } catch (error) {
       console.error('❌ Error handling message:', error, 'Message:', message);
     }
-  }, [setMessages, setProcessedMessageIds, setTopics]); // Removed calculateProgressPercentage and processedMessageIds from dependencies
+  }, [processedMessageIds, addCompletedMessage, updateInProgressMessage, calculateProgressPercentage]);
 
   const handleDisconnect = useCallback(async () => {
     console.log('Disconnected from voice agent');
@@ -370,9 +227,8 @@ const ConversationEngine = ({
     let newCumulativeTimeLocal = cumulativeSessionTime;
     if (!sessionFinalizedRef.current && sessionStartTime) {
       const duration = Math.max(0, (new Date().getTime() - sessionStartTime.getTime()) / 1000);
-      setSessionDuration(duration);
       newCumulativeTimeLocal = cumulativeSessionTime + duration;
-      setCumulativeSessionTime(newCumulativeTimeLocal);
+      setCumulativeTime(newCumulativeTimeLocal);
 
       // Store cumulative time in database using API service
       try {
@@ -394,12 +250,8 @@ const ConversationEngine = ({
       console.log('Session already finalized; skipping time accounting.');
     }
 
-    // Recompute remaining time from cumulative total
-    const totalSecondsNeededLocal = 2 * 60; // 2 minutes for testing
-    setRemainingTime(Math.max(0, totalSecondsNeededLocal - newCumulativeTimeLocal));
-
-    setSessionStartTime(null);
-    setSessionStarted(false);
+    // Use Zustand action to end session
+    endSession();
     sessionFinalizedRef.current = false;
     
     // Force save transcript before disconnecting
@@ -407,7 +259,7 @@ const ConversationEngine = ({
       console.log('💾 Force saving transcript on disconnect...');
       await forceSaveTranscript();
     }
-  }, [cumulativeSessionTime, sessionStartTime, messages, forceSaveTranscript, setSessionDuration, setCumulativeSessionTime, setRemainingTime, setSessionStartTime, setSessionStarted]);
+  }, [cumulativeSessionTime, sessionStartTime, messages, forceSaveTranscript, setCumulativeTime, endSession]);
 
   const handleSpeakingStateChange = useCallback((speaking: boolean) => {
     console.log('🎤 Speaking state changed:', speaking);
@@ -434,27 +286,27 @@ const ConversationEngine = ({
   const handleContextRestored = useCallback((items: any[]) => {
     console.log('🔄 Context restored with items:', items.length);
     
-    // Process the restored messages and update local state
-    const restoredMessages = items.map((item, index) => {
+    // Process the restored messages and add them to Zustand store
+    items.forEach((item, index) => {
       // Determine if this is a user or AI message based on the item structure
-      // This may need to be adjusted based on the actual Outspeed API response format
       const isUserMessage = item.role === 'user' || item.source === 'user';
       
-      return {
-        source: isUserMessage ? 'user' as const : 'ai' as const,
+      const restoredMessage: TranscriptMessage = {
+        id: `restored_${Date.now()}_${index}`,
+        source: isUserMessage ? 'user' : 'ai',
         text: item.content || item.message || item.text || 'Restored message',
-        timestamp: safeCreateTimestamp(item.timestamp)
+        timestamp: safeCreateTimestamp(item.timestamp),
+        isInProgress: false
       };
+      
+      addCompletedMessage(restoredMessage);
     });
-
-    // Update the messages state with restored content
-    setMessages(prev => [...prev, ...restoredMessages]);
     
     toast({
       title: "Session Restored",
-      description: `Restored ${restoredMessages.length} previous messages from your conversation.`
+      description: `Restored ${items.length} previous messages from your conversation.`
     });
-  }, [toast, setMessages]);
+  }, [toast, addCompletedMessage]);
 
   const conversation = useConversation({
     onConnect: async () => {
@@ -519,6 +371,11 @@ const ConversationEngine = ({
   }, [agentId]);
 
   useEffect(() => {
+    eventListenersSetupRef.current = false;
+    conversationInstanceRef.current = null;
+  }, [agentId]);
+
+  useEffect(() => {
     if (agentId && conversation.startSession && !sessionStartedRef.current) {
       console.log('🚀 ConversationEngine: Starting session with agent:', agentId);
       console.log('📊 Session start details:', {
@@ -542,11 +399,12 @@ const ConversationEngine = ({
 
   // Unified event listeners for conversation output and transcripts (from backup file)
   useEffect(() => {
-    // Exit if conversation isn't ready or if listeners are already set up
+    // Exit if conversation isn't ready or if listeners are already set up for this instance
     if (!conversation || eventListenersSetupRef.current) return;
     
     console.log('🔧 Setting up event listeners for conversation:', conversation);
     eventListenersSetupRef.current = true;
+    conversationInstanceRef.current = conversation;
 
     const processItem = (item: any, debugLabel: string) => {
       try {
@@ -664,7 +522,7 @@ const ConversationEngine = ({
     const handleOutputDelta = (payload: any) => {
       console.log('📝 Output delta:', payload);
       console.log('🔍 AI VOICE DEBUG - Output Delta Event:', {
-        eventType: 'response.output_text.delta',
+        eventType: 'response.text.delta',
         payload: payload,
         hasDelta: !!(payload && payload.delta),
         deltaLength: payload?.delta?.length || 0,
@@ -689,7 +547,7 @@ const ConversationEngine = ({
           timestamp: aiMessage.timestamp.toISOString()
         });
         
-        processItem(aiMessage, 'response.output_text.delta');
+        processItem(aiMessage, 'response.text.delta');
       } else {
         console.warn('⚠️ AI VOICE DEBUG - Invalid delta payload:', payload);
       }
@@ -731,7 +589,7 @@ const ConversationEngine = ({
     const handleAudioTranscript = (payload: any) => {
       console.log('🎵 Audio transcript:', payload);
       console.log('🔍 AI VOICE DEBUG - Audio Transcript Event:', {
-        eventType: 'response.output_audio.transcript',
+        eventType: 'response.audio_transcript.delta',
         payload: payload,
         hasTranscript: !!(payload && payload.transcript),
         transcriptLength: payload?.transcript?.length || 0,
@@ -754,7 +612,7 @@ const ConversationEngine = ({
           timestamp: aiMessage.timestamp.toISOString()
         });
         
-        processItem(aiMessage, 'response.output_audio.transcript');
+        processItem(aiMessage, 'response.audio_transcript.delta');
       } else {
         console.warn('⚠️ AI VOICE DEBUG - Invalid audio transcript payload:', payload);
       }
@@ -778,16 +636,17 @@ const ConversationEngine = ({
           // Clean up additional event listeners (with type casting for TypeScript)
           if (conversation.off) {
             (conversation as any).off('input_audio_transcription.completed', handleUserTranscript);
-            (conversation as any).off('response.output_text.delta', handleOutputDelta);
+            (conversation as any).off('response.text.delta', handleOutputDelta);
             (conversation as any).off('response.output_text.done', handleOutputDone);
-            (conversation as any).off('response.output_audio.transcript', handleAudioTranscript);
+            (conversation as any).off('response.audio_transcript.delta', handleAudioTranscript);
             (conversation as any).off('response.speech.started', handleSpeechStart);
             (conversation as any).off('response.speech.ended', handleSpeechEnd);
             (conversation as any).off('response.output_audio.delta', handleAudioTranscript);
             (conversation as any).off('response.output_audio.done', handleAudioTranscript);
+            (conversation as any).off('input_audio_buffer.speech_started', () => {});
+            (conversation as any).off('input_audio_buffer.speech_stopped', () => {});
           }
           console.log('🧹 Event listeners cleaned up successfully');
-          eventListenersSetupRef.current = false; // Reset the flag
         } else {
           console.warn('⚠️ Conversation cleanup method not available');
         }
@@ -802,17 +661,26 @@ const ConversationEngine = ({
     // Add back user voice input listeners (with type casting for TypeScript)
     if (conversation.on) {
       (conversation as any).on('input_audio_transcription.completed', handleUserTranscript);
-      (conversation as any).on('response.output_text.delta', handleOutputDelta);
+      (conversation as any).on('response.text.delta', handleOutputDelta);
       (conversation as any).on('response.output_text.done', handleOutputDone);
       
       // Add audio/speech event listeners for Diya's speech
-      (conversation as any).on('response.output_audio.transcript', handleAudioTranscript);
+      (conversation as any).on('response.audio_transcript.delta', handleAudioTranscript);
       (conversation as any).on('response.speech.started', handleSpeechStart);
       (conversation as any).on('response.speech.ended', handleSpeechEnd);
       
       // Additional potential audio events
       (conversation as any).on('response.output_audio.delta', handleAudioTranscript);
       (conversation as any).on('response.output_audio.done', handleAudioTranscript);
+      
+      // Add new listeners for user speech detection
+      (conversation as any).on('input_audio_buffer.speech_started', () => {
+        console.log('User started speaking');
+      });
+      
+      (conversation as any).on('input_audio_buffer.speech_stopped', () => {
+        console.log('User stopped speaking');
+      });
     }
 
     // Store cleanup function for use in endSession
@@ -821,9 +689,8 @@ const ConversationEngine = ({
     // Cleanup function for component unmount
     return () => {
       cleanupEventListeners();
-      eventListenersSetupRef.current = false; // Reset the flag on cleanup
     };
-  }, [conversation]); // Removed handleMessage and handleSpeakingStateChange from dependencies
+  }, [conversation]); // Only depend on conversation object, agentId changes handled by separate useEffect
 
   return null;
 };
