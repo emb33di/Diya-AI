@@ -160,11 +160,26 @@ const ConversationEngine = ({
   const handleMessage = useCallback(async (message: any) => {
     try {
       console.log('📝 Unified message received:', message);
+      console.log('🔍 AI VOICE DEBUG - HandleMessage Called:', {
+        messageId: message?.id,
+        messageSource: message?.source,
+        messageText: message?.text,
+        messageTextLength: message?.text?.length || 0,
+        isInProgress: message?.isInProgress || false,
+        timestamp: new Date().toISOString()
+      });
 
       // Use the message exactly as parsed by parseOutspeedMessage
       // This ensures consistent ID generation and prevents double processing
       if (!message || !message.id || !message.text || !message.source) {
         console.warn('⚠️ Invalid message format received:', message);
+        console.warn('🔍 AI VOICE DEBUG - Invalid Message Format:', {
+          hasMessage: !!message,
+          hasId: !!message?.id,
+          hasText: !!message?.text,
+          hasSource: !!message?.source,
+          message: message
+        });
         return;
       }
 
@@ -179,6 +194,15 @@ const ConversationEngine = ({
           text: message.text
         });
         
+        console.log('🔍 AI VOICE DEBUG - Processing In-Progress Message:', {
+          messageId: messageId,
+          messageSource: message.source,
+          messageText: message.text,
+          messageTextLength: message.text.length,
+          isAI: message.source === 'ai',
+          timestamp: new Date().toISOString()
+        });
+        
         // For in_progress messages, update existing message or add new one
         console.log(
           `%c--- NEW IN_PROGRESS MESSAGE RECEIVED ---%c
@@ -191,6 +215,14 @@ const ConversationEngine = ({
         
         setMessages(prev => {
           console.log('%cPREVIOUS STATE:', 'color: #c62828;', prev);
+          console.log('🔍 AI VOICE DEBUG - Previous Messages State:', {
+            totalMessages: prev.length,
+            aiMessages: prev.filter(m => m.source === 'ai').length,
+            userMessages: prev.filter(m => m.source === 'user').length,
+            lastMessageId: prev[prev.length - 1]?.id,
+            lastMessageSource: prev[prev.length - 1]?.source
+          });
+          
           const existingIndex = prev.findIndex(msg => msg.id === messageId);
           
           if (existingIndex >= 0) {
@@ -203,6 +235,12 @@ const ConversationEngine = ({
               timestamp: message.timestamp || new Date()
             };
             console.log(`🔄 Updated in_progress message: ${messageId}`);
+            console.log('🔍 AI VOICE DEBUG - Updated Existing In-Progress Message:', {
+              messageId: messageId,
+              updatedText: message.text,
+              updatedTextLength: message.text.length,
+              messageIndex: existingIndex
+            });
             console.log('%c   NEW STATE:', 'color: #00695c;', updated);
             return updated;
           } else {
@@ -214,6 +252,15 @@ const ConversationEngine = ({
               timestamp: message.timestamp || new Date()
             }];
             console.log(`📊 Message count updated: ${prev.length} → ${updated.length} (${message.source} in_progress message added)`);
+            console.log('🔍 AI VOICE DEBUG - Added New In-Progress Message:', {
+              messageId: messageId,
+              messageSource: message.source,
+              messageText: message.text,
+              messageTextLength: message.text.length,
+              newTotalMessages: updated.length,
+              newAIMessages: updated.filter(m => m.source === 'ai').length,
+              newUserMessages: updated.filter(m => m.source === 'user').length
+            });
             console.log('%c   NEW STATE:', 'color: #00695c;', updated);
             return updated;
           }
@@ -227,6 +274,11 @@ const ConversationEngine = ({
       // Check deduplication using the consistent ID for completed messages
       if (processedMessageIdsRef.current.has(messageId)) {
         console.log('⏭️ Duplicate message skipped:', messageId, 'Source:', message.source);
+        console.log('🔍 AI VOICE DEBUG - Duplicate Message Skipped:', {
+          messageId: messageId,
+          messageSource: message.source,
+          processedIdsCount: processedMessageIdsRef.current.size
+        });
         return;
       }
       
@@ -245,6 +297,15 @@ const ConversationEngine = ({
         timestamp: newMessage.timestamp
       });
       
+      console.log('🔍 AI VOICE DEBUG - Processing Completed Message:', {
+        messageId: messageId,
+        messageSource: message.source,
+        messageText: message.text,
+        messageTextLength: message.text.length,
+        isAI: message.source === 'ai',
+        timestamp: newMessage.timestamp.toISOString()
+      });
+      
       // Update UI immediately
       console.log(
         `%c--- NEW COMPLETED MESSAGE RECEIVED ---%c
@@ -257,13 +318,34 @@ const ConversationEngine = ({
       
       setMessages(prev => {
         console.log('%cPREVIOUS STATE:', 'color: #c62828;', prev);
+        console.log('🔍 AI VOICE DEBUG - Previous Messages State (Completed):', {
+          totalMessages: prev.length,
+          aiMessages: prev.filter(m => m.source === 'ai').length,
+          userMessages: prev.filter(m => m.source === 'user').length,
+          lastMessageId: prev[prev.length - 1]?.id,
+          lastMessageSource: prev[prev.length - 1]?.source
+        });
+        
         const updated = [...prev, newMessage];
         console.log(`📊 Message count updated: ${prev.length} → ${updated.length} (${message.source} message added)`);
+        console.log('🔍 AI VOICE DEBUG - Added Completed Message:', {
+          messageId: messageId,
+          messageSource: message.source,
+          messageText: message.text,
+          messageTextLength: message.text.length,
+          newTotalMessages: updated.length,
+          newAIMessages: updated.filter(m => m.source === 'ai').length,
+          newUserMessages: updated.filter(m => m.source === 'user').length
+        });
         console.log('%c   NEW STATE:', 'color: #00695c;', updated);
         return updated;
       });
       
       setProcessedMessageIds(prev => new Set([...prev, messageId]));
+      console.log('🔍 AI VOICE DEBUG - Added to Processed IDs:', {
+        messageId: messageId,
+        newProcessedIdsCount: processedMessageIdsRef.current.size + 1
+      });
 
       // Mark topics as completed based on conversation flow
       if (message.source === 'ai') {
@@ -471,6 +553,16 @@ const ConversationEngine = ({
         }
         
         console.log(`📝 ${debugLabel}:`, item);
+        console.log('🔍 AI VOICE DEBUG - ProcessItem Called:', {
+          debugLabel: debugLabel,
+          itemId: item.id,
+          itemType: item.type,
+          itemRole: item.role,
+          hasContent: !!(item.content || item.text || item.message),
+          contentLength: (item.content || item.text || item.message || '').length,
+          isInProgress: item.status === 'in_progress',
+          timestamp: new Date().toISOString()
+        });
 
         // Normalize the item to ensure it has the expected structure
         const normalized = {
@@ -482,8 +574,23 @@ const ConversationEngine = ({
           ...item
         };
 
+        console.log('🔍 AI VOICE DEBUG - Normalized Item:', {
+          normalizedId: normalized.id,
+          normalizedRole: normalized.role,
+          normalizedContent: normalized.content,
+          normalizedContentLength: normalized.content.length,
+          normalizedType: normalized.type,
+          timestamp: normalized.timestamp.toISOString()
+        });
+
         if (!isValidMessageItem(normalized)) {
           console.log('⏭️ Skipping non-text item:', normalized.type);
+          console.log('🔍 AI VOICE DEBUG - Item Validation Failed:', {
+            reason: 'Not a valid message item',
+            itemType: normalized.type,
+            itemRole: normalized.role,
+            hasContent: !!normalized.content
+          });
           return;
         }
 
@@ -496,16 +603,40 @@ const ConversationEngine = ({
             timestamp: parsedMessage.timestamp
           });
           
+          console.log('🔍 AI VOICE DEBUG - Parsed Message Details:', {
+            parsedId: parsedMessage.id,
+            parsedSource: parsedMessage.source,
+            parsedText: parsedMessage.text,
+            parsedTextLength: parsedMessage.text.length,
+            parsedTimestamp: parsedMessage.timestamp.toISOString(),
+            isInProgress: parsedMessage.isInProgress || false
+          });
+          
           try {
             handleMessage(parsedMessage);
           } catch (messageError) {
             console.error('❌ Error in message callback:', messageError, 'Message:', parsedMessage);
+            console.error('🔍 AI VOICE DEBUG - Message Callback Error:', {
+              error: messageError.message,
+              messageId: parsedMessage.id,
+              messageSource: parsedMessage.source,
+              messageText: parsedMessage.text
+            });
           }
         } else {
           console.warn('⚠️ Failed to parse message item:', normalized);
+          console.warn('🔍 AI VOICE DEBUG - Parse Failed:', {
+            reason: 'parseOutspeedMessage returned null',
+            normalizedItem: normalized
+          });
         }
       } catch (error) {
         console.error('❌ Error processing normalized item:', error, 'Raw:', item);
+        console.error('🔍 AI VOICE DEBUG - ProcessItem Error:', {
+          error: error.message,
+          debugLabel: debugLabel,
+          rawItem: item
+        });
         // Don't throw - continue processing other items
       }
     };
@@ -530,41 +661,100 @@ const ConversationEngine = ({
 
     const handleOutputDelta = (payload: any) => {
       console.log('📝 Output delta:', payload);
+      console.log('🔍 AI VOICE DEBUG - Output Delta Event:', {
+        eventType: 'response.output_text.delta',
+        payload: payload,
+        hasDelta: !!(payload && payload.delta),
+        deltaLength: payload?.delta?.length || 0,
+        timestamp: new Date().toISOString()
+      });
+      
       if (payload && payload.delta) {
-        processItem({
+        const aiMessage = {
           id: `ai_delta_${Date.now()}`,
           type: 'message',
           role: 'assistant',
           content: payload.delta,
           timestamp: new Date(),
           status: 'in_progress'
-        }, 'response.output_text.delta');
+        };
+        
+        console.log('🔍 AI VOICE DEBUG - Processing Delta Message:', {
+          messageId: aiMessage.id,
+          content: aiMessage.content,
+          contentLength: aiMessage.content.length,
+          isInProgress: true,
+          timestamp: aiMessage.timestamp.toISOString()
+        });
+        
+        processItem(aiMessage, 'response.output_text.delta');
+      } else {
+        console.warn('⚠️ AI VOICE DEBUG - Invalid delta payload:', payload);
       }
     };
 
     const handleOutputDone = (payload: any) => {
       console.log('✅ Output done:', payload);
+      console.log('🔍 AI VOICE DEBUG - Output Done Event:', {
+        eventType: 'response.output_text.done',
+        payload: payload,
+        hasText: !!(payload && payload.text),
+        textLength: payload?.text?.length || 0,
+        timestamp: new Date().toISOString()
+      });
+      
       if (payload && payload.text) {
-        processItem({
+        const aiMessage = {
           id: `ai_done_${Date.now()}`,
           type: 'message',
           role: 'assistant',
           content: payload.text,
           timestamp: new Date()
-        }, 'response.output_text.done');
+        };
+        
+        console.log('🔍 AI VOICE DEBUG - Processing Done Message:', {
+          messageId: aiMessage.id,
+          content: aiMessage.content,
+          contentLength: aiMessage.content.length,
+          isInProgress: false,
+          timestamp: aiMessage.timestamp.toISOString()
+        });
+        
+        processItem(aiMessage, 'response.output_text.done');
+      } else {
+        console.warn('⚠️ AI VOICE DEBUG - Invalid done payload:', payload);
       }
     };
 
     const handleAudioTranscript = (payload: any) => {
       console.log('🎵 Audio transcript:', payload);
+      console.log('🔍 AI VOICE DEBUG - Audio Transcript Event:', {
+        eventType: 'response.output_audio.transcript',
+        payload: payload,
+        hasTranscript: !!(payload && payload.transcript),
+        transcriptLength: payload?.transcript?.length || 0,
+        timestamp: new Date().toISOString()
+      });
+      
       if (payload && payload.transcript) {
-        processItem({
+        const aiMessage = {
           id: `ai_audio_${Date.now()}`,
           type: 'message',
           role: 'assistant',
           content: payload.transcript,
           timestamp: new Date()
-        }, 'response.output_audio.transcript');
+        };
+        
+        console.log('🔍 AI VOICE DEBUG - Processing Audio Transcript Message:', {
+          messageId: aiMessage.id,
+          content: aiMessage.content,
+          contentLength: aiMessage.content.length,
+          timestamp: aiMessage.timestamp.toISOString()
+        });
+        
+        processItem(aiMessage, 'response.output_audio.transcript');
+      } else {
+        console.warn('⚠️ AI VOICE DEBUG - Invalid audio transcript payload:', payload);
       }
     };
 

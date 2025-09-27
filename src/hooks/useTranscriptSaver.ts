@@ -46,6 +46,17 @@ export const useTranscriptSaver = (
         sessionType: transcriptData.session_type
       });
 
+      console.log('🔍 AI VOICE DEBUG - Transcript Save Started:', {
+        conversationId: transcriptData.conversation_id,
+        messageCount: transcriptData.message_count,
+        totalLength: transcriptData.total_length,
+        sessionType: transcriptData.session_type,
+        aiMessages: transcriptData.messages.filter(m => m.source === 'ai').length,
+        userMessages: transcriptData.messages.filter(m => m.source === 'user').length,
+        lastAIMessage: transcriptData.messages.filter(m => m.source === 'ai').slice(-1)[0],
+        timestamp: new Date().toISOString()
+      });
+
       // Use Supabase Edge Function for transcript saving
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -63,6 +74,14 @@ export const useTranscriptSaver = (
 
       if (!response.ok) {
         console.error(`❌ API Error: Failed to save transcript (attempt ${retryCount + 1})`, response.status, response.statusText);
+        console.error('🔍 AI VOICE DEBUG - Transcript Save Failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          conversationId: transcriptData.conversation_id,
+          messageCount: transcriptData.message_count,
+          attempt: retryCount + 1,
+          maxRetries: maxRetries
+        });
         
         // Retry if we haven't exceeded max retries
         if (retryCount < maxRetries) {
@@ -76,6 +95,11 @@ export const useTranscriptSaver = (
       }
 
       console.log('✅ Transcript saved successfully');
+      console.log('🔍 AI VOICE DEBUG - Transcript Save Success:', {
+        conversationId: transcriptData.conversation_id,
+        messageCount: transcriptData.message_count,
+        timestamp: new Date().toISOString()
+      });
       return true;
     } catch (error) {
       console.error(`❌ Network Error: Could not save transcript (attempt ${retryCount + 1})`, error);
@@ -111,13 +135,34 @@ export const useTranscriptSaver = (
     // Set new timeout
     saveTimeoutRef.current = setTimeout(async () => {
       const currentMessages = messagesRef.current; // Always get the latest messages
+      console.log('🔍 AI VOICE DEBUG - Debounced Save Triggered:', {
+        conversationId: conversationId,
+        currentMessageCount: currentMessages.length,
+        lastSavedCount: lastSavedMessagesRef.current.length,
+        timestamp: new Date().toISOString()
+      });
+      
       if (!conversationId || currentMessages.length === 0) {
         console.log('⏭️ Skipping transcript save - no conversation ID or empty messages');
+        console.log('🔍 AI VOICE DEBUG - Skip Save Reason:', {
+          hasConversationId: !!conversationId,
+          messageCount: currentMessages.length,
+          reason: !conversationId ? 'No conversation ID' : 'Empty messages'
+        });
         return;
       }
 
       // Check if there are new messages since last successful save
       const newMessages = currentMessages.slice(lastSavedMessagesRef.current.length);
+      console.log('🔍 AI VOICE DEBUG - New Messages Check:', {
+        totalMessages: currentMessages.length,
+        lastSavedCount: lastSavedMessagesRef.current.length,
+        newMessagesCount: newMessages.length,
+        newAIMessages: newMessages.filter(m => m.source === 'ai').length,
+        newUserMessages: newMessages.filter(m => m.source === 'user').length,
+        lastNewAIMessage: newMessages.filter(m => m.source === 'ai').slice(-1)[0]
+      });
+      
       if (newMessages.length === 0) {
         console.log('⏭️ Skipping transcript save - no new messages');
         return;
