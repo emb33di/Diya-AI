@@ -217,10 +217,10 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
     initializeDocument();
   }, [essayId, title, initialContent]);
 
-  // Load essay checkpoints when document is loaded
+  // Load essay versions when document is loaded
   useEffect(() => {
     if (document) {
-      loadEssayCheckpoints();
+      loadEssayVersions();
     }
   }, [document]);
 
@@ -375,13 +375,13 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
         if (updatedDocument) {
           setDocument(updatedDocument);
           
-          // Create a checkpoint with AI feedback
+          // Create a version with AI feedback
           try {
             const htmlContent = semanticDocumentService.convertBlocksToHtml(updatedDocument.blocks);
             const allAnnotations = semanticDocumentService.getAllAnnotations(updatedDocument);
             const aiAnnotations = allAnnotations.filter(a => a.author === 'ai');
             
-            await EssayCheckpointService.createAIFeedbackCheckpoint(
+            await EssayVersionService.createAIFeedbackVersion(
               essayId,
               htmlContent,
               updatedDocument.title,
@@ -395,11 +395,11 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
               aiAnnotations.filter(a => a.metadata?.agentType === 'paragraph').length
             );
             
-            // Reload checkpoints to show the new version
-            await loadEssayCheckpoints();
-          } catch (checkpointError) {
-            console.error('Failed to create AI feedback checkpoint:', checkpointError);
-            // Don't fail the whole operation if checkpoint creation fails
+            // Reload versions to show the new version
+            await loadEssayVersions();
+          } catch (versionError) {
+            console.error('Failed to create AI feedback version:', versionError);
+            // Don't fail the whole operation if version creation fails
           }
         }
       }
@@ -939,7 +939,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
               )}
 
               {/* Version History */}
-              {essayCheckpoints.length > 0 && (
+              {essayVersions.length > 0 && (
                 <div className="bg-white p-4 md:p-6 rounded-xl shadow-lg border border-gray-300">
                   <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                     <FileText className="h-5 w-5 text-blue-600" />
