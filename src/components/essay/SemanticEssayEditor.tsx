@@ -11,33 +11,24 @@ import { semanticDocumentService } from '@/services/semanticDocumentService';
 import { ExportService } from '@/services/exportService';
 import { usePageVisibility } from '@/hooks/usePageVisibility';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import SemanticEditor from './SemanticEditor';
-import CommentOverlay from './CommentOverlay';
 import AICommentsLoadingPane, { AI_COMMENTS_LOADING_STEPS } from './AICommentsLoadingPane';
 import GrammarLoadingPane, { GRAMMAR_LOADING_STEPS } from './GrammarLoadingPane';
-import DiyaScoreReport from './DiyaScoreReport';
-import { ScoreReportService, AgentScores } from '@/services/scoreReportService';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
 import { 
   FileText, 
   MessageSquare, 
   Sparkles, 
-  Download, 
-  Upload,
   CheckCircle,
   AlertCircle,
   FileDown,
   FileText as FileTextIcon,
   CheckSquare,
   Sidebar,
-  Star
 } from 'lucide-react';
 
 interface EssayPrompt {
@@ -99,10 +90,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
     progress: 0,
     message: ''
   });
-  const [bigPictureScore, setBigPictureScore] = useState<number | null>(null);
   const [hasAIComments, setHasAIComments] = useState(false);
-  const [showScoreReport, setShowScoreReport] = useState(false);
-  const [agentScores, setAgentScores] = useState<AgentScores>({});
 
   // Toast for user feedback
   const { toast } = useToast();
@@ -224,25 +212,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
     initializeDocument();
   }, [essayId, title, initialContent]);
 
-  // Fetch big picture score when essay changes
-  useEffect(() => {
-    fetchBigPictureScore();
-  }, [essayId]);
 
-  // Handle score report actions
-  const handleViewComments = () => {
-    // Force a re-render to show the comments
-    setShowCommentSidebar(true);
-    // Optionally scroll to comments section
-    const commentsElement = window.document.querySelector('.comment-sidebar');
-    if (commentsElement) {
-      commentsElement.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-
-  const handleCloseScoreReport = () => {
-    setShowScoreReport(false);
-  };
 
   // Handle document changes
   const handleDocumentChange = (updatedDocument: SemanticDocument) => {
@@ -272,43 +242,6 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
     setLastSaved(lastSaved);
   };
 
-  // Fetch big picture score from semantic annotations
-  const fetchBigPictureScore = async () => {
-    if (!essayId) return;
-    
-    try {
-      // Use the ScoreReportService to get scores from semantic annotations with timeout
-      const scores = await Promise.race([
-        ScoreReportService.getAgentScores(essayId),
-        new Promise<AgentScores>((_, reject) => 
-          setTimeout(() => reject(new Error('Score fetch timeout')), 8000)
-        )
-      ]);
-      
-      if (scores.bigPicture !== undefined) {
-        setBigPictureScore(scores.bigPicture);
-        setHasAIComments(true);
-      } else {
-        // Check if there are any AI comments at all using semantic annotations
-        try {
-          const hasComments = await Promise.race([
-            ScoreReportService.hasAIComments(essayId),
-            new Promise<boolean>((_, reject) => 
-              setTimeout(() => reject(new Error('Comments check timeout')), 5000)
-            )
-          ]);
-          setHasAIComments(hasComments);
-        } catch (commentError) {
-          console.error('Error checking AI comments:', commentError);
-          setHasAIComments(false);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching big picture score:', error);
-      // Don't set hasAIComments to true if there's an error
-      setHasAIComments(false);
-    }
-  };
 
   // Generate AI comments
   const generateAIComments = async () => {
@@ -349,13 +282,6 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
         if (updatedDocument) {
           setDocument(updatedDocument);
         }
-        // Fetch updated big picture score
-        await fetchBigPictureScore();
-        
-        // Fetch all agent scores and show score report
-        const scores = await ScoreReportService.getAgentScores(essayId);
-        setAgentScores(scores);
-        setShowScoreReport(true);
       }
 
       // Mark as complete
@@ -926,13 +852,6 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
         }}
       />
 
-      {/* Diya Score Report */}
-      <DiyaScoreReport
-        isVisible={showScoreReport}
-        scores={agentScores}
-        onViewComments={handleViewComments}
-        onClose={handleCloseScoreReport}
-      />
     </div>
   );
 };
