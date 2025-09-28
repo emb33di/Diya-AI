@@ -16,10 +16,10 @@ const FounderProfile = () => {
             </h2>
           </div>
           
-          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-8">
-          {/* Founder Photo */}
-          <div className="flex-shrink-0">
-            <div className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-full overflow-hidden border-2 border-border/30 shadow-sm">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 sm:gap-8">
+          {/* Left Side: Photo, Name, and Schools */}
+          <div className="flex-shrink-0 text-center">
+            <div className="w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 rounded-full overflow-hidden border-2 border-border/30 shadow-sm mx-auto mb-4">
               <img 
                 src="/founder_pic.jpeg"
                 alt="Mihir Bedi - Founder" 
@@ -30,26 +30,20 @@ const FounderProfile = () => {
                 }}
               />
             </div>
-          </div>
-
-          {/* Founder Bio */}
-          <div className="flex-1 text-center sm:text-left">
-            <h3 className="text-base sm:text-lg md:text-xl font-medium text-foreground mb-2 font-inter">
+            
+            <h3 className="text-lg sm:text-xl md:text-2xl font-medium text-foreground mb-3 font-inter">
               Mihir Bedi
             </h3>
             
-            {/* Credentials */}
-            <div className="mb-4">
-              <p className="text-sm sm:text-base font-medium text-foreground mb-1">
-                University of Chicago
-              </p>
-              <p className="text-sm sm:text-base font-medium text-foreground">
-                Harvard Law School
-              </p>
-            </div>
-            
-            <p className="text-sm sm:text-base text-muted-foreground leading-relaxed mb-2">
-            Raised in Delhi and a graduate of DPS R.K. Puram, Mihir studied Economics at the University of Chicago and is now pursuing his law degree at Harvard Law School. Having navigated the competitive admissions process himself twice, Mihir brings first-hand insight into what top global universities seek. He co-founded Diya AI to make world-class admissions guidance affordable, transparent, and accessible to every student, no matter their background.
+            <p className="text-sm sm:text-base font-medium text-foreground">
+              University of Chicago | Harvard Law School
+            </p>
+          </div>
+
+          {/* Right Side: Body Text */}
+          <div className="flex-1 text-left sm:text-left">
+            <p className="text-sm sm:text-base text-white leading-relaxed">
+            Raised in Delhi and a graduate of DPS R.K. Puram, Mihir studied Economics at the University of Chicago and is now pursuing his law degree at Harvard Law School. Having navigated the competitive admissions process himself twice, Mihir brings first-hand insight into what top global universities seek. He founded Diya AI to make world-class admissions guidance affordable, transparent, and accessible to every student in India.
             </p>
           </div>
           </div>

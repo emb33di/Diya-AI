@@ -5,7 +5,7 @@ const Footer = () => {
         <div className="flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0">
           {/* Social Media Links */}
           <div className="flex items-center space-x-4">
-            <span className="text-sm text-muted-foreground">Follow us:</span>
+            <span className="text-sm text-white">Follow us:</span>
             <div className="flex space-x-3">
               {/* Instagram */}
               <a 

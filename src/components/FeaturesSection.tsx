@@ -35,12 +35,12 @@ const FeaturesSection = () => {
         {/* Section Header */}
         <div ref={headerRef} className={`text-center mb-16 sm:mb-20 md:mb-24 scroll-fade-in ${headerVisible ? 'animate' : ''}`}>
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold font-inter mb-6 sm:mb-8 leading-tight">
-            <span className="text-foreground">Your Complete Admissions Hub</span>
-            <span className="block leading-relaxed" style={{color: '#D07D00'}}>
+            <span className="text-brand-orange">Your Complete Admissions Hub</span>
+            <span className="block leading-relaxed text-brand-orange">
               Powered by Diya
             </span>
           </h2>
-          <p className="text-lg sm:text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">Diya is your one-stop solution for managing the entire college admissions process for undergraduate and graduate programs. </p>
+          <p className="text-lg sm:text-xl md:text-2xl text-white max-w-3xl mx-auto leading-relaxed">Diya is your one-stop solution for managing the entire college admissions process for undergraduate and graduate programs. </p>
         </div>
 
         {/* Features Grid */}

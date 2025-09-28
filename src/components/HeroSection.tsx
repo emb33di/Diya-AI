@@ -35,7 +35,7 @@ const HeroSection = () => {
             {/* Social Media Links */}
             <div className={`mt-8 sm:mt-10 scroll-fade-in scroll-stagger-2 ${contentVisible ? 'animate' : ''}`}>
               <div className="flex items-center space-x-4">
-                <span className="text-sm text-muted-foreground">Follow us:</span>
+                <span className="text-sm text-white">Follow us:</span>
                 <div className="flex space-x-3">
                   {/* Instagram */}
                   <a 

@@ -65,13 +65,13 @@ const MBASection = () => {
       <div className="max-w-7xl mx-auto">
         {/* Section Header */}
         <div ref={headerRef} className={`text-center mb-16 sm:mb-20 md:mb-24 scroll-fade-in ${headerVisible ? 'animate' : ''}`}>
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-foreground font-inter mb-6 sm:mb-8 leading-tight">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-brand-orange font-inter mb-6 sm:mb-8 leading-tight">
             Who Can Use Diya?
-            <span className="block leading-relaxed" style={{color: '#D07D00'}}>
+            <span className="block leading-relaxed text-brand-orange">
               Every Student, Every Program
             </span>
           </h2>
-          <p className="text-lg sm:text-xl md:text-2xl text-muted-foreground max-w-4xl mx-auto leading-relaxed">
+          <p className="text-lg sm:text-xl md:text-2xl text-white max-w-4xl mx-auto leading-relaxed">
             From high school students to working professionals, Diya serves students across all academic levels and program types. 
             Whether you're pursuing undergraduate studies or advanced degrees, Diya adapts to your specific needs and goals.
           </p>
@@ -116,7 +116,7 @@ const MBASection = () => {
 
         {/* Call to Action */}
         <div className={`mt-12 sm:mt-16 text-center scroll-fade-in ${contentVisible ? 'animate' : ''}`}>
-          <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-lg sm:text-xl text-white max-w-2xl mx-auto">
             Diya provides personalized guidance for all these program types, adapting to your specific needs and goals.
           </p>
         </div>

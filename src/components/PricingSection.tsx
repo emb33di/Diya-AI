@@ -18,7 +18,7 @@ const PricingSection = () => {
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold mb-4 leading-tight" style={{color: '#D07D00'}}>
             The Best Admissions Guidance, At An Affordable Price
           </h2>
-          <p className="text-sm sm:text-base md:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+          <p className="text-sm sm:text-base md:text-lg text-white max-w-2xl mx-auto leading-relaxed">
             Start your journey to top universities with our affordable, expert-designed plans
           </p>
         </div>
@@ -28,47 +28,41 @@ const PricingSection = () => {
           {/* Free Plan */}
           <div ref={cardRef1} className={`rounded-2xl sm:rounded-3xl border border-primary/20 p-6 sm:p-8 hover:border-primary/40 hover:shadow-[0_0_40px_hsl(var(--primary)/0.2)] transition-all duration-300 scroll-scale-in ${card1Visible ? 'animate' : ''} flex flex-col`}>
             <div className="text-center mb-6">
-              <h3 className="text-xl sm:text-2xl font-bold text-foreground mb-2">
+              <h3 className="text-xl sm:text-2xl font-bold text-brand-orange mb-2">
                 Free
               </h3>
               <div className="mb-4">
                 <span className="text-3xl sm:text-4xl font-extrabold text-primary">₹0</span>
-                <p className="text-sm text-muted-foreground mt-1">Manage your entire application</p>
+                <p className="text-sm text-white mt-1">Manage your entire application</p>
               </div>
             </div>
 
             <div className="mb-8 flex-1">
-              <h4 className="text-base sm:text-lg font-semibold text-foreground mb-4">What this includes:</h4>
+              <h4 className="text-base sm:text-lg font-semibold text-brand-orange mb-4">What this includes:</h4>
               <ul className="space-y-3">
                 <li className="flex items-start gap-3">
                   <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  <span className="text-sm sm:text-base text-muted-foreground">Voice onboarding call with Diya</span>
+                  <span className="text-sm sm:text-base text-white">Voice onboarding call with Diya</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  <span className="text-sm sm:text-base text-muted-foreground">Deadline and progress tracking</span>
+                  <span className="text-sm sm:text-base text-white">Deadline and progress tracking</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  <span className="text-sm sm:text-base text-muted-foreground">Manage all your essays in one place</span>
+                  <span className="text-sm sm:text-base text-white">Manage all your essays in one place</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  <span className="text-sm sm:text-base text-muted-foreground">Resume management and formatting</span>
+                  <span className="text-sm sm:text-base text-white">Resume management and formatting</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  <span className="text-sm sm:text-base text-muted-foreground">Limited access to LOR templates, successful essays, and sample resumes</span>
+                  <span className="text-sm sm:text-base text-white">Limited access to LOR templates, successful essays, and sample resumes</span>
                 </li>
               </ul>
             </div>
 
-            <Button 
-              onClick={() => navigate('/auth')}
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium mt-auto"
-            >
-              Get Started For Free
-            </Button>
           </div>
 
           {/* Pro Plan */}
@@ -81,47 +75,41 @@ const PricingSection = () => {
             </div>
 
             <div className="text-center mb-6">
-              <h3 className="text-xl sm:text-2xl font-bold text-foreground mb-2">
+              <h3 className="text-xl sm:text-2xl font-bold text-brand-orange mb-2">
                 Pro
               </h3>
               <div className="mb-4">
                 <span className="text-3xl sm:text-4xl font-extrabold text-primary">₹10,000</span>
-                <p className="text-sm text-muted-foreground mt-1">AI-powered counseling and feedback</p>
+                <p className="text-sm text-white mt-1">AI-powered counseling and feedback</p>
               </div>
             </div>
 
             <div className="mb-8 flex-1">
-              <h4 className="text-base sm:text-lg font-semibold text-foreground mb-4">What this includes:</h4>
+              <h4 className="text-base sm:text-lg font-semibold text-brand-orange mb-4">What this includes:</h4>
               <ul className="space-y-3">
                 <li className="flex items-start gap-3">
                   <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  <span className="text-sm sm:text-base text-muted-foreground font-medium">All features in Free, plus:</span>
+                  <span className="text-sm sm:text-base text-white font-medium">All features in Free, plus:</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  <span className="text-sm sm:text-base text-muted-foreground">Unlimited access to Diya essay feedback and scoring</span>
+                  <span className="text-sm sm:text-base text-white">Unlimited access to Diya essay feedback and scoring</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  <span className="text-sm sm:text-base text-muted-foreground">Unlimited access to Diya resume formatting and downloads</span>
+                  <span className="text-sm sm:text-base text-white">Unlimited access to Diya resume formatting and downloads</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  <span className="text-sm sm:text-base text-muted-foreground">Access to the entire library of successful LORs, resumes, and essays</span>
+                  <span className="text-sm sm:text-base text-white">Access to the entire library of successful LORs, resumes, and essays</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  <span className="text-sm sm:text-base text-muted-foreground">Access to weekly webinars and college guidance videos</span>
+                  <span className="text-sm sm:text-base text-white">Access to weekly webinars and college guidance videos</span>
                 </li>
               </ul>
             </div>
 
-            <Button 
-              onClick={() => navigate('/auth')}
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium mt-auto"
-            >
-              Upgrade to Pro
-            </Button>
           </div>
 
           {/* Expert Plan - Temporarily commented out */}
@@ -137,7 +125,7 @@ const PricingSection = () => {
             </div>
 
             <div className="mb-8 flex-1">
-              <h4 className="text-base sm:text-lg font-semibold text-foreground mb-4">What this includes:</h4>
+              <h4 className="text-base sm:text-lg font-semibold text-brand-orange mb-4">What this includes:</h4>
               <ul className="space-y-3">
                 <li className="flex items-start gap-3">
                   <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
@@ -165,6 +153,16 @@ const PricingSection = () => {
               Upgrade to Expert
             </Button>
           </div> */}
+        </div>
+
+        {/* Centered Button */}
+        <div className="text-center mt-8 sm:mt-12">
+          <Button 
+            onClick={() => navigate('/auth')}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-8 py-3 text-lg"
+          >
+            Get Started Today for Free
+          </Button>
         </div>
       </div>
     </section>

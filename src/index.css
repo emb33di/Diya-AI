@@ -151,6 +151,9 @@
     --primary-foreground: 0 0% 100%;
     --primary-hover: 36 100% 35%;
     
+    /* Brand orange for consistent theming */
+    --brand-orange: #D07D00;
+    
     /* Secondary - Soft orange accent */
     --secondary: 36 32% 95%;
     --secondary-foreground: 36 100% 41%;
@@ -296,5 +299,17 @@
   select:-webkit-autofill:focus {
     -webkit-box-shadow: 0 0 0 30px hsl(var(--background)) inset !important;
     -webkit-text-fill-color: hsl(var(--foreground)) !important;
+  }
+}
+
+/* Brand color utilities */
+@layer utilities {
+  .text-brand-orange {
+    color: var(--brand-orange) !important;
+  }
+  
+  /* More specific rule to override landing-page styles */
+  .landing-page .text-brand-orange {
+    color: var(--brand-orange) !important;
   }
 }

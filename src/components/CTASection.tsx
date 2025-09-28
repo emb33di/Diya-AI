@@ -13,7 +13,6 @@ const CTASection = () => {
         <div ref={ctaRef} className={`text-center scroll-fade-in ${ctaVisible ? 'animate' : ''}`}>
           <div className="space-y-4 sm:space-y-6">
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-foreground font-inter">Ready to take control of your future?</h2>
-            <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto px-4">Get started today with India's first AI college counselor - Diya.</p>
             <div className="flex justify-center">
               <Button 
                 onClick={() => navigate('/auth')} 
