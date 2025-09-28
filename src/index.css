@@ -312,4 +312,10 @@
   .landing-page .text-brand-orange {
     color: var(--brand-orange) !important;
   }
+  
+  /* Comment text size */
+  .text-comment {
+    font-size: 15px !important;
+    line-height: 19px !important;
+  }
 }

@@ -390,7 +390,7 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
                                 </div>
                               </div>
                               
-                              <p className="text-base text-gray-700 mb-2 leading-relaxed break-words overflow-wrap-anywhere comment-content" style={{ fontFamily: 'Arial, sans-serif' }}>{annotation.content}</p>
+                              <p className="text-comment text-gray-700 mb-2 leading-relaxed break-words overflow-wrap-anywhere comment-content" style={{ fontFamily: 'Arial, sans-serif' }}>{annotation.content}</p>
                               
                               {annotation.targetText && (
                                 <div className="mt-2 p-2 bg-white rounded border text-sm text-gray-600 leading-relaxed break-words overflow-wrap-anywhere" style={{ fontFamily: 'Arial, sans-serif' }}>
@@ -522,7 +522,7 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
                             </div>
                           </div>
                           
-                          <p className="text-base text-gray-700 mb-2 leading-relaxed break-words overflow-wrap-anywhere comment-content" style={{ fontFamily: 'Arial, sans-serif' }}>{annotation.content}</p>
+                          <p className="text-comment text-gray-700 mb-2 leading-relaxed break-words overflow-wrap-anywhere comment-content" style={{ fontFamily: 'Arial, sans-serif' }}>{annotation.content}</p>
                           
                           {annotation.targetText && (
                             <div className="mt-2 p-2 bg-white rounded border text-sm text-gray-600 leading-relaxed break-words overflow-wrap-anywhere" style={{ fontFamily: 'Arial, sans-serif' }}>
