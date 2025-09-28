@@ -508,6 +508,7 @@ export default function Profile() {
         ...processedData,
         phone_number: combinedPhoneNumber,
         user_id: user.id,
+        // Don't set profile_saved here - only set it during initial onboarding completion
       };
 
       // Check if user_profiles record exists

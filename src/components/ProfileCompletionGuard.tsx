@@ -1,5 +1,4 @@
 import React from 'react';
-import { useProfileCompletion } from '@/hooks/useProfileCompletion';
 import { useAuth } from '@/hooks/useAuth';
 import ProfileCompletionLock from './ProfileCompletionLock';
 
@@ -12,15 +11,10 @@ const ProfileCompletionGuard: React.FC<ProfileCompletionGuardProps> = ({
   children, 
   pageName 
 }) => {
-  const { onboardingCompleted, loading: onboardingLoading } = useAuth();
-  const { 
-    completionPercentage, 
-    missingFields, 
-    loading: profileLoading 
-  } = useProfileCompletion();
+  const { onboardingCompleted, profileSaved, loading } = useAuth();
 
   // Show loading state
-  if (onboardingLoading || profileLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F4EDE2' }}>
         <div className="text-center">
@@ -37,15 +31,15 @@ const ProfileCompletionGuard: React.FC<ProfileCompletionGuardProps> = ({
     return <>{children}</>;
   }
 
-  // Check if profile is complete (100% completion)
-  const isProfileComplete = completionPercentage >= 100;
+  // Check if profile has been saved (user has completed initial profile setup)
+  const isProfileSaved = profileSaved === true;
 
-  // If profile is not complete, show profile completion lock
-  if (!isProfileComplete) {
-    return <ProfileCompletionLock pageName={pageName} missingFields={missingFields} />;
+  // If profile is not saved, show profile completion lock
+  if (!isProfileSaved) {
+    return <ProfileCompletionLock pageName={pageName} missingFields={[]} />;
   }
 
-  // If profile is complete, show the children
+  // If profile is saved, show the children
   return <>{children}</>;
 };
 

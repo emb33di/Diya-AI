@@ -588,6 +588,7 @@ export class AIProfileExtractionService {
         ...flattenedProfile,
         ai_extracted: true,
         ai_extraction_date: new Date().toISOString(),
+        // Don't set profile_saved here - only set it during initial onboarding completion
         updated_at: new Date().toISOString()
       };
 

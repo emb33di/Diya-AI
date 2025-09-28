@@ -7,6 +7,7 @@ export interface UserProfile {
   full_name: string | null;
   email_address: string | null;
   onboarding_complete: boolean;
+  profile_saved: boolean;
 }
 
 export interface AuthState {
@@ -48,9 +49,19 @@ export const useAuth = () => {
     }
 
     try {
+      // Check if this is the first time onboarding is being completed
+      const isFirstTimeCompletion = !authState.profile?.onboarding_complete;
+      
+      const updateData: any = { onboarding_complete: true };
+      
+      // Only set profile_saved = true if this is the first time completing onboarding
+      if (isFirstTimeCompletion) {
+        updateData.profile_saved = true;
+      }
+
       const { data, error } = await supabase
         .from('user_profiles')
-        .update({ onboarding_complete: true })
+        .update(updateData)
         .eq('user_id', authState.user.id)
         .select()
         .single();
@@ -58,7 +69,12 @@ export const useAuth = () => {
       if (error) throw error;
 
       if (data) {
-        const updatedProfile = { ...authState.profile, onboarding_complete: true } as UserProfile;
+        const updatedProfile = { 
+          ...authState.profile, 
+          onboarding_complete: true,
+          // Only update profile_saved if it was set in the database update
+          ...(isFirstTimeCompletion && { profile_saved: true })
+        } as UserProfile;
         setAuthState(prev => ({ ...prev, profile: updatedProfile }));
         localStorage.setItem('user_profile', JSON.stringify(updatedProfile));
         return true;
@@ -78,7 +94,7 @@ export const useAuth = () => {
         // Fetch profile from user_profiles table only
         const { data: profile, error } = await supabase
           .from('user_profiles')
-          .select('id, full_name, email_address, onboarding_complete')
+          .select('id, full_name, email_address, onboarding_complete, profile_saved')
           .eq('user_id', user.id)
           .maybeSingle();
 
@@ -96,8 +112,9 @@ export const useAuth = () => {
               full_name: user.user_metadata?.full_name || `${user.user_metadata?.first_name || ''} ${user.user_metadata?.last_name || ''}`.trim() || null,
               email_address: user.email,
               onboarding_complete: false,
+              profile_saved: false,
             })
-            .select('id, full_name, email_address, onboarding_complete')
+            .select('id, full_name, email_address, onboarding_complete, profile_saved')
             .single();
 
           if (createError) throw createError;
@@ -113,6 +130,7 @@ export const useAuth = () => {
           full_name: finalProfile.full_name || user.user_metadata?.full_name || null,
           email_address: finalProfile.email_address || user.email || null,
           onboarding_complete: finalProfile.onboarding_complete || false,
+          profile_saved: finalProfile.profile_saved || false,
         };
 
         if (isMounted) {
@@ -171,6 +189,7 @@ export const useAuth = () => {
   return {
     ...authState,
     onboardingCompleted: authState.profile?.onboarding_complete ?? null,
+    profileSaved: authState.profile?.profile_saved ?? null,
     markOnboardingCompleted,
     signOut,
   };
