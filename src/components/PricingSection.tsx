@@ -19,7 +19,7 @@ const PricingSection = () => {
             The Best Admissions Guidance, At An Affordable Price
           </h2>
           <p className="text-sm sm:text-base md:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            Start your journey to top universities with our affordable, expert-guided plans
+            Start your journey to top universities with our affordable, expert-designed plans
           </p>
         </div>
 
@@ -46,15 +46,15 @@ const PricingSection = () => {
                 </li>
                 <li className="flex items-start gap-3">
                   <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  <span className="text-sm sm:text-base text-muted-foreground">Deadline tracking and reminders</span>
+                  <span className="text-sm sm:text-base text-muted-foreground">Deadline and progress tracking</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  <span className="text-sm sm:text-base text-muted-foreground">All your essays, in one place</span>
+                  <span className="text-sm sm:text-base text-muted-foreground">Manage all your essays in one place</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  <span className="text-sm sm:text-base text-muted-foreground">Resume management</span>
+                  <span className="text-sm sm:text-base text-muted-foreground">Resume management and formatting</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
@@ -86,7 +86,7 @@ const PricingSection = () => {
               </h3>
               <div className="mb-4">
                 <span className="text-3xl sm:text-4xl font-extrabold text-primary">₹10,000</span>
-                <p className="text-sm text-muted-foreground mt-1">AI-powered counseling</p>
+                <p className="text-sm text-muted-foreground mt-1">AI-powered counseling and feedback</p>
               </div>
             </div>
 
@@ -103,11 +103,11 @@ const PricingSection = () => {
                 </li>
                 <li className="flex items-start gap-3">
                   <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  <span className="text-sm sm:text-base text-muted-foreground">Unlimited access to Diya resume enhancements</span>
+                  <span className="text-sm sm:text-base text-muted-foreground">Unlimited access to Diya resume formatting and downloads</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  <span className="text-sm sm:text-base text-muted-foreground">Full access to templates and successful essays</span>
+                  <span className="text-sm sm:text-base text-muted-foreground">Access to the entire library of successful LORs, resumes, and essays</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />

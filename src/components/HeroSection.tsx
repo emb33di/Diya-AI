@@ -28,7 +28,7 @@ const HeroSection = () => {
             {/* Credentials */}
             <div className={`mt-8 sm:mt-12 scroll-fade-in scroll-stagger-1 ${contentVisible ? 'animate' : ''}`}>
               <p className="text-lg sm:text-xl md:text-2xl gold-shimmer font-medium">
-                Built by Indian alumni from Harvard, Dartmouth, and UChicago.
+                Built by Indian alumni from Harvard and UChicago for Indian students.
               </p>
             </div>
 
