@@ -415,13 +415,18 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
         timestamp: new Date().toISOString(),
         message: 'User cannot generate AI feedback for their essay'
       });
-    } finally {
-      // Reset after a short delay to show completion
-      setTimeout(() => {
-        setIsGeneratingAIComments(false);
-        setLoadingStep(0);
-      }, 1000);
     }
+    // Note: Don't auto-close the loading pane - let user click "See AI Comments" button
+  };
+
+  // Handle "See AI Comments" button click
+  const handleSeeAIComments = () => {
+    // Close the loading pane
+    setIsGeneratingAIComments(false);
+    setLoadingStep(0);
+    
+    // Refresh the page to show the newly generated comments
+    window.location.reload();
   };
 
   // Generate grammar comments
@@ -1014,6 +1019,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
           setIsGeneratingAIComments(false);
           setLoadingStep(0);
         }}
+        onSeeComments={handleSeeAIComments}
       />
 
       {/* Grammar Loading Pane */}

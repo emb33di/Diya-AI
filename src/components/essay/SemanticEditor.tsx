@@ -553,14 +553,19 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
       setLoadingStep(AI_COMMENTS_LOADING_STEPS.length);
     } catch (error) {
       console.error('Failed to generate AI comments:', error);
-    } finally {
-      // Reset after a short delay to show completion
-      setTimeout(() => {
-        setIsGeneratingAIComments(false);
-        setLoadingStep(0);
-      }, 1000);
     }
+    // Note: Don't auto-close the loading pane - let user click "See AI Comments" button
   }, [state.document]);
+
+  // Handle "See AI Comments" button click
+  const handleSeeAIComments = () => {
+    // Close the loading pane
+    setIsGeneratingAIComments(false);
+    setLoadingStep(0);
+    
+    // Refresh the page to show the newly generated comments
+    window.location.reload();
+  };
 
   // Generate grammar comments for all blocks
   const generateGrammarComments = useCallback(async () => {
@@ -1026,6 +1031,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
           setIsGeneratingAIComments(false);
           setLoadingStep(0);
         }}
+        onSeeComments={handleSeeAIComments}
       />
 
       {/* Grammar Loading Pane */}
@@ -1040,6 +1046,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
           setNoGrammarErrorsFound(false); // Reset for next time
         }}
       />
+
     </div>
   );
 };

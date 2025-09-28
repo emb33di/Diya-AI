@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle2, Loader2, Sparkles, Brain, MessageSquare, Target } from 'lucide-react';
+import { CheckCircle2, Loader2, Sparkles, Brain, MessageSquare, Target, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 interface LoadingStep {
   id: string;
@@ -15,6 +16,7 @@ interface AICommentsLoadingPaneProps {
   steps: LoadingStep[];
   currentStepIndex: number;
   onComplete?: () => void;
+  onSeeComments?: () => void;
   className?: string;
 }
 
@@ -23,6 +25,7 @@ const AICommentsLoadingPane: React.FC<AICommentsLoadingPaneProps> = ({
   steps,
   currentStepIndex,
   onComplete,
+  onSeeComments,
   className
 }) => {
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
@@ -36,16 +39,6 @@ const AICommentsLoadingPane: React.FC<AICommentsLoadingPaneProps> = ({
       });
     }
   }, [currentStepIndex]);
-
-  // Call onComplete when all steps are done
-  useEffect(() => {
-    if (currentStepIndex >= steps.length && onComplete) {
-      const timer = setTimeout(() => {
-        onComplete();
-      }, 1000); // Small delay to show completion
-      return () => clearTimeout(timer);
-    }
-  }, [currentStepIndex, steps.length, onComplete]);
 
   if (!isVisible) return null;
 
@@ -177,6 +170,23 @@ const AICommentsLoadingPane: React.FC<AICommentsLoadingPaneProps> = ({
             />
           </div>
         </div>
+
+        {/* See AI Comments Button - Only show when complete */}
+        {currentStepIndex >= steps.length && onSeeComments && (
+          <div className="mt-8 text-center">
+            <Button
+              onClick={onSeeComments}
+              size="lg"
+              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+            >
+              <Eye className="h-5 w-5 mr-2" />
+              See AI Comments
+            </Button>
+            <p className="text-sm text-gray-500 mt-3">
+              Click to refresh and view your personalized feedback
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
