@@ -42,6 +42,7 @@ export interface Database {
           scholarship_interests: string[] | null
           applying_to: string | null
           onboarding_complete: boolean
+          skipped_onboarding: boolean
           cumulative_onboarding_time: number
           created_at: string
           updated_at: string
@@ -78,6 +79,7 @@ export interface Database {
           scholarship_interests?: string[] | null
           applying_to?: string | null
           onboarding_complete?: boolean
+          skipped_onboarding?: boolean
           cumulative_onboarding_time?: number
           created_at?: string
           updated_at?: string
@@ -114,6 +116,7 @@ export interface Database {
           scholarship_interests?: string[] | null
           applying_to?: string | null
           onboarding_complete?: boolean
+          skipped_onboarding?: boolean
           cumulative_onboarding_time?: number
           created_at?: string
           updated_at?: string

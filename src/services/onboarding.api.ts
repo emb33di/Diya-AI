@@ -8,6 +8,7 @@ export interface UserProfile {
   full_name: string;
   cumulative_onboarding_time: number;
   onboarding_complete: boolean;
+  skipped_onboarding: boolean;
 }
 
 export interface ConversationTracking {

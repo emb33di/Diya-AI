@@ -437,7 +437,7 @@ const Onboarding = () => {
           onCancel={() => setShowSkipConfirmation(false)}
           onConfirm={async () => {
             setShowSkipConfirmation(false);
-            const success = await markOnboardingCompleted();
+            const success = await markOnboardingCompleted(true); // Pass true to indicate user skipped onboarding
             if (success) {
               localStorage.removeItem('onboarding_remaining_time');
               localStorage.removeItem('previous_onboarding_context');

@@ -12,6 +12,7 @@ import { fetchSchoolRecommendations } from "@/utils/supabaseUtils";
 import { useNavigate } from "react-router-dom";
 import { SchoolArchiveService } from "@/services/schoolArchiveService";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import {
   DndContext,
   DragOverlay,
@@ -52,6 +53,7 @@ interface School {
 const SchoolList = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { profile } = useAuth();
   const [schools, setSchools] = useState<School[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -593,10 +595,13 @@ const SchoolList = () => {
             )}
           </div>
           
-          <div className="text-sm">
-            <span className="font-medium">Why it's a good match:</span>
-            <p className="text-muted-foreground mt-1">{school.notes}</p>
-          </div>
+          {/* Only show "Why it's a good match" if user didn't skip onboarding */}
+          {!profile?.skipped_onboarding && (
+            <div className="text-sm">
+              <span className="font-medium">Why it's a good match:</span>
+              <p className="text-muted-foreground mt-1">{school.notes}</p>
+            </div>
+          )}
           
           <div className="flex items-center justify-between pt-2 border-t border-muted/50">
             <Button

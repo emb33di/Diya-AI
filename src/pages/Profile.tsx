@@ -570,7 +570,7 @@ export default function Profile() {
 
       // If this is the onboarding completion flow or profile review, mark onboarding as complete and navigate to dashboard
       if (isOnboardingCompletionFlow || profileMode === 'review') {
-        const success = await markOnboardingCompleted();
+        const success = await markOnboardingCompleted(false); // Normal completion, not skipped
         if (success) {
           toast({
             title: "Saved Profile!",

@@ -405,7 +405,7 @@ export const useConversationFlow = ({
           setLoadingStep(3);
 
                       // Mark onboarding as completed (user chose to end anyway)
-              const success = await markOnboardingCompleted();
+              const success = await markOnboardingCompleted(false); // Normal completion, not skipped
               if (!success) {
                 console.error(`[ONBOARDING_COMPLETION_ERROR] User: ${user.id} (${user.email}) - Failed to mark onboarding as completed:`, {
                   conversationId: conversationId,

@@ -7,6 +7,7 @@ export interface UserProfile {
   full_name: string | null;
   email_address: string | null;
   onboarding_complete: boolean;
+  skipped_onboarding: boolean;
   profile_saved: boolean;
 }
 
@@ -42,7 +43,7 @@ export const useAuth = () => {
   });
 
   // Function to mark onboarding as completed
-  const markOnboardingCompleted = useCallback(async () => {
+  const markOnboardingCompleted = useCallback(async (skipped: boolean = false) => {
     if (!authState.user) {
       console.error('Cannot mark onboarding completed: no user found.');
       return false;
@@ -52,7 +53,10 @@ export const useAuth = () => {
       // Check if this is the first time onboarding is being completed
       const isFirstTimeCompletion = !authState.profile?.onboarding_complete;
       
-      const updateData: any = { onboarding_complete: true };
+      const updateData: any = { 
+        onboarding_complete: true,
+        skipped_onboarding: skipped
+      };
       
       // Only set profile_saved = true if this is the first time completing onboarding
       if (isFirstTimeCompletion) {
@@ -72,6 +76,7 @@ export const useAuth = () => {
         const updatedProfile = { 
           ...authState.profile, 
           onboarding_complete: true,
+          skipped_onboarding: skipped,
           // Only update profile_saved if it was set in the database update
           ...(isFirstTimeCompletion && { profile_saved: true })
         } as UserProfile;
@@ -94,7 +99,7 @@ export const useAuth = () => {
         // Fetch profile from user_profiles table only
         const { data: profile, error } = await supabase
           .from('user_profiles')
-          .select('id, full_name, email_address, onboarding_complete, profile_saved')
+          .select('id, full_name, email_address, onboarding_complete, skipped_onboarding, profile_saved')
           .eq('user_id', user.id)
           .maybeSingle();
 
@@ -112,9 +117,10 @@ export const useAuth = () => {
               full_name: user.user_metadata?.full_name || `${user.user_metadata?.first_name || ''} ${user.user_metadata?.last_name || ''}`.trim() || null,
               email_address: user.email,
               onboarding_complete: false,
+              skipped_onboarding: false,
               profile_saved: false,
             })
-            .select('id, full_name, email_address, onboarding_complete, profile_saved')
+            .select('id, full_name, email_address, onboarding_complete, skipped_onboarding, profile_saved')
             .single();
 
           if (createError) throw createError;
@@ -130,6 +136,7 @@ export const useAuth = () => {
           full_name: finalProfile.full_name || user.user_metadata?.full_name || null,
           email_address: finalProfile.email_address || user.email || null,
           onboarding_complete: finalProfile.onboarding_complete || false,
+          skipped_onboarding: finalProfile.skipped_onboarding || false,
           profile_saved: finalProfile.profile_saved || false,
         };
 

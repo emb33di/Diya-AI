@@ -9,6 +9,7 @@ import React, { useState, useEffect } from 'react';
 import { SemanticDocument, Annotation } from '@/types/semanticDocument';
 import { semanticDocumentService } from '@/services/semanticDocumentService';
 import { ExportService } from '@/services/exportService';
+import { EssayVersionService, EssayVersion } from '@/services/essayVersionService';
 import { usePageVisibility } from '@/hooks/usePageVisibility';
 import { useToast } from '@/hooks/use-toast';
 import SemanticEditor from './SemanticEditor';
@@ -29,6 +30,7 @@ import {
   FileText as FileTextIcon,
   CheckSquare,
   Sidebar,
+  Plus,
 } from 'lucide-react';
 
 interface EssayPrompt {
@@ -91,6 +93,9 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
     message: ''
   });
   const [hasAIComments, setHasAIComments] = useState(false);
+  const [essayVersions, setEssayVersions] = useState<EssayVersion[]>([]);
+  const [currentVersion, setCurrentVersion] = useState<EssayVersion | null>(null);
+  const [isCreatingVersion, setIsCreatingVersion] = useState(false);
 
   // Toast for user feedback
   const { toast } = useToast();
@@ -212,6 +217,13 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
     initializeDocument();
   }, [essayId, title, initialContent]);
 
+  // Load essay checkpoints when document is loaded
+  useEffect(() => {
+    if (document) {
+      loadEssayCheckpoints();
+    }
+  }, [document]);
+
 
 
   // Handle document changes
@@ -240,6 +252,87 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
   const handleSaveStatusChange = (isAutoSaving: boolean, lastSaved: Date | null) => {
     setIsAutoSaving(isAutoSaving);
     setLastSaved(lastSaved);
+  };
+
+  // Load essay versions
+  const loadEssayVersions = async () => {
+    try {
+      const versions = await EssayVersionService.getEssayVersions(essayId);
+      setEssayVersions(versions);
+      
+      // Find the active version
+      const activeVersion = versions.find(v => v.is_active);
+      setCurrentVersion(activeVersion || null);
+    } catch (error) {
+      console.error('Failed to load essay versions:', error);
+    }
+  };
+
+  // Create a new version (fresh draft)
+  const createNewVersion = async () => {
+    if (!document) return;
+
+    setIsCreatingVersion(true);
+    
+    try {
+      // Convert document blocks to HTML content
+      const htmlContent = semanticDocumentService.convertBlocksToHtml(document.blocks);
+      
+      // Create new version
+      const versionId = await EssayVersionService.createFreshDraftVersion(
+        essayId,
+        document,
+        `Version ${essayVersions.length + 1}`,
+        'Fresh draft without previous comments'
+      );
+
+      // Reload versions to get updated list
+      await loadEssayVersions();
+
+      // Switch to the new semantic document
+      const newDocument = await semanticDocumentService.loadDocumentByEssayId(essayId);
+      if (newDocument) {
+        setDocument(newDocument);
+      }
+
+      toast({
+        title: "New Version Created",
+        description: "You can now continue editing without the previous comments.",
+      });
+
+    } catch (error) {
+      console.error('Failed to create new version:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create new version. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingVersion(false);
+    }
+  };
+
+  // Load a specific version (read-only)
+  const loadVersion = async (versionId: string) => {
+    try {
+      const versionDocument = await EssayVersionService.loadVersionDocument(versionId);
+      if (!versionDocument) return;
+
+      // For now, show the version info in a toast
+      // Later we can implement a modal or separate view
+      toast({
+        title: `Viewing ${versionDocument.metadata.version ? `Version ${versionDocument.metadata.version}` : 'Previous Version'}`,
+        description: `This version was created on ${new Date(versionDocument.createdAt).toLocaleDateString()}.`,
+      });
+
+    } catch (error) {
+      console.error('Failed to load version:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load version. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
 
@@ -281,6 +374,33 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
         const updatedDocument = await semanticDocumentService.loadDocument(document.id);
         if (updatedDocument) {
           setDocument(updatedDocument);
+          
+          // Create a checkpoint with AI feedback
+          try {
+            const htmlContent = semanticDocumentService.convertBlocksToHtml(updatedDocument.blocks);
+            const allAnnotations = semanticDocumentService.getAllAnnotations(updatedDocument);
+            const aiAnnotations = allAnnotations.filter(a => a.author === 'ai');
+            
+            await EssayCheckpointService.createAIFeedbackCheckpoint(
+              essayId,
+              htmlContent,
+              updatedDocument.title,
+              updatedDocument.metadata.prompt,
+              'gemini-2.5-flash-lite',
+              aiAnnotations.length,
+              aiAnnotations.filter(a => a.metadata?.agentType === 'big-picture').length,
+              aiAnnotations.filter(a => a.metadata?.agentType !== 'big-picture').length,
+              aiAnnotations.filter(a => a.metadata?.agentType === 'opening-sentence').length,
+              aiAnnotations.filter(a => a.metadata?.agentType === 'transition').length,
+              aiAnnotations.filter(a => a.metadata?.agentType === 'paragraph').length
+            );
+            
+            // Reload checkpoints to show the new version
+            await loadEssayCheckpoints();
+          } catch (checkpointError) {
+            console.error('Failed to create AI feedback checkpoint:', checkpointError);
+            // Don't fail the whole operation if checkpoint creation fails
+          }
         }
       }
 
@@ -755,6 +875,16 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                       {/* Action Buttons */}
                       <div className="flex gap-2">
                         <Button 
+                          onClick={createNewVersion} 
+                          disabled={isCreatingVersion}
+                          variant="outline"
+                          size="sm"
+                          className="border-purple-200 text-purple-700 hover:bg-purple-50"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          {isCreatingVersion ? 'Creating...' : 'New Version'}
+                        </Button>
+                        <Button 
                           onClick={generateAIComments} 
                           disabled={isGeneratingAIComments}
                           variant="outline"
@@ -804,6 +934,53 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                         </DropdownMenu>
                       </div>
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Version History */}
+              {essayCheckpoints.length > 0 && (
+                <div className="bg-white p-4 md:p-6 rounded-xl shadow-lg border border-gray-300">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-blue-600" />
+                    Version History
+                  </h3>
+                  <div className="space-y-3">
+                    {essayVersions.map((version) => (
+                      <div 
+                        key={version.id}
+                        className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                          version.is_active 
+                            ? 'border-blue-200 bg-blue-50 hover:bg-blue-100' 
+                            : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
+                        }`}
+                        onClick={() => !version.is_active && loadVersion(version.id)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-2 h-2 rounded-full ${
+                              version.is_active ? 'bg-blue-500' : 'bg-gray-400'
+                            }`} />
+                            <div>
+                              <h4 className="font-medium text-gray-800">
+                                {version.version_name || `Version ${version.version_number}`}
+                              </h4>
+                              <p className="text-sm text-gray-600">
+                                {version.version_description || 'Essay Version'} • 
+                                {new Date(version.created_at).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {version.is_active && (
+                              <Badge variant="outline" className="text-blue-700 border-blue-200">
+                                Current
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
