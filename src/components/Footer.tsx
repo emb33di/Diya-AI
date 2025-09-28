@@ -62,7 +62,7 @@ const Footer = () => {
 
           {/* Copyright */}
           <p className="text-sm sm:text-base text-muted-foreground">
-            © Diya AI 2025. All Rights Reserved | <a href="mailto:mihir@meetdiya.com" className="text-primary hover:text-primary-glow transition-colors">mihir@meetdiya.com</a>
+            © Diya AI 2025. All Rights Reserved | <a href="mailto:mihir@meetdiya.com" className="text-primary hover:text-primary-glow transition-colors">mihir@meetdiya.com</a> | <a href="/privacy-policy" className="text-primary hover:text-primary-glow transition-colors">Privacy Policy</a> | <a href="/terms-of-service" className="text-primary hover:text-primary-glow transition-colors">Terms of Service</a>
           </p>
         </div>
       </div>

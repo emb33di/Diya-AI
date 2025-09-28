@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import SchoolDropdown from "@/components/SchoolDropdown";
 import LandingNavigation from "@/components/LandingNavigation";
 import StarryBackground from "@/components/StarryBackground";
@@ -260,7 +260,15 @@ const Signup = () => {
                 </Button>
 
                 <p className="text-xs text-muted-foreground text-center leading-relaxed">
-                  By joining, you agree to receive updates about Diya. We respect your privacy and will never spam you.
+                  By joining, you agree to our{" "}
+                  <Link to="/terms-of-service" className="text-primary hover:text-primary/80">
+                    Terms of Service
+                  </Link>{" "}
+                  and{" "}
+                  <Link to="/privacy-policy" className="text-primary hover:text-primary/80">
+                    Privacy Policy
+                  </Link>
+                  . We respect your privacy and will never spam you.
                 </p>
               </form>
             </CardContent>

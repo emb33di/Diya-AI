@@ -261,11 +261,11 @@ const Auth = () => {
               {!isSignIn && (
                 <p className="text-xs text-muted-foreground text-center leading-relaxed">
                   By creating an account, you agree to our{" "}
-                  <Link to="#" className="text-primary hover:text-primary/80">
+                  <Link to="/terms-of-service" className="text-primary hover:text-primary/80">
                     Terms of Service
                   </Link>{" "}
                   and{" "}
-                  <Link to="#" className="text-primary hover:text-primary/80">
+                  <Link to="/privacy-policy" className="text-primary hover:text-primary/80">
                     Privacy Policy
                   </Link>
                 </p>

@@ -21,6 +21,8 @@ import Onboarding from "./pages/Onboarding";
 import Resume from "./pages/Resume";
 import Signup from "./pages/Signup";
 import LOR from "./pages/LOR";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
 
 
 const queryClient = new QueryClient();
@@ -47,6 +49,8 @@ const App = () => (
           <Route path="/about" element={<About />} />
           <Route path="/about-diya" element={<AboutDiya />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/terms-of-service" element={<TermsOfService />} />
 
           {/* Protected routes - require authentication */}
           <Route path="/dashboard" element={<AuthenticationGuard><Dashboard /></AuthenticationGuard>} />

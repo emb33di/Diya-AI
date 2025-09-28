@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import "@/styles/landing.css";
 
 
@@ -146,6 +146,19 @@ const Pricing = () => {
             Contact our team for personalized guidance on choosing the right plan
           </p>
           <Button variant="outline">Contact Support</Button>
+          
+          <div className="mt-8 text-xs text-muted-foreground">
+            <p>
+              By subscribing to any plan, you agree to our{" "}
+              <Link to="/terms-of-service" className="text-primary hover:text-primary/80">
+                Terms of Service
+              </Link>{" "}
+              and{" "}
+              <Link to="/privacy-policy" className="text-primary hover:text-primary/80">
+                Privacy Policy
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
       </div>
