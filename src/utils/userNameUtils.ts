@@ -57,38 +57,21 @@ export const getUserFirstName = (
  */
 export const fetchUserProfileData = async (userId: string): Promise<UserProfile | null> => {
   try {
-    // Helper function to create timeout promise
-    const createTimeoutPromise = (timeoutMs: number) => 
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Request timeout')), timeoutMs)
-      );
-
     // Make database call to user_profiles table
-    const detailedProfileResult = await Promise.race([
-      import('@/integrations/supabase/client').then(({ supabase }) =>
-        supabase
-          .from('user_profiles')
-          .select('full_name')
-          .eq('user_id', userId)
-          .maybeSingle()
-      ),
-      createTimeoutPromise(5000)
-    ]);
-
-    // Handle user_profiles result
-    let profile = null;
-    if (detailedProfileResult.status === 'fulfilled') {
-      const { data, error } = detailedProfileResult.value;
-      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-        console.warn('Error fetching profile:', error);
-      } else {
-        profile = data;
-      }
+    const { supabase } = await import('@/integrations/supabase/client');
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('full_name')
+      .eq('user_id', userId)
+      .maybeSingle();
+    
+    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+      console.warn('Error fetching profile:', error);
+      return null;
     }
 
-    // Return the profile data
     return {
-      full_name: profile?.full_name || null,
+      full_name: data?.full_name || null,
     };
   } catch (error) {
     console.error('Error fetching user profile data:', error);
