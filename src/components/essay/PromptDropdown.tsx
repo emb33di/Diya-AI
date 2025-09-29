@@ -150,7 +150,7 @@ const PromptDropdown: React.FC<PromptDropdownProps> = ({
                   onValueChange={onPromptChange}
                 >
                   <SelectTrigger className="w-auto min-w-[200px] bg-white border-gray-300 shadow-sm">
-                    <SelectValue placeholder={`Select from ${getSelectionText(optionalPrompts)}`}>
+                    <SelectValue placeholder={`${getSelectionText(optionalPrompts)}`}>
                       {(() => {
                         const selectedPrompt = optionalPrompts.find(p => p.id === selectedPromptId);
                         return selectedPrompt ? (

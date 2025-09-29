@@ -365,6 +365,11 @@ export class SemanticDocumentService {
       }
 
       console.log(`SemanticDocumentService: Successfully saved document ${document.id} for essay ${essayId} - ${document.blocks.length} blocks`);
+      
+      // Ensure Version 1 exists if document has text content
+      if (essayId) {
+        await this.ensureVersion1Exists(document);
+      }
     } catch (error) {
       console.error(`SemanticDocumentService: Error saving document ${document.id} - ${error.message}`);
       throw error;
@@ -1033,6 +1038,99 @@ export class SemanticDocumentService {
 
     // Return first few words of block as fallback
     return blockContent.split(' ').slice(0, 5).join(' ') + '...';
+  }
+
+  /**
+   * Check if document has any text content (non-whitespace)
+   */
+  private hasTextContent(document: SemanticDocument): boolean {
+    return document.blocks.some(block => block.content.trim().length > 0);
+  }
+
+  /**
+   * Check if essay version already exists for this essay
+   */
+  private async checkVersionExists(essayId: string): Promise<boolean> {
+    try {
+      const { data, error } = await supabase
+        .from('essay_versions')
+        .select('id')
+        .eq('essay_id', essayId)
+        .limit(1);
+
+      if (error) {
+        console.error(`SemanticDocumentService: Error checking version existence for essay ${essayId}:`, error);
+        return false;
+      }
+
+      return data && data.length > 0;
+    } catch (error) {
+      console.error(`SemanticDocumentService: Error checking version existence for essay ${essayId}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Create Version 1 for an essay if it doesn't exist and document has text content
+   */
+  private async ensureVersion1Exists(document: SemanticDocument): Promise<void> {
+    try {
+      const essayId = document.metadata?.essayId;
+      if (!essayId) {
+        console.log('SemanticDocumentService: No essayId in document metadata, skipping version creation');
+        return;
+      }
+
+      // Check if document has any text content
+      if (!this.hasTextContent(document)) {
+        console.log(`SemanticDocumentService: Document ${document.id} has no text content, skipping version creation`);
+        return;
+      }
+
+      // Check if version already exists
+      const versionExists = await this.checkVersionExists(essayId);
+      if (versionExists) {
+        console.log(`SemanticDocumentService: Version already exists for essay ${essayId}, skipping version creation`);
+        return;
+      }
+
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.error('SemanticDocumentService: No authenticated user, cannot create version');
+        return;
+      }
+
+      // Create Version 1
+      const { data: version, error } = await supabase
+        .from('essay_versions')
+        .insert({
+          essay_id: essayId,
+          user_id: user.id,
+          version_number: 1,
+          content: {
+            blocks: document.blocks,
+            metadata: document.metadata
+          },
+          version_name: 'Version 1',
+          version_description: 'Initial version',
+          is_active: true,
+          semantic_document_id: document.id,
+          is_fresh_draft: true
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error(`SemanticDocumentService: Failed to create Version 1 for essay ${essayId}:`, error);
+        return;
+      }
+
+      console.log(`SemanticDocumentService: Successfully created Version 1 for essay ${essayId}, version ID: ${version.id}`);
+    } catch (error) {
+      console.error(`SemanticDocumentService: Error ensuring Version 1 exists:`, error);
+      // Don't throw error - version creation is best effort, shouldn't break document saving
+    }
   }
 
 }

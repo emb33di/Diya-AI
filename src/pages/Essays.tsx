@@ -396,6 +396,7 @@ const Essays = () => {
           const essaysFromPrompts: Essay[] = prompts.map((prompt, index) => {
             const existingSelection = selections.find(s => s.prompt_number === prompt.prompt_number);
             const wordCount = existingSelection?.essay_content?.split(' ').length || 0;
+            const hasExistingContent = existingSelection?.essay_content?.trim().length > 0;
             
             return {
               id: `${selectedSchool}-${prompt.prompt_number}`,
@@ -403,7 +404,7 @@ const Essays = () => {
               prompt: prompt.prompt,
               wordCount: wordCount,
               wordLimit: parseWordLimit(prompt.word_limit),
-              status: existingSelection ? 'draft' : 'not_started',
+              status: hasExistingContent ? 'draft' : 'not_started',
               lastEdited: existingSelection ? 'Recently' : 'Never',
               feedback: 0,
               schoolName: selectedSchool,
@@ -789,15 +790,19 @@ const Essays = () => {
       // Check if this is the first time the essay is being edited (status changing from not_started to draft)
       const wasNotStarted = selectedEssay.status === 'not_started';
       
-      // Update essays list with new word count
+      // Only update status to 'draft' if there's actual content (more than just whitespace)
+      const hasContent = content.trim().length > 0;
+      const shouldUpdateStatus = hasContent && selectedEssay.status === 'not_started';
+      
+      // Update essays list with new word count and status (only if there's content)
       setEssays(prev => prev.map(essay => essay.id === selectedEssay.id ? {
         ...essay,
         wordCount: content.split(' ').length,
-        status: 'draft'
+        status: shouldUpdateStatus ? 'draft' : essay.status
       } : essay));
       
-      // If this is the first edit, create Version 1 automatically
-      if (wasNotStarted) {
+      // If this is the first edit with actual content, create Version 1 automatically
+      if (wasNotStarted && hasContent) {
         try {
           // Create a semantic document for Version 1
           const semanticDocument = {
