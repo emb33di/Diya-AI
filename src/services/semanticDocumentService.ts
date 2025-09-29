@@ -368,7 +368,10 @@ export class SemanticDocumentService {
       
       // Ensure Version 1 exists if document has text content
       if (essayId) {
+        console.log('🔄 SemanticDocumentService: Triggering Version 1 check after document save...');
         await this.ensureVersion1Exists(document);
+      } else {
+        console.log('⚠️ SemanticDocumentService: No essayId found, skipping Version 1 check');
       }
     } catch (error) {
       console.error(`SemanticDocumentService: Error saving document ${document.id} - ${error.message}`);
@@ -1051,21 +1054,40 @@ export class SemanticDocumentService {
    * Check if essay version already exists for this essay
    */
   private async checkVersionExists(essayId: string): Promise<boolean> {
+    console.log('🔍 SemanticDocumentService: Checking version existence for essay:', essayId);
+    
     try {
       const { data, error } = await supabase
         .from('essay_versions')
-        .select('id')
+        .select('id, version_number, is_active, created_at')
         .eq('essay_id', essayId)
         .limit(1);
 
       if (error) {
-        console.error(`SemanticDocumentService: Error checking version existence for essay ${essayId}:`, error);
+        console.error('❌ SemanticDocumentService: Error checking version existence:', {
+          essayId,
+          error: error.message,
+          details: error.details,
+          code: error.code
+        });
         return false;
       }
 
-      return data && data.length > 0;
+      const versionExists = data && data.length > 0;
+      console.log('📊 SemanticDocumentService: Version existence query result:', {
+        essayId,
+        versionExists,
+        foundVersions: data?.length || 0,
+        versionDetails: data?.[0] || null
+      });
+
+      return versionExists;
     } catch (error) {
-      console.error(`SemanticDocumentService: Error checking version existence for essay ${essayId}:`, error);
+      console.error('💥 SemanticDocumentService: Unexpected error checking version existence:', {
+        essayId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      });
       return false;
     }
   }
@@ -1074,61 +1096,115 @@ export class SemanticDocumentService {
    * Create Version 1 for an essay if it doesn't exist and document has text content
    */
   private async ensureVersion1Exists(document: SemanticDocument): Promise<void> {
+    console.log('🔍 SemanticDocumentService: Starting Version 1 check...', {
+      documentId: document.id,
+      essayId: document.metadata?.essayId,
+      blockCount: document.blocks.length,
+      hasTextContent: this.hasTextContent(document)
+    });
+
     try {
       const essayId = document.metadata?.essayId;
       if (!essayId) {
-        console.log('SemanticDocumentService: No essayId in document metadata, skipping version creation');
+        console.log('❌ SemanticDocumentService: No essayId in document metadata, skipping version creation');
         return;
       }
 
       // Check if document has any text content
-      if (!this.hasTextContent(document)) {
-        console.log(`SemanticDocumentService: Document ${document.id} has no text content, skipping version creation`);
+      const hasContent = this.hasTextContent(document);
+      console.log('📝 SemanticDocumentService: Content check result:', {
+        hasContent,
+        blockContents: document.blocks.map(block => ({
+          id: block.id,
+          content: block.content,
+          trimmedLength: block.content.trim().length
+        }))
+      });
+
+      if (!hasContent) {
+        console.log('❌ SemanticDocumentService: Document has no text content, skipping version creation');
         return;
       }
 
       // Check if version already exists
+      console.log('🔍 SemanticDocumentService: Checking if version already exists for essay:', essayId);
       const versionExists = await this.checkVersionExists(essayId);
+      console.log('📊 SemanticDocumentService: Version existence check result:', {
+        essayId,
+        versionExists
+      });
+
       if (versionExists) {
-        console.log(`SemanticDocumentService: Version already exists for essay ${essayId}, skipping version creation`);
+        console.log('✅ SemanticDocumentService: Version already exists for essay, skipping version creation');
         return;
       }
 
       // Get current user
+      console.log('👤 SemanticDocumentService: Getting current user...');
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        console.error('SemanticDocumentService: No authenticated user, cannot create version');
+        console.error('❌ SemanticDocumentService: No authenticated user, cannot create version');
         return;
       }
+      console.log('✅ SemanticDocumentService: User authenticated:', { userId: user.id, userEmail: user.email });
 
       // Create Version 1
+      console.log('🚀 SemanticDocumentService: Creating Version 1...', {
+        essayId,
+        userId: user.id,
+        semanticDocumentId: document.id,
+        blockCount: document.blocks.length
+      });
+
+      const versionData = {
+        essay_id: essayId,
+        user_id: user.id,
+        version_number: 1,
+        content: {
+          blocks: document.blocks,
+          metadata: document.metadata
+        },
+        version_name: 'Version 1',
+        version_description: 'Initial version',
+        is_active: true,
+        semantic_document_id: document.id,
+        is_fresh_draft: true
+      };
+
+      console.log('📤 SemanticDocumentService: Inserting version data:', versionData);
+
       const { data: version, error } = await supabase
         .from('essay_versions')
-        .insert({
-          essay_id: essayId,
-          user_id: user.id,
-          version_number: 1,
-          content: {
-            blocks: document.blocks,
-            metadata: document.metadata
-          },
-          version_name: 'Version 1',
-          version_description: 'Initial version',
-          is_active: true,
-          semantic_document_id: document.id,
-          is_fresh_draft: true
-        })
+        .insert(versionData)
         .select()
         .single();
 
       if (error) {
-        console.error(`SemanticDocumentService: Failed to create Version 1 for essay ${essayId}:`, error);
+        console.error('❌ SemanticDocumentService: Failed to create Version 1:', {
+          essayId,
+          error: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
         return;
       }
 
-      console.log(`SemanticDocumentService: Successfully created Version 1 for essay ${essayId}, version ID: ${version.id}`);
+      console.log('🎉 SemanticDocumentService: Successfully created Version 1!', {
+        essayId,
+        versionId: version.id,
+        versionNumber: version.version_number,
+        isActive: version.is_active,
+        semanticDocumentId: version.semantic_document_id,
+        createdAt: version.created_at
+      });
     } catch (error) {
-      console.error(`SemanticDocumentService: Error ensuring Version 1 exists:`, error);
+      console.error('💥 SemanticDocumentService: Unexpected error ensuring Version 1 exists:', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        documentId: document.id,
+        essayId: document.metadata?.essayId
+      });
       // Don't throw error - version creation is best effort, shouldn't break document saving
     }
   }
