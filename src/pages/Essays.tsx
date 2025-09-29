@@ -1427,8 +1427,9 @@ const Essays = () => {
                     );
                     
                     // Only show has_draft as true if there's actual content, not just an empty essay entry
-                    const hasActualContent = (associatedNewEssay && associatedNewEssay.content?.trim().length > 0) || 
-                                           (associatedEssay && associatedEssay.content?.trim().length > 0);
+                    const hasActualContent = (associatedNewEssay && associatedNewEssay.content?.blocks && 
+                                           associatedNewEssay.content.blocks.some(block => block.content && block.content.trim().length > 0)) || 
+                                           !!associatedEssay;
                     
                     return {
                       id: prompt.id,
