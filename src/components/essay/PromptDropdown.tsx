@@ -3,6 +3,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { FileText, ChevronDown, CheckCircle, Clock, ChevronRight } from 'lucide-react';
+import { getDraftStatusLabel, getDraftStatusColor } from '@/utils/statusUtils';
 
 interface EssayPrompt {
   id: string;
@@ -11,7 +12,7 @@ interface EssayPrompt {
   is_required?: boolean;
   word_limit?: string;
   has_draft?: boolean;
-  draft_status?: 'draft' | 'review' | 'final' | 'submitted';
+  draft_status?: 'not_started' | 'draft' | 'review' | 'final' | 'submitted';
   prompt_selection_type?: string;
   how_many?: string;
 }
@@ -58,13 +59,7 @@ const PromptDropdown: React.FC<PromptDropdownProps> = ({
   
   // Get status color for draft status
   const getStatusColor = (status?: string) => {
-    switch (status) {
-      case 'draft': return 'bg-yellow-50 text-yellow-700 border-yellow-200';
-      case 'review': return 'bg-blue-50 text-blue-700 border-blue-200';
-      case 'final': return 'bg-green-50 text-green-700 border-green-200';
-      case 'submitted': return 'bg-gray-50 text-gray-700 border-gray-200';
-      default: return 'bg-gray-50 text-gray-700 border-gray-200';
-    }
+    return getDraftStatusColor(status);
   };
   
   return (
@@ -110,7 +105,7 @@ const PromptDropdown: React.FC<PromptDropdownProps> = ({
                             </span>
                             {selectedPrompt.has_draft && (
                               <Badge variant="outline" className={`text-xs ${getStatusColor(selectedPrompt.draft_status)}`}>
-                                {selectedPrompt.draft_status || 'Draft'}
+                                {getDraftStatusLabel(selectedPrompt.draft_status)}
                               </Badge>
                             )}
                           </div>
@@ -128,7 +123,7 @@ const PromptDropdown: React.FC<PromptDropdownProps> = ({
                           <div className="flex items-center space-x-1 ml-2">
                             {prompt.has_draft && (
                               <Badge variant="outline" className={`text-xs ${getStatusColor(prompt.draft_status)}`}>
-                                {prompt.draft_status || 'Draft'}
+                                {getDraftStatusLabel(prompt.draft_status)}
                               </Badge>
                             )}
                           </div>
@@ -165,7 +160,7 @@ const PromptDropdown: React.FC<PromptDropdownProps> = ({
                             </span>
                             {selectedPrompt.has_draft && (
                               <Badge variant="outline" className={`text-xs ${getStatusColor(selectedPrompt.draft_status)}`}>
-                                {selectedPrompt.draft_status || 'Draft'}
+                                {getDraftStatusLabel(selectedPrompt.draft_status)}
                               </Badge>
                             )}
                           </div>
@@ -183,7 +178,7 @@ const PromptDropdown: React.FC<PromptDropdownProps> = ({
                           <div className="flex items-center space-x-1 ml-2">
                             {prompt.has_draft && (
                               <Badge variant="outline" className={`text-xs ${getStatusColor(prompt.draft_status)}`}>
-                                {prompt.draft_status || 'Draft'}
+                                {getDraftStatusLabel(prompt.draft_status)}
                               </Badge>
                             )}
                           </div>

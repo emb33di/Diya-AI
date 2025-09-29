@@ -10,6 +10,7 @@ import { SemanticDocument, Annotation } from '@/types/semanticDocument';
 import { semanticDocumentService } from '@/services/semanticDocumentService';
 import { ExportService } from '@/services/exportService';
 import { EssayVersionService, EssayVersion } from '@/services/essayVersionService';
+import { supabase } from '@/integrations/supabase/client';
 import { usePageVisibility } from '@/hooks/usePageVisibility';
 import { useToast } from '@/hooks/use-toast';
 import SemanticEditor from './SemanticEditor';
@@ -18,6 +19,7 @@ import GrammarLoadingPane, { GRAMMAR_LOADING_STEPS } from './GrammarLoadingPane'
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { getDraftStatusLabel, getDraftStatusColor } from '@/utils/statusUtils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
@@ -40,7 +42,7 @@ interface EssayPrompt {
   is_required?: boolean;
   word_limit?: string;
   has_draft?: boolean;
-  draft_status?: 'draft' | 'review' | 'final' | 'submitted';
+  draft_status?: 'not_started' | 'draft' | 'review' | 'final' | 'submitted';
   prompt_selection_type?: string;
   how_many?: string;
 }
@@ -99,6 +101,17 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
 
   // Toast for user feedback
   const { toast } = useToast();
+
+  // Get current user
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+    };
+    getUser();
+  }, []);
 
   // Reload document when page becomes visible (handles tab switches, etc.)
   const handlePageVisible = async () => {
@@ -275,14 +288,19 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
     setIsCreatingVersion(true);
     
     try {
-      // Convert document blocks to HTML content
-      const htmlContent = semanticDocumentService.convertBlocksToHtml(document.blocks);
+      // Get the next version number from the database
+      const versions = await EssayVersionService.getEssayVersions(essayId);
+      const nextVersionNumber = versions.length > 0 
+        ? Math.max(...versions.map(v => v.version_number)) + 1 
+        : 1;
+      
+      console.log('Creating Version', nextVersionNumber, '...');
       
       // Create new version
       const versionId = await EssayVersionService.createFreshDraftVersion(
         essayId,
         document,
-        `Version ${essayVersions.length + 1}`,
+        `Version ${nextVersionNumber}`,
         'Fresh draft without previous comments'
       );
 
@@ -390,8 +408,8 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
               aiAnnotations.length,
               aiAnnotations.filter(a => a.metadata?.agentType === 'big-picture').length,
               aiAnnotations.filter(a => a.metadata?.agentType !== 'big-picture').length,
-              aiAnnotations.filter(a => a.metadata?.agentType === 'opening-sentence').length,
-              aiAnnotations.filter(a => a.metadata?.agentType === 'transition').length,
+              aiAnnotations.filter(a => a.metadata?.subcategory === 'opening-sentence').length,
+              aiAnnotations.filter(a => a.metadata?.subcategory === 'transition').length,
               aiAnnotations.filter(a => a.metadata?.agentType === 'paragraph').length
             );
             
@@ -526,7 +544,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
     try {
       const htmlContent = semanticDocumentService.convertBlocksToHtml(document.blocks);
       
-      await ExportService.exportToPDF({
+      await ExportService.exportToDOCX({
         title: document.title,
         content: htmlContent,
         prompt: prompt || document.metadata.prompt,
@@ -677,13 +695,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                         
                         // Get status color for draft status
                         const getStatusColor = (status?: string) => {
-                          switch (status) {
-                            case 'draft': return 'bg-yellow-50 text-yellow-700 border-yellow-200';
-                            case 'review': return 'bg-blue-50 text-blue-700 border-blue-200';
-                            case 'final': return 'bg-green-50 text-green-700 border-green-200';
-                            case 'submitted': return 'bg-gray-50 text-gray-700 border-gray-200';
-                            default: return 'bg-gray-50 text-gray-700 border-gray-200';
-                          }
+                          return getDraftStatusColor(status);
                         };
                         
                         return (
@@ -728,7 +740,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                                               </span>
                                               {selectedPrompt.has_draft && (
                                                 <Badge variant="outline" className={`text-xs ${getStatusColor(selectedPrompt.draft_status)}`}>
-                                                  {selectedPrompt.draft_status || 'Draft'}
+                                                  {getDraftStatusLabel(selectedPrompt.draft_status)}
                                                 </Badge>
                                               )}
                                             </div>
@@ -746,7 +758,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                                             <div className="flex items-center space-x-1 ml-2">
                                               {prompt.has_draft && (
                                                 <Badge variant="outline" className={`text-xs ${getStatusColor(prompt.draft_status)}`}>
-                                                  {prompt.draft_status || 'Draft'}
+                                                  {getDraftStatusLabel(prompt.draft_status)}
                                                 </Badge>
                                               )}
                                             </div>
@@ -776,7 +788,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                                               </span>
                                               {selectedPrompt.has_draft && (
                                                 <Badge variant="outline" className={`text-xs ${getStatusColor(selectedPrompt.draft_status)}`}>
-                                                  {selectedPrompt.draft_status || 'Draft'}
+                                                  {getDraftStatusLabel(selectedPrompt.draft_status)}
                                                 </Badge>
                                               )}
                                             </div>
@@ -794,7 +806,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                                             <div className="flex items-center space-x-1 ml-2">
                                               {prompt.has_draft && (
                                                 <Badge variant="outline" className={`text-xs ${getStatusColor(prompt.draft_status)}`}>
-                                                  {prompt.draft_status || 'Draft'}
+                                                  {getDraftStatusLabel(prompt.draft_status)}
                                                 </Badge>
                                               )}
                                             </div>

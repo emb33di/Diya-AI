@@ -9,9 +9,11 @@ import OnboardingGuard from "@/components/OnboardingGuard";
 import ProfileCompletionGuard from "@/components/ProfileCompletionGuard";
 import GradientBackground from "@/components/GradientBackground";
 import { EssayPromptService, EssayPrompt, EssayPromptSelection } from "@/services/essayPromptService";
+import { semanticDocumentService } from "@/services/semanticDocumentService";
 import { supabase } from "@/integrations/supabase/client";
 import { getUserDisplayName, fetchUserProfileData } from "@/utils/userNameUtils";
 import { getUserProgramType } from "@/utils/userProfileUtils";
+import { getDraftStatusLabel } from "@/utils/statusUtils";
 import { PenTool, MessageSquare, FileText, Clock, CheckCircle2, Plus, ArrowLeft, ChevronRight, Trash2 } from "lucide-react";
 import SemanticEssayEditor from "@/components/essay/SemanticEssayEditor";
 import { CreateEssayModal } from "@/components/essay/CreateEssayModal";
@@ -784,12 +786,73 @@ const Essays = () => {
 
       await EssayPromptService.savePromptSelection(selectedEssay.schoolName, prompt.college_name, prompt.prompt_number, prompt.prompt, prompt.word_limit, true, content);
 
+      // Check if this is the first time the essay is being edited (status changing from not_started to draft)
+      const wasNotStarted = selectedEssay.status === 'not_started';
+      
       // Update essays list with new word count
       setEssays(prev => prev.map(essay => essay.id === selectedEssay.id ? {
         ...essay,
         wordCount: content.split(' ').length,
         status: 'draft'
       } : essay));
+      
+      // If this is the first edit, create Version 1 automatically
+      if (wasNotStarted) {
+        try {
+          // Create a semantic document for Version 1
+          const semanticDocument = {
+            id: crypto.randomUUID(),
+            title: selectedEssay.title,
+            blocks: [
+              {
+                id: `block_${Date.now()}`,
+                type: 'paragraph',
+                content: content,
+                metadata: {
+                  wordCount: content.split(' ').filter(w => w.length > 0).length,
+                  lastModified: new Date().toISOString()
+                }
+              }
+            ],
+            metadata: {
+              totalWordCount: content.split(' ').filter(w => w.length > 0).length,
+              totalCharacterCount: content.length,
+              lastSaved: new Date().toISOString(),
+              version: 1,
+              essayId: selectedEssay.id,
+              isReadOnly: false
+            },
+            createdAt: new Date(),
+            updatedAt: new Date()
+          };
+
+          // Save the semantic document
+          await semanticDocumentService.saveDocument(semanticDocument);
+
+          // Create Version 1 in essay_versions table
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await supabase
+              .from('essay_versions')
+              .insert({
+                essay_id: selectedEssay.id,
+                user_id: user.id,
+                version_number: 1,
+                content: {
+                  blocks: semanticDocument.blocks,
+                  metadata: semanticDocument.metadata
+                },
+                version_name: 'Version 1',
+                version_description: 'Initial version',
+                is_active: true,
+                semantic_document_id: semanticDocument.id
+              });
+          }
+        } catch (versionError) {
+          console.error('Failed to create Version 1:', versionError);
+          // Don't fail the whole operation if version creation fails
+        }
+      }
       
       // Update saved timestamp
       setLastSaved(new Date());
@@ -971,7 +1034,7 @@ const Essays = () => {
                                       <Badge className={`${getStatusColor(associatedNewEssay ? associatedNewEssay.status : essay.status)} text-xs ml-2 flex-shrink-0`}>
                                         <div className="flex items-center space-x-1">
                                           {getStatusIcon(associatedNewEssay ? associatedNewEssay.status : essay.status)}
-                                          <span className="capitalize">{(associatedNewEssay ? associatedNewEssay.status : essay.status).replace('_', ' ')}</span>
+                                          <span>{getDraftStatusLabel(associatedNewEssay ? associatedNewEssay.status : essay.status)}</span>
                                         </div>
                                       </Badge>
                                     </div>
@@ -1025,7 +1088,7 @@ const Essays = () => {
                                       <Badge className={`${getStatusColor(associatedNewEssay ? associatedNewEssay.status : essay.status)} text-xs ml-2 flex-shrink-0`}>
                                         <div className="flex items-center space-x-1">
                                           {getStatusIcon(associatedNewEssay ? associatedNewEssay.status : essay.status)}
-                                          <span className="capitalize">{(associatedNewEssay ? associatedNewEssay.status : essay.status).replace('_', ' ')}</span>
+                                          <span>{getDraftStatusLabel(associatedNewEssay ? associatedNewEssay.status : essay.status)}</span>
                                         </div>
                                       </Badge>
                                     </div>
@@ -1106,7 +1169,7 @@ const Essays = () => {
                             Word limit: {selectedMobilePrompt.wordLimit}
                           </div>
                           <Badge variant="outline" className="text-xs">
-                            {selectedMobilePrompt.status.replace('_', ' ')}
+                            {getDraftStatusLabel(selectedMobilePrompt.status)}
                           </Badge>
                         </div>
                       </CardContent>
