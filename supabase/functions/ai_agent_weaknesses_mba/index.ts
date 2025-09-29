@@ -23,7 +23,7 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 // Google Gemini API configuration
 const GEMINI_API_KEY = Deno.env.get('GOOGLE_API_KEY')
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent'
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
 
 // MBA Weaknesses Analysis Prompt
 const MBA_WEAKNESSES_PROMPT = `You are an expert MBA admissions consultant specializing in identifying strategic weaknesses in MBA application essays. Analyze the following MBA essay and provide honest, direct feedback about areas that need improvement for maximum business school admissions impact.

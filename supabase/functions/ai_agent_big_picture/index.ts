@@ -38,7 +38,7 @@ function truncateToTokens(text: string, maxTokens: number): string {
 
 // Google Gemini API configuration
 const GEMINI_API_KEY = Deno.env.get('GOOGLE_API_KEY')
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent'
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
 
 // Big Picture Analysis Prompt
 const BIG_PICTURE_PROMPT = `You are an expert college admissions counselor specializing in strategic essay analysis. Analyze the following college application essay holistically and provide honest, direct feedback about its strategic strengths and areas for improvement.

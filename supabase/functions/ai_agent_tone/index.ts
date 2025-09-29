@@ -45,7 +45,7 @@ function truncateToTokens(text: string, maxTokens: number): string {
 
 // Google Gemini API configuration
 const GEMINI_API_KEY = Deno.env.get('GOOGLE_API_KEY')
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent'
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
 
 // Tone Analysis Prompt
 const TONE_PROMPT = `You are an expert college admissions counselor specializing in analyzing personal voice and authenticity in college application essays. Your role is to identify where the writer's authentic voice shines through and where it gets lost or becomes generic.

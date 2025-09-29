@@ -49,7 +49,7 @@ function truncateToTokens(text: string, maxTokens: number): string {
 
 // Google Gemini API configuration
 const GEMINI_API_KEY = Deno.env.get('GOOGLE_API_KEY')
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent'
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
 
 // Clarity Analysis Prompt
 const CLARITY_PROMPT = `You are an expert writing consultant specializing in clarity and conciseness. Your role is to identify run-on sentences, jargon, unnecessary words, and unclear phrasing that makes writing less precise and harder to read.
