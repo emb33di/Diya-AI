@@ -149,7 +149,7 @@ BEGIN
         user_uuid,
         next_version,
         version_content,
-        COALESCE(version_name_param, 'Version ' || next_version::text || ' (with AI Feedback)'),
+        COALESCE(version_name_param, 'Version ' || next_version::text),
         COALESCE(version_description_param, 'Version with AI-generated feedback'),
         true,
         semantic_document_uuid,

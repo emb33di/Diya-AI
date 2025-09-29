@@ -183,7 +183,7 @@ BEGIN
         essay_content,
         essay_title,
         essay_prompt,
-        'Version ' || next_version::text || ' (with AI Feedback)',
+        'Version ' || next_version::text,
         false,
         parent_checkpoint_id,
         true,
