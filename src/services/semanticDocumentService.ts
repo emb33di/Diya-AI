@@ -106,8 +106,26 @@ export class SemanticDocumentService {
       console.warn('Failed to load annotations, continuing without them:', error);
     }
 
+    // Check if blocks contain raw HTML content and convert if needed
+    let blocks = data.blocks || [];
+    
+    // If blocks contain HTML content (like <p> tags), convert them to proper semantic blocks
+    const hasHtmlContent = blocks.some(block => 
+      block.content && 
+      typeof block.content === 'string' && 
+      block.content.includes('<') && 
+      block.content.includes('>')
+    );
+
+    if (hasHtmlContent) {
+      console.log('Converting HTML content to semantic blocks for document:', documentId);
+      // Convert HTML content to semantic blocks
+      const htmlContent = blocks.map(block => block.content).join('');
+      blocks = this.convertHtmlToBlocks(htmlContent, false);
+    }
+
     // Attach annotations to their respective blocks
-    const blocks = (data.blocks || []).map(block => ({
+    const processedBlocks = blocks.map(block => ({
       ...block,
       annotations: annotations.filter(annotation => annotation.targetBlockId === block.id)
     }));
@@ -115,7 +133,7 @@ export class SemanticDocumentService {
     return {
       id: data.id,
       title: data.title,
-      blocks: blocks,
+      blocks: processedBlocks,
       metadata: data.metadata || {},
       createdAt: new Date(data.created_at),
       updatedAt: new Date(data.updated_at)
@@ -167,8 +185,26 @@ export class SemanticDocumentService {
         console.warn('Failed to load annotations, continuing without them:', error);
       }
 
+      // Check if blocks contain raw HTML content and convert if needed
+      let blocks = matchingDoc.blocks || [];
+      
+      // If blocks contain HTML content (like <p> tags), convert them to proper semantic blocks
+      const hasHtmlContent = blocks.some(block => 
+        block.content && 
+        typeof block.content === 'string' && 
+        block.content.includes('<') && 
+        block.content.includes('>')
+      );
+
+      if (hasHtmlContent) {
+        console.log('Converting HTML content to semantic blocks for essay:', essayId);
+        // Convert HTML content to semantic blocks
+        const htmlContent = blocks.map(block => block.content).join('');
+        blocks = this.convertHtmlToBlocks(htmlContent, false);
+      }
+
       // Attach annotations to their respective blocks
-      const blocks = (matchingDoc.blocks || []).map(block => {
+      const processedBlocks = blocks.map(block => {
         const blockAnnotations = annotations.filter(annotation => annotation.targetBlockId === block.id);
         return {
           ...block,
@@ -176,12 +212,12 @@ export class SemanticDocumentService {
         };
       });
       
-      console.log(`SemanticDocumentService: Successfully loaded document for essay ${essayId} - ${blocks.length} blocks, ${annotations.length} annotations`);
+      console.log(`SemanticDocumentService: Successfully loaded document for essay ${essayId} - ${processedBlocks.length} blocks, ${annotations.length} annotations`);
 
       return {
         id: matchingDoc.id,
         title: matchingDoc.title,
-        blocks: blocks,
+        blocks: processedBlocks,
         metadata: matchingDoc.metadata || {},
         createdAt: new Date(matchingDoc.created_at),
         updatedAt: new Date(matchingDoc.updated_at)
