@@ -38,7 +38,7 @@ export class EssayVersionService {
       metadata: {
         ...currentDocument.metadata,
         essayId,
-        isReadOnly: false // This version is editable
+        isReadOnly: false // This version is editable (will be active)
       },
       createdAt: new Date(),
       updatedAt: new Date()
@@ -67,6 +67,9 @@ export class EssayVersionService {
       console.error('Error creating fresh draft version:', error);
       throw error;
     }
+
+    // Update read-only status for all versions
+    await this.updateVersionReadOnlyStatus(essayId);
 
     return versionId;
   }
@@ -194,6 +197,7 @@ export class EssayVersionService {
   /**
    * Switch to a specific version (make it active)
    * Uses atomic database function to prevent race conditions
+   * Also updates semantic documents to mark non-active versions as read-only
    */
   static async switchToVersion(essayId: string, versionId: string): Promise<boolean> {
     const { data: success, error } = await supabase.rpc('switch_to_essay_version', {
@@ -206,7 +210,44 @@ export class EssayVersionService {
       throw error;
     }
 
+    if (success) {
+      // Update semantic documents to reflect read-only status
+      await this.updateVersionReadOnlyStatus(essayId);
+    }
+
     return success;
+  }
+
+  /**
+   * Update semantic documents to mark non-active versions as read-only
+   */
+  private static async updateVersionReadOnlyStatus(essayId: string): Promise<void> {
+    try {
+      // Get all versions for this essay
+      const versions = await this.getEssayVersions(essayId);
+      
+      // Update semantic documents based on active status
+      for (const version of versions) {
+        if (version.semantic_document_id) {
+          const document = await semanticDocumentService.loadDocument(version.semantic_document_id);
+          if (document) {
+            // Mark as read-only if not active, editable if active
+            const updatedDocument = {
+              ...document,
+              metadata: {
+                ...document.metadata,
+                isReadOnly: !version.is_active
+              }
+            };
+            
+            await semanticDocumentService.saveDocument(updatedDocument);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error updating version read-only status:', error);
+      // Don't throw error as this is a secondary operation
+    }
   }
 
   /**

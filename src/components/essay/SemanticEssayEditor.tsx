@@ -33,6 +33,7 @@ import {
   CheckSquare,
   Sidebar,
   Plus,
+  Lock,
 } from 'lucide-react';
 
 interface EssayPrompt {
@@ -946,8 +947,11 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                                     <div className={`w-2 h-2 rounded-full ${
                                       currentVersion.is_active ? 'bg-blue-500' : 'bg-gray-400'
                                     }`} />
-                                    <span className="truncate">
-                                      {currentVersion.version_name || `Version ${currentVersion.version_number}`}
+                                    <span className="truncate flex items-center space-x-1">
+                                      <span>{currentVersion.version_name || `Version ${currentVersion.version_number}`}</span>
+                                      {!currentVersion.is_active && (
+                                        <Lock className="h-3 w-3 text-gray-400" />
+                                      )}
                                     </span>
                                   </div>
                                 ) : null}
@@ -961,11 +965,15 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                                       version.is_active ? 'bg-blue-500' : 'bg-gray-400'
                                     }`} />
                                     <div className="flex-1">
-                                      <div className="font-medium">
-                                        {version.version_name || `Version ${version.version_number}`}
+                                      <div className="font-medium flex items-center space-x-2">
+                                        <span>{version.version_name || `Version ${version.version_number}`}</span>
+                                        {!version.is_active && (
+                                          <Lock className="h-3 w-3 text-gray-400" />
+                                        )}
                                       </div>
                                       <div className="text-xs text-gray-500">
                                         {version.version_description || 'Essay Version'}
+                                        {!version.is_active && ' • Read-only'}
                                       </div>
                                     </div>
                                   </div>

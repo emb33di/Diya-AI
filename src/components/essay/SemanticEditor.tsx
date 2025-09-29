@@ -100,6 +100,11 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
   // Refs for textarea management
   const textareaRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
 
+  // Check if document is read-only
+  const isReadOnly = useCallback(() => {
+    return state.document.metadata?.isReadOnly === true;
+  }, [state.document.metadata]);
+
   // Initialize document from initial content
   useEffect(() => {
     if (initialContent && state.document.blocks.length === 0) {
@@ -189,6 +194,15 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
 
   // Add a new block
   const addNewBlock = useCallback((position?: number) => {
+    if (isReadOnly()) {
+      toast({
+        title: "Read-Only Version",
+        description: "This version is read-only. Switch to the latest version to make edits.",
+        variant: "destructive",
+      });
+      return null;
+    }
+
     const newPosition = position !== undefined ? position : state.document.blocks.length;
     
     const newBlock: DocumentBlock = {
@@ -232,7 +246,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     }, 50);
 
     return newBlock;
-  }, [state.document.blocks]);
+  }, [state.document.blocks, isReadOnly, toast]);
 
   // Ensure there's always at least one block for editing
   useEffect(() => {
@@ -251,6 +265,15 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
 
   // Delete a block
   const deleteBlock = useCallback((blockId: string) => {
+    if (isReadOnly()) {
+      toast({
+        title: "Read-Only Version",
+        description: "This version is read-only. Switch to the latest version to make edits.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setState(prev => {
       // Don't allow deleting all blocks
       if (prev.document.blocks.length <= 1) {
@@ -279,10 +302,19 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     if (editingBlockId === blockId) {
       setEditingBlockId(null);
     }
-  }, [editingBlockId]);
+  }, [editingBlockId, isReadOnly, toast]);
 
   // Start editing a block
   const startEditingBlock = useCallback((blockId: string) => {
+    if (isReadOnly()) {
+      toast({
+        title: "Read-Only Version",
+        description: "This version is read-only. Switch to the latest version to make edits.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setEditingBlockId(blockId);
     setState(prev => ({ ...prev, isEditing: true }));
     setTimeout(() => {
@@ -292,7 +324,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
         autoResizeTextarea(textarea);
       }
     }, 50);
-  }, []);
+  }, [isReadOnly, toast]);
 
   // Finish editing a block
   const finishEditingBlock = useCallback((blockId: string) => {
@@ -302,6 +334,10 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
 
   // Update block content
   const updateBlockContent = useCallback((blockId: string, content: string) => {
+    if (isReadOnly()) {
+      return; // Silently ignore updates in read-only mode
+    }
+
     setState(prev => ({
       ...prev,
       document: {
@@ -315,7 +351,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
       },
       pendingChanges: true
     }));
-  }, []);
+  }, [isReadOnly]);
 
   // Copy block content
   const copyBlock = useCallback((blockId: string) => {
@@ -907,7 +943,8 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
             size="sm"
             className="h-6 w-6 p-0"
             onClick={() => deleteBlock(block.id)}
-            title="Delete block"
+            title={isReadOnly() ? "Read-only version" : "Delete block"}
+            disabled={isReadOnly()}
           >
             <Trash2 className="h-3 w-3" />
           </Button>
@@ -925,7 +962,8 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
             size="sm"
             className="h-6 w-6 p-0"
             onClick={() => addNewBlock(block.position + 1)}
-            title="Add block below"
+            title={isReadOnly() ? "Read-only version" : "Add block below"}
+            disabled={isReadOnly()}
           >
             <Plus className="h-3 w-3" />
           </Button>
@@ -967,8 +1005,13 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
           />
         ) : (
           <div
-            className="min-h-[2.5rem] cursor-text p-2 rounded hover:bg-gray-50 transition-colors text-base"
+            className={`min-h-[2.5rem] p-2 rounded transition-colors text-base ${
+              isReadOnly() 
+                ? 'cursor-default bg-gray-50 text-gray-500' 
+                : 'cursor-text hover:bg-gray-50'
+            }`}
             onClick={() => startEditingBlock(block.id)}
+            title={isReadOnly() ? "This version is read-only" : "Click to edit"}
             style={{
               fontFamily: 'Arial, sans-serif',
               lineHeight: '1.6',
