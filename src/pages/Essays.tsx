@@ -1426,13 +1426,17 @@ const Essays = () => {
                       !e.prompt_text
                     );
                     
+                    // Only show has_draft as true if there's actual content, not just an empty essay entry
+                    const hasActualContent = (associatedNewEssay && associatedNewEssay.content?.trim().length > 0) || 
+                                           (associatedEssay && associatedEssay.content?.trim().length > 0);
+                    
                     return {
                       id: prompt.id,
                       prompt: prompt.prompt,
                       prompt_number: prompt.prompt_number,
                       is_required: prompt.selection_type === 'required' && prompt.prompt_selection_type === 'required',
                       word_limit: prompt.word_limit,
-                      has_draft: !!(associatedEssay || associatedNewEssay),
+                      has_draft: hasActualContent,
                       draft_status: associatedNewEssay ? associatedNewEssay.status : associatedEssay?.status,
                       prompt_selection_type: prompt.prompt_selection_type,
                       how_many: prompt.how_many
