@@ -729,7 +729,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                                     value={requiredPrompts.find(p => p.id === selectedPromptId)?.id || ''} 
                                     onValueChange={onPromptChange || (() => {})}
                                   >
-                                    <SelectTrigger className="w-full bg-white border-gray-300 shadow-sm">
+                                    <SelectTrigger className="w-auto min-w-[200px] bg-white border-gray-300 shadow-sm">
                                       <SelectValue placeholder="Select required prompt">
                                         {(() => {
                                           const selectedPrompt = requiredPrompts.find(p => p.id === selectedPromptId);
@@ -777,7 +777,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                                     value={optionalPrompts.find(p => p.id === selectedPromptId)?.id || ''} 
                                     onValueChange={onPromptChange || (() => {})}
                                   >
-                                    <SelectTrigger className="w-full bg-white border-gray-300 shadow-sm">
+                                    <SelectTrigger className="w-auto min-w-[200px] bg-white border-gray-300 shadow-sm">
                                       <SelectValue placeholder={`Select from ${getSelectionText(optionalPrompts)}`}>
                                         {(() => {
                                           const selectedPrompt = optionalPrompts.find(p => p.id === selectedPromptId);
@@ -891,6 +891,53 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                       
                       {/* Action Buttons */}
                       <div className="flex gap-2">
+                        {/* Versions Dropdown */}
+                        {essayVersions.length > 0 && (
+                          <Select 
+                            value={currentVersion?.id || ''} 
+                            onValueChange={(versionId) => {
+                              const version = essayVersions.find(v => v.id === versionId);
+                              if (version && !version.is_active) {
+                                loadVersion(versionId);
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="w-auto min-w-[150px] bg-white border-gray-300 shadow-sm">
+                              <SelectValue placeholder="Select version">
+                                {currentVersion ? (
+                                  <div className="flex items-center space-x-2">
+                                    <div className={`w-2 h-2 rounded-full ${
+                                      currentVersion.is_active ? 'bg-blue-500' : 'bg-gray-400'
+                                    }`} />
+                                    <span className="truncate">
+                                      {currentVersion.version_name || `Version ${currentVersion.version_number}`}
+                                    </span>
+                                  </div>
+                                ) : null}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {essayVersions.map((version) => (
+                                <SelectItem key={version.id} value={version.id}>
+                                  <div className="flex items-center space-x-2 w-full">
+                                    <div className={`w-2 h-2 rounded-full ${
+                                      version.is_active ? 'bg-blue-500' : 'bg-gray-400'
+                                    }`} />
+                                    <div className="flex-1">
+                                      <div className="font-medium">
+                                        {version.version_name || `Version ${version.version_number}`}
+                                      </div>
+                                      <div className="text-xs text-gray-500">
+                                        {version.version_description || 'Essay Version'}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                        
                         <Button 
                           onClick={createNewVersion} 
                           disabled={isCreatingVersion}
@@ -955,52 +1002,6 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                 </div>
               )}
 
-              {/* Version History */}
-              {essayVersions.length > 0 && (
-                <div className="bg-white p-4 md:p-6 rounded-xl shadow-lg border border-gray-300">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-blue-600" />
-                    Version History
-                  </h3>
-                  <div className="space-y-3">
-                    {essayVersions.map((version) => (
-                      <div 
-                        key={version.id}
-                        className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                          version.is_active 
-                            ? 'border-blue-200 bg-blue-50 hover:bg-blue-100' 
-                            : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
-                        }`}
-                        onClick={() => !version.is_active && loadVersion(version.id)}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-2 h-2 rounded-full ${
-                              version.is_active ? 'bg-blue-500' : 'bg-gray-400'
-                            }`} />
-                            <div>
-                              <h4 className="font-medium text-gray-800">
-                                {version.version_name || `Version ${version.version_number}`}
-                              </h4>
-                              <p className="text-sm text-gray-600">
-                                {version.version_description || 'Essay Version'} • 
-                                {new Date(version.created_at).toLocaleDateString()}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {version.is_active && (
-                              <Badge variant="outline" className="text-blue-700 border-blue-200">
-                                Current
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
 
               {/* Editor */}
               <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-8 min-h-[600px] h-full">

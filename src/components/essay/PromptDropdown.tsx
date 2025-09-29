@@ -94,7 +94,7 @@ const PromptDropdown: React.FC<PromptDropdownProps> = ({
                   value={requiredPrompts.find(p => p.id === selectedPromptId)?.id || ''} 
                   onValueChange={onPromptChange}
                 >
-                  <SelectTrigger className="w-full bg-white border-gray-300 shadow-sm">
+                  <SelectTrigger className="w-auto min-w-[200px] bg-white border-gray-300 shadow-sm">
                     <SelectValue placeholder="Select required prompt">
                       {(() => {
                         const selectedPrompt = requiredPrompts.find(p => p.id === selectedPromptId);
@@ -149,7 +149,7 @@ const PromptDropdown: React.FC<PromptDropdownProps> = ({
                   value={optionalPrompts.find(p => p.id === selectedPromptId)?.id || ''} 
                   onValueChange={onPromptChange}
                 >
-                  <SelectTrigger className="w-full bg-white border-gray-300 shadow-sm">
+                  <SelectTrigger className="w-auto min-w-[200px] bg-white border-gray-300 shadow-sm">
                     <SelectValue placeholder={`Select from ${getSelectionText(optionalPrompts)}`}>
                       {(() => {
                         const selectedPrompt = optionalPrompts.find(p => p.id === selectedPromptId);
