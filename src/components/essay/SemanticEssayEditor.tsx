@@ -117,9 +117,13 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
   const handlePageVisible = async () => {
     if (document && essayId) {
       try {
-        const refreshedDocument = await semanticDocumentService.loadDocumentByEssayId(essayId);
-        if (refreshedDocument && refreshedDocument.updatedAt > document.updatedAt) {
-          setDocument(refreshedDocument);
+        // Load the active version's document instead of the most recent document
+        const activeVersion = await EssayVersionService.getActiveVersion(essayId);
+        if (activeVersion) {
+          const refreshedDocument = await semanticDocumentService.loadDocument(activeVersion.semantic_document_id);
+          if (refreshedDocument && refreshedDocument.updatedAt > document.updatedAt) {
+            setDocument(refreshedDocument);
+          }
         }
       } catch (error) {
         console.warn('Failed to refresh document on page visibility:', error);
@@ -135,11 +139,21 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
       setIsLoading(true);
       
       try {
-        // Check if semantic document already exists for this essay
-        const existingDocument = await semanticDocumentService.loadDocumentByEssayId(essayId);
+        // Check if there's an active version for this essay first
+        const activeVersion = await EssayVersionService.getActiveVersion(essayId);
+        let existingDocument = null;
+        
+        if (activeVersion) {
+          // Load the document associated with the active version
+          existingDocument = await semanticDocumentService.loadDocument(activeVersion.semantic_document_id);
+          console.log('Found active version document for essay:', essayId, 'document ID:', existingDocument?.id);
+        } else {
+          // Fallback to the old method for backward compatibility
+          existingDocument = await semanticDocumentService.loadDocumentByEssayId(essayId);
+          console.log('Found existing document for essay:', essayId, 'document ID:', existingDocument?.id);
+        }
         
         if (existingDocument) {
-          console.log('Found existing document for essay:', essayId, 'document ID:', existingDocument.id);
           setDocument(existingDocument);
         } else {
           console.log('No existing document found for essay:', essayId, 'creating new one');
@@ -307,10 +321,13 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
       // Reload versions to get updated list
       await loadEssayVersions();
 
-      // Switch to the new semantic document
-      const newDocument = await semanticDocumentService.loadDocumentByEssayId(essayId);
-      if (newDocument) {
-        setDocument(newDocument);
+      // Switch to the new semantic document by loading the active version's document
+      const activeVersion = await EssayVersionService.getActiveVersion(essayId);
+      if (activeVersion) {
+        const newDocument = await semanticDocumentService.loadDocument(activeVersion.semantic_document_id);
+        if (newDocument) {
+          setDocument(newDocument);
+        }
       }
 
       toast({
@@ -330,24 +347,44 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
     }
   };
 
-  // Load a specific version (read-only)
+  // Load a specific version (switch to it)
   const loadVersion = async (versionId: string) => {
     try {
-      const versionDocument = await EssayVersionService.loadVersionDocument(versionId);
-      if (!versionDocument) return;
+      // Switch to the selected version using the atomic database function
+      const success = await EssayVersionService.switchToVersion(essayId, versionId);
+      
+      if (!success) {
+        toast({
+          title: "Error",
+          description: "Failed to switch to the selected version.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-      // For now, show the version info in a toast
-      // Later we can implement a modal or separate view
-      toast({
-        title: `Viewing ${versionDocument.metadata.version ? `Version ${versionDocument.metadata.version}` : 'Previous Version'}`,
-        description: `This version was created on ${new Date(versionDocument.createdAt).toLocaleDateString()}.`,
-      });
+      // Reload versions to get updated active version
+      await loadEssayVersions();
+
+      // Load the new active version's document
+      const activeVersion = await EssayVersionService.getActiveVersion(essayId);
+      if (activeVersion) {
+        const newDocument = await semanticDocumentService.loadDocument(activeVersion.semantic_document_id);
+        if (newDocument) {
+          setDocument(newDocument);
+          setCurrentVersion(activeVersion);
+          
+          toast({
+            title: "Version Switched",
+            description: `Now viewing ${activeVersion.version_name || `Version ${activeVersion.version_number}`}`,
+          });
+        }
+      }
 
     } catch (error) {
-      console.error('Failed to load version:', error);
+      console.error('Failed to switch version:', error);
       toast({
         title: "Error",
-        description: "Failed to load version. Please try again.",
+        description: "Failed to switch to the selected version. Please try again.",
         variant: "destructive",
       });
     }
