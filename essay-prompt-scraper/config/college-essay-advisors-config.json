@@ -1,0 +1,94 @@
+{
+  "scraper": {
+    "concurrentRequests": 2,
+    "delayBetweenRequests": 3000,
+    "requestTimeout": 45000,
+    "retryAttempts": 3,
+    "retryDelay": 5000,
+    "userAgentRotation": true,
+    "proxyRotation": false,
+    "headless": true,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "waitForContent": true,
+    "scrollToLoad": true
+  },
+  "targets": [
+    {
+      "name": "College Essay Advisors - Supplemental Essay Guide",
+      "url": "https://www.collegeessayadvisors.com/supplemental-essay-guide/",
+      "type": "supplemental_essays",
+      "scraping_strategy": "university_list_extraction",
+      "selectors": {
+        "university_list_container": "ul.supp-essays",
+        "university_links": "ul.supp-essays li a",
+        "university_name": "a",
+        "university_url": "a[href]",
+        "essay_prompts": ".essay-prompt, .prompt-text, .essay-content, .writing-prompt",
+        "word_limits": ".word-limit, .character-limit, [class*='limit'], [class*='word']",
+        "deadlines": ".deadline, .due-date, [class*='deadline']",
+        "acceptance_rate": ".acceptance-rate, [class*='acceptance']",
+        "prompt_titles": "h2, h3, h4, h5, h6, .prompt-title, .essay-title"
+      },
+      "customExtractor": "collegeEssayAdvisorsExtractor",
+      "data_mapping": {
+        "college_name": "university_name",
+        "school_program_type": "Undergraduate",
+        "how_many": "extracted_from_prompts",
+        "selection_type": "required",
+        "prompt_number": "auto_generated",
+        "prompt": "essay_prompts",
+        "word_limit": "word_limits",
+        "prompt_selection_type": "required"
+      },
+      "batch_processing": {
+        "enabled": true,
+        "batch_size": 10,
+        "delay_between_batches": 5000,
+        "max_concurrent": 3
+      }
+    }
+  ],
+  "output": {
+    "formats": ["json"],
+    "directory": "./data",
+    "filename": "college-essay-advisors-supplemental",
+    "includeMetadata": true,
+    "includeRawHtml": false,
+    "custom_fields": {
+      "university_info": {
+        "acceptance_rate": true,
+        "location": true,
+        "university_type": true,
+        "ranking": true
+      },
+      "essay_requirements": {
+        "deadline": true,
+        "application_platform": true,
+        "total_word_limit": true
+      },
+      "prompt_analysis": {
+        "category": true,
+        "prompt_type": true,
+        "difficulty_level": true,
+        "common_themes": true,
+        "tips": true
+      }
+    }
+  },
+  "data_processing": {
+    "extract_university_metadata": true,
+    "categorize_prompts": true,
+    "analyze_difficulty": true,
+    "extract_themes": true,
+    "generate_tips": true,
+    "validate_word_limits": true
+  },
+  "logging": {
+    "level": "info",
+    "file": "./logs/cea-scraper.log",
+    "console": true
+  }
+}

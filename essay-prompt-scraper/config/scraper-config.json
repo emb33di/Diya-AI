@@ -1,0 +1,90 @@
+{
+  "scraper": {
+    "concurrentRequests": 3,
+    "delayBetweenRequests": 2000,
+    "requestTimeout": 30000,
+    "retryAttempts": 3,
+    "retryDelay": 5000,
+    "userAgentRotation": true,
+    "proxyRotation": false,
+    "headless": true,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "targets": [
+    {
+      "name": "Harvard University",
+      "url": "https://college.harvard.edu/admissions/apply/essay-requirements",
+      "type": "undergraduate",
+      "selectors": {
+        "promptContainer": ".essay-prompt, .prompt-text, .essay-requirement",
+        "promptText": "p, .prompt-content, .essay-text",
+        "wordLimit": ".word-limit, .character-limit",
+        "title": "h1, h2, h3, .prompt-title"
+      },
+      "customExtractor": "harvardExtractor"
+    },
+    {
+      "name": "Stanford University",
+      "url": "https://admission.stanford.edu/apply/essays.html",
+      "type": "undergraduate",
+      "selectors": {
+        "promptContainer": ".essay-prompt, .prompt-item",
+        "promptText": ".prompt-text, p",
+        "wordLimit": ".word-count, .limit",
+        "title": "h2, h3, .prompt-title"
+      },
+      "customExtractor": "stanfordExtractor"
+    },
+    {
+      "name": "MIT",
+      "url": "https://mitadmissions.org/apply/firstyear/essays/",
+      "type": "undergraduate",
+      "selectors": {
+        "promptContainer": ".essay-prompt, .writing-prompt",
+        "promptText": ".prompt-content, p",
+        "wordLimit": ".word-limit",
+        "title": "h2, h3"
+      },
+      "customExtractor": "mitExtractor"
+    },
+    {
+      "name": "Yale University",
+      "url": "https://admissions.yale.edu/how-apply",
+      "type": "undergraduate",
+      "selectors": {
+        "promptContainer": ".essay-section, .writing-requirements",
+        "promptText": ".essay-text, p",
+        "wordLimit": ".word-limit",
+        "title": "h2, h3, .section-title"
+      },
+      "customExtractor": "yaleExtractor"
+    },
+    {
+      "name": "Princeton University",
+      "url": "https://admission.princeton.edu/how-apply/application-checklist/writing-requirements",
+      "type": "undergraduate",
+      "selectors": {
+        "promptContainer": ".essay-prompt, .writing-prompt",
+        "promptText": ".prompt-text, p",
+        "wordLimit": ".word-limit",
+        "title": "h2, h3"
+      },
+      "customExtractor": "princetonExtractor"
+    }
+  ],
+  "output": {
+    "formats": ["json", "csv"],
+    "directory": "./data",
+    "filename": "essay-prompts",
+    "includeMetadata": true,
+    "includeRawHtml": false
+  },
+  "logging": {
+    "level": "info",
+    "file": "./logs/scraper.log",
+    "console": true
+  }
+}
