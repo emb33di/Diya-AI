@@ -1,44 +1,112 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+
 const PrivacyPolicy = () => {
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('privacy');
+
+  const handleTabClick = (tab: string) => {
+    setActiveTab(tab);
+    if (tab === 'terms') {
+      navigate('/terms-of-service');
+    } else if (tab === 'refund') {
+      navigate('/refund-policy');
+    }
+  };
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#F4EDE2' }}>
       <div className="container mx-auto px-6 py-16">
         {/* Header Section */}
         <div className="text-center mb-16">
           <h1 className="text-4xl font-display font-bold mb-4 text-gray-900">
-            Diya AI Privacy Policy
+            Diya AI Legal Policies
           </h1>
           <p className="text-sm text-gray-600 mt-4">
             Last updated date: 28 September 2025
           </p>
         </div>
 
-        {/* Introduction */}
-        <div className="max-w-4xl mx-auto mb-12">
-          <p className="text-lg text-gray-700 leading-relaxed">
-            This Privacy Policy describes how Diya AI LLC ("Diya AI," "we", "us" or "our") processes the personal information we collect through our website, https://www.meetdiya.com, and any associated services (collectively, the "Service").
-          </p>
-        </div>
-
-        {/* Index */}
-        <div className="max-w-4xl mx-auto mb-12">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Index</h2>
-          <ul className="space-y-2 text-gray-700">
-            <li>• Personal Information We Collect</li>
-            <li>• How We Use Your Personal Information</li>
-            <li>• How We Share Your Personal Information</li>
-            <li>• We Do Not Sell Your Personal Information</li>
-            <li>• Your Choices and Rights</li>
-            <li>• Security</li>
-            <li>• International Data Transfers</li>
-            <li>• Children</li>
-            <li>• Changes to this Privacy Policy</li>
-            <li>• How to Contact Us</li>
-          </ul>
-        </div>
-
-        {/* Personal Information We Collect */}
+        {/* Tab Navigation */}
         <div className="max-w-4xl mx-auto mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Personal Information We Collect</h2>
+          <div className="bg-white rounded-lg border border-gray-300 overflow-hidden">
+            <div className="flex">
+              <button
+                onClick={() => handleTabClick('privacy')}
+                className={`flex-1 px-6 py-4 text-center font-medium transition-colors ${
+                  activeTab === 'privacy'
+                    ? 'text-white'
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+                style={{
+                  backgroundColor: activeTab === 'privacy' ? '#D07D00' : undefined
+                }}
+              >
+                Privacy Policy
+              </button>
+              <button
+                onClick={() => handleTabClick('terms')}
+                className={`flex-1 px-6 py-4 text-center font-medium transition-colors border-l border-r border-gray-300 ${
+                  activeTab === 'terms'
+                    ? 'text-white'
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+                style={{
+                  backgroundColor: activeTab === 'terms' ? '#D07D00' : undefined
+                }}
+              >
+                Terms of Service
+              </button>
+              <button
+                onClick={() => handleTabClick('refund')}
+                className={`flex-1 px-6 py-4 text-center font-medium transition-colors ${
+                  activeTab === 'refund'
+                    ? 'text-white'
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+                style={{
+                  backgroundColor: activeTab === 'refund' ? '#D07D00' : undefined
+                }}
+              >
+                Refund Policy
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Privacy Policy Content */}
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-3xl font-display font-bold mb-6 text-gray-900 text-center">
+            Privacy Policy
+          </h2>
+
+          {/* Introduction */}
+          <div className="mb-12">
+            <p className="text-lg text-gray-700 leading-relaxed">
+              This Privacy Policy describes how Diya AI LLC ("Diya AI," "we", "us" or "our") processes the personal information we collect through our website, https://www.meetdiya.com, and any associated services (collectively, the "Service").
+            </p>
+          </div>
+
+          {/* Index */}
+          <div className="mb-12">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Index</h2>
+            <ul className="space-y-2 text-gray-700">
+              <li>• Personal Information We Collect</li>
+              <li>• How We Use Your Personal Information</li>
+              <li>• How We Share Your Personal Information</li>
+              <li>• We Do Not Sell Your Personal Information</li>
+              <li>• Your Choices and Rights</li>
+              <li>• Security</li>
+              <li>• International Data Transfers</li>
+              <li>• Children</li>
+              <li>• Changes to this Privacy Policy</li>
+              <li>• How to Contact Us</li>
+            </ul>
+          </div>
+
+          {/* Personal Information We Collect */}
+          <div id="personal-information" className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Personal Information We Collect</h2>
           <div className="space-y-6">
             <div>
               <h3 className="text-lg font-semibold text-gray-800 mb-3">Information you provide to us.</h3>
@@ -88,9 +156,9 @@ const PrivacyPolicy = () => {
           </div>
         </div>
 
-        {/* How We Use Your Personal Information */}
-        <div className="max-w-4xl mx-auto mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">How We Use Your Personal Information</h2>
+          {/* How We Use Your Personal Information */}
+          <div id="how-we-use" className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">How We Use Your Personal Information</h2>
           <p className="text-gray-700 mb-4">We use your personal information for the following purposes:</p>
           <div className="space-y-4">
             <div>
@@ -112,9 +180,9 @@ const PrivacyPolicy = () => {
           </div>
         </div>
 
-        {/* How We Share Your Personal Information */}
-        <div className="max-w-4xl mx-auto mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">How We Share Your Personal Information</h2>
+          {/* How We Share Your Personal Information */}
+          <div id="how-we-share" className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">How We Share Your Personal Information</h2>
           <p className="text-gray-700 mb-4">We may share your personal information with the following parties:</p>
           <div className="space-y-4">
             <div>
@@ -140,16 +208,16 @@ const PrivacyPolicy = () => {
           </div>
         </div>
 
-        {/* We Do Not Sell Your Personal Information */}
-        <div className="max-w-4xl mx-auto mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">We Do Not Sell Your Personal Information</h2>
+          {/* We Do Not Sell Your Personal Information */}
+          <div id="no-sell" className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">We Do Not Sell Your Personal Information</h2>
           <p className="text-gray-700 mb-4">Our business model is to provide a valuable service directly to you, our user, through a transparent subscription.</p>
           <p className="text-gray-700">We do not and will not sell, rent, or trade your personal information to third parties like universities, data brokers, or marketing companies. The trust of our students and their families is our most important asset.</p>
         </div>
 
-        {/* Your Choices and Rights */}
-        <div className="max-w-4xl mx-auto mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Your Choices and Rights</h2>
+          {/* Your Choices and Rights */}
+          <div id="choices-rights" className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Your Choices and Rights</h2>
           <div className="space-y-4">
             <div>
               <h4 className="font-medium text-gray-800">Access or Update Your Information.</h4>
@@ -166,39 +234,40 @@ const PrivacyPolicy = () => {
           </div>
         </div>
 
-        {/* Security */}
-        <div className="max-w-4xl mx-auto mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Security</h2>
+          {/* Security */}
+          <div id="security" className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Security</h2>
           <p className="text-gray-700">We employ technical and organizational safeguards designed to protect the personal information we collect. However, no security system is impenetrable, and we cannot guarantee the security of your personal information.</p>
         </div>
 
-        {/* International Data Transfer */}
-        <div className="max-w-4xl mx-auto mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">International Data Transfer</h2>
+          {/* International Data Transfer */}
+          <div id="international-transfer" className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">International Data Transfer</h2>
           <p className="text-gray-700">We are headquartered in the United States and may use service providers that operate in other countries. Your personal information may be transferred to the United States or other locations where privacy laws may not be as protective as those in your state, province, or country.</p>
         </div>
 
-        {/* Children */}
-        <div className="max-w-4xl mx-auto mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Children</h2>
+          {/* Children */}
+          <div id="children" className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Children</h2>
           <p className="text-gray-700">The Service is not intended for use by anyone under 13 years of age. We do not knowingly collect personal information from children under 13. If we learn that we have collected personal information from a child under 13 without the consent of the child's parent or guardian as required by law, we will delete it.</p>
         </div>
 
-        {/* Changes to this Privacy Policy */}
-        <div className="max-w-4xl mx-auto mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Changes to this Privacy Policy</h2>
+          {/* Changes to this Privacy Policy */}
+          <div id="changes" className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Changes to this Privacy Policy</h2>
           <p className="text-gray-700">We reserve the right to modify this Privacy Policy at any time. If we make material changes, we will notify you by updating the date of this policy and posting it on the Service.</p>
         </div>
 
-        {/* Contact Information */}
-        <div className="max-w-4xl mx-auto mt-16">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">How to Contact Us</h2>
+          {/* Contact Information */}
+          <div id="contact" className="mt-16">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">How to Contact Us</h2>
           <p className="text-lg text-gray-700 mb-4 text-center">
             If you have questions about this Privacy Policy or our privacy practices, please contact us at{" "}
             <a href="mailto:info@meetdiya.com" className="text-blue-600 hover:text-blue-800 font-medium">
               info@meetdiya.com
             </a>
           </p>
+        </div>
         </div>
       </div>
     </div>

@@ -1,51 +1,119 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+
 const TermsOfService = () => {
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('terms');
+
+  const handleTabClick = (tab: string) => {
+    setActiveTab(tab);
+    if (tab === 'privacy') {
+      navigate('/privacy-policy');
+    } else if (tab === 'refund') {
+      navigate('/refund-policy');
+    }
+  };
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#F4EDE2' }}>
       <div className="container mx-auto px-6 py-16">
         {/* Header Section */}
         <div className="text-center mb-16">
           <h1 className="text-4xl font-display font-bold mb-4 text-gray-900">
-            Diya AI Terms of Use Agreement
+            Diya AI Legal Policies
           </h1>
           <p className="text-sm text-gray-600 mt-4">
             Last Updated Date: 28 September 2025
           </p>
         </div>
 
-        {/* Introduction */}
-        <div className="max-w-4xl mx-auto mb-12">
-          <p className="text-lg text-gray-700 leading-relaxed mb-4">
-            Welcome to Diya AI, a service made available by Diya AI LLC ("Diya AI", "we", "us" or "our"). This Terms of Use Agreement ("Terms") describes the terms and conditions that apply to your use of our website, platform, and any related services (collectively, the "Service").
-          </p>
-          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
-            <p className="text-gray-800 font-semibold mb-2">
-              PLEASE READ THIS AGREEMENT CAREFULLY. BY CREATING AN ACCOUNT OR ACCESSING OR USING OUR SERVICE, YOU AGREE TO BE BOUND BY THESE TERMS. THIS AGREEMENT CONTAINS A MANDATORY ARBITRATION PROVISION (SECTION 8) THAT REQUIRES THE USE OF ARBITRATION ON AN INDIVIDUAL BASIS TO RESOLVE DISPUTES, RATHER THAN JURY TRIALS OR CLASS ACTIONS.
+        {/* Tab Navigation */}
+        <div className="max-w-4xl mx-auto mb-8">
+          <div className="bg-white rounded-lg border border-gray-300 overflow-hidden">
+            <div className="flex">
+              <button
+                onClick={() => handleTabClick('privacy')}
+                className={`flex-1 px-6 py-4 text-center font-medium transition-colors ${
+                  activeTab === 'privacy'
+                    ? 'text-white'
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+                style={{
+                  backgroundColor: activeTab === 'privacy' ? '#D07D00' : undefined
+                }}
+              >
+                Privacy Policy
+              </button>
+              <button
+                onClick={() => handleTabClick('terms')}
+                className={`flex-1 px-6 py-4 text-center font-medium transition-colors border-l border-r border-gray-300 ${
+                  activeTab === 'terms'
+                    ? 'text-white'
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+                style={{
+                  backgroundColor: activeTab === 'terms' ? '#D07D00' : undefined
+                }}
+              >
+                Terms of Service
+              </button>
+              <button
+                onClick={() => handleTabClick('refund')}
+                className={`flex-1 px-6 py-4 text-center font-medium transition-colors ${
+                  activeTab === 'refund'
+                    ? 'text-white'
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+                style={{
+                  backgroundColor: activeTab === 'refund' ? '#D07D00' : undefined
+                }}
+              >
+                Refund Policy
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Terms of Service Content */}
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-3xl font-display font-bold mb-6 text-gray-900 text-center">
+            Terms of Use Agreement
+          </h2>
+
+          {/* Introduction */}
+          <div className="mb-12">
+            <p className="text-lg text-gray-700 leading-relaxed mb-4">
+              Welcome to Diya AI, a service made available by Diya AI LLC ("Diya AI", "we", "us" or "our"). This Terms of Use Agreement ("Terms") describes the terms and conditions that apply to your use of our website, platform, and any related services (collectively, the "Service").
+            </p>
+            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+              <p className="text-gray-800 font-semibold mb-2">
+                PLEASE READ THIS AGREEMENT CAREFULLY. BY CREATING AN ACCOUNT OR ACCESSING OR USING OUR SERVICE, YOU AGREE TO BE BOUND BY THESE TERMS. THIS AGREEMENT CONTAINS A MANDATORY ARBITRATION PROVISION (SECTION 8) THAT REQUIRES THE USE OF ARBITRATION ON AN INDIVIDUAL BASIS TO RESOLVE DISPUTES, RATHER THAN JURY TRIALS OR CLASS ACTIONS.
+              </p>
+            </div>
+            <p className="text-gray-700 leading-relaxed">
+              You represent that you are at least thirteen (13) years of age. If you are under the age of eighteen (18), you represent that you are using the Service under the supervision of a parent or guardian who agrees to these Terms on your behalf.
             </p>
           </div>
-          <p className="text-gray-700 leading-relaxed">
-            You represent that you are at least thirteen (13) years of age. If you are under the age of eighteen (18), you represent that you are using the Service under the supervision of a parent or guardian who agrees to these Terms on your behalf.
-          </p>
-        </div>
 
-        {/* Index */}
-        <div className="max-w-4xl mx-auto mb-12">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Index</h2>
-          <ul className="space-y-2 text-gray-700">
-            <li>• Use of the Service</li>
-            <li>• Registration and Accounts</li>
-            <li>• Content: Your Data and Our License</li>
-            <li>• User Conduct</li>
-            <li>• Fees and Payment</li>
-            <li>• Disclaimers of Warranties</li>
-            <li>• Limitation of Liability</li>
-            <li>• Arbitration Agreement and Class Action Waiver</li>
-            <li>• General Provisions</li>
-          </ul>
-        </div>
+          {/* Index */}
+          <div className="mb-12">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Index</h2>
+            <ul className="space-y-2 text-gray-700">
+              <li>• Use of the Service</li>
+              <li>• Registration and Accounts</li>
+              <li>• Content: Your Data and Our License</li>
+              <li>• User Conduct</li>
+              <li>• Fees and Payment</li>
+              <li>• Disclaimers of Warranties</li>
+              <li>• Limitation of Liability</li>
+              <li>• Arbitration Agreement and Class Action Waiver</li>
+              <li>• General Provisions</li>
+            </ul>
+          </div>
 
-        {/* Use of the Service */}
-        <div className="max-w-4xl mx-auto mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">1. Use of the Service</h2>
+          {/* Use of the Service */}
+          <div id="use-of-service" className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">1. Use of the Service</h2>
           <div className="space-y-4">
             <div>
               <h4 className="font-medium text-gray-800">1.1. Access Rights</h4>
@@ -58,15 +126,15 @@ const TermsOfService = () => {
           </div>
         </div>
 
-        {/* Registration and Accounts */}
-        <div className="max-w-4xl mx-auto mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">2. Registration and Accounts</h2>
+          {/* Registration and Accounts */}
+          <div id="registration-accounts" className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">2. Registration and Accounts</h2>
           <p className="text-gray-700">You're responsible for providing accurate registration information and for all activities that occur under your Account. You may not share your Account or password with anyone. You agree to notify us immediately of any unauthorized use of your password or any other breach of security.</p>
         </div>
 
-        {/* Content: Your Data and Our License */}
-        <div className="max-w-4xl mx-auto mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">3. Content: Your Data and Our License</h2>
+          {/* Content: Your Data and Our License */}
+          <div id="content-license" className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">3. Content: Your Data and Our License</h2>
           <div className="space-y-4">
             <div>
               <h4 className="font-medium text-gray-800">3.1. Your Content</h4>
@@ -87,21 +155,21 @@ const TermsOfService = () => {
           </div>
         </div>
 
-        {/* User Conduct */}
-        <div className="max-w-4xl mx-auto mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">4. User Conduct</h2>
+          {/* User Conduct */}
+          <div id="user-conduct" className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">4. User Conduct</h2>
           <p className="text-gray-700">You agree not to use the Service for any purpose that is unlawful or prohibited by these Terms, including but not limited to reverse-engineering, scraping, or uploading malicious code.</p>
         </div>
 
-        {/* Fees and Payment */}
-        <div className="max-w-4xl mx-auto mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">5. Fees and Payment</h2>
+          {/* Fees and Payment */}
+          <div id="fees-payment" className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">5. Fees and Payment</h2>
           <p className="text-gray-700">You agree to pay all fees associated with your subscription in accordance with our billing terms. We use a third-party payment processor (Stripe) to handle all transactions. All fees are non-refundable except as expressly stated in our policies.</p>
         </div>
 
-        {/* Disclaimers of Warranties */}
-        <div className="max-w-4xl mx-auto mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">6. Disclaimers of Warranties</h2>
+          {/* Disclaimers of Warranties */}
+          <div id="disclaimers" className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">6. Disclaimers of Warranties</h2>
           <div className="space-y-4">
             <div>
               <h4 className="font-medium text-gray-800">6.1. As Is</h4>
@@ -114,15 +182,15 @@ const TermsOfService = () => {
           </div>
         </div>
 
-        {/* Limitation of Liability */}
-        <div className="max-w-4xl mx-auto mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">7. Limitation of Liability</h2>
+          {/* Limitation of Liability */}
+          <div id="limitation-liability" className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">7. Limitation of Liability</h2>
           <p className="text-gray-700 font-semibold">TO THE FULLEST EXTENT PERMITTED BY LAW, IN NO EVENT SHALL THE DIYA AI PARTIES BE LIABLE TO YOU FOR MORE THAN THE GREATER OF (A) THE TOTAL AMOUNT PAID TO DIYA AI BY YOU DURING THE THREE-MONTH PERIOD PRIOR TO THE ACT GIVING RISE TO THE LIABILITY; OR (B) ONE HUNDRED DOLLARS ($100).</p>
         </div>
 
-        {/* Arbitration Agreement and Class Action Waiver */}
-        <div className="max-w-4xl mx-auto mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">8. Arbitration Agreement and Class Action Waiver</h2>
+          {/* Arbitration Agreement and Class Action Waiver */}
+          <div id="arbitration" className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">8. Arbitration Agreement and Class Action Waiver</h2>
           <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
             <p className="text-gray-800 font-semibold mb-2">
               PLEASE READ THIS SECTION CAREFULLY. IT AFFECTS YOUR RIGHTS.
@@ -135,9 +203,9 @@ const TermsOfService = () => {
           </div>
         </div>
 
-        {/* General Provisions */}
-        <div className="max-w-4xl mx-auto mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">9. General Provisions</h2>
+          {/* General Provisions */}
+          <div id="general-provisions" className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">9. General Provisions</h2>
           <div className="space-y-4">
             <div>
               <h4 className="font-medium text-gray-800">9.1. Governing Law</h4>
@@ -158,15 +226,16 @@ const TermsOfService = () => {
           </div>
         </div>
 
-        {/* Contact Information */}
-        <div className="max-w-4xl mx-auto mt-16">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">How to Contact Us</h2>
+          {/* Contact Information */}
+          <div id="contact" className="mt-16">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">How to Contact Us</h2>
           <p className="text-lg text-gray-700 mb-4 text-center">
             If you have questions about these Terms of Use Agreement or our practices, please contact us at{" "}
             <a href="mailto:info@meetdiya.com" className="text-blue-600 hover:text-blue-800 font-medium">
               info@meetdiya.com
             </a>
           </p>
+        </div>
         </div>
       </div>
     </div>

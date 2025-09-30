@@ -23,6 +23,7 @@ import Signup from "./pages/Signup";
 import LOR from "./pages/LOR";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
+import RefundPolicy from "./pages/RefundPolicy";
 
 
 const queryClient = new QueryClient();
@@ -51,6 +52,7 @@ const App = () => (
           <Route path="/signup" element={<Signup />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms-of-service" element={<TermsOfService />} />
+          <Route path="/refund-policy" element={<RefundPolicy />} />
 
           {/* Protected routes - require authentication */}
           <Route path="/dashboard" element={<AuthenticationGuard><Dashboard /></AuthenticationGuard>} />
