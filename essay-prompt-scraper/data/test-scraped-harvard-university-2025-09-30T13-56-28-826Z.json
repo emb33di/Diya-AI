@@ -1,0 +1,115 @@
+{
+  "extraction_metadata": {
+    "source": "College Essay Advisors",
+    "extraction_date": "2025-09-30T13:56:28.823Z",
+    "total_universities_processed": 1,
+    "format_version": "1.0",
+    "purpose": "AI processing to create essay prompts JSON"
+  },
+  "universities": [
+    {
+      "university_url": "https://www.collegeessayadvisors.com/supplemental-essay/harvard-university-supplemental-essay-prompt-guide/",
+      "requirements": {
+        "raw_text": "The Requirements: Five essays of 150 words or fewer",
+        "how_many_essays": "12",
+        "word_limit": "150 words or fewer",
+        "essay_types": "Diversity, Activity, Oddball"
+      },
+      "essay_prompts": [
+        {
+          "prompt_number": "1",
+          "prompt_text": "Harvard University 2025-26 Application Essay Question Explanations",
+          "word_limit": "150 words or fewer",
+          "category": "general",
+          "themes": [
+            "future"
+          ]
+        },
+        {
+          "prompt_number": "2",
+          "prompt_text": "The Requirements:",
+          "word_limit": "150 words or fewer",
+          "category": "general",
+          "themes": []
+        },
+        {
+          "prompt_number": "3",
+          "prompt_text": "Supplemental Essay Type(s):",
+          "word_limit": "150 words or fewer",
+          "category": "general",
+          "themes": []
+        },
+        {
+          "prompt_number": "4",
+          "prompt_text": "The following required five short answer questions invite you to reflect on and share how your life experiences and academic and extracurricular activities shaped you, how you will engage with others at Harvard, and your aspirations for the future. Each question can be answered in about 100 words.",
+          "word_limit": "150 words or fewer",
+          "category": "future_goals",
+          "themes": [
+            "academic",
+            "future"
+          ]
+        },
+        {
+          "prompt_number": "5",
+          "prompt_text": "Harvard has long recognized the importance of enrolling a diverse student body. How will the life experiences that shape who you are today enable you to contribute to Harvard?",
+          "word_limit": "150 words or fewer",
+          "category": "diversity_contribution",
+          "themes": [
+            "diversity"
+          ]
+        },
+        {
+          "prompt_number": "6",
+          "prompt_text": "Describe a time when you strongly disagreed with someone about an idea or issue. How did you communicate or engage with this person? What did you learn from this experience?",
+          "word_limit": "150 words or fewer",
+          "category": "general",
+          "themes": []
+        },
+        {
+          "prompt_number": "7",
+          "prompt_text": "Briefly describe any of your extracurricular activities, employment experience, travel, or family responsibilities that have shaped who you are.",
+          "word_limit": "150 words or fewer",
+          "category": "general",
+          "themes": []
+        },
+        {
+          "prompt_number": "8",
+          "prompt_text": "How do you hope to use your Harvard education in the future?",
+          "word_limit": "150 words or fewer",
+          "category": "future_goals",
+          "themes": [
+            "future"
+          ]
+        },
+        {
+          "prompt_number": "9",
+          "prompt_text": "Top 3 things your roommates might like to know about you.",
+          "word_limit": "150 words or fewer",
+          "category": "general",
+          "themes": []
+        },
+        {
+          "prompt_number": "10",
+          "prompt_text": "Acceptance Rate:",
+          "word_limit": "150 words or fewer",
+          "category": "general",
+          "themes": []
+        },
+        {
+          "prompt_number": "11",
+          "prompt_text": "Undergrad Population:",
+          "word_limit": "150 words or fewer",
+          "category": "general",
+          "themes": []
+        },
+        {
+          "prompt_number": "12",
+          "prompt_text": "Ivy League:",
+          "word_limit": "150 words or fewer",
+          "category": "general",
+          "themes": []
+        }
+      ]
+    }
+  ]
+}

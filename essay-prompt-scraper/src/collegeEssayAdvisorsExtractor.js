@@ -18,7 +18,7 @@ export class CollegeEssayAdvisorsExtractor {
 
   async initialize() {
     this.browser = await puppeteer.launch({
-      headless: false, // Set to true for production
+      headless: true, // Run headless
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
   }
@@ -105,126 +105,26 @@ export class CollegeEssayAdvisorsExtractor {
           result.university_info.location = locationElement.textContent.trim();
         }
 
-        // Enhanced prompt extraction with multiple strategies
-        const promptStrategies = [
-          // Strategy 1: Guide content with h3 bold elements
-          () => {
-            const guideContent = document.querySelector('.guide-content');
-            if (!guideContent) return [];
-            
-            const promptHeadings = guideContent.querySelectorAll('h3 b, h3 strong, h2 b, h2 strong');
-            const prompts = [];
-            
-            promptHeadings.forEach((heading, index) => {
-              const promptText = heading.textContent.trim();
-              
-              // More robust prompt detection
-              if (promptText.length > 20 && (
-                promptText.includes('?') || 
-                promptText.toLowerCase().includes('describe') || 
-                promptText.toLowerCase().includes('how') || 
-                promptText.toLowerCase().includes('what') ||
-                promptText.toLowerCase().includes('explain') ||
-                promptText.toLowerCase().includes('tell') ||
-                promptText.toLowerCase().includes('reflect')
-              )) {
-                prompts.push({
-                  text: promptText,
-                  source: 'guide-content-h3',
-                  index: index
-                });
-              }
-            });
-            
-            return prompts;
-          },
-          
-          // Strategy 2: Look for numbered prompts
-          () => {
-            const numberedPrompts = document.querySelectorAll('h3, h4, h5');
-            const prompts = [];
-            
-            numberedPrompts.forEach((element, index) => {
-              const text = element.textContent.trim();
-              
-              // Look for numbered prompts (1., 2., etc.)
-              if (text.match(/^\d+\./) && text.length > 20) {
-                prompts.push({
-                  text: text,
-                  source: 'numbered-heading',
-                  index: index
-                });
-              }
-            });
-            
-            return prompts;
-          },
-          
-          // Strategy 3: Look for prompt-specific classes
-          () => {
-            const promptElements = document.querySelectorAll('.essay-prompt, .prompt-text, .essay-content, .writing-prompt, [class*="prompt"], [class*="essay"]');
-            const prompts = [];
-            
-            promptElements.forEach((element, index) => {
-              const title = element.querySelector('h2, h3, h4, h5, h6, .title, .prompt-title')?.textContent?.trim();
-              const text = element.querySelector('p, .prompt-text, .essay-text, .content')?.textContent?.trim() || element.textContent?.trim();
-              
-              if (text && text.length > 20) {
-                prompts.push({
-                  text: title ? `${title}: ${text}` : text,
-                  source: 'prompt-class',
-                  index: index
-                });
-              }
-            });
-            
-            return prompts;
-          },
-          
-          // Strategy 4: Look for paragraphs with question marks
-          () => {
-            const paragraphs = document.querySelectorAll('p');
-            const prompts = [];
-            
-            paragraphs.forEach((element, index) => {
-              const text = element.textContent.trim();
-              
-              if (text.includes('?') && text.length > 30 && text.length < 500) {
-                prompts.push({
-                  text: text,
-                  source: 'question-paragraph',
-                  index: index
-                });
-              }
-            });
-            
-            return prompts;
-          }
-        ];
-
-        // Try each strategy and collect unique prompts
-        const allPrompts = [];
-        const seenPrompts = new Set();
+        // Extract prompts from <b> tags only
+        const boldElements = document.querySelectorAll('b, strong');
+        const prompts = [];
         
-        promptStrategies.forEach(strategy => {
-          try {
-            const prompts = strategy();
-            prompts.forEach(prompt => {
-              // Deduplicate based on text similarity
-              const normalizedText = prompt.text.toLowerCase().replace(/[^\w\s]/g, '').trim();
-              if (!seenPrompts.has(normalizedText) && normalizedText.length > 10) {
-                seenPrompts.add(normalizedText);
-                allPrompts.push(prompt);
-              }
+        boldElements.forEach((element, index) => {
+          const promptText = element.textContent.trim();
+          
+          // Overinclusive filter - capture all bold text that could be prompts
+          // We'll refine this later based on what we find
+          if (promptText.length > 10) {
+            prompts.push({
+              text: promptText,
+              source: 'bold-tag',
+              index: index
             });
-          } catch (error) {
-            console.warn('Strategy failed:', error);
           }
         });
 
         // Sort prompts by index and assign numbers
-        allPrompts.sort((a, b) => a.index - b.index);
-        result.raw_prompts = allPrompts.map((prompt, index) => ({
+        result.raw_prompts = prompts.map((prompt, index) => ({
           prompt_number: (index + 1).toString(),
           text: prompt.text,
           source: prompt.source

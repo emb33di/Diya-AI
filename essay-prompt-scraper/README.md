@@ -1,218 +1,175 @@
 # Essay Prompt Scraper
 
-A comprehensive web scraper for collecting essay prompts from university websites.
+A system to scrape essay prompts from university websites and transform them into the exact format needed for the Supabase database.
 
-## 🚀 Quick Start
+## Setup
 
-1. **Install dependencies:**
+### 1. Install Dependencies
 ```bash
-cd essay-prompt-scraper
 npm install
 ```
 
-2. **Run the scraper:**
+### 2. Get Gemini API Key
+1. Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. Create a new API key
+3. Set the environment variable:
 ```bash
-npm start
+export GEMINI_API_KEY="your-api-key-here"
 ```
 
-3. **Check results:**
-Results are saved to the `data/` directory in JSON and CSV formats.
+## Usage
 
-## 📁 Project Structure
+### 1. Scrape All Universities
+```bash
+node scraper.js
+```
+**Output**: `data/scraped-essay-prompts-{timestamp}.json`
+
+### 2. Transform with AI Agent
+```bash
+node ai-transform-agent.js data/scraped-essay-prompts-{timestamp}.json
+```
+**Output**: `data/scraped-essay-prompts-{timestamp}-transformed.json`
+
+### 3. Test Single School (Scrape + Transform)
+```bash
+node test_prompt_scraper.js "Harvard University"
+```
+**Output**: 
+- `data/test-scraped-harvard-university-{timestamp}.json`
+- `data/test-transformed-harvard-university-{timestamp}.json`
+
+## File Structure
 
 ```
 essay-prompt-scraper/
+├── scraper.js                    # Main scraper for all universities
+├── ai-transform-agent.js         # AI agent to transform data
+├── test_prompt_scraper.js        # Test script for single school
 ├── src/
-│   ├── scraper.js          # Main scraper class
-│   ├── dataProcessor.js    # Data processing utilities
-│   ├── customExtractors.js # Custom extraction logic
-│   └── index.js           # Entry point
-├── config/
-│   ├── scraper-config.json # Main configuration
-│   └── README.md          # Configuration guide
-├── examples/
-│   ├── basic-examples.js   # Basic usage examples
-│   ├── advanced-scraper.js # Advanced techniques
-│   └── README.md          # Examples guide
-├── data/                  # Output directory
-├── package.json
-└── README.md
+│   └── collegeEssayAdvisorsExtractor.js  # Core scraping logic
+├── data/
+│   ├── cea-universities-list.json        # List of 184 universities
+│   └── scraped-essay-prompts-*.json      # Scraped data output
+└── README.md                     # This file
 ```
 
-## ⚙️ Configuration
+## Output Formats
 
-Edit `config/scraper-config.json` to:
-- Add new university websites
-- Configure scraping parameters
-- Set output formats
-- Adjust rate limiting
-
-### Example Configuration
+### Scraped Data Format
 ```json
 {
-  "scraper": {
-    "concurrentRequests": 3,
-    "delayBetweenRequests": 2000,
-    "requestTimeout": 30000
+  "extraction_metadata": {
+    "source": "College Essay Advisors",
+    "extraction_date": "2025-09-30T13:20:41.141Z",
+    "total_universities_processed": 5
   },
-  "targets": [
+  "universities": [
     {
-      "name": "Harvard University",
-      "url": "https://college.harvard.edu/admissions/apply/essay-requirements",
-      "type": "undergraduate",
-      "selectors": {
-        "promptContainer": ".essay-prompt",
-        "promptText": "p",
-        "wordLimit": ".word-limit"
-      }
+      "university_url": "https://www.collegeessayadvisors.com/supplemental-essay/harvard-university-supplemental-essay-prompt-guide/",
+      "requirements": {
+        "raw_text": "The Requirements: Five essays of 150 words or fewer",
+        "how_many_essays": "5",
+        "word_limit": "150 words or fewer"
+      },
+      "essay_prompts": [
+        {
+          "prompt_number": "1",
+          "prompt_text": "Harvard has long recognized the importance...",
+          "word_limit": "150 words or fewer",
+          "category": "diversity_contribution",
+          "themes": ["diversity", "community"]
+        }
+      ]
     }
   ]
 }
 ```
 
-## 🎯 Features
-
-- **Multi-target scraping**: Support for various university websites
-- **Rate limiting**: Respectful scraping with configurable delays
-- **Data cleaning**: Automatic processing and formatting
-- **Multiple output formats**: JSON, CSV, and structured data
-- **Error handling**: Robust error recovery and logging
-- **Custom extractors**: Specialized logic for specific websites
-- **Data analysis**: Automatic categorization and statistics
-
-## 📊 Output Formats
-
-### JSON Output
+### Final Database Format (After AI Transformation)
 ```json
 {
-  "university": "Harvard University",
-  "url": "https://college.harvard.edu/...",
-  "type": "undergraduate",
-  "prompts": [
+  "essay_prompts": [
     {
-      "id": "prompt_1",
-      "title": "Personal Statement",
-      "text": "Tell us about yourself...",
-      "wordLimit": "650 words",
-      "category": "personal_statement",
-      "keywords": ["personal", "experience", "growth"]
+      "college_name": "Harvard University",
+      "how_many": "5",
+      "selection_type": "required",
+      "prompt_number": "1",
+      "prompt": "Harvard has long recognized the importance of enrolling a diverse student body. How will the life experiences that shape who you are today enable you to contribute to Harvard?",
+      "word_limit": "150",
+      "prompt_selection_type": "required",
+      "school_program_type": "Undergraduate"
     }
-  ],
-  "scrapedAt": "2024-01-15T10:30:00.000Z"
+  ]
 }
 ```
 
-### CSV Output
-| University | Type | Prompt ID | Title | Text | Word Limit | Category |
-|------------|------|-----------|-------|------|------------|----------|
-| Harvard University | undergraduate | prompt_1 | Personal Statement | Tell us about yourself... | 650 words | personal_statement |
+## Integration with Database
 
-## 🔧 Usage Examples
+The final transformed JSON can be directly used with the existing database sync script:
 
-### Basic Scraping
-```javascript
-import EssayPromptScraper from './src/scraper.js';
-
-const scraper = new EssayPromptScraper();
-await scraper.run();
+```bash
+# After transformation, sync to database
+node ../scripts/sync-essay-prompts-to-db.js data/scraped-essay-prompts-{timestamp}-transformed.json
 ```
 
-### With Data Processing
-```javascript
-import EssayPromptScraper from './src/scraper.js';
-import DataProcessor from './src/dataProcessor.js';
+## Examples
 
-const scraper = new EssayPromptScraper();
-const processor = new DataProcessor();
+### Complete Workflow
+```bash
+# 1. Scrape all universities
+node scraper.js
 
-await scraper.initialize();
-await scraper.scrapeAll();
+# 2. Transform with AI
+node ai-transform-agent.js data/scraped-essay-prompts-2025-09-30T13-20-41-144Z.json
 
-const processedData = processor.processResults(scraper.results);
-await processor.saveProcessedData(processedData, './data/processed');
+# 3. Sync to database
+node ../scripts/sync-essay-prompts-to-db.js data/scraped-essay-prompts-2025-09-30T13-20-41-144Z-transformed.json
 ```
 
-### Custom Configuration
-```javascript
-const scraper = new EssayPromptScraper('./config/custom-config.json');
-await scraper.run();
+### Test Single School
+```bash
+# Test Harvard University
+node test_prompt_scraper.js "Harvard University"
+
+# Test Stanford University
+node test_prompt_scraper.js "Stanford University"
+
+# Test MIT
+node test_prompt_scraper.js "MIT"
 ```
 
-## 🛠️ Advanced Features
+## Troubleshooting
 
-### Custom Extractors
-Implement custom extraction logic for specific websites:
-
-```javascript
-// In customExtractors.js
-static async harvardExtractor(page) {
-  return await page.evaluate(() => {
-    // Custom extraction logic
-    const prompts = [];
-    // ... extraction code
-    return prompts;
-  });
-}
+### Missing API Key
 ```
+❌ GEMINI_API_KEY environment variable is required
+```
+**Solution**: Set the environment variable with your Gemini API key
 
-### Data Processing
-Automatic data cleaning and analysis:
-- Text normalization
-- Word count extraction
-- Category classification
-- Keyword extraction
-- Statistics generation
+### School Not Found
+```
+❌ School "XYZ" not found in the university list
+```
+**Solution**: Check the school name spelling or use a partial name
 
-### Error Handling
-Robust error handling with retry logic:
-- Automatic retries for failed requests
-- Detailed error logging
-- Graceful degradation
+### Scraping Failed
+```
+❌ Scraping failed: Error message
+```
+**Solution**: Check internet connection and try again
 
-## 📈 Statistics
+## Performance
 
-The scraper generates comprehensive statistics:
-- Total universities scraped
-- Total prompts collected
-- Word count analysis
-- Category distribution
-- University breakdown
-- Success/failure rates
+- **Scraping Speed**: ~2-3 seconds per university
+- **AI Processing**: ~1-2 seconds per university
+- **Total Time**: ~5-10 minutes for all 184 universities
+- **API Costs**: ~$0.001 per 1000 tokens (very affordable)
 
-## 🔒 Best Practices
+## Features
 
-1. **Respectful Scraping**: Use appropriate delays between requests
-2. **Rate Limiting**: Don't overwhelm target websites
-3. **Error Handling**: Implement proper error recovery
-4. **Data Validation**: Verify scraped data quality
-5. **Legal Compliance**: Respect robots.txt and terms of service
-
-## 🚨 Important Notes
-
-- Always check robots.txt before scraping
-- Respect website terms of service
-- Use appropriate delays between requests
-- Monitor for changes in website structure
-- Keep scrapers updated with website changes
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Add your improvements
-4. Submit a pull request
-
-## 📄 License
-
-MIT License - see LICENSE file for details.
-
-## 🆘 Support
-
-For issues and questions:
-1. Check the examples directory
-2. Review the configuration guide
-3. Open an issue on GitHub
-
----
-
-**Happy Scraping! 🎓**
+- **Overinclusive Scraping**: Captures all potential prompts from `<b>` tags
+- **AI Filtering**: Intelligently removes non-prompt content
+- **Format Enforcement**: Ensures exact database schema compliance
+- **Error Handling**: Robust error recovery and logging
+- **Batch Processing**: Handles multiple universities efficiently
