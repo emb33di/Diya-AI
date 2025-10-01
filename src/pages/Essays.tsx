@@ -209,9 +209,22 @@ const Essays = () => {
               notes: rec.notes || rec.student_thesis || 'No notes available'
             }));
             
-            // Add Common Application as a school option for undergraduate students
+            // Add Common Application and UCAS as school options for undergraduate students
             const userProgramType = await getUserProgramType();
             if (userProgramType === 'Undergraduate') {
+              // Check if user has any UK schools
+              const hasUKSchools = transformedSchools.some(school => {
+                const ukSchools = [
+                  'University of Oxford',
+                  'University of Cambridge', 
+                  'Imperial College London',
+                  'University College London (UCL)',
+                  'London School of Economics and Political Science (LSE)'
+                ];
+                return ukSchools.includes(school.name);
+              });
+              
+              // Add Common Application
               transformedSchools.unshift({
                 id: 'common-app',
                 name: 'Common Application',
@@ -221,6 +234,19 @@ const Essays = () => {
                 applicationDeadline: 'TBD',
                 notes: 'Required for all undergraduate applications'
               });
+              
+              // Add UCAS if user has UK schools
+              if (hasUKSchools) {
+                transformedSchools.unshift({
+                  id: 'ucas-uk',
+                  name: 'UCAS (UK Schools)',
+                  category: 'target',
+                  acceptanceRate: 'N/A',
+                  ranking: 'N/A',
+                  applicationDeadline: 'TBD',
+                  notes: 'Required for all UK university applications'
+                });
+              }
             }
             
             return transformedSchools;
@@ -357,25 +383,41 @@ const Essays = () => {
         try {
           let prompts: EssayPrompt[] = [];
           
-          // Handle Common Application specially
+          // Handle Common Application and UCAS specially
           if (selectedSchool === 'Common Application') {
             prompts = await EssayPromptService.getPromptsForCollegeForUser('Common Application');
+          } else if (selectedSchool === 'UCAS (UK Schools)') {
+            prompts = await EssayPromptService.getPromptsForCollegeForUser('UCAS (UK Schools)');
           } else {
-            // Try to find prompts for the school name, filtered by user's program type
-            prompts = await EssayPromptService.getPromptsForCollegeForUser(selectedSchool);
+            // Check if this is a UK school - redirect to UCAS prompts
+            const ukSchools = [
+              'University of Oxford',
+              'University of Cambridge', 
+              'Imperial College London',
+              'University College London (UCL)',
+              'London School of Economics and Political Science (LSE)'
+            ];
             
-            // If no prompts found, try common variations (no fallback to other application systems)
-            if (prompts.length === 0) {
-              // Try removing "University" or "College" from the name
-              const variations = [
-                selectedSchool.replace(' University', ''),
-                selectedSchool.replace(' College', ''),
-                selectedSchool.replace(' Institute', '')
-              ];
+            if (ukSchools.includes(selectedSchool)) {
+              // Redirect UK schools to UCAS prompts
+              prompts = await EssayPromptService.getPromptsForCollegeForUser('UCAS (UK Schools)');
+            } else {
+              // Try to find prompts for the school name, filtered by user's program type
+              prompts = await EssayPromptService.getPromptsForCollegeForUser(selectedSchool);
+              
+              // If no prompts found, try common variations (no fallback to other application systems)
+              if (prompts.length === 0) {
+                // Try removing "University" or "College" from the name
+                const variations = [
+                  selectedSchool.replace(' University', ''),
+                  selectedSchool.replace(' College', ''),
+                  selectedSchool.replace(' Institute', '')
+                ];
 
-              for (const variation of variations) {
-                prompts = await EssayPromptService.getPromptsForCollegeForUser(variation);
-                if (prompts.length > 0) break;
+                for (const variation of variations) {
+                  prompts = await EssayPromptService.getPromptsForCollegeForUser(variation);
+                  if (prompts.length > 0) break;
+                }
               }
             }
           }
@@ -383,7 +425,7 @@ const Essays = () => {
           setEssayPrompts(prompts);
           
           // Clear Common App prompts when selecting a different school
-          if (selectedSchool !== 'Common Application' && selectedSchool !== 'Coalition Application') {
+          if (selectedSchool !== 'Common Application' && selectedSchool !== 'Coalition Application' && selectedSchool !== 'UCAS (UK Schools)') {
             setCommonAppPrompts([]);
             setSelectedCommonAppPrompt(null);
           }

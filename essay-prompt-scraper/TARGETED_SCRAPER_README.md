@@ -42,10 +42,11 @@ node targeted-school-scraper.js
 
 The script creates several files in the `data/` folder:
 
-- `cea-targeted-scraped-data-{timestamp}.json` - Raw scraped data
-- `cea-targeted-essay-prompts-{timestamp}.json` - Final AI-transformed essay prompts
+- `cea-scraped-data-final.json` - Raw scraped data (intermediate file, overwritten each run)
+- `cea-prompts-final.json` - Final AI-transformed essay prompts (overwritten each run)
+- `cea-raw-data-final.json` - Raw data (if AI transformation is skipped, overwritten each run)
 
-**Note**: These files have unique names and will NOT overwrite your existing `undergrad_essay_prompts.json` file.
+**Note**: These files use consistent names that get overwritten with each run for easy access. The script will NOT overwrite your existing `undergrad_essay_prompts.json` file.
 
 ## Example Output
 

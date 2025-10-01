@@ -282,12 +282,11 @@ class TargetedSchoolScraper {
       }))
     };
     
-    // Save intermediate data
+    // Save intermediate data to a consistent filename that gets overwritten each run
     const outputDir = path.join(__dirname, 'data');
     await fs.ensureDir(outputDir);
     
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const intermediateFile = path.join(outputDir, `cea-targeted-scraped-data-${timestamp}.json`);
+    const intermediateFile = path.join(outputDir, 'cea-scraped-data-final.json');
     await fs.writeJson(intermediateFile, scrapedData, { spaces: 2 });
     
     console.log(`💾 Intermediate data saved to: ${intermediateFile}`);
@@ -342,8 +341,8 @@ class TargetedSchoolScraper {
       essay_prompts: allTransformedPrompts
     };
     
-    // Save final transformed data with a unique name to avoid overwriting existing files
-    const finalFile = path.join(outputDir, `cea-targeted-essay-prompts-${timestamp}.json`);
+    // Save final transformed data to a consistent filename that gets overwritten each run
+    const finalFile = path.join(outputDir, 'cea-prompts-final.json');
     await fs.writeJson(finalFile, finalTransformedData, { spaces: 2 });
     
     console.log(`\n🎉 AI transformation completed successfully!`);
@@ -377,12 +376,11 @@ class TargetedSchoolScraper {
       }))
     };
     
-    // Save raw data
+    // Save raw data to a consistent filename that gets overwritten each run
     const outputDir = path.join(__dirname, 'data');
     await fs.ensureDir(outputDir);
     
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const rawFile = path.join(outputDir, `cea-targeted-raw-data-${timestamp}.json`);
+    const rawFile = path.join(outputDir, 'cea-raw-data-final.json');
     await fs.writeJson(rawFile, rawData, { spaces: 2 });
     
     console.log(`✅ Raw data saved to: ${rawFile}`);
@@ -460,7 +458,7 @@ class TargetedSchoolScraper {
         console.log(`\n🎉 TARGETED SCRAPING COMPLETED SUCCESSFULLY!`);
         console.log(`📁 Final essay prompts file: ${finalFile}`);
         console.log(`\n💡 Next steps:`);
-        console.log(`   1. Review the generated essay prompts`);
+        console.log(`   1. Review the generated essay prompts in cea-prompts-final.json`);
         console.log(`   2. Import the data into your database if needed`);
         console.log(`   3. Update your application with the new prompts`);
       }

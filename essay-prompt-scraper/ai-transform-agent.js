@@ -111,20 +111,37 @@ ${JSON.stringify(scrapedData, null, 2)}
 - Prompts that end with "?" or require explanation
 
 ### 5. Word Limit Extraction:
-- Look in requirements.raw_text for word limits
-- Common patterns: "250 words", "150-300 words", "1-2 pages"
-- If not specified, use "Not specified"
+- FIRST: Look in requirements.raw_text for general word limits
+- SECOND: Extract word limits from individual prompt text (CRITICAL!)
+- Common patterns in prompt text: "(Please respond in 250 words or fewer.)", "in 50 words or fewer", "about 250 words or fewer"
+- Look for patterns like: "(\d+)\s+words?\s+or\s+fewer", "(\d+)\s+words?\s+maximum", "(\d+)\s+words?\s+or\s+less"
+- If multiple prompts share the same word limit instruction (like "Please respond to each question in 50 words or fewer"), apply that limit to all subsequent prompts until a new limit is specified
+- If not specified anywhere, use "Not specified"
 
 ### 6. College Name Extraction:
 - Extract from university_url path
 - "university-of-chicago-supplemental-essay-prompt-guide" → "University of Chicago"
 - "harvard-university-supplemental-essay-prompt-guide" → "Harvard University"
 
-### 7. Prompt Numbering:
+### 7. Chronological Context Handling:
+- When you see instructions like "Please respond to each question in 50 words or fewer. There are no right or wrong answers. Be yourself!" followed by multiple questions, this instruction applies to ALL subsequent questions until a new word limit is specified
+- Extract the word limit from such instructions and apply it to all following prompts in the sequence
+- This is common in "short response" sections where multiple questions share the same word limit
+
+### 8. Prompt Numbering:
 - Use sequential numbering starting from 1 for the final output
 - Do NOT use the original prompt_number from scraped data
 - Number prompts in the order they appear in the final filtered list
 - First prompt = "1", second prompt = "2", etc.
+
+## Example Analysis for Princeton University:
+- Requirements: "2 essays of 250 words, 1 essay of 500 words, 3 short responses"
+- Structure: Multiple prompts with embedded word limits
+- Prompt 1: "What academic areas most pique your curiosity..." + "(Please respond in about 250 words or fewer.)" → word_limit = "250 words or fewer"
+- Prompt 2: "Princeton values community..." + "(Please respond in 500 words or fewer.)" → word_limit = "500 words or fewer"  
+- Prompt 3: "Princeton has a longstanding commitment..." + "(Please respond in 250 words or fewer.)" → word_limit = "250 words or fewer"
+- Prompt 4: "Please respond to each question in 50 words or fewer..." → word_limit = "50 words or fewer" (applies to subsequent prompts)
+- Prompts 5-7: Short questions following the 50-word instruction → word_limit = "50 words or fewer"
 
 ## Example Analysis for University of Chicago:
 - Requirements: "2 essays of 1-2 pages each" → how_many = "2"
