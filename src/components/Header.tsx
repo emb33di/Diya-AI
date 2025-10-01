@@ -332,6 +332,16 @@ const Header = () => {
                 )}
               </Tooltip>
             </TooltipProvider>
+            <Link 
+              to="/blog" 
+              className={`text-sm font-medium transition-colors px-3 py-1 ${
+                isActive('/blog') 
+                  ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
+                  : 'text-black hover:text-black'
+              }`}
+            >
+              Blog
+            </Link>
 
           </nav>
         )}
@@ -417,6 +427,12 @@ const Header = () => {
                 >
                   FAQs
                 </button>
+                <Link 
+                  to="/blog" 
+                  className="h-12 px-4 text-base font-medium text-white hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/10 flex items-center"
+                >
+                  Blog
+                </Link>
                 </div>
               )}
               <Link to="/auth">
