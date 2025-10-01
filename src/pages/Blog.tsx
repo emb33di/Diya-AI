@@ -307,14 +307,14 @@ const Blog = () => {
       </div>
 
       {/* CTA Section */}
-      <div className="bg-primary text-white py-16">
+      <div className="py-16" style={{ backgroundColor: '#F4EDE2' }}>
         <div className="container mx-auto px-6 text-center">
-          <h2 className="text-3xl font-bold mb-4">Ready to Start Your College Application Journey?</h2>
-          <p className="text-xl mb-8 opacity-90">
+          <h2 className="text-3xl font-bold mb-4 text-gray-900">Ready to Start Your College Application Journey?</h2>
+          <p className="text-xl mb-8 text-gray-600">
             Get personalized guidance and AI-powered essay assistance with Diya AI
           </p>
           <Link to="/auth">
-            <Button size="lg" variant="secondary" className="hover:shadow-lg transition-all">
+            <Button size="lg" className="hover:shadow-lg transition-all" style={{ backgroundColor: '#D07D00', color: 'white' }}>
               Get Started For Free
             </Button>
           </Link>

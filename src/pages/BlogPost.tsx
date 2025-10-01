@@ -193,28 +193,6 @@ const BlogPost = () => {
             
             {/* Sidebar */}
             <div className="lg:col-span-1">
-              {/* Author Info */}
-              <div className="mb-8 rounded-lg border p-6">
-                <div className="mb-4">
-                  <h3 className="text-lg font-semibold">About the Author</h3>
-                </div>
-                <div>
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-600 to-orange-500 flex items-center justify-center">
-                      <span className="text-white font-semibold">DA</span>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold">{post.author}</h4>
-                      <p className="text-sm text-gray-600">College Admissions Expert</p>
-                    </div>
-                  </div>
-                  <p className="text-sm text-gray-600">
-                    Our team of admissions experts and AI specialists work together to provide 
-                    comprehensive guidance for your college application journey.
-                  </p>
-                </div>
-              </div>
-              
               {/* Related Posts */}
               {relatedPosts.length > 0 && (
                 <div className="rounded-lg border p-6">
@@ -253,14 +231,14 @@ const BlogPost = () => {
       </div>
 
       {/* CTA Section */}
-      <div className="bg-primary text-white py-16">
+      <div className="py-16" style={{ backgroundColor: '#F4EDE2' }}>
         <div className="container mx-auto px-6 text-center">
-          <h2 className="text-3xl font-bold mb-4">Ready to Improve Your Essays?</h2>
-          <p className="text-xl mb-8 opacity-90">
+          <h2 className="text-3xl font-bold mb-4 text-gray-900">Ready to Improve Your Essays?</h2>
+          <p className="text-xl mb-8 text-gray-600">
             Get personalized AI-powered assistance for your college application essays
           </p>
           <Link to="/auth">
-            <Button size="lg" variant="secondary" className="hover:shadow-lg transition-all">
+            <Button size="lg" className="hover:shadow-lg transition-all" style={{ backgroundColor: '#D07D00', color: 'white' }}>
               Start Writing Better Essays
             </Button>
           </Link>
