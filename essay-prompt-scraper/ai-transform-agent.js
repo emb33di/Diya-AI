@@ -24,22 +24,35 @@ class EssayPromptTransformAgent {
     console.log('🤖 AI Agent: Transforming scraped data...');
     
     const prompt = this.createTransformationPrompt(scrapedData);
+    let transformedData;
     
     try {
       const result = await this.model.generateContent(prompt);
       const response = await result.response;
-      const transformedData = response.text();
+      transformedData = response.text();
       
-      // Parse the JSON response
+      // Parse the JSON response - handle multiple formats
+      let jsonData;
+      
+      // Try to extract JSON from markdown code blocks first
       const jsonMatch = transformedData.match(/```json\n([\s\S]*?)\n```/);
       if (jsonMatch) {
-        return JSON.parse(jsonMatch[1]);
+        jsonData = JSON.parse(jsonMatch[1]);
       } else {
-        // Try to parse the entire response as JSON
-        return JSON.parse(transformedData);
+        // Try to extract JSON from any code block
+        const codeBlockMatch = transformedData.match(/```\n([\s\S]*?)\n```/);
+        if (codeBlockMatch) {
+          jsonData = JSON.parse(codeBlockMatch[1]);
+        } else {
+          // Try to parse the entire response as JSON
+          jsonData = JSON.parse(transformedData);
+        }
       }
+      
+      return jsonData;
     } catch (error) {
       console.error('❌ AI transformation failed:', error.message);
+      console.log('Raw AI response:', transformedData?.substring(0, 500) + '...');
       throw error;
     }
   }
@@ -125,7 +138,7 @@ ${JSON.stringify(scrapedData, null, 2)}
 - "In an ideal world where inter-species telepathic communication exists, which species would you choose to have a conversation with?"
 - "If you could uninvent one thing, what would it be — and what would unravel as a result?"
 
-Transform the data and return ONLY the JSON in the exact format specified above. Do not include any explanations or additional text.
+Transform the data and return ONLY the JSON in the exact format specified above. Do not include any explanations, markdown formatting, or additional text. Return pure JSON only.
 `;
   }
 

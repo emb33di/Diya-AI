@@ -201,17 +201,20 @@ export class CollegeEssayAdvisorsExtractor {
       const universities = await page.evaluate(() => {
         const universityLinks = [];
         
-        // Extract from the specific ul.supp-essays structure
-        const universityList = document.querySelector('ul.supp-essays');
+        // Extract from the search-filter-results div (updated structure)
+        const universityList = document.querySelector('div.search-filter-results');
         if (universityList) {
-          const links = universityList.querySelectorAll('li a');
+          const links = universityList.querySelectorAll('a');
           links.forEach(link => {
             const href = link.href;
             const text = link.textContent.trim();
             
-            if (href && text && href.includes('collegeessayadvisors.com')) {
+            // Extract university name from the link text (remove "2025-26 Supplemental Essay Prompt Guide" etc.)
+            const universityName = text.replace(/\s+\d{4}-\d{2}\s+Supplemental Essay Prompt Guide.*$/, '').trim();
+            
+            if (href && universityName && href.includes('collegeessayadvisors.com') && universityName.length > 0) {
               universityLinks.push({
-                name: text,
+                name: universityName,
                 url: href
               });
             }
