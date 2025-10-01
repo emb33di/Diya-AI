@@ -168,8 +168,8 @@ const Blog = () => {
               <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">Featured Articles</h2>
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {featuredPosts.map(post => (
-                  <Card key={post.id} className="group hover:shadow-lg transition-all duration-300 border-0 shadow-md">
-                    <CardHeader className="pb-4">
+                  <div key={post.id} className="group hover:shadow-lg transition-all duration-300 border rounded-lg p-6">
+                    <div className="pb-4">
                       <div className="flex items-center gap-2 mb-2">
                         <Badge variant="secondary" className="text-xs">
                           {post.category}
@@ -180,14 +180,14 @@ const Blog = () => {
                           </Badge>
                         )}
                       </div>
-                      <CardTitle className="text-xl group-hover:text-primary transition-colors line-clamp-2">
+                      <h3 className="text-xl group-hover:text-primary transition-colors line-clamp-2 font-semibold mb-2">
                         {post.title}
-                      </CardTitle>
-                      <CardDescription className="line-clamp-3">
+                      </h3>
+                      <p className="text-gray-600 line-clamp-3">
                         {post.excerpt}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="pt-0">
+                      </p>
+                    </div>
+                    <div className="pt-0">
                       <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
                         <div className="flex items-center gap-4">
                           <div className="flex items-center gap-1">
@@ -220,8 +220,8 @@ const Blog = () => {
                           <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>
                       </Link>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
@@ -233,21 +233,21 @@ const Blog = () => {
               <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">Latest Articles</h2>
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {regularPosts.map(post => (
-                  <Card key={post.id} className="group hover:shadow-lg transition-all duration-300 border-0 shadow-md">
-                    <CardHeader className="pb-4">
+                  <div key={post.id} className="group hover:shadow-lg transition-all duration-300 border rounded-lg p-6">
+                    <div className="pb-4">
                       <div className="flex items-center gap-2 mb-2">
                         <Badge variant="secondary" className="text-xs">
                           {post.category}
                         </Badge>
                       </div>
-                      <CardTitle className="text-xl group-hover:text-primary transition-colors line-clamp-2">
+                      <h3 className="text-xl group-hover:text-primary transition-colors line-clamp-2 font-semibold mb-2">
                         {post.title}
-                      </CardTitle>
-                      <CardDescription className="line-clamp-3">
+                      </h3>
+                      <p className="text-gray-600 line-clamp-3">
                         {post.excerpt}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="pt-0">
+                      </p>
+                    </div>
+                    <div className="pt-0">
                       <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
                         <div className="flex items-center gap-4">
                           <div className="flex items-center gap-1">
@@ -280,8 +280,8 @@ const Blog = () => {
                           <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>
                       </Link>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>

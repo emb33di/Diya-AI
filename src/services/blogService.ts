@@ -169,7 +169,7 @@ function getSampleBlogPosts(): BlogPostMetadata[] {
     {
       id: "2",
       title: "Common College Essay Mistakes That Kill Your Application",
-      excerpt: "Avoid these critical mistakes that can derail your college application. Learn what admissions officers really don't want to see in your essays.",
+      excerpt: "Avoid these critical mistakes that can derail your college application.",
       author: "Diya AI Team",
       publishedAt: "2024-12-10",
       readTime: "6 min read",

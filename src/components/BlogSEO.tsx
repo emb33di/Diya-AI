@@ -72,7 +72,7 @@ const BlogSEO = ({ post, isBlogList = false }: BlogSEOProps) => {
     <Helmet>
       <title>{post.title} | Diya AI Blog</title>
       <meta name="description" content={post.excerpt} />
-      <meta name="keywords" content={post.tags.join(', ')} />
+      <meta name="keywords" content={post.tags ? post.tags.join(', ') : ''} />
       <meta name="author" content={post.author} />
       
       {/* Open Graph / Facebook */}
@@ -85,7 +85,7 @@ const BlogSEO = ({ post, isBlogList = false }: BlogSEOProps) => {
       <meta property="article:published_time" content={post.publishedAt} />
       <meta property="article:author" content={post.author} />
       <meta property="article:section" content={post.category} />
-      {post.tags.map(tag => (
+      {post.tags && post.tags.map(tag => (
         <meta key={tag} property="article:tag" content={tag} />
       ))}
       
@@ -129,8 +129,8 @@ const BlogSEO = ({ post, isBlogList = false }: BlogSEOProps) => {
             "@id": postUrl
           },
           "articleSection": post.category,
-          "keywords": post.tags.join(', '),
-          "wordCount": post.content.split(' ').length,
+          "keywords": post.tags ? post.tags.join(', ') : '',
+          "wordCount": post.content ? post.content.split(' ').length : 0,
           "timeRequired": post.readTime
         })}
       </script>

@@ -119,7 +119,7 @@ const BlogPost = () => {
       <BlogSEO post={post as BlogPostMetadata} />
       
       {/* Header */}
-      <div className="bg-white border-b">
+      <div className="border-b" style={{ backgroundColor: '#F4EDE2' }}>
         <div className="container mx-auto px-6 py-8">
           <div className="max-w-4xl mx-auto">
             <Link to="/blog" className="inline-flex items-center text-primary hover:text-primary/80 mb-6">
@@ -173,7 +173,7 @@ const BlogPost = () => {
           <div className="grid lg:grid-cols-4 gap-12">
             {/* Main Content */}
             <div className="lg:col-span-3">
-              <article className="bg-white rounded-lg shadow-sm p-8 prose prose-lg max-w-none">
+              <article className="rounded-lg p-8 prose prose-lg max-w-none">
                 <div dangerouslySetInnerHTML={{ __html: extractArticleContent(postFile.content) }} />
               </article>
               
@@ -194,11 +194,11 @@ const BlogPost = () => {
             {/* Sidebar */}
             <div className="lg:col-span-1">
               {/* Author Info */}
-              <Card className="mb-8">
-                <CardHeader>
-                  <CardTitle className="text-lg">About the Author</CardTitle>
-                </CardHeader>
-                <CardContent>
+              <div className="mb-8 rounded-lg border p-6">
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold">About the Author</h3>
+                </div>
+                <div>
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-600 to-orange-500 flex items-center justify-center">
                       <span className="text-white font-semibold">DA</span>
@@ -212,16 +212,16 @@ const BlogPost = () => {
                     Our team of admissions experts and AI specialists work together to provide 
                     comprehensive guidance for your college application journey.
                   </p>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
               
               {/* Related Posts */}
               {relatedPosts.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Related Articles</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
+                <div className="rounded-lg border p-6">
+                  <div className="mb-4">
+                    <h3 className="text-lg font-semibold">Related Articles</h3>
+                  </div>
+                  <div className="space-y-4">
                     {relatedPosts.map(relatedPost => (
                       <Link 
                         key={relatedPost.id} 
@@ -244,8 +244,8 @@ const BlogPost = () => {
                         </div>
                       </Link>
                     ))}
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               )}
             </div>
           </div>
