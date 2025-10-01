@@ -6,110 +6,35 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import BlogSEO from "@/components/BlogSEO";
-
-// Blog post interface
-interface BlogPost {
-  id: string;
-  title: string;
-  excerpt: string;
-  content: string;
-  author: string;
-  publishedAt: string;
-  readTime: string;
-  category: string;
-  tags: string[];
-  slug: string;
-  featured: boolean;
-}
-
-// Sample blog posts focused on college admissions and essay writing
-const sampleBlogPosts: BlogPost[] = [
-  {
-    id: "1",
-    title: "How to Write a Compelling Personal Statement That Stands Out",
-    excerpt: "Learn the secrets to crafting a personal statement that admissions officers will remember. Discover proven strategies for storytelling, structure, and authenticity.",
-    content: "Full content here...",
-    author: "Diya AI Team",
-    publishedAt: "2024-01-15",
-    readTime: "8 min read",
-    category: "Essay Writing",
-    tags: ["personal statement", "college admissions", "essay tips", "storytelling"],
-    slug: "how-to-write-compelling-personal-statement",
-    featured: true
-  },
-  {
-    id: "2",
-    title: "Common College Essay Mistakes That Kill Your Application",
-    excerpt: "Avoid these critical mistakes that can derail your college application. Learn what admissions officers really don't want to see in your essays.",
-    content: "Full content here...",
-    author: "Diya AI Team",
-    publishedAt: "2024-01-10",
-    readTime: "6 min read",
-    category: "Essay Writing",
-    tags: ["essay mistakes", "college application", "admissions", "tips"],
-    slug: "common-college-essay-mistakes",
-    featured: false
-  },
-  {
-    id: "3",
-    title: "The Ultimate Guide to MBA Application Essays",
-    excerpt: "Master the art of MBA essay writing with our comprehensive guide. From brainstorming to final draft, we cover everything you need to know.",
-    content: "Full content here...",
-    author: "Diya AI Team",
-    publishedAt: "2024-01-08",
-    readTime: "12 min read",
-    category: "MBA Applications",
-    tags: ["MBA", "business school", "essay writing", "graduate school"],
-    slug: "ultimate-guide-mba-application-essays",
-    featured: true
-  },
-  {
-    id: "4",
-    title: "Building a Strong Resume for College Applications",
-    excerpt: "Your resume is more than just a list of activities. Learn how to showcase your achievements and experiences effectively for college admissions.",
-    content: "Full content here...",
-    author: "Diya AI Team",
-    publishedAt: "2024-01-05",
-    readTime: "7 min read",
-    category: "Resume Building",
-    tags: ["resume", "activities", "achievements", "college prep"],
-    slug: "building-strong-resume-college-applications",
-    featured: false
-  },
-  {
-    id: "5",
-    title: "Understanding College Admissions Deadlines: A Complete Timeline",
-    excerpt: "Navigate the complex world of college application deadlines with our comprehensive timeline guide. Never miss an important date again.",
-    content: "Full content here...",
-    author: "Diya AI Team",
-    publishedAt: "2024-01-03",
-    readTime: "9 min read",
-    category: "Application Process",
-    tags: ["deadlines", "timeline", "planning", "college prep"],
-    slug: "understanding-college-admissions-deadlines",
-    featured: false
-  },
-  {
-    id: "6",
-    title: "How AI is Transforming College Essay Writing",
-    excerpt: "Discover how artificial intelligence is revolutionizing the way students approach essay writing while maintaining authenticity and personal voice.",
-    content: "Full content here...",
-    author: "Diya AI Team",
-    publishedAt: "2024-01-01",
-    readTime: "10 min read",
-    category: "Technology",
-    tags: ["AI", "technology", "essay writing", "innovation"],
-    slug: "how-ai-transforming-college-essay-writing",
-    featured: true
-  }
-];
+import { loadAllBlogPosts, BlogPostMetadata } from "@/services/blogService";
 
 const Blog = () => {
-  const [posts, setPosts] = useState<BlogPost[]>(sampleBlogPosts);
-  const [filteredPosts, setFilteredPosts] = useState<BlogPost[]>(sampleBlogPosts);
+  const [posts, setPosts] = useState<BlogPostMetadata[]>([]);
+  const [filteredPosts, setFilteredPosts] = useState<BlogPostMetadata[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedTag, setSelectedTag] = useState("");
+
+  // Load blog posts on component mount
+  useEffect(() => {
+    const loadPosts = async () => {
+      try {
+        setLoading(true);
+        const loadedPosts = await loadAllBlogPosts();
+        setPosts(loadedPosts);
+        setFilteredPosts(loadedPosts);
+      } catch (error) {
+        console.error('Error loading blog posts:', error);
+        setPosts([]);
+        setFilteredPosts([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadPosts();
+  }, []);
 
   // Get unique categories
   const categories = ["All", ...Array.from(new Set(posts.map(post => post.category)))];
@@ -151,14 +76,25 @@ const Blog = () => {
   const featuredPosts = filteredPosts.filter(post => post.featured);
   const regularPosts = filteredPosts.filter(post => !post.featured);
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F4EDE2' }}>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading blog posts...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="min-h-screen" style={{ backgroundColor: '#F4EDE2' }}>
       <BlogSEO isBlogList={true} />
       
       {/* SEO-optimized meta tags will be handled by the parent component */}
       
       {/* Header Section */}
-      <div className="bg-white border-b">
+      <div className="border-b" style={{ backgroundColor: '#F4EDE2' }}>
         <div className="container mx-auto px-6 py-16">
           <div className="max-w-4xl mx-auto text-center">
             <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">

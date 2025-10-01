@@ -5,189 +5,61 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import BlogSEO from "@/components/BlogSEO";
+import { loadBlogPost, loadAllBlogPosts, BlogPostMetadata, BlogPostFile } from "@/services/blogService";
 
-// Blog post interface
-interface BlogPost {
-  id: string;
-  title: string;
-  excerpt: string;
-  content: string;
-  author: string;
-  publishedAt: string;
-  readTime: string;
-  category: string;
-  tags: string[];
-  slug: string;
-  featured: boolean;
-}
-
-// Sample blog posts (same as in Blog.tsx)
-const sampleBlogPosts: BlogPost[] = [
-  {
-    id: "1",
-    title: "How to Write a Compelling Personal Statement That Stands Out",
-    excerpt: "Learn the secrets to crafting a personal statement that admissions officers will remember. Discover proven strategies for storytelling, structure, and authenticity.",
-    content: `
-      <h2>Introduction</h2>
-      <p>Your personal statement is one of the most important components of your college application. It's your chance to tell your story, showcase your personality, and demonstrate why you're a perfect fit for the institution you're applying to. But with thousands of applications to review, admissions officers need something that truly stands out.</p>
-      
-      <h2>Understanding What Makes a Personal Statement Compelling</h2>
-      <p>A compelling personal statement goes beyond simply listing your achievements. It tells a story that reveals your character, values, and growth. Here are the key elements that make a personal statement memorable:</p>
-      
-      <h3>1. Authentic Voice</h3>
-      <p>Your personal statement should sound like you. Avoid overly formal language or trying to impress with complex vocabulary. Write in your natural voice, as if you're having a conversation with the admissions officer.</p>
-      
-      <h3>2. Specific Examples</h3>
-      <p>Instead of making broad statements about your character, use specific examples that demonstrate your qualities. Show, don't tell. For instance, rather than saying "I'm a leader," describe a specific situation where you took initiative and led others to success.</p>
-      
-      <h3>3. Personal Growth</h3>
-      <p>Admissions officers want to see how you've grown and learned from your experiences. Reflect on challenges you've faced and how they've shaped you into the person you are today.</p>
-      
-      <h2>Structure and Organization</h2>
-      <p>A well-structured personal statement follows a clear narrative arc:</p>
-      
-      <h3>Opening Hook</h3>
-      <p>Start with something that immediately captures attention. This could be a surprising fact, a vivid scene, or a thought-provoking question. Avoid clichés like "Ever since I was a child..."</p>
-      
-      <h3>Body Paragraphs</h3>
-      <p>Develop your main points with specific examples and reflections. Each paragraph should focus on one key aspect of your story or character.</p>
-      
-      <h3>Conclusion</h3>
-      <p>Tie everything together and look forward to the future. How do your experiences prepare you for college and beyond?</p>
-      
-      <h2>Common Mistakes to Avoid</h2>
-      <ul>
-        <li><strong>Being too generic:</strong> Avoid topics that many students write about unless you have a unique angle</li>
-        <li><strong>Listing achievements:</strong> Your resume already covers your accomplishments</li>
-        <li><strong>Writing about others:</strong> Focus on yourself and your experiences</li>
-        <li><strong>Being negative:</strong> Even when discussing challenges, focus on growth and learning</li>
-        <li><strong>Exceeding word limits:</strong> Respect the guidelines provided</li>
-      </ul>
-      
-      <h2>Tips for Getting Started</h2>
-      <p>If you're struggling to begin, try these brainstorming techniques:</p>
-      
-      <h3>Free Writing</h3>
-      <p>Set a timer for 10 minutes and write continuously about yourself without stopping. Don't worry about grammar or structure - just get your thoughts on paper.</p>
-      
-      <h3>Reflect on Significant Moments</h3>
-      <p>Think about moments in your life that have shaped who you are. These could be challenges overcome, lessons learned, or experiences that changed your perspective.</p>
-      
-      <h3>Ask Others</h3>
-      <p>Sometimes others see qualities in us that we don't recognize ourselves. Ask family, friends, or teachers what they think makes you unique.</p>
-      
-      <h2>Revision and Editing</h2>
-      <p>Your first draft is just the beginning. Effective revision involves:</p>
-      
-      <ul>
-        <li>Reading your essay aloud to check for flow and clarity</li>
-        <li>Getting feedback from trusted mentors or teachers</li>
-        <li>Checking for grammar and spelling errors</li>
-        <li>Ensuring every sentence serves a purpose</li>
-        <li>Verifying that your voice comes through clearly</li>
-      </ul>
-      
-      <h2>Conclusion</h2>
-      <p>Writing a compelling personal statement takes time, reflection, and revision. Start early, be authentic, and don't be afraid to share your unique story. Remember, admissions officers are looking for students who will contribute to their campus community - let your personality and values shine through.</p>
-      
-      <p>If you need additional guidance in crafting your personal statement, consider using AI-powered tools like Diya AI to help you brainstorm ideas, structure your thoughts, and refine your writing while maintaining your authentic voice.</p>
-    `,
-    author: "Diya AI Team",
-    publishedAt: "2024-01-15",
-    readTime: "8 min read",
-    category: "Essay Writing",
-    tags: ["personal statement", "college admissions", "essay tips", "storytelling"],
-    slug: "how-to-write-compelling-personal-statement",
-    featured: true
-  },
-  {
-    id: "2",
-    title: "Common College Essay Mistakes That Kill Your Application",
-    excerpt: "Avoid these critical mistakes that can derail your college application. Learn what admissions officers really don't want to see in your essays.",
-    content: "Full content here...",
-    author: "Diya AI Team",
-    publishedAt: "2024-01-10",
-    readTime: "6 min read",
-    category: "Essay Writing",
-    tags: ["essay mistakes", "college application", "admissions", "tips"],
-    slug: "common-college-essay-mistakes",
-    featured: false
-  },
-  {
-    id: "3",
-    title: "The Ultimate Guide to MBA Application Essays",
-    excerpt: "Master the art of MBA essay writing with our comprehensive guide. From brainstorming to final draft, we cover everything you need to know.",
-    content: "Full content here...",
-    author: "Diya AI Team",
-    publishedAt: "2024-01-08",
-    readTime: "12 min read",
-    category: "MBA Applications",
-    tags: ["MBA", "business school", "essay writing", "graduate school"],
-    slug: "ultimate-guide-mba-application-essays",
-    featured: true
-  },
-  {
-    id: "4",
-    title: "Building a Strong Resume for College Applications",
-    excerpt: "Your resume is more than just a list of activities. Learn how to showcase your achievements and experiences effectively for college admissions.",
-    content: "Full content here...",
-    author: "Diya AI Team",
-    publishedAt: "2024-01-05",
-    readTime: "7 min read",
-    category: "Resume Building",
-    tags: ["resume", "activities", "achievements", "college prep"],
-    slug: "building-strong-resume-college-applications",
-    featured: false
-  },
-  {
-    id: "5",
-    title: "Understanding College Admissions Deadlines: A Complete Timeline",
-    excerpt: "Navigate the complex world of college application deadlines with our comprehensive timeline guide. Never miss an important date again.",
-    content: "Full content here...",
-    author: "Diya AI Team",
-    publishedAt: "2024-01-03",
-    readTime: "9 min read",
-    category: "Application Process",
-    tags: ["deadlines", "timeline", "planning", "college prep"],
-    slug: "understanding-college-admissions-deadlines",
-    featured: false
-  },
-  {
-    id: "6",
-    title: "How AI is Transforming College Essay Writing",
-    excerpt: "Discover how artificial intelligence is revolutionizing the way students approach essay writing while maintaining authenticity and personal voice.",
-    content: "Full content here...",
-    author: "Diya AI Team",
-    publishedAt: "2024-01-01",
-    readTime: "10 min read",
-    category: "Technology",
-    tags: ["AI", "technology", "essay writing", "innovation"],
-    slug: "how-ai-transforming-college-essay-writing",
-    featured: true
+// Function to extract article content from HTML
+function extractArticleContent(htmlContent: string): string {
+  // Extract content from <article> tag or <body> tag
+  const articleMatch = htmlContent.match(/<article[^>]*>([\s\S]*?)<\/article>/i);
+  if (articleMatch) {
+    return articleMatch[1];
   }
-];
+  
+  // Fallback: extract from body tag
+  const bodyMatch = htmlContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  if (bodyMatch) {
+    return bodyMatch[1];
+  }
+  
+  // If no article or body tags found, return the full content
+  return htmlContent;
+}
 
 const BlogPost = () => {
   const { slug } = useParams<{ slug: string }>();
-  const [post, setPost] = useState<BlogPost | null>(null);
-  const [relatedPosts, setRelatedPosts] = useState<BlogPost[]>([]);
+  const [postFile, setPostFile] = useState<BlogPostFile | null>(null);
+  const [relatedPosts, setRelatedPosts] = useState<BlogPostMetadata[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (slug) {
-      const foundPost = sampleBlogPosts.find(p => p.slug === slug);
-      setPost(foundPost || null);
+    const loadPost = async () => {
+      if (!slug) return;
       
-      if (foundPost) {
-        // Find related posts (same category or shared tags)
-        const related = sampleBlogPosts
-          .filter(p => p.id !== foundPost.id && (
-            p.category === foundPost.category || 
-            p.tags.some(tag => foundPost.tags.includes(tag))
-          ))
-          .slice(0, 3);
-        setRelatedPosts(related);
+      try {
+        setLoading(true);
+        const post = await loadBlogPost(slug);
+        setPostFile(post);
+        
+        if (post) {
+          // Load related posts
+          const allPosts = await loadAllBlogPosts();
+          const related = allPosts
+            .filter(p => p.slug !== slug && (
+              p.category === post.metadata.category || 
+              p.tags.some(tag => post.metadata.tags.includes(tag))
+            ))
+            .slice(0, 3);
+          setRelatedPosts(related);
+        }
+      } catch (error) {
+        console.error('Error loading blog post:', error);
+        setPostFile(null);
+      } finally {
+        setLoading(false);
       }
-    }
+    };
+
+    loadPost();
   }, [slug]);
 
   const formatDate = (dateString: string) => {
@@ -199,11 +71,11 @@ const BlogPost = () => {
   };
 
   const handleShare = async () => {
-    if (navigator.share && post) {
+    if (navigator.share && postFile) {
       try {
         await navigator.share({
-          title: post.title,
-          text: post.excerpt,
+          title: postFile.metadata.title,
+          text: postFile.metadata.excerpt,
           url: window.location.href,
         });
       } catch (err) {
@@ -215,9 +87,20 @@ const BlogPost = () => {
     }
   };
 
-  if (!post) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F4EDE2' }}>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading blog post...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!postFile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F4EDE2' }}>
         <div className="text-center">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">Post Not Found</h1>
           <p className="text-gray-600 mb-8">The blog post you're looking for doesn't exist.</p>
@@ -229,9 +112,11 @@ const BlogPost = () => {
     );
   }
 
+  const post = postFile.metadata;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      <BlogSEO post={post} />
+    <div className="min-h-screen" style={{ backgroundColor: '#F4EDE2' }}>
+      <BlogSEO post={post as BlogPostMetadata} />
       
       {/* Header */}
       <div className="bg-white border-b">
@@ -289,7 +174,7 @@ const BlogPost = () => {
             {/* Main Content */}
             <div className="lg:col-span-3">
               <article className="bg-white rounded-lg shadow-sm p-8 prose prose-lg max-w-none">
-                <div dangerouslySetInnerHTML={{ __html: post.content }} />
+                <div dangerouslySetInnerHTML={{ __html: extractArticleContent(postFile.content) }} />
               </article>
               
               {/* Tags */}

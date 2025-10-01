@@ -1,21 +1,8 @@
 import { Helmet } from 'react-helmet-async';
-
-interface BlogPost {
-  id: string;
-  title: string;
-  excerpt: string;
-  content: string;
-  author: string;
-  publishedAt: string;
-  readTime: string;
-  category: string;
-  tags: string[];
-  slug: string;
-  featured: boolean;
-}
+import { BlogPostMetadata } from '@/services/blogService';
 
 interface BlogSEOProps {
-  post?: BlogPost;
+  post?: BlogPostMetadata;
   isBlogList?: boolean;
 }
 
