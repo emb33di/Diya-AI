@@ -53,28 +53,24 @@ export const PersonalInfoSection: React.FC<PersonalInfoSectionProps> = ({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <AIFormField fieldName="email_address" isAIPopulated={isAIPopulated}>
-            <FormField
-              control={form.control}
-              name="email_address"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email Address <span className="text-red-500">*</span></FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="email" 
-                      {...field} 
-                      onChange={(e) => {
-                        field.onChange(e);
-                        clearFieldError('email_address');
-                      }}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </AIFormField>
+          <FormField
+            control={form.control}
+            name="email_address"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email Address</FormLabel>
+                <div className="flex items-center space-x-2">
+                  <div className="px-3 py-2 bg-muted rounded-md text-sm font-medium">
+                    {field.value || "Not set"}
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    Set during account creation
+                  </span>
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <FormField
               control={form.control}
