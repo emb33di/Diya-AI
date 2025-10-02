@@ -57,93 +57,53 @@ serve(async (req) => {
       timestamp: new Date().toISOString()
     })
 
-    // Convert messages to the database format
-    const messagesToInsert = transcriptData.messages.map((msg, index) => ({
-      conversation_id: transcriptData.conversation_id,
-      user_id: transcriptData.user_id,
+    // Convert messages to JSONB format for the new function
+    const messagesJsonb = transcriptData.messages.map(msg => ({
       source: msg.source,
       text: msg.text,
-      timestamp: new Date(msg.timestamp).toISOString(),
-      message_order: index + 1
+      timestamp: new Date(msg.timestamp).toISOString()
     }))
 
-    console.log('🔍 AI VOICE DEBUG - Messages to Insert:', {
-      totalMessages: messagesToInsert.length,
-      aiMessages: messagesToInsert.filter(m => m.source === 'ai').length,
-      userMessages: messagesToInsert.filter(m => m.source === 'user').length,
-      lastAIMessage: messagesToInsert.filter(m => m.source === 'ai').slice(-1)[0],
-      firstAIMessage: messagesToInsert.filter(m => m.source === 'ai')[0]
+    console.log('🔍 AI VOICE DEBUG - Messages to Save:', {
+      totalMessages: messagesJsonb.length,
+      aiMessages: messagesJsonb.filter(m => m.source === 'ai').length,
+      userMessages: messagesJsonb.filter(m => m.source === 'user').length,
+      lastAIMessage: messagesJsonb.filter(m => m.source === 'ai').slice(-1)[0],
+      firstAIMessage: messagesJsonb.filter(m => m.source === 'ai')[0]
     })
 
-    // Insert messages into conversation_messages table with conflict resolution
-    const { error: messagesError } = await supabaseClient
-      .from('conversation_messages')
-      .upsert(messagesToInsert, { 
-        onConflict: 'conversation_id,message_order',
-        ignoreDuplicates: false 
+    // Use the new one-conversation-per-user function
+    const { data: saveResult, error: saveError } = await supabaseClient
+      .rpc('save_user_conversation_transcript', {
+        p_conversation_id: transcriptData.conversation_id,
+        p_user_id: transcriptData.user_id,
+        p_messages: messagesJsonb,
+        p_session_type: transcriptData.session_type || 'onboarding'
       })
 
-    if (messagesError) {
-      console.error('Error upserting messages:', messagesError)
-      console.error('🔍 AI VOICE DEBUG - Messages Insert Failed:', {
-        error: messagesError.message,
+    if (saveError) {
+      console.error('Error saving conversation transcript:', saveError)
+      console.error('🔍 AI VOICE DEBUG - Save Function Failed:', {
+        error: saveError.message,
         conversationId: transcriptData.conversation_id,
-        messageCount: messagesToInsert.length
+        messageCount: messagesJsonb.length
       })
-      throw new Error(`Failed to upsert messages: ${messagesError.message}`)
+      throw new Error(`Failed to save conversation transcript: ${saveError.message}`)
     }
 
-    console.log('🔍 AI VOICE DEBUG - Messages Insert Success:', {
+    console.log('🔍 AI VOICE DEBUG - Save Function Success:', {
       conversationId: transcriptData.conversation_id,
-      insertedCount: messagesToInsert.length,
-      aiMessagesInserted: messagesToInsert.filter(m => m.source === 'ai').length,
-      userMessagesInserted: messagesToInsert.filter(m => m.source === 'user').length
+      result: saveResult,
+      messageCount: messagesJsonb.length,
+      aiMessageCount: messagesJsonb.filter(m => m.source === 'ai').length,
+      userMessageCount: messagesJsonb.filter(m => m.source === 'user').length
     })
 
-    // Create transcript text
-    const transcriptText = transcriptData.messages
-      .map(msg => `${msg.source === 'ai' ? 'Diya' : 'You'}: ${msg.text}`)
-      .join('\n')
-
-    console.log('🔍 AI VOICE DEBUG - Transcript Text Created:', {
-      transcriptLength: transcriptText.length,
-      aiLines: transcriptText.split('\n').filter(line => line.startsWith('Diya:')).length,
-      userLines: transcriptText.split('\n').filter(line => line.startsWith('You:')).length,
-      firstAILine: transcriptText.split('\n').find(line => line.startsWith('Diya:')),
-      lastAILine: transcriptText.split('\n').filter(line => line.startsWith('Diya:')).slice(-1)[0]
-    })
-
-    // Upsert conversation metadata
-    const { error: metadataError } = await supabaseClient
-      .from('conversation_metadata')
-      .upsert({
-        conversation_id: transcriptData.conversation_id,
-        user_id: transcriptData.user_id,
-        summary: `Conversation completed with ${transcriptData.message_count} messages (${transcriptData.messages.filter(m => m.source === 'user').length} user, ${transcriptData.messages.filter(m => m.source === 'ai').length} AI)`,
-        transcript: transcriptText,
-        message_count: transcriptData.message_count,
-        session_number: transcriptData.session_type === 'onboarding' ? 1 : 1
-      }, {
-        onConflict: 'conversation_id'
-      })
-
-    if (metadataError) {
-      console.error('Error upserting metadata:', metadataError)
-      console.error('🔍 AI VOICE DEBUG - Metadata Upsert Failed:', {
-        error: metadataError.message,
-        conversationId: transcriptData.conversation_id,
-        transcriptLength: transcriptText.length
-      })
-      throw new Error(`Failed to upsert metadata: ${metadataError.message}`)
+    // Check if the save was successful
+    if (!saveResult.success) {
+      console.error('Save function returned failure:', saveResult)
+      throw new Error(saveResult.error || 'Failed to save conversation transcript')
     }
-
-    console.log('🔍 AI VOICE DEBUG - Metadata Upsert Success:', {
-      conversationId: transcriptData.conversation_id,
-      transcriptLength: transcriptText.length,
-      messageCount: transcriptData.message_count,
-      aiMessageCount: transcriptData.messages.filter(m => m.source === 'ai').length,
-      userMessageCount: transcriptData.messages.filter(m => m.source === 'user').length
-    })
 
     console.log('✅ Transcript saved successfully')
 
@@ -151,7 +111,8 @@ serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         message: 'Transcript saved successfully',
-        messageCount: transcriptData.message_count
+        messageCount: transcriptData.message_count,
+        overwritten: saveResult.overwritten || false
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

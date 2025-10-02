@@ -1,9 +1,11 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { OutspeedAPI } from '@/utils/outspeedAPI';
 import { OnboardingApiService } from '@/services/onboarding.api';
+import { Button } from '@/components/ui/button';
+import { Mic } from 'lucide-react';
 
 interface ConversationFlowProps {
   // State setters
@@ -72,6 +74,7 @@ export const useConversationFlow = ({
 }: ConversationFlowProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [micPermissionDenied, setMicPermissionDenied] = useState(false);
 
   // Start conversation using agent-based approach
   const startConversation = useCallback(async () => {
@@ -124,10 +127,24 @@ export const useConversationFlow = ({
       });
       setExpandedView(false);
       if (error instanceof DOMException && error.name === 'NotAllowedError') {
+        setMicPermissionDenied(true);
         toast({
           title: "Microphone Access Required",
           description: "Please allow microphone access to start your conversation with Diya.",
-          variant: "destructive"
+          variant: "destructive",
+          action: (
+            <Button 
+              onClick={() => {
+                setMicPermissionDenied(false);
+                startConversation();
+              }} 
+              variant="outline" 
+              size="sm"
+            >
+              <Mic className="h-4 w-4 mr-2" />
+              Try Again
+            </Button>
+          )
         });
       } else {
         toast({
@@ -140,7 +157,7 @@ export const useConversationFlow = ({
     } finally {
       setIsLoadingAgent(false);
     }
-  }, [toast, setExpandedView, setAgentId, setIsLoadingAgent, setAgentError, currentSessionNumber]);
+  }, [toast, setExpandedView, setAgentId, setIsLoadingAgent, setAgentError, currentSessionNumber, setMicPermissionDenied]);
 
   const endConversation = useCallback(async () => {
     // Show confirmation popup instead of ending immediately
@@ -517,6 +534,8 @@ export const useConversationFlow = ({
     startConversation,
     endConversation,
     endConversationConfirmed,
-    endConversationWithMessage
+    endConversationWithMessage,
+    micPermissionDenied,
+    setMicPermissionDenied
   };
 };

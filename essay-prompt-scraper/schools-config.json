@@ -1,0 +1,64 @@
+{
+  "schools": [
+    {
+      "school": "University of Chicago",
+      "year": "2025-26",
+      "url": "https://www.collegeessayadvisors.com/supplemental-essay/university-of-chicago-supplemental-essay-prompt-guide/"
+    },
+    {
+      "school": "Boston University",
+      "year": "2025-26",
+      "url": "https://www.collegeessayadvisors.com/supplemental-essay/boston-university-supplemental-essay-prompt-guide/"
+    },
+    {
+      "school": "Harvard University",
+      "year": "2025-26",
+      "url": "https://www.collegeessayadvisors.com/supplemental-essay/harvard-university-supplemental-essay-prompt-guide/"
+    },
+    {
+      "school": "Princeton University",
+      "year": "2025-26",
+      "url": "https://www.collegeessayadvisors.com/supplemental-essay/princeton-university-supplemental-essay-prompt-guide/"
+    },
+    {
+      "school": "Yale University",
+      "year": "2025-26",
+      "url": "https://www.collegeessayadvisors.com/supplemental-essay/yale-university-supplemental-essay-prompt-guide/"
+    },
+    {
+      "school": "Stanford University",
+      "year": "2025-26",
+      "url": "https://www.collegeessayadvisors.com/supplemental-essay/stanford-university-supplemental-essay-prompt-guide/"
+    },
+    {
+      "school": "MIT",
+      "year": "2025-26",
+      "url": "https://www.collegeessayadvisors.com/supplemental-essay/mit-supplemental-essay-prompt-guide/"
+    },
+    {
+      "school": "Columbia University",
+      "year": "2025-26",
+      "url": "https://www.collegeessayadvisors.com/supplemental-essay/columbia-university-supplemental-essay-prompt-guide/"
+    },
+    {
+      "school": "University of Pennsylvania",
+      "year": "2025-26",
+      "url": "https://www.collegeessayadvisors.com/supplemental-essay/university-of-pennsylvania-supplemental-essay-prompt-guide/"
+    },
+    {
+      "school": "Duke University",
+      "year": "2025-26",
+      "url": "https://www.collegeessayadvisors.com/supplemental-essay/duke-university-supplemental-essay-prompt-guide/"
+    },
+    {
+      "school": "Brown University",
+      "year": "2025-26",
+      "url": "https://www.collegeessayadvisors.com/supplemental-essay/brown-university-supplemental-essay-prompt-guide/"
+    }
+  ],
+  "settings": {
+    "delay_between_requests": 1000,
+    "timeout": 30000,
+    "max_retries": 3
+  }
+}

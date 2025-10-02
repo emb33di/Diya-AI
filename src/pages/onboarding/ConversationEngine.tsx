@@ -313,6 +313,9 @@ const ConversationEngine = ({
           
           // Call our new handleConnect with the generated conversationId
           await handleConnect(conversationId);
+          
+          // Notify parent component about the connection with conversation ID
+          onConnect(conversationId);
 
           // Register endSession handler ONCE here to avoid repeated state updates
           if (onEndSession) {
@@ -392,7 +395,7 @@ const ConversationEngine = ({
       sessionStartedRef.current = true;
       
       try {
-        conversation.startSession({ 
+        const sessionConfig = { 
           agentId, 
           source,
           // Enable live transcription with Whisper-1 model
@@ -406,7 +409,10 @@ const ConversationEngine = ({
             prefix_padding_ms: 300,
             silence_duration_ms: 500
           }
-        } as any);
+        };
+        
+        console.log('🚀 Starting session with config:', sessionConfig);
+        conversation.startSession(sessionConfig as any);
         console.log('✅ Session start call completed with transcription enabled');
       } catch (error) {
         const getUserForError = async () => {
@@ -530,6 +536,7 @@ const ConversationEngine = ({
     };
 
     const handleUserTranscript = (payload: any) => {
+      console.log('🎤 User transcript received:', payload);
       if (payload && payload.transcript) {
         processItem({
           id: `user_${Date.now()}`,
@@ -542,6 +549,7 @@ const ConversationEngine = ({
     };
 
     const handleOutputDelta = (payload: any) => {
+      console.log('🤖 AI output delta received:', payload);
       if (payload && payload.delta) {
         const aiMessage = {
           id: `ai_delta_${Date.now()}`,
@@ -557,6 +565,7 @@ const ConversationEngine = ({
     };
 
     const handleOutputDone = (payload: any) => {
+      console.log('✅ AI output done received:', payload);
       if (payload && payload.text) {
         const aiMessage = {
           id: `ai_done_${Date.now()}`,
@@ -571,6 +580,7 @@ const ConversationEngine = ({
     };
 
     const handleAudioTranscript = (payload: any) => {
+      console.log('🎵 AI audio transcript received:', payload);
       if (payload && payload.transcript) {
         const aiMessage = {
           id: `ai_audio_${Date.now()}`,
@@ -632,16 +642,26 @@ const ConversationEngine = ({
     
     // Add back user voice input listeners (with type casting for TypeScript)
     if (conversation.on) {
+      console.log('🔧 Setting up event listeners for conversation');
+      
       // User transcript events
       (conversation as any).on('input_audio_transcription.completed', handleUserTranscript);
-      (conversation as any).on('input_audio_transcription.delta', () => {});
-      (conversation as any).on('input_audio_transcription.done', () => {});
+      (conversation as any).on('input_audio_transcription.delta', (payload: any) => {
+        console.log('🎤 User transcript delta:', payload);
+      });
+      (conversation as any).on('input_audio_transcription.done', (payload: any) => {
+        console.log('🎤 User transcript done:', payload);
+      });
       
       // AI response events
       (conversation as any).on('response.audio_transcript.delta', handleOutputDelta);
       (conversation as any).on('response.output_text.done', handleOutputDone);
-      (conversation as any).on('response.text.delta', () => {});
-      (conversation as any).on('response.text.done', () => {});
+      (conversation as any).on('response.text.delta', (payload: any) => {
+        console.log('📝 AI text delta:', payload);
+      });
+      (conversation as any).on('response.text.done', (payload: any) => {
+        console.log('📝 AI text done:', payload);
+      });
       
       // Add audio/speech event listeners for Diya's speech
       (conversation as any).on('response.audio_transcript.delta', handleAudioTranscript);
@@ -653,8 +673,14 @@ const ConversationEngine = ({
       (conversation as any).on('response.output_audio.done', handleAudioTranscript);
       
       // Add new listeners for user speech detection
-      (conversation as any).on('input_audio_buffer.speech_started', () => {});
-      (conversation as any).on('input_audio_buffer.speech_stopped', () => {});
+      (conversation as any).on('input_audio_buffer.speech_started', (payload: any) => {
+        console.log('🎙️ User speech started:', payload);
+      });
+      (conversation as any).on('input_audio_buffer.speech_stopped', (payload: any) => {
+        console.log('🎙️ User speech stopped:', payload);
+      });
+      
+      console.log('✅ All event listeners registered');
     }
 
     // Store cleanup function for use in endSession

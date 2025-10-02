@@ -38,6 +38,7 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
   const [studentName, setStudentName] = useState<string>('');
   const [onboardingTranscript, setOnboardingTranscript] = useState<string>('');
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [micPermissionDenied, setMicPermissionDenied] = useState(false);
   // NOTE: messageOrder state removed - no longer needed with Outspeed API approach
   const [audioLevel, setAudioLevel] = useState(0);
   const [showFullScreenChat, setShowFullScreenChat] = useState(false);
@@ -348,10 +349,24 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
     } catch (error) {
       console.error('Error starting conversation:', error);
       if (error instanceof DOMException && error.name === 'NotAllowedError') {
+        setMicPermissionDenied(true);
         toast({
           title: "Microphone Access Required",
           description: "Please allow microphone access to start your conversation with Diya.",
-          variant: "destructive"
+          variant: "destructive",
+          action: (
+            <Button 
+              onClick={() => {
+                setMicPermissionDenied(false);
+                startConversation();
+              }} 
+              variant="outline" 
+              size="sm"
+            >
+              <Mic className="h-4 w-4 mr-2" />
+              Try Again
+            </Button>
+          )
         });
       } else {
         toast({
@@ -361,7 +376,7 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
         });
       }
     }
-  }, [studentName, onboardingTranscript, targetCollege, essayTitle, essayPrompt, toast]);
+  }, [studentName, onboardingTranscript, targetCollege, essayTitle, essayPrompt, toast, setMicPermissionDenied]);
 
   // Fetch user data for dynamic variables
   useEffect(() => {
@@ -726,6 +741,27 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
                         <Mic className="h-6 w-6 mr-2" />
                         Start Voice Conversation
                       </Button>
+                      
+                      {/* Microphone Permission Denied State */}
+                      {micPermissionDenied && (
+                        <div className="text-center p-4 bg-red-50 border border-red-200 rounded-lg">
+                          <h4 className="font-medium text-red-800 mb-2">Microphone Access Denied</h4>
+                          <p className="text-red-700 text-sm mb-3">
+                            Please click the microphone icon in your browser's address bar and allow access, then try again.
+                          </p>
+                          <Button 
+                            onClick={() => {
+                              setMicPermissionDenied(false);
+                              startConversation();
+                            }}
+                            variant="outline"
+                            size="sm"
+                          >
+                            <Mic className="h-4 w-4 mr-2" />
+                            Try Again
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
 

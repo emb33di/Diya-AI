@@ -2,6 +2,10 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import fs from 'fs-extra';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+
+// Load environment variables from .env.local
+dotenv.config({ path: '../.env.local' });
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -34,17 +38,35 @@ class EssayPromptTransformAgent {
       // Parse the JSON response - handle multiple formats
       let jsonData;
       
+      console.log('Raw AI response preview:', transformedData.substring(0, 500) + '...');
+      console.log('Response length:', transformedData.length);
+      console.log('First 20 chars:', JSON.stringify(transformedData.substring(0, 20)));
+      
       // Try to extract JSON from markdown code blocks first
-      const jsonMatch = transformedData.match(/```json\n([\s\S]*?)\n```/);
+      console.log('Looking for JSON in markdown code blocks...');
+      console.log('Response ends with:', JSON.stringify(transformedData.slice(-50)));
+      
+      // More flexible regex that handles various endings
+      const jsonMatch = transformedData.match(/```json\s*\n([\s\S]*?)(?:\n```|```)/);
+      console.log('JSON match result:', jsonMatch ? 'Found' : 'Not found');
+      
       if (jsonMatch) {
+        console.log('Found JSON in markdown code block');
+        console.log('Extracted JSON length:', jsonMatch[1].length);
         jsonData = JSON.parse(jsonMatch[1]);
       } else {
         // Try to extract JSON from any code block
-        const codeBlockMatch = transformedData.match(/```\n([\s\S]*?)\n```/);
+        console.log('Looking for JSON in generic code blocks...');
+        const codeBlockMatch = transformedData.match(/```\s*\n([\s\S]*?)(?:\n```|```)/);
+        console.log('Code block match result:', codeBlockMatch ? 'Found' : 'Not found');
+        
         if (codeBlockMatch) {
+          console.log('Found JSON in generic code block');
+          console.log('Extracted JSON length:', codeBlockMatch[1].length);
           jsonData = JSON.parse(codeBlockMatch[1]);
         } else {
           // Try to parse the entire response as JSON
+          console.log('Trying to parse entire response as JSON');
           jsonData = JSON.parse(transformedData);
         }
       }
@@ -69,35 +91,85 @@ ${JSON.stringify(scrapedData, null, 2)}
 
 ## Required Output Format:
 {
-  "essay_prompts": [
+  "school": "University Name",
+  "year": "2025-26",
+  "prompts": [
     {
-      "college_name": "University Name",
-      "how_many": "number or word (e.g., '1', '2', 'one', 'two')",
-      "selection_type": "required|optional|choose_one",
-      "prompt_number": "1",
+      "id": "unique-prompt-id",
+      "title": "Prompt Title",
+      "required": true,
+      "type": "why|community|creative|choose_one|other",
       "prompt": "The actual essay prompt text",
-      "word_limit": "150 or 250-650 or Not specified",
-      "prompt_selection_type": "required|optional|choose_one",
-      "school_program_type": "Undergraduate"
+      "instructions": "Additional instructions if any",
+      "word_limit": 500
+    },
+    {
+      "id": "unique-prompt-id-2",
+      "title": "Prompt Title",
+      "required": true,
+      "type": "choose_one",
+      "instructions": "Choose one of the following essay options.",
+      "word_limit": 650,
+      "options": [
+        {
+          "id": "option-1-id",
+          "prompt": "First option prompt text"
+        },
+        {
+          "id": "option-2-id", 
+          "prompt": "Second option prompt text"
+        }
+      ]
     }
   ]
 }
 
 ## CRITICAL Transformation Rules:
 
-### 1. Essay Count Logic:
-- Use requirements.raw_text to determine the ACTUAL number of essays required
-- Look for patterns like "2 essays", "1 essay", "3 essays of 250 words each"
-- Extract the number from requirements.raw_text, NOT from the total prompts scraped
-- Set how_many to the actual required count from requirements
+### 1. School Name Extraction:
+- Extract from university_url path
+- "university-of-chicago-supplemental-essay-prompt-guide" → "University of Chicago"
+- "harvard-university-supplemental-essay-prompt-guide" → "Harvard University"
+- Convert hyphens to spaces and title case
 
-### 2. Selection Type Logic:
-- If prompt text contains "Option" → set selection_type and prompt_selection_type to "optional"
-- If prompt text contains "Required" → set to "required"
-- If prompt text contains "Choose one" or "Choose 1 of" → set to "choose_one"
-- If there are multiple options but only one is required → set to "choose_one"
+### 2. Year Setting:
+- Always set year to "2025-26" for current application cycle
 
-### 3. Prompt Filtering (REMOVE these):
+### 3. Prompt ID Generation:
+- Create unique IDs using pattern: school-slug-prompt-type-number
+- Examples: "uchicago-why", "uchicago-creative", "bu-community"
+- For options: "uchicago-2025-opt1", "uchicago-2025-opt2"
+
+### 4. Prompt Type Classification:
+- "why" - Why this school questions
+- "community" - Community/diversity questions  
+- "creative" - Creative/unusual prompts
+- "choose_one" - When multiple options are provided
+- "other" - Standard essay prompts
+
+### 5. Required Field Logic:
+- If prompt text contains "Required" → set required = true
+- If prompt text contains "Optional" → set required = false
+- Default to true for most prompts
+
+### 6. Choose One Handling:
+- When multiple options are provided (like UChicago's 7 options), create one prompt with type="choose_one"
+- Put all options in the "options" array
+- Each option gets its own unique ID
+
+### 7. Word Limit Extraction:
+- Extract numeric word limits from prompt text
+- Look for patterns: "250-500 words", "650 words", "300 words or less"
+- Convert to numeric value (e.g., "250-500 words" → 500)
+- If range given, use the higher number
+- If not specified, omit the word_limit field
+
+### 8. Instructions Field:
+- Extract any additional instructions from prompt text
+- Examples: "Answer required. 250-500 words recommended.", "Respond to one of the following essay prompts. 300 words or less."
+- Clean up and include in instructions field
+
+### 9. Prompt Filtering (REMOVE these):
 - Headers: "The Requirements:", "Supplemental Essay Type(s):", "How to Write"
 - Metadata: "University of Chicago 2025-26 Application Essay Question Explanations"
 - Stats: "Acceptance Rate:", "Undergrad Population:", "Ivy League:"
@@ -105,50 +177,21 @@ ${JSON.stringify(scrapedData, null, 2)}
 - Section headers: "Question 1 (Required)", "Question 2: Extended Essay"
 - Option labels: "Essay Option 1", "Essay Option 2", etc.
 
-### 4. Keep Only Actual Essay Prompts:
+### 10. Keep Only Actual Essay Prompts:
 - Questions that students must answer
 - Statements that require a response
 - Prompts that end with "?" or require explanation
 
-### 5. Word Limit Extraction:
-- FIRST: Look in requirements.raw_text for general word limits
-- SECOND: Extract word limits from individual prompt text (CRITICAL!)
-- Common patterns in prompt text: "(Please respond in 250 words or fewer.)", "in 50 words or fewer", "about 250 words or fewer"
-- Look for patterns like: "(\d+)\s+words?\s+or\s+fewer", "(\d+)\s+words?\s+maximum", "(\d+)\s+words?\s+or\s+less"
-- If multiple prompts share the same word limit instruction (like "Please respond to each question in 50 words or fewer"), apply that limit to all subsequent prompts until a new limit is specified
-- If not specified anywhere, use "Not specified"
-
-### 6. College Name Extraction:
-- Extract from university_url path
-- "university-of-chicago-supplemental-essay-prompt-guide" → "University of Chicago"
-- "harvard-university-supplemental-essay-prompt-guide" → "Harvard University"
-
-### 7. Chronological Context Handling:
-- When you see instructions like "Please respond to each question in 50 words or fewer. There are no right or wrong answers. Be yourself!" followed by multiple questions, this instruction applies to ALL subsequent questions until a new word limit is specified
-- Extract the word limit from such instructions and apply it to all following prompts in the sequence
-- This is common in "short response" sections where multiple questions share the same word limit
-
-### 8. Prompt Numbering:
-- Use sequential numbering starting from 1 for the final output
-- Do NOT use the original prompt_number from scraped data
-- Number prompts in the order they appear in the final filtered list
-- First prompt = "1", second prompt = "2", etc.
-
-## Example Analysis for Princeton University:
-- Requirements: "2 essays of 250 words, 1 essay of 500 words, 3 short responses"
-- Structure: Multiple prompts with embedded word limits
-- Prompt 1: "What academic areas most pique your curiosity..." + "(Please respond in about 250 words or fewer.)" → word_limit = "250 words or fewer"
-- Prompt 2: "Princeton values community..." + "(Please respond in 500 words or fewer.)" → word_limit = "500 words or fewer"  
-- Prompt 3: "Princeton has a longstanding commitment..." + "(Please respond in 250 words or fewer.)" → word_limit = "250 words or fewer"
-- Prompt 4: "Please respond to each question in 50 words or fewer..." → word_limit = "50 words or fewer" (applies to subsequent prompts)
-- Prompts 5-7: Short questions following the 50-word instruction → word_limit = "50 words or fewer"
-
 ## Example Analysis for University of Chicago:
-- Requirements: "2 essays of 1-2 pages each" → how_many = "2"
-- Structure: 1 required + 1 of 6 options
-- Required prompt: "How does the University of Chicago..." → selection_type = "required"
-- Option prompts: "In an ideal world..." → selection_type = "optional"
-- Overall structure: "choose_one" (choose 1 of 6 options for second essay)
+- Requirements: "2 essays of 1-2 pages each" 
+- Structure: 1 required + 1 choose_one with 7 options
+- Prompt 1: "How does the University of Chicago..." → type="why", required=true
+- Prompt 2: Multiple creative options → type="choose_one", required=true, options array with 7 items
+
+## Example Analysis for Boston University:
+- Requirements: "1 essay, 300 words or less"
+- Structure: 1 choose_one with 2 options
+- Prompt 1: Two community-focused options → type="choose_one", required=true, options array with 2 items
 
 ## Examples of what to KEEP (actual prompts):
 - "How does the University of Chicago, as you know it now, satisfy your desire for a particular kind of learning, community, and future?"
@@ -182,8 +225,9 @@ Transform the data and return ONLY the JSON in the exact format specified above.
       
       console.log(`✅ Transformed data saved to: ${outputFilePath}`);
       console.log(`📊 Summary:`);
-      console.log(`   - Universities processed: ${scrapedData.universities?.length || 0}`);
-      console.log(`   - Prompts extracted: ${transformedData.essay_prompts?.length || 0}`);
+      console.log(`   - School: ${transformedData.school}`);
+      console.log(`   - Year: ${transformedData.year}`);
+      console.log(`   - Prompts extracted: ${transformedData.prompts?.length || 0}`);
       
       return transformedData;
       
@@ -197,18 +241,34 @@ Transform the data and return ONLY the JSON in the exact format specified above.
    * Validate the transformed data structure
    */
   validateTransformedData(data) {
-    if (!data || !data.essay_prompts || !Array.isArray(data.essay_prompts)) {
-      console.error('❌ Invalid structure: missing essay_prompts array');
+    if (!data || !data.school || !data.year || !data.prompts || !Array.isArray(data.prompts)) {
+      console.error('❌ Invalid structure: missing school, year, or prompts array');
       return false;
     }
 
-    for (const prompt of data.essay_prompts) {
-      const requiredFields = ['college_name', 'how_many', 'selection_type', 'prompt_number', 'prompt', 'word_limit', 'prompt_selection_type', 'school_program_type'];
+    for (const prompt of data.prompts) {
+      const requiredFields = ['id', 'title', 'required', 'type', 'prompt'];
       
       for (const field of requiredFields) {
-        if (!prompt[field]) {
+        if (prompt[field] === undefined || prompt[field] === null) {
           console.error(`❌ Missing required field: ${field}`);
           return false;
+        }
+      }
+
+      // Validate choose_one prompts have options
+      if (prompt.type === 'choose_one' && (!prompt.options || !Array.isArray(prompt.options) || prompt.options.length === 0)) {
+        console.error(`❌ choose_one prompt missing options array: ${prompt.id}`);
+        return false;
+      }
+
+      // Validate options have required fields
+      if (prompt.options) {
+        for (const option of prompt.options) {
+          if (!option.id || !option.prompt) {
+            console.error(`❌ Option missing required fields: ${JSON.stringify(option)}`);
+            return false;
+          }
         }
       }
     }
@@ -237,7 +297,7 @@ Transform the data and return ONLY the JSON in the exact format specified above.
       
       try {
         const result = await this.processFile(inputPath, outputPath);
-        results.push({ file, success: true, prompts: result.essay_prompts.length });
+        results.push({ file, success: true, prompts: result.prompts.length, school: result.school });
       } catch (error) {
         console.error(`❌ Failed to process ${file}:`, error.message);
         results.push({ file, success: false, error: error.message });

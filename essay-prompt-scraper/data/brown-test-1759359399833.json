@@ -1,0 +1,105 @@
+{
+  "school": "Brown University",
+  "year": "2025-26",
+  "prompts": [
+    {
+      "id": "brown-university-202526-applic",
+      "title": "Brown University 2025-26 Application Essay Question Explanations",
+      "instructions": "Brown University 2025-26 Application Essay Question Explanations The Requirements: 3 essays of 250 words; 3 short answers",
+      "word_limit": 250,
+      "required": true,
+      "type": "single",
+      "prompt": "Brown University 2025-26 Application Essay Question Explanations"
+    },
+    {
+      "id": "the-requirements-3-essays-of-2",
+      "title": "The Requirements: 3 essays of 250 words; 3 short answers",
+      "instructions": "The Requirements: 3 essays of 250 words; 3 short answers",
+      "word_limit": 250,
+      "required": true,
+      "type": "single",
+      "prompt": "The Requirements: 3 essays of 250 words; 3 short answers"
+    },
+    {
+      "id": "brown-university-prompt-breakd",
+      "title": "Brown University Prompt Breakdowns",
+      "instructions": "Brown University Prompt Breakdowns",
+      "word_limit": 250,
+      "required": true,
+      "type": "single",
+      "prompt": "Brown University Prompt Breakdowns"
+    },
+    {
+      "id": "help-us-get-to-know-you-better",
+      "title": "Help us get to know you better by reflecting briefly on each of the questions below. We expect that answers will range from a few words to a few sentences at most:",
+      "instructions": "Help us get to know you better by reflecting briefly on each of the questions below. We expect that answers will range from a few words to a few sentences at most: What three words best describe you? (3 words)",
+      "word_limit": null,
+      "required": true,
+      "type": "single",
+      "prompt": "Help us get to know you better by reflecting briefly on each of the questions below. We expect that answers will range from a few words to a few sentences at most:"
+    },
+    {
+      "id": "if-you-could-teach-a-class-on-",
+      "title": "If you could teach a class on any one thing, whether academic or otherwise, what would it be? (100 words)",
+      "instructions": "If you could teach a class on any one thing, whether academic or otherwise, what would it be? (100 words) In one sentence, Why Brown? (50 words)",
+      "word_limit": 100,
+      "required": true,
+      "type": "single",
+      "prompt": "If you could teach a class on any one thing, whether academic or otherwise, what would it be? (100 words)"
+    },
+    {
+      "id": "for-the-final-question-conside",
+      "title": "For the final question, consider not only the research you’ve done on Brown, but also how you’ll fit in with the unique campus culture. The point is not to waste time agonizing over what you think admissions wants to hear, but to think about who you are as a person. Trust yourself.",
+      "instructions": "For the final question, consider not only the research you’ve done on Brown, but also how you’ll fit in with the unique campus culture. The point is not to waste time agonizing over what you think admissions wants to hear, but to think about who you are as a person. Trust yourself.",
+      "word_limit": null,
+      "required": true,
+      "type": "single",
+      "prompt": "For the final question, consider not only the research you’ve done on Brown, but also how you’ll fit in with the unique campus culture. The point is not to waste time agonizing over what you think admissions wants to hear, but to think about who you are as a person. Trust yourself."
+    },
+    {
+      "id": "essay-questions-for-202526-plm",
+      "title": "Essay Questions for 2025-26 PLME (Program in Liberal Medical Education) Applicants",
+      "instructions": "Essay Questions for 2025-26 PLME (Program in Liberal Medical Education) Applicants",
+      "word_limit": null,
+      "required": true,
+      "type": "single",
+      "prompt": "Essay Questions for 2025-26 PLME (Program in Liberal Medical Education) Applicants"
+    },
+    {
+      "id": "two-essays-are-required-for-ap",
+      "title": "Two essays are required for applicants to the PLME in addition to the three essays required of all first-year applicants:",
+      "instructions": "Two essays are required for applicants to the PLME in addition to the three essays required of all first-year applicants:",
+      "word_limit": 500,
+      "required": true,
+      "type": "single",
+      "prompt": "Two essays are required for applicants to the PLME in addition to the three essays required of all first-year applicants:"
+    },
+    {
+      "id": "healthcare-is-constantly-chang",
+      "title": "Healthcare is constantly changing as it is affected by racial and social inequities, economics, politics, technology, and more. Please respond to one of the following prompts (250 words):",
+      "instructions": "Healthcare is constantly changing as it is affected by racial and social inequities, economics, politics, technology, and more. Please respond to one of the following prompts (250 words):",
+      "word_limit": 250,
+      "required": true,
+      "type": "single",
+      "prompt": "Healthcare is constantly changing as it is affected by racial and social inequities, economics, politics, technology, and more. Please respond to one of the following prompts (250 words):"
+    },
+    {
+      "id": "how-will-you-as-a-future-physi",
+      "title": "How will you, as a future physician, make a positive impact?",
+      "instructions": "How will you, as a future physician, make a positive impact?",
+      "word_limit": null,
+      "required": true,
+      "type": "single",
+      "prompt": "How will you, as a future physician, make a positive impact?"
+    },
+    {
+      "id": "how-has-your-personal-backgrou",
+      "title": "How has your personal background uniquely shaped your perspective on the field of medicine?",
+      "instructions": "How has your personal background uniquely shaped your perspective on the field of medicine?",
+      "word_limit": null,
+      "required": true,
+      "type": "single",
+      "prompt": "How has your personal background uniquely shaped your perspective on the field of medicine?"
+    }
+  ]
+}

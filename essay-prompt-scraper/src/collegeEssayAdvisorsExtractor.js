@@ -105,28 +105,56 @@ export class CollegeEssayAdvisorsExtractor {
           result.university_info.location = locationElement.textContent.trim();
         }
 
-        // Extract prompts from <b> tags only
-        const boldElements = document.querySelectorAll('b, strong');
+        // Extract prompts by looking for structured patterns
         const prompts = [];
         
-        boldElements.forEach((element, index) => {
-          const promptText = element.textContent.trim();
-          
-          // Overinclusive filter - capture all bold text that could be prompts
-          // We'll refine this later based on what we find
-          if (promptText.length > 10) {
-            prompts.push({
-              text: promptText,
-              source: 'bold-tag',
-              index: index
-            });
+        // Method 1: Look for h3 > b patterns (Question headers)
+        const h3Elements = document.querySelectorAll('h3');
+        let currentQuestionHeader = null;
+        
+        h3Elements.forEach((h3Element, index) => {
+          const boldElement = h3Element.querySelector('b, strong');
+          if (boldElement) {
+            const text = boldElement.textContent.trim();
+            
+            // Check if this looks like a question header (e.g., "Question 1 (Required)")
+            if (text.match(/Question\s+\d+/i) || text.match(/Prompt\s+\d+/i)) {
+              currentQuestionHeader = text;
+            } else if (currentQuestionHeader && text.length > 50) {
+              // This is likely the actual prompt text following a question header
+              prompts.push({
+                question_header: currentQuestionHeader,
+                text: text,
+                source: 'h3-structured',
+                index: index
+              });
+              currentQuestionHeader = null; // Reset for next question
+            }
           }
         });
+        
+        // Method 2: Fallback to bold elements for unstructured content
+        if (prompts.length === 0) {
+          const boldElements = document.querySelectorAll('b, strong');
+          boldElements.forEach((element, index) => {
+            const promptText = element.textContent.trim();
+            
+            // Filter for substantial prompts (not just headers)
+            if (promptText.length > 50 && !promptText.match(/Question\s+\d+/i)) {
+              prompts.push({
+                text: promptText,
+                source: 'bold-tag',
+                index: index
+              });
+            }
+          });
+        }
 
         // Sort prompts by index and assign numbers
         result.raw_prompts = prompts.map((prompt, index) => ({
           prompt_number: (index + 1).toString(),
           text: prompt.text,
+          question_header: prompt.question_header || null,
           source: prompt.source
         }));
 
@@ -304,9 +332,15 @@ export class CollegeEssayAdvisorsExtractor {
 
     // Process raw prompts and apply business logic
     rawData.raw_prompts.forEach((rawPrompt, index) => {
+      // Create a better title using question header if available
+      let title = `Prompt ${rawPrompt.prompt_number}`;
+      if (rawPrompt.question_header) {
+        title = rawPrompt.question_header;
+      }
+      
       const processedPrompt = {
         prompt_number: rawPrompt.prompt_number,
-        title: `Prompt ${rawPrompt.prompt_number}`,
+        title: title,
         prompt: rawPrompt.text,
         word_limit: universityData.essay_requirements.total_word_limit || 'Not specified',
         selection_type: 'required',
@@ -316,7 +350,8 @@ export class CollegeEssayAdvisorsExtractor {
         difficulty_level: this.assessDifficulty(rawPrompt.text),
         common_themes: this.extractThemes(rawPrompt.text),
         tips: [],
-        source: rawPrompt.source
+        source: rawPrompt.source,
+        question_header: rawPrompt.question_header
       };
 
       universityData.prompts.push(processedPrompt);
@@ -419,7 +454,7 @@ export class CollegeEssayAdvisorsExtractor {
   }
 
   /**
-   * Save results in the format compatible with your database
+   * Save results in the clean format (same as test-cea-extraction.json)
    */
   async saveResults() {
     const outputDir = path.join(__dirname, '../data');
@@ -427,27 +462,28 @@ export class CollegeEssayAdvisorsExtractor {
     
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     
-    // Save in your database format
-    const databaseFormat = {
-      scraping_metadata: {
-        source_website: "https://www.collegeessayadvisors.com/supplemental-essay-guide/",
-        scraped_at: new Date().toISOString(),
-        scraper_version: "1.0.0",
-        total_universities_found: this.results.length
+    // Save in clean format (same as test-cea-extraction.json)
+    const cleanFormat = {
+      extraction_metadata: {
+        source: "College Essay Advisors",
+        extraction_date: new Date().toISOString(),
+        total_universities_processed: this.results.length,
+        format_version: "2.0",
+        purpose: "Clean structured format for essay prompts"
       },
       universities: this.results,
       scraping_statistics: this.generateStatistics()
     };
 
-    const filepath = path.join(outputDir, `cea-supplemental-essays-${timestamp}.json`);
-    await fs.writeJson(filepath, databaseFormat, { spaces: 2 });
+    const filepath = path.join(outputDir, `cea-scraped-data-final.json`);
+    await fs.writeJson(filepath, cleanFormat, { spaces: 2 });
     
-    console.log(`✓ Results saved to: ${filepath}`);
+    console.log(`✓ Clean format results saved to: ${filepath}`);
     
     // Also save in flat format for easy database import
     const flatFormat = this.convertToFlatFormat();
-    const flatFilepath = path.join(outputDir, `cea-flat-format-${timestamp}.json`);
-    await fs.writeJson(flatFilepath, flatFormat, { spaces: 2 });
+    const flatFilepath = path.join(outputDir, `cea-prompts-final.json`);
+    await fs.writeJson(flatFilepath, { essay_prompts: flatFormat }, { spaces: 2 });
     
     console.log(`✓ Flat format saved to: ${flatFilepath}`);
   }
@@ -469,13 +505,26 @@ export class CollegeEssayAdvisorsExtractor {
           word_limit: prompt.word_limit,
           prompt_selection_type: prompt.prompt_selection_type,
           school_program_type: university.university_info.school_program_type,
-          // Additional fields for enhanced data
+          // Enhanced fields from test-cea-extraction format
           title: prompt.title,
           category: prompt.category,
+          prompt_type: prompt.prompt_type,
           difficulty_level: prompt.difficulty_level,
           common_themes: prompt.common_themes,
+          tips: prompt.tips,
+          source: prompt.source,
+          question_header: prompt.question_header,
+          // University metadata
           university_url: university.university_info.university_url,
           acceptance_rate: university.university_info.acceptance_rate,
+          location: university.university_info.location,
+          university_type: university.university_info.university_type,
+          ranking: university.university_info.ranking,
+          // Requirements metadata
+          raw_requirements_text: university.essay_requirements.raw_text,
+          essay_types: university.essay_requirements.essay_types,
+          application_platform: university.essay_requirements.application_platform,
+          // Timestamps
           scraped_at: new Date().toISOString()
         });
       });

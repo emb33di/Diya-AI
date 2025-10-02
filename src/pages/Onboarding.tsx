@@ -352,7 +352,10 @@ const Onboarding = () => {
           calculateProgressPercentage={calculateProgressPercentage}
           forceSaveTranscript={async () => { await forceSaveTranscript(); }}
           // Callbacks - these are handled internally by ConversationEngine
-          onConnect={() => {}}
+          onConnect={(conversationId: string) => {
+            console.log('🔗 Conversation connected with ID:', conversationId);
+            // The conversation ID is already managed by the Zustand store
+          }}
           onMessage={() => {}}
           onDisconnect={() => {}}
           onError={() => {}}
