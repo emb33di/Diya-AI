@@ -46,31 +46,19 @@ const SCHOOL_TYPE_MAPPING = {
 type SchoolType = keyof typeof SCHOOL_TYPE_MAPPING;
 
 /**
- * Get user's school type from profile
+ * Get user's school type from user_profiles table
  */
 async function getUserSchoolType(userId: string): Promise<string | null> {
   try {
     const { data, error } = await supabase
-      .from('profiles')
+      .from('user_profiles')
       .select('applying_to')
       .eq('user_id', userId)
       .single();
 
     if (error || !data) {
-      console.log('No applying_to found in profiles, checking user_profiles...');
-      
-      // Fallback to user_profiles table
-      const { data: userProfileData, error: userProfileError } = await supabase
-        .from('user_profiles')
-        .select('applying_to')
-        .eq('user_id', userId)
-        .single();
-      
-      if (userProfileError || !userProfileData) {
-        return null;
-      }
-      
-      return userProfileData.applying_to;
+      console.log('No applying_to found in user_profiles for user:', userId);
+      return null;
     }
 
     return data.applying_to;

@@ -54,7 +54,7 @@ INSTRUCTIONS:
 2. Generate 8-12 {program_type} school recommendations across different categories (reach, target, safety)
 3. For each school, provide:
    - School name (exact official name)
-   - School type (e.g., "Private University", "Public University", "Liberal Arts College", "Business School")
+   - School type (must be one of: private, public, liberal_arts, research_university, community_college, technical_institute, ivy_league)
    - Category (reach/target/safety based on student's profile)
    - Acceptance rate (if known)
    - School ranking (if known)
@@ -70,7 +70,7 @@ RESPONSE FORMAT (JSON only):
   "recommendations": [
     {
       "school": "Harvard University",
-      "school_type": "Private University",
+      "school_type": "ivy_league",
       "category": "reach",
       "acceptance_rate": "3.4%",
       "school_ranking": "#3",
@@ -166,7 +166,6 @@ async function saveRecommendationsToDatabase(
     // Insert new recommendations
     const records = recommendations.map(rec => ({
       student_id: userId,
-      conversation_id: conversationId,
       school: rec.school,
       school_type: rec.school_type,
       category: rec.category,
