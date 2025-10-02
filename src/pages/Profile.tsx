@@ -202,11 +202,9 @@ export default function Profile() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [profileMode, setProfileMode] = useState<'edit' | 'review'>('edit');
   
-  // State for profile extraction testing
+  // State for profile extraction
   const [isTestingExtraction, setIsTestingExtraction] = useState(false);
   const [extractionResults, setExtractionResults] = useState<any>(null);
-  const [availableConversations, setAvailableConversations] = useState<any[]>([]);
-  const [selectedConversationId, setSelectedConversationId] = useState<string>('');
 
   const form = useForm<ProfileFormData>({
     // Remove zodResolver to prevent automatic validation
@@ -336,41 +334,9 @@ export default function Profile() {
   // Filter majors based on search query
   // Major selection functions are now handled by MajorSelector component
 
-  // Load available conversations for testing
-  const loadAvailableConversations = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
 
-      const { data: conversations, error } = await supabase
-        .from('conversation_metadata')
-        .select('conversation_id, created_at, summary')
-        .eq('user_id', user.id)
-        .not('transcript', 'is', null)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error loading conversations:', error);
-        return;
-      }
-
-      setAvailableConversations(conversations || []);
-    } catch (error) {
-      console.error('Error in loadAvailableConversations:', error);
-    }
-  };
-
-  // Test profile extraction using Supabase Edge Function
-  const testProfileExtraction = async () => {
-    if (!selectedConversationId) {
-      toast({
-        title: "Error",
-        description: "Please select a conversation to test extraction",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  // Extract profile and populate form using Supabase Edge Function
+  const extractAndPopulateProfile = async () => {
     setIsTestingExtraction(true);
     setExtractionResults(null);
 
@@ -380,16 +346,34 @@ export default function Profile() {
         throw new Error('User not authenticated');
       }
 
+      // Get the user's most recent conversation
+      const { data: conversations, error: conversationsError } = await supabase
+        .from('conversations')
+        .select('id, created_at, summary')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (conversationsError) {
+        throw new Error(`Failed to fetch conversations: ${conversationsError.message}`);
+      }
+
+      if (!conversations || conversations.length === 0) {
+        throw new Error('No conversations found. Please have a conversation with Diya first.');
+      }
+
+      const conversationId = conversations[0].id;
+
       console.log('🚀 Calling enhanced-profile-extraction Edge Function...');
-      console.log(`📝 Conversation ID: ${selectedConversationId}`);
+      console.log(`📝 Conversation ID: ${conversationId}`);
       console.log(`👤 User ID: ${user.id}`);
 
       // Call the Supabase Edge Function
       const { data, error } = await supabase.functions.invoke('enhanced-profile-extraction', {
         body: {
-          conversation_id: selectedConversationId,
-          user_id: user.id,
-          school_type: 'Undergraduate Colleges' // Default to undergraduate for testing
+          conversation_id: conversationId,
+          user_id: user.id
+          // school_type will be determined from user profile automatically
         }
       });
 
@@ -401,20 +385,116 @@ export default function Profile() {
       console.log('✅ Edge Function response received:', data);
       setExtractionResults(data);
       
-      toast({
-        title: data.success ? "Extraction Complete" : "Extraction Failed",
-        description: data.message,
-        variant: data.success ? "default" : "destructive",
-      });
+      // If extraction was successful, populate the form with extracted data
+      if (data.success && data.extracted_profile) {
+        populateFormWithExtractedData(data.extracted_profile);
+      }
     } catch (error) {
-      console.error('❌ Error testing profile extraction:', error);
-      toast({
-        title: "Error",
-        description: `Failed to test profile extraction: ${error.message}`,
-        variant: "destructive",
-      });
+      console.error('❌ Error extracting profile:', error);
     } finally {
       setIsTestingExtraction(false);
+    }
+  };
+
+  // Populate form with extracted profile data
+  const populateFormWithExtractedData = (extractedProfile: any) => {
+    try {
+      console.log('🔄 Populating form with extracted data:', extractedProfile);
+      
+      // Map extracted profile data to form fields
+      const formData: Partial<ProfileFormData> = {};
+      
+      // Personal Information
+      if (extractedProfile.personal_info) {
+        if (extractedProfile.personal_info.full_name) {
+          formData.full_name = extractedProfile.personal_info.full_name;
+        }
+        if (extractedProfile.personal_info.email_address) {
+          formData.email_address = extractedProfile.personal_info.email_address;
+        }
+        if (extractedProfile.personal_info.country_code) {
+          formData.country_code = extractedProfile.personal_info.country_code;
+        }
+        if (extractedProfile.personal_info.applying_to) {
+          formData.applying_to = extractedProfile.personal_info.applying_to;
+        }
+      }
+
+      // Academic Background
+      if (extractedProfile.academic_background) {
+        if (extractedProfile.academic_background.high_school_name) {
+          formData.high_school_name = extractedProfile.academic_background.high_school_name;
+        }
+        if (extractedProfile.academic_background.high_school_graduation_year) {
+          formData.high_school_graduation_year = parseInt(extractedProfile.academic_background.high_school_graduation_year);
+        }
+        if (extractedProfile.academic_background.gpa_unweighted) {
+          formData.class_12_half_yearly_score = parseFloat(extractedProfile.academic_background.gpa_unweighted);
+        }
+        if (extractedProfile.academic_background.intended_majors) {
+          formData.intended_majors = Array.isArray(extractedProfile.academic_background.intended_majors) 
+            ? extractedProfile.academic_background.intended_majors.join(', ')
+            : extractedProfile.academic_background.intended_majors;
+        }
+        if (extractedProfile.academic_background.sat_score) {
+          formData.test_score = parseInt(extractedProfile.academic_background.sat_score);
+          formData.test_type = 'SAT';
+        }
+        if (extractedProfile.academic_background.act_score) {
+          formData.test_score = parseInt(extractedProfile.academic_background.act_score);
+          formData.test_type = 'ACT';
+        }
+      }
+
+      // College Preferences
+      if (extractedProfile.college_preferences) {
+        if (extractedProfile.college_preferences.ideal_college_size) {
+          formData.ideal_college_size = extractedProfile.college_preferences.ideal_college_size;
+        }
+        if (extractedProfile.college_preferences.ideal_college_setting) {
+          formData.ideal_college_setting = extractedProfile.college_preferences.ideal_college_setting;
+        }
+        if (extractedProfile.college_preferences.must_haves) {
+          formData.must_haves = extractedProfile.college_preferences.must_haves;
+        }
+        if (extractedProfile.college_preferences.deal_breakers) {
+          formData.deal_breakers = extractedProfile.college_preferences.deal_breakers;
+        }
+      }
+
+      // Financial Information
+      if (extractedProfile.financial_info) {
+        if (extractedProfile.financial_info.college_budget) {
+          formData.looking_for_scholarships = 'yes'; // If budget is mentioned, assume they're looking for aid
+        }
+        if (extractedProfile.financial_info.financial_aid_importance) {
+          formData.looking_for_financial_aid = extractedProfile.financial_info.financial_aid_importance === 'Crucial' ? 'yes' : 'no';
+        }
+      }
+
+      // Additional Information
+      if (extractedProfile.additional_info) {
+        if (extractedProfile.additional_info.specific_questions) {
+          formData.specific_questions = extractedProfile.additional_info.specific_questions;
+        }
+      }
+
+      // Update form with extracted data
+      Object.entries(formData).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          form.setValue(key as keyof ProfileFormData, value);
+        }
+      });
+
+      // Mark fields as AI-populated for visual indication
+      const populatedFields = Object.keys(formData).filter(key => formData[key as keyof ProfileFormData] !== undefined);
+      setAIPopulatedFields(populatedFields);
+      
+      console.log('✅ Form populated with extracted data:', formData);
+      console.log('📝 AI-populated fields:', populatedFields);
+      
+    } catch (error) {
+      console.error('❌ Error populating form with extracted data:', error);
     }
   };
 
@@ -432,7 +512,6 @@ export default function Profile() {
     loadSATScores();
     loadACTScores();
     loadGeographicPreferences();
-    loadAvailableConversations();
   }, []);
 
   // Populate form when profileData is loaded
@@ -713,6 +792,31 @@ export default function Profile() {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          {/* AI Profile Extraction Section */}
+          <Card className="border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50">
+              <CardHeader className="text-center">
+                <CardTitle className="text-orange-800"> Diya Profile Builder</CardTitle>
+                <CardDescription className="text-orange-700">
+                  Let AI extract your profile details from your conversation with Diya to save time filling out forms.
+                </CardDescription>
+              </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-center">
+                <Button 
+                  onClick={extractAndPopulateProfile}
+                  disabled={isTestingExtraction}
+                  className="text-white shadow-lg"
+                  style={{ backgroundColor: '#D07D00' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#B86A00'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#D07D00'}
+                >
+                  {isTestingExtraction ? "Extracting..." : "Extract profile details from call with Diya"}
+                </Button>
+              </div>
+
+            </CardContent>
+          </Card>
+
           {/* Personal Information */}
           <PersonalInfoSection
             form={form}
@@ -748,93 +852,28 @@ export default function Profile() {
           {/* Additional Undergraduate Information */}
           <AdditionalInfoSection form={form} />
 
-          {/* Profile Extraction Testing Section - TEMPORARY */}
-          <Card className="border-orange-200 bg-orange-50">
-            <CardHeader>
-              <CardTitle className="text-orange-800">🧪 Profile Extraction Testing (Temporary)</CardTitle>
-              <CardDescription className="text-orange-700">
-                Test the AI profile extraction logic to see which fields are being found and which are missing.
-              </CardDescription>
-            </CardHeader>
+          {/* AI Profile Extraction Section */}
+          <Card className="border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50">
+              <CardHeader className="text-center">
+                <CardTitle className="text-orange-800"> Diya Profile Builder</CardTitle>
+                <CardDescription className="text-orange-700">
+                  Let AI extract your profile details from your conversation with Diya to save time filling out forms.
+                </CardDescription>
+              </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex gap-4 items-end">
-                <div className="flex-1">
-                  <label className="text-sm font-medium text-orange-800">Select Conversation:</label>
-                  <Select value={selectedConversationId} onValueChange={setSelectedConversationId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choose a conversation to test extraction" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableConversations.map((conv) => (
-                        <SelectItem key={conv.conversation_id} value={conv.conversation_id}>
-                          {new Date(conv.created_at).toLocaleDateString()} - {conv.summary || 'No summary'}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="flex justify-center">
                 <Button 
-                  onClick={testProfileExtraction}
-                  disabled={isTestingExtraction || !selectedConversationId}
-                  className="bg-orange-600 hover:bg-orange-700"
+                  onClick={extractAndPopulateProfile}
+                  disabled={isTestingExtraction}
+                  className="text-white shadow-lg"
+                  style={{ backgroundColor: '#D07D00' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#B86A00'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#D07D00'}
                 >
-                  {isTestingExtraction ? "Testing..." : "Test Extraction"}
+                  {isTestingExtraction ? "Extracting..." : "Extract profile details from call with Diya"}
                 </Button>
               </div>
 
-              {extractionResults && (
-                <div className="mt-6 space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-white p-4 rounded-lg border">
-                      <h4 className="font-semibold text-green-700 mb-2">✅ Success</h4>
-                      <p className="text-sm">{extractionResults.success ? "Yes" : "No"}</p>
-                    </div>
-                    <div className="bg-white p-4 rounded-lg border">
-                      <h4 className="font-semibold text-blue-700 mb-2">📊 Confidence</h4>
-                      <p className="text-sm">{extractionResults.confidence_score || 0}%</p>
-                    </div>
-                    <div className="bg-white p-4 rounded-lg border">
-                      <h4 className="font-semibold text-purple-700 mb-2">📝 Fields Found</h4>
-                      <p className="text-sm">{extractionResults.fields_extracted?.length || 0}</p>
-                    </div>
-                  </div>
-
-                  {extractionResults.fields_extracted && extractionResults.fields_extracted.length > 0 && (
-                    <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                      <h4 className="font-semibold text-green-800 mb-2">✅ Fields Successfully Extracted:</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {extractionResults.fields_extracted.map((field: string, index: number) => (
-                          <span key={index} className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
-                            {field}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {extractionResults.fields_missing && extractionResults.fields_missing.length > 0 && (
-                    <div className="bg-red-50 p-4 rounded-lg border border-red-200">
-                      <h4 className="font-semibold text-red-800 mb-2">❌ Fields Not Found:</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {extractionResults.fields_missing.map((field: string, index: number) => (
-                          <span key={index} className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs">
-                            {field}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {extractionResults.extracted_profile && (
-                    <div className="bg-gray-50 p-4 rounded-lg border">
-                      <h4 className="font-semibold text-gray-800 mb-2">📋 Extracted Profile Data:</h4>
-                      <pre className="text-xs bg-white p-3 rounded border overflow-auto max-h-96">
-                        {JSON.stringify(extractionResults.extracted_profile, null, 2)}
-                      </pre>
-                    </div>
-                  )}
-                </div>
-              )}
             </CardContent>
           </Card>
 
