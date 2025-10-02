@@ -74,7 +74,11 @@ const Auth = () => {
 
         const redirectUrl = `${window.location.origin}/`;
         
+        console.log('🔍 DEBUG: Starting account creation process');
+        console.log('📝 Form data:', { email, firstName, lastName, applyingTo });
+        
         // Step 1: Create user via Supabase Auth
+        console.log('🔍 DEBUG: Step 1 - Creating user via Supabase Auth');
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email,
           password,
@@ -89,10 +93,29 @@ const Auth = () => {
           },
         });
 
-        if (authError) throw authError;
-        if (!authData.user) throw new Error('User creation failed');
+        console.log('🔍 DEBUG: Auth signup result:', { authData, authError });
+
+        if (authError) {
+          console.error('❌ DEBUG: Auth error:', authError);
+          throw authError;
+        }
+        if (!authData.user) {
+          console.error('❌ DEBUG: No user created');
+          throw new Error('User creation failed');
+        }
+
+        console.log('✅ DEBUG: User created successfully:', authData.user.id);
 
         // Step 2: Use atomic function to ensure profile consistency
+        console.log('🔍 DEBUG: Step 2 - Calling atomic signup function');
+        console.log('📝 Atomic function params:', {
+          p_user_id: authData.user.id,
+          p_email: email,
+          p_first_name: firstName,
+          p_last_name: lastName,
+          p_applying_to: applyingTo
+        });
+
         const { data: signupResult, error: signupError } = await supabase.rpc('create_user_profiles_atomic', {
           p_user_id: authData.user.id,
           p_email: email,
@@ -101,18 +124,21 @@ const Auth = () => {
           p_applying_to: applyingTo
         });
 
+        console.log('🔍 DEBUG: Atomic function result:', { signupResult, signupError });
+
         if (signupError) {
-          console.error('Signup function error:', signupError);
+          console.error('❌ DEBUG: Signup function error:', signupError);
           throw new Error(signupError.message || 'Signup failed');
         }
 
         // Check if the function returned success
         if (!signupResult || !signupResult.success) {
           const errorMessage = signupResult?.error || 'Signup failed';
+          console.error('❌ DEBUG: Atomic function returned failure:', signupResult);
           throw new Error(errorMessage);
         }
 
-        console.log('Atomic signup successful:', signupResult);
+        console.log('✅ DEBUG: Atomic signup successful:', signupResult);
 
         toast({
           title: "Account created!",

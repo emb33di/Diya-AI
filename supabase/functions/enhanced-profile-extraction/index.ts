@@ -554,7 +554,8 @@ function flattenProfileForDatabase(profile: any, schoolType: string): Record<str
     flattened.email_address = profile.personal_info.email_address;
     // Note: phone_number is excluded from extraction as per requirements
     flattened.country_code = profile.personal_info.country_code;
-    flattened.applying_to = profile.personal_info.applying_to;
+    // Cast to enum type to avoid type mismatch
+    flattened.applying_to = profile.personal_info.applying_to as 'Undergraduate' | 'MBA' | 'LLM' | 'PhD' | 'Masters';
   }
 
   // Academic background - maps to all schema fields based on school type
@@ -658,9 +659,12 @@ async function saveProfileToDatabase(userId: string, extractedProfile: any, scho
       throw new Error(`Failed to check existing profile: ${fetchError.message}`);
     }
 
+    // Map school type to database enum value
+    const mappedSchoolType = schoolType === 'Undergraduate Colleges' ? 'Undergraduate' : schoolType;
+
     const profileRecord = {
       user_id: userId,
-      applying_to: schoolType,
+      applying_to: mappedSchoolType,
       ...flattenedProfile,
       ai_extracted: true,
       ai_extraction_date: new Date().toISOString(),
