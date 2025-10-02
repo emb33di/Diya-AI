@@ -201,6 +201,12 @@ export default function Profile() {
   const [isOnboardingCompletionFlow, setIsOnboardingCompletionFlow] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [profileMode, setProfileMode] = useState<'edit' | 'review'>('edit');
+  
+  // State for profile extraction testing
+  const [isTestingExtraction, setIsTestingExtraction] = useState(false);
+  const [extractionResults, setExtractionResults] = useState<any>(null);
+  const [availableConversations, setAvailableConversations] = useState<any[]>([]);
+  const [selectedConversationId, setSelectedConversationId] = useState<string>('');
 
   const form = useForm<ProfileFormData>({
     // Remove zodResolver to prevent automatic validation
@@ -330,6 +336,88 @@ export default function Profile() {
   // Filter majors based on search query
   // Major selection functions are now handled by MajorSelector component
 
+  // Load available conversations for testing
+  const loadAvailableConversations = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: conversations, error } = await supabase
+        .from('conversation_metadata')
+        .select('conversation_id, created_at, summary')
+        .eq('user_id', user.id)
+        .not('transcript', 'is', null)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading conversations:', error);
+        return;
+      }
+
+      setAvailableConversations(conversations || []);
+    } catch (error) {
+      console.error('Error in loadAvailableConversations:', error);
+    }
+  };
+
+  // Test profile extraction using Supabase Edge Function
+  const testProfileExtraction = async () => {
+    if (!selectedConversationId) {
+      toast({
+        title: "Error",
+        description: "Please select a conversation to test extraction",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsTestingExtraction(true);
+    setExtractionResults(null);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      console.log('🚀 Calling enhanced-profile-extraction Edge Function...');
+      console.log(`📝 Conversation ID: ${selectedConversationId}`);
+      console.log(`👤 User ID: ${user.id}`);
+
+      // Call the Supabase Edge Function
+      const { data, error } = await supabase.functions.invoke('enhanced-profile-extraction', {
+        body: {
+          conversation_id: selectedConversationId,
+          user_id: user.id,
+          school_type: 'Undergraduate Colleges' // Default to undergraduate for testing
+        }
+      });
+
+      if (error) {
+        console.error('❌ Edge Function error:', error);
+        throw new Error(`Edge Function error: ${error.message}`);
+      }
+
+      console.log('✅ Edge Function response received:', data);
+      setExtractionResults(data);
+      
+      toast({
+        title: data.success ? "Extraction Complete" : "Extraction Failed",
+        description: data.message,
+        variant: data.success ? "default" : "destructive",
+      });
+    } catch (error) {
+      console.error('❌ Error testing profile extraction:', error);
+      toast({
+        title: "Error",
+        description: `Failed to test profile extraction: ${error.message}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsTestingExtraction(false);
+    }
+  };
+
   useEffect(() => {
     // Check if user is coming from onboarding completion
     const onboardingFlow = localStorage.getItem('onboarding_completion_flow');
@@ -344,6 +432,7 @@ export default function Profile() {
     loadSATScores();
     loadACTScores();
     loadGeographicPreferences();
+    loadAvailableConversations();
   }, []);
 
   // Populate form when profileData is loaded
@@ -658,6 +747,96 @@ export default function Profile() {
 
           {/* Additional Undergraduate Information */}
           <AdditionalInfoSection form={form} />
+
+          {/* Profile Extraction Testing Section - TEMPORARY */}
+          <Card className="border-orange-200 bg-orange-50">
+            <CardHeader>
+              <CardTitle className="text-orange-800">🧪 Profile Extraction Testing (Temporary)</CardTitle>
+              <CardDescription className="text-orange-700">
+                Test the AI profile extraction logic to see which fields are being found and which are missing.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-4 items-end">
+                <div className="flex-1">
+                  <label className="text-sm font-medium text-orange-800">Select Conversation:</label>
+                  <Select value={selectedConversationId} onValueChange={setSelectedConversationId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose a conversation to test extraction" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableConversations.map((conv) => (
+                        <SelectItem key={conv.conversation_id} value={conv.conversation_id}>
+                          {new Date(conv.created_at).toLocaleDateString()} - {conv.summary || 'No summary'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button 
+                  onClick={testProfileExtraction}
+                  disabled={isTestingExtraction || !selectedConversationId}
+                  className="bg-orange-600 hover:bg-orange-700"
+                >
+                  {isTestingExtraction ? "Testing..." : "Test Extraction"}
+                </Button>
+              </div>
+
+              {extractionResults && (
+                <div className="mt-6 space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-white p-4 rounded-lg border">
+                      <h4 className="font-semibold text-green-700 mb-2">✅ Success</h4>
+                      <p className="text-sm">{extractionResults.success ? "Yes" : "No"}</p>
+                    </div>
+                    <div className="bg-white p-4 rounded-lg border">
+                      <h4 className="font-semibold text-blue-700 mb-2">📊 Confidence</h4>
+                      <p className="text-sm">{extractionResults.confidence_score || 0}%</p>
+                    </div>
+                    <div className="bg-white p-4 rounded-lg border">
+                      <h4 className="font-semibold text-purple-700 mb-2">📝 Fields Found</h4>
+                      <p className="text-sm">{extractionResults.fields_extracted?.length || 0}</p>
+                    </div>
+                  </div>
+
+                  {extractionResults.fields_extracted && extractionResults.fields_extracted.length > 0 && (
+                    <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                      <h4 className="font-semibold text-green-800 mb-2">✅ Fields Successfully Extracted:</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {extractionResults.fields_extracted.map((field: string, index: number) => (
+                          <span key={index} className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
+                            {field}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {extractionResults.fields_missing && extractionResults.fields_missing.length > 0 && (
+                    <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+                      <h4 className="font-semibold text-red-800 mb-2">❌ Fields Not Found:</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {extractionResults.fields_missing.map((field: string, index: number) => (
+                          <span key={index} className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs">
+                            {field}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {extractionResults.extracted_profile && (
+                    <div className="bg-gray-50 p-4 rounded-lg border">
+                      <h4 className="font-semibold text-gray-800 mb-2">📋 Extracted Profile Data:</h4>
+                      <pre className="text-xs bg-white p-3 rounded border overflow-auto max-h-96">
+                        {JSON.stringify(extractionResults.extracted_profile, null, 2)}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           <div className="flex justify-end gap-4">
             <Button 

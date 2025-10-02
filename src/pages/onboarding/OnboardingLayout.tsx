@@ -304,11 +304,11 @@ export const LandingViewLayout: React.FC<Pick<OnboardingLayoutProps,
                     </>
                   ) : (
                     <Button 
-                      onClick={() => onNavigate('/dashboard')} 
+                      onClick={() => onNavigate('/profile')} 
                       size="lg" 
                       className="mt-4"
                     >
-                      View Dashboard
+                      View Profile
                     </Button>
                   )}
                 </>
