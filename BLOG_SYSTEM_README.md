@@ -44,7 +44,7 @@ Each blog post HTML file should follow this structure:
     <title>Your Blog Post Title</title>
     <meta name="description" content="Brief description of your blog post">
     <meta name="author" content="Author Name">
-    <meta name="date" content="2024-12-15">
+    <meta name="date" content="2025-09-15">
     <meta name="read-time" content="5 min read">
     <meta name="category" content="Category Name">
     <meta name="tags" content="tag1, tag2, tag3">
@@ -78,7 +78,7 @@ The following meta tags are required for proper blog post integration:
 - `title`: The blog post title
 - `description`: Brief excerpt/description (150-160 characters recommended for SEO)
 - `author`: Author name
-- `date`: Publication date (YYYY-MM-DD format)
+- `date`: Publication date (YYYY-MM-DD format) - Use current date when creating new posts
 - `read-time`: Estimated reading time (e.g., "5 min read")
 - `category`: Category for filtering
 - `tags`: Comma-separated list of tags

@@ -201,18 +201,6 @@ const Blog = () => {
                         </div>
                       </div>
                       
-                      <div className="flex flex-wrap gap-1 mb-4">
-                        {post.tags.slice(0, 3).map(tag => (
-                          <Badge key={tag} variant="outline" className="text-xs">
-                            {tag}
-                          </Badge>
-                        ))}
-                        {post.tags.length > 3 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{post.tags.length - 3} more
-                          </Badge>
-                        )}
-                      </div>
 
                       <Link to={`/blog/${post.slug}`}>
                         <Button className="w-full group-hover:bg-primary group-hover:text-white transition-colors">
@@ -261,18 +249,6 @@ const Blog = () => {
                         </div>
                       </div>
                       
-                      <div className="flex flex-wrap gap-1 mb-4">
-                        {post.tags.slice(0, 3).map(tag => (
-                          <Badge key={tag} variant="outline" className="text-xs">
-                            {tag}
-                          </Badge>
-                        ))}
-                        {post.tags.length > 3 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{post.tags.length - 3} more
-                          </Badge>
-                        )}
-                      </div>
 
                       <Link to={`/blog/${post.slug}`}>
                         <Button className="w-full group-hover:bg-primary group-hover:text-white transition-colors">
