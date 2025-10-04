@@ -213,6 +213,29 @@ const Auth = () => {
           // Profile is automatically created by database trigger
           console.log(`[${signupId}] ✅ Profile will be created automatically by database trigger`);
           
+          // Send custom confirmation email
+          try {
+            const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-signup-confirmation`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+              },
+              body: JSON.stringify({
+                email,
+                firstName
+              })
+            });
+
+            if (response.ok) {
+              console.log(`[${signupId}] ✅ Custom confirmation email sent successfully`);
+            } else {
+              console.warn(`[${signupId}] ⚠️ Failed to send custom confirmation email, but user was created`);
+            }
+          } catch (emailError) {
+            console.warn(`[${signupId}] ⚠️ Error sending custom confirmation email:`, emailError);
+          }
+          
           console.groupEnd(); // Close the debug group
           
           toast({
