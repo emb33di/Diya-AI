@@ -26,7 +26,7 @@ function addSchoolProgramType(inputFile) {
     
     for (const college of jsonData) {
       if (!college.school_program_type) {
-        college.school_program_type = "Undergraduate";
+        college.school_program_type = "undergraduate";
         updatedCount++;
       }
     }

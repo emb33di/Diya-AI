@@ -13,7 +13,7 @@ export const AdditionalInfoSection: React.FC<AdditionalInfoSectionProps> = ({
   form
 }) => {
   // Only show this section for Undergraduate applications
-  if (form.watch("applying_to") !== "Undergraduate") {
+  if (form.watch("applying_to") !== "undergraduate") {
     return null;
   }
 

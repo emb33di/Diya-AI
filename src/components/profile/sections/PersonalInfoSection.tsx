@@ -5,6 +5,7 @@ import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/comp
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AIFormField } from '@/components/profile/shared';
+import { getProgramLabel } from "@/utils/programTypes";
 import { MajorSelector } from '@/components/profile/shared';
 import { ProfileFormData } from '@/hooks/profile';
 
@@ -129,7 +130,7 @@ export const PersonalInfoSection: React.FC<PersonalInfoSectionProps> = ({
                 <FormLabel>Program Type</FormLabel>
                 <div className="flex items-center space-x-2">
                   <div className="px-3 py-2 bg-muted rounded-md text-sm font-medium">
-                    {field.value || "Not set"}
+                    {field.value ? getProgramLabel(field.value) : "Not set"}
                   </div>
                   <span className="text-xs text-muted-foreground">
                     Set during account creation
@@ -141,7 +142,7 @@ export const PersonalInfoSection: React.FC<PersonalInfoSectionProps> = ({
           />
 
           {/* Conditional Field: Field of Focus for Masters and PhD */}
-          {(form.watch("applying_to") === "Masters" || form.watch("applying_to") === "PhD") && (
+          {(form.watch("applying_to") === "masters" || form.watch("applying_to") === "phd") && (
             <FormField
               control={form.control}
               name="masters_field_of_focus"
@@ -165,7 +166,7 @@ export const PersonalInfoSection: React.FC<PersonalInfoSectionProps> = ({
           )}
 
           {/* Conditional Field: Intended Majors (only for Undergraduate) */}
-          {form.watch("applying_to") === "Undergraduate" && (
+          {form.watch("applying_to") === "undergraduate" && (
             <AIFormField fieldName="intended_majors" isAIPopulated={isAIPopulated}>
               <FormField
                 control={form.control}

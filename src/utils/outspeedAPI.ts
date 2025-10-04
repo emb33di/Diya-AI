@@ -137,8 +137,8 @@ export class OutspeedAPI {
         .single();
 
       if (error || !profileData || !('applying_to' in profileData) || !profileData.applying_to) {
-        console.warn('Could not fetch applying_to field, defaulting to Undergraduate agent');
-        return getAgentId('Undergraduate');
+        console.warn('Could not fetch applying_to field, defaulting to undergraduate agent');
+        return getAgentId('undergraduate');
       }
 
       const applyingTo = profileData.applying_to as ApplyingToType;
@@ -146,7 +146,7 @@ export class OutspeedAPI {
     } catch (error) {
       console.error('Error getting onboarding agent ID:', error);
       // Fallback to undergraduate agent
-      return getAgentId('Undergraduate');
+      return getAgentId('undergraduate');
     }
   }
 

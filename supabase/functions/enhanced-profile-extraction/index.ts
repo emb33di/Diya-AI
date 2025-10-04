@@ -36,11 +36,11 @@ const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/
 
 // School type mapping
 const SCHOOL_TYPE_MAPPING = {
-  'Undergraduate Colleges': 'undergraduate',
-  'MBA': 'mba', 
-  'Masters': 'masters',
-  'PhD': 'phd',
-  'LLM': 'llm' // LLM has its own schema with law-specific fields
+  'undergraduate': 'undergraduate',
+  'mba': 'mba', 
+  'masters': 'masters',
+  'phd': 'phd',
+  'llm': 'llm' // LLM has its own schema with law-specific fields
 } as const;
 
 type SchoolType = keyof typeof SCHOOL_TYPE_MAPPING;
@@ -113,7 +113,7 @@ function generateSchoolSpecificPrompt(schoolType: string, transcript: string): s
   8. For financial fields, infer from context (e.g., if scholarships mentioned, set looking_for_scholarships to "yes")`;
 
   switch (schoolType) {
-    case 'Undergraduate Colleges':
+    case 'undergraduate':
       return `${basePrompt}
 
       RESPONSE FORMAT (JSON only):
@@ -123,7 +123,7 @@ function generateSchoolSpecificPrompt(schoolType: string, transcript: string): s
           "preferred_name": "string or null",
           "email_address": "string or null", 
           "country_code": "string or null (e.g., +1, +91, +44, etc.)",
-          "applying_to": "Undergraduate Colleges"
+          "applying_to": "undergraduate"
         },
         "academic_background": {
           "high_school_name": "string or null",
@@ -171,7 +171,7 @@ function generateSchoolSpecificPrompt(schoolType: string, transcript: string): s
         }
       }`;
 
-    case 'MBA':
+    case 'mba':
       return `${basePrompt}
 
       RESPONSE FORMAT (JSON only):
@@ -181,7 +181,7 @@ function generateSchoolSpecificPrompt(schoolType: string, transcript: string): s
           "preferred_name": "string or null",
           "email_address": "string or null",
           "country_code": "string or null (e.g., +1, +91, +44, etc.)",
-          "applying_to": "MBA"
+          "applying_to": "mba"
         },
         "academic_background": {
           "college_name": "string or null",
@@ -222,7 +222,7 @@ function generateSchoolSpecificPrompt(schoolType: string, transcript: string): s
         }
       }`;
 
-    case 'Masters':
+    case 'masters':
       return `${basePrompt}
 
       RESPONSE FORMAT (JSON only):
@@ -232,7 +232,7 @@ function generateSchoolSpecificPrompt(schoolType: string, transcript: string): s
           "preferred_name": "string or null",
           "email_address": "string or null",
           "country_code": "string or null (e.g., +1, +91, +44, etc.)",
-          "applying_to": "Masters"
+          "applying_to": "masters"
         },
         "academic_background": {
           "college_name": "string or null",
@@ -273,7 +273,7 @@ function generateSchoolSpecificPrompt(schoolType: string, transcript: string): s
         }
       }`;
 
-    case 'PhD':
+    case 'phd':
       return `${basePrompt}
 
       RESPONSE FORMAT (JSON only):
@@ -283,7 +283,7 @@ function generateSchoolSpecificPrompt(schoolType: string, transcript: string): s
           "preferred_name": "string or null",
           "email_address": "string or null",
           "country_code": "string or null (e.g., +1, +91, +44, etc.)",
-          "applying_to": "PhD"
+          "applying_to": "phd"
         },
         "academic_background": {
           "college_name": "string or null",
@@ -324,7 +324,7 @@ function generateSchoolSpecificPrompt(schoolType: string, transcript: string): s
         }
       }`;
 
-    case 'LLM':
+    case 'llm':
       return `${basePrompt}
 
       RESPONSE FORMAT (JSON only):
@@ -334,7 +334,7 @@ function generateSchoolSpecificPrompt(schoolType: string, transcript: string): s
           "preferred_name": "string or null",
           "email_address": "string or null",
           "country_code": "string or null (e.g., +1, +91, +44, etc.)",
-          "applying_to": "LLM"
+          "applying_to": "llm"
         },
         "academic_background": {
           "college_name": "string or null",
@@ -555,12 +555,12 @@ function flattenProfileForDatabase(profile: any, schoolType: string): Record<str
     // Note: phone_number is excluded from extraction as per requirements
     flattened.country_code = profile.personal_info.country_code;
     // Cast to enum type to avoid type mismatch
-    flattened.applying_to = profile.personal_info.applying_to as 'Undergraduate' | 'MBA' | 'LLM' | 'PhD' | 'Masters';
+    flattened.applying_to = profile.personal_info.applying_to as 'undergraduate' | 'mba' | 'llm' | 'phd' | 'masters';
   }
 
   // Academic background - maps to all schema fields based on school type
   if (profile.academic_background) {
-    if (schoolType === 'Undergraduate Colleges') {
+    if (schoolType === 'undergraduate') {
       const bg = profile.academic_background;
       flattened.high_school_name = bg.high_school_name;
       flattened.high_school_graduation_year = bg.high_school_graduation_year;
@@ -586,7 +586,7 @@ function flattenProfileForDatabase(profile: any, schoolType: string): Record<str
 
   // Test scores - maps to all schema fields
   if (profile.test_scores) {
-    if (schoolType === 'Undergraduate Colleges') {
+    if (schoolType === 'undergraduate') {
       flattened.sat_score = profile.test_scores.sat_score;
       flattened.act_score = profile.test_scores.act_score;
     } else {
@@ -660,7 +660,7 @@ async function saveProfileToDatabase(userId: string, extractedProfile: any, scho
     }
 
     // Map school type to database enum value
-    const mappedSchoolType = schoolType === 'Undergraduate Colleges' ? 'Undergraduate' : schoolType;
+    const mappedSchoolType = schoolType === 'undergraduate' ? 'undergraduate' : schoolType;
 
     const profileRecord = {
       user_id: userId,

@@ -140,12 +140,12 @@ export const useProfileCompletion = () => {
       
       PROFILE_FIELDS.forEach(field => {
         // Skip fields that aren't relevant to the user's application type
-        if (applyingTo === "Undergraduate") {
+        if (applyingTo === "undergraduate") {
           // For undergraduate, skip graduate-specific fields
           if (['masters_field_of_focus', 'college_name', 'college_graduation_year', 'college_gpa', 'test_type', 'test_score'].includes(field.key)) {
             return;
           }
-        } else if (['MBA', 'Masters', 'PhD', 'LLM'].includes(applyingTo)) {
+        } else if (['mba', 'masters', 'phd', 'llm'].includes(applyingTo)) {
           // For graduate, skip undergraduate-specific fields
           if (['high_school_name', 'high_school_graduation_year', 'school_board', 'class_10_score', 'class_11_score', 'class_12_half_yearly_score', 'undergraduate_cgpa', 'intended_majors'].includes(field.key)) {
             return;
@@ -170,7 +170,7 @@ export const useProfileCompletion = () => {
       });
 
       // Add completion for additional fields (only for undergraduate applicants)
-      if (applyingTo === "Undergraduate") {
+      if (applyingTo === "undergraduate") {
         ADDITIONAL_FIELDS.forEach(field => {
           totalWeight += field.weight;
           let isCompleted = false;

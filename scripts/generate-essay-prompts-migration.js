@@ -54,7 +54,7 @@ function flattenPrompts(collegeData, programType) {
       prompt: prompt.prompt,
       word_limit: prompt.word_limit,
       prompt_selection_type: prompt.selection_type || collegeData.selection_type || "required",
-      school_program_type: collegeData.school_program_type || programType || "Undergraduate"
+      school_program_type: collegeData.school_program_type || programType || "undergraduate"
     };
     
     prompts.push(flatPrompt);

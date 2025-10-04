@@ -78,7 +78,7 @@ function validateSchoolData(school) {
   }
   
   // Validate school_program_type enum values
-  const validProgramTypes = ['Undergraduate', 'MBA', 'LLM', 'PhD', 'Masters'];
+  const validProgramTypes = ['undergraduate', 'mba', 'llm', 'phd', 'masters'];
   if (!validProgramTypes.includes(school.school_program_type)) {
     console.warn(`⚠️  School "${school.name}" has invalid school_program_type: ${school.school_program_type}`);
     return false;

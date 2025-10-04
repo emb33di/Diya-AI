@@ -85,19 +85,19 @@ Focus on schools that genuinely match the student's profile and interests for {p
 
 // Program-specific guidance for different application types
 const PROGRAM_GUIDANCE = {
-  'Undergraduate': 'Focus on undergraduate programs, liberal arts education, research opportunities for undergraduates, campus culture, and academic fit. Consider factors like class size, professor accessibility, undergraduate research opportunities, and campus life.',
-  'MBA': 'Focus on MBA programs, business school rankings, career outcomes, alumni networks, and industry connections. Consider factors like GMAT/GRE scores, work experience, career goals, and program format (full-time, part-time, executive).',
-  'LLM': 'Focus on law school programs, legal specializations, bar exam pass rates, and career outcomes in law. Consider factors like LSAT scores, undergraduate GPA, legal interests, and career goals in the legal field.',
-  'PhD': 'Focus on doctoral programs, research opportunities, faculty advisors, funding availability, and academic reputation. Consider factors like research interests, GRE scores, academic background, and career goals in academia or research.',
-  'Masters': 'Focus on master\'s programs, specialized fields of study, research opportunities, and career advancement. Consider factors like GRE scores, undergraduate background, career goals, and program specialization.'
+  'undergraduate': 'Focus on undergraduate programs, liberal arts education, research opportunities for undergraduates, campus culture, and academic fit. Consider factors like class size, professor accessibility, undergraduate research opportunities, and campus life.',
+  'mba': 'Focus on MBA programs, business school rankings, career outcomes, alumni networks, and industry connections. Consider factors like GMAT/GRE scores, work experience, career goals, and program format (full-time, part-time, executive).',
+  'llm': 'Focus on law school programs, legal specializations, bar exam pass rates, and career outcomes in law. Consider factors like LSAT scores, undergraduate GPA, legal interests, and career goals in the legal field.',
+  'phd': 'Focus on doctoral programs, research opportunities, faculty advisors, funding availability, and academic reputation. Consider factors like research interests, GRE scores, academic background, and career goals in academia or research.',
+  'masters': 'Focus on master\'s programs, specialized fields of study, research opportunities, and career advancement. Consider factors like GRE scores, undergraduate background, career goals, and program specialization.'
 };
 
-async function generateSchoolRecommendations(transcript: string, programType: string = 'Undergraduate'): Promise<SchoolRecommendation[]> {
+async function generateSchoolRecommendations(transcript: string, programType: string = 'undergraduate'): Promise<SchoolRecommendation[]> {
   if (!GEMINI_API_KEY) {
     throw new Error('Google API key not configured')
   }
 
-  const programSpecificGuidance = PROGRAM_GUIDANCE[programType as keyof typeof PROGRAM_GUIDANCE] || PROGRAM_GUIDANCE['Undergraduate'];
+  const programSpecificGuidance = PROGRAM_GUIDANCE[programType as keyof typeof PROGRAM_GUIDANCE] || PROGRAM_GUIDANCE['undergraduate'];
   
   const prompt = SCHOOL_RECOMMENDATION_PROMPT_TEMPLATE
     .replace('{transcript}', transcript)
@@ -267,7 +267,7 @@ serve(async (req) => {
     }
 
     // Use centralized mapping function
-    const userProgramType = getUserProgramTypeFromProfile(userProfile, 'Undergraduate')
+    const userProgramType = getUserProgramTypeFromProfile(userProfile, 'undergraduate')
     console.log(`Generating school recommendations for program type: ${userProgramType}`)
 
     // Generate school recommendations

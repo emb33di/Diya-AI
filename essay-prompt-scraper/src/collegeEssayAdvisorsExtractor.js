@@ -47,7 +47,7 @@ export class CollegeEssayAdvisorsExtractor {
         const result = {
           university_info: {
             college_name: name,
-            school_program_type: "Undergraduate",
+            school_program_type: "undergraduate",
             university_url: window.location.href,
             acceptance_rate: null,
             location: null,

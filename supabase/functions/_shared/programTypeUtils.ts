@@ -3,19 +3,19 @@
  * This ensures consistency across all edge functions
  */
 
-export type SchoolProgramType = 'Undergraduate' | 'MBA' | 'LLM' | 'PhD' | 'Masters';
-export type ApplyingToType = 'Undergraduate Colleges' | 'MBA' | 'LLM' | 'PhD' | 'Masters';
+export type SchoolProgramType = 'undergraduate' | 'mba' | 'llm' | 'phd' | 'masters';
+export type ApplyingToType = 'undergraduate' | 'mba' | 'llm' | 'phd' | 'masters';
 
 /**
  * Centralized mapping from applying_to values to SchoolProgramType
  * This ensures consistency across all services and edge functions
  */
 export const APPLYING_TO_TO_PROGRAM_TYPE_MAP: Record<ApplyingToType, SchoolProgramType> = {
-  'Undergraduate Colleges': 'Undergraduate',
-  'MBA': 'MBA',
-  'LLM': 'LLM',
-  'PhD': 'PhD',
-  'Masters': 'Masters'
+  'undergraduate': 'undergraduate',
+  'mba': 'mba',
+  'llm': 'llm',
+  'phd': 'phd',
+  'masters': 'masters'
 };
 
 /**
@@ -38,7 +38,7 @@ export function mapApplyingToToProgramType(applyingTo: string | null | undefined
  */
 export function mapApplyingToToProgramTypeWithFallback(
   applyingTo: string | null | undefined, 
-  fallback: SchoolProgramType = 'Undergraduate'
+  fallback: SchoolProgramType = 'undergraduate'
 ): SchoolProgramType {
   return mapApplyingToToProgramType(applyingTo) || fallback;
 }
@@ -51,7 +51,7 @@ export function mapApplyingToToProgramTypeWithFallback(
  */
 export function getUserProgramTypeFromProfile(
   userProfile: { applying_to?: string | null } | null | undefined,
-  fallback: SchoolProgramType = 'Undergraduate'
+  fallback: SchoolProgramType = 'undergraduate'
 ): SchoolProgramType {
   return mapApplyingToToProgramTypeWithFallback(userProfile?.applying_to, fallback);
 }

@@ -58,7 +58,7 @@ function convertNestedToFlat(inputFile, outputFile) {
           prompt: prompt.prompt,
           word_limit: prompt.word_limit,
           prompt_selection_type: prompt.selection_type || prompt.prompt_selection_type || "required",
-          school_program_type: "Undergraduate" // Default for undergraduate prompts
+          school_program_type: "undergraduate" // Default for undergraduate prompts
         };
         
         // Validate required fields

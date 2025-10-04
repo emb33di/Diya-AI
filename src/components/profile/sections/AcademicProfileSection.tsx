@@ -39,7 +39,7 @@ export const AcademicProfileSection: React.FC<AcademicProfileSectionProps> = ({
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Conditional Academic Fields based on Applying To */}
-        {form.watch("applying_to") === "Undergraduate" ? (
+        {form.watch("applying_to") === "undergraduate" ? (
           <>
             {/* Undergraduate Fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -65,7 +65,7 @@ export const AcademicProfileSection: React.FC<AcademicProfileSectionProps> = ({
                   <FormItem>
                     <FormLabel>
                       High School Graduation Year
-                      {form.watch("applying_to") === "Undergraduate" && <span className="text-red-500">*</span>}
+                      {form.watch("applying_to") === "undergraduate" && <span className="text-red-500">*</span>}
                     </FormLabel>
                     <FormControl>
                       <Input 

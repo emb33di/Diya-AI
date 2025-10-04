@@ -680,7 +680,7 @@ async function callSemanticStrengthsAgent(blocks: DocumentBlock[], context: any,
   
   if (userId) {
     const programType = await getUserProgramType(userId);
-    if (programType === 'MBA') {
+    if (programType === 'mba') {
       agentEndpoint = 'ai_agent_strengths_mba';
       console.log('Routing to MBA-specific strengths agent');
     } else {
@@ -722,7 +722,7 @@ async function callSemanticWeaknessesAgent(blocks: DocumentBlock[], context: any
   
   if (userId) {
     const programType = await getUserProgramType(userId);
-    if (programType === 'MBA') {
+    if (programType === 'mba') {
       agentEndpoint = 'ai_agent_weaknesses_mba';
       console.log('Routing to MBA-specific weaknesses agent');
     } else {
@@ -786,7 +786,7 @@ async function callSemanticBigPictureAgent(blocks: DocumentBlock[], context: any
   
   if (userId) {
     const programType = await getUserProgramType(userId);
-    if (programType === 'MBA') {
+    if (programType === 'mba') {
       agentEndpoint = 'ai_agent_big_picture_mba';
       console.log('Routing to MBA-specific big picture agent');
     } else {

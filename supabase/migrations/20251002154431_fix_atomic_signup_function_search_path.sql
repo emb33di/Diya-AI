@@ -27,8 +27,8 @@ BEGIN
     RETURN result;
   END IF;
 
-  -- Validate applying_to value
-  IF p_applying_to NOT IN ('Undergraduate', 'MBA', 'LLM', 'PhD', 'Masters') THEN
+  -- Validate applying_to value (now using lowercase)
+  IF p_applying_to NOT IN ('undergraduate', 'mba', 'llm', 'phd', 'masters') THEN
     result := json_build_object(
       'success', false,
       'error', 'Invalid applying_to value: ' || p_applying_to
@@ -41,13 +41,13 @@ BEGIN
 
   -- Start transaction (implicit in function)
   BEGIN
-    -- Create or update user_profiles record with proper casting
+    -- Create or update user_profiles record with TEXT field (no casting needed)
     INSERT INTO public.user_profiles (user_id, full_name, email_address, applying_to, onboarding_complete)
-    VALUES (p_user_id, full_name, p_email, p_applying_to::school_program_type, false)
+    VALUES (p_user_id, full_name, p_email, p_applying_to, false)
     ON CONFLICT (user_id) DO UPDATE SET
       full_name = EXCLUDED.full_name,
       email_address = EXCLUDED.email_address,
-      applying_to = EXCLUDED.applying_to::school_program_type,
+      applying_to = EXCLUDED.applying_to,
       updated_at = now();
 
     -- Return success with user details

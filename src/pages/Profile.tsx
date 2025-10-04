@@ -48,7 +48,7 @@ const profileSchema = z.object({
   email_address: z.string().email("Valid email address is required").min(1, "Email address is required"),
   country_code: z.string().min(1, "Country code is required"),
   phone_number: z.string().min(1, "Phone number is required"),
-  applying_to: z.enum(["Undergraduate", "MBA", "LLM", "PhD", "Masters"]).optional(),
+  applying_to: z.enum(["undergraduate", "mba", "llm", "phd", "masters"]).optional(),
   masters_field_of_focus: z.string().optional(),
   
   // Academic Profile
@@ -215,7 +215,7 @@ export default function Profile() {
       email_address: "",
       country_code: "+91",
       phone_number: "",
-      applying_to: "Undergraduate",
+      applying_to: "undergraduate",
       masters_field_of_focus: "",
       
       // Academic Profile
@@ -269,13 +269,13 @@ export default function Profile() {
     if (!formData.applying_to) errors.applying_to = "Please select what you're applying to";
 
     // Application-specific validation
-    if (formData.applying_to === "Undergraduate") {
+    if (formData.applying_to === "undergraduate") {
       if (!formData.high_school_name) errors.high_school_name = "High school name is required";
       if (!formData.high_school_graduation_year) errors.high_school_graduation_year = "High school graduation year is required";
       if (!formData.school_board) errors.school_board = "School board is required";
       if (!formData.year_of_study) errors.year_of_study = "Year of study is required";
       if (!formData.intended_majors) errors.intended_majors = "Intended major is required";
-    } else if (['MBA', 'Masters', 'PhD', 'LLM'].includes(formData.applying_to)) {
+    } else if (['mba', 'masters', 'phd', 'llm'].includes(formData.applying_to)) {
       if (!formData.college_name) errors.college_name = "College name is required";
       if (!formData.college_graduation_year) errors.college_graduation_year = "College graduation year is required";
       if (!formData.college_gpa) errors.college_gpa = "College GPA is required";
@@ -350,7 +350,7 @@ export default function Profile() {
       const { data: conversations, error: conversationsError } = await supabase
         .from('conversations')
         .select('id, created_at, summary')
-        .eq('user_id', user.id)
+        .eq('user_id', user.id as any)
         .order('created_at', { ascending: false })
         .limit(1);
 
@@ -362,7 +362,10 @@ export default function Profile() {
         throw new Error('No conversations found. Please have a conversation with Diya first.');
       }
 
-      const conversationId = conversations[0].id;
+      const conversationId = (conversations[0] as any)?.id;
+      if (!conversationId) {
+        throw new Error('Invalid conversation data');
+      }
 
       console.log('🚀 Calling enhanced-profile-extraction Edge Function...');
       console.log(`📝 Conversation ID: ${conversationId}`);
@@ -488,7 +491,7 @@ export default function Profile() {
 
       // Mark fields as AI-populated for visual indication
       const populatedFields = Object.keys(formData).filter(key => formData[key as keyof ProfileFormData] !== undefined);
-      setAIPopulatedFields(populatedFields);
+      setAIPopulatedFields(new Set(populatedFields));
       
       console.log('✅ Form populated with extracted data:', formData);
       console.log('📝 AI-populated fields:', populatedFields);
@@ -571,16 +574,16 @@ export default function Profile() {
       if (!data.applying_to) errors.applying_to = "Please select what you're applying to";
 
       // High school fields only required for Undergraduate applications
-      if (data.applying_to === "Undergraduate") {
+      if (data.applying_to === "undergraduate") {
         if (!data.high_school_name) errors.high_school_name = "High school name is required";
         if (!data.school_board) errors.school_board = "School board is required";
         if (!data.year_of_study) errors.year_of_study = "Year of study is required";
       }
       
       // Conditional validation based on applying_to
-      if (data.applying_to === "Undergraduate") {
+      if (data.applying_to === "undergraduate") {
         if (!data.intended_majors) errors.intended_majors = "Intended major is required";
-      } else if (data.applying_to === "Masters") {
+      } else if (data.applying_to === "masters") {
         if (!data.masters_field_of_focus) errors.masters_field_of_focus = "Field of focus is required";
         if (!data.college_name) errors.college_name = "College name is required";
         if (!data.college_graduation_year) errors.college_graduation_year = "College graduation year is required";
@@ -589,7 +592,7 @@ export default function Profile() {
         if (data.test_type && data.test_type !== "Not yet taken" && !data.test_score) {
           errors.test_score = "Test score is required";
         }
-      } else if (data.applying_to === "PhD") {
+      } else if (data.applying_to === "phd") {
         if (!data.masters_field_of_focus) errors.masters_field_of_focus = "Field of focus is required";
         if (!data.college_name) errors.college_name = "College name is required";
         if (!data.college_graduation_year) errors.college_graduation_year = "College graduation year is required";
@@ -598,7 +601,7 @@ export default function Profile() {
         if (data.test_type && data.test_type !== "Not yet taken" && !data.test_score) {
           errors.test_score = "Test score is required";
         }
-      } else if (data.applying_to === "MBA" || data.applying_to === "LLM") {
+      } else if (data.applying_to === "mba" || data.applying_to === "llm") {
         if (!data.college_name) errors.college_name = "College name is required";
         if (!data.college_graduation_year) errors.college_graduation_year = "College graduation year is required";
         if (!data.college_gpa) errors.college_gpa = "College GPA is required";

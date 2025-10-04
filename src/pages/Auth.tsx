@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import StarryBackground from "@/components/StarryBackground";
 import { getValidApplyingToValues } from "@/utils/userProfileUtils";
 import "@/styles/landing.css";
+import { getProgramOptions } from "@/utils/programTypes";
 
 const Auth = () => {
   const [isSignIn, setIsSignIn] = useState(true);
@@ -46,112 +47,220 @@ const Auth = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    
+    // Create a unique ID for this signup attempt for easier log correlation
+    const signupId = `signup_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    
+    // Debug group for this signup attempt
+    console.group(`🔍 [${signupId}] Signup Process`);
+    
+    // 1. Log raw form data
+    console.log(`[${signupId}] 📝 Form Data:`, {
+      email,
+      password: password ? '••••••••' : 'empty',
+      firstName,
+      lastName,
+      applyingTo: {
+        value: applyingTo,
+        type: typeof applyingTo,
+        isValid: !!applyingTo && applyingTo.trim() !== ''
+      }
+    });
 
+    // 2. Add debugger statement (comment out in production)
+    // Uncomment to pause execution here for inspection
+    // debugger;
+
+    // 3. Validate form data before proceeding
+    if (!isSignIn) {
+      if (!applyingTo) {
+        const error = new Error('Program type is required');
+        console.error(`❌ [${signupId}] Validation error:`, error);
+        throw error;
+      }
+      
+      console.log(`[${signupId}] ✅ Form validation passed`);
+    }
+    
     try {
       if (isSignIn) {
-        const { error } = await supabase.auth.signInWithPassword({
+        console.log(`[${signupId}] Signing in user:`, { email });
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
 
-        if (error) throw error;
+        if (signInError) {
+          console.error(`❌ [${signupId}] Sign in error:`, {
+            message: signInError.message,
+            name: signInError.name,
+            status: signInError.status
+          });
+          throw signInError;
+        }
+        
+        console.log(`✅ [${signupId}] Sign in successful:`, {
+          userId: signInData.user?.id,
+          session: signInData.session ? 'Session created' : 'No session'
+        });
         
         toast({
           title: "Welcome back!",
           description: "You've been signed in successfully.",
         });
       } else {
-        // Validate required fields for signup
-        if (!applyingTo) {
-          toast({
-            title: "Program Type Required",
-            description: "Please select what you're applying to.",
-            variant: "destructive",
-          });
-          setLoading(false);
-          return;
-        }
-
-        const redirectUrl = `${window.location.origin}/`;
+        console.log(`[${signupId}] Starting signup process`);
         
-        console.log('🔍 DEBUG: Starting account creation process');
-        console.log('📝 Form data:', { email, firstName, lastName, applyingTo });
-        
-        // Step 1: Create user via Supabase Auth
-        console.log('🔍 DEBUG: Step 1 - Creating user via Supabase Auth');
-        const { data: authData, error: authError } = await supabase.auth.signUp({
+        // Log the exact data being sent to Supabase Auth
+        const authDataToSend = {
           email,
-          password,
+          password, // Keep the actual password for the API call
           options: {
-            emailRedirectTo: redirectUrl,
+            emailRedirectTo: `${window.location.origin}/`,
             data: {
-              full_name: `${firstName} ${lastName}`,
+              full_name: `${firstName} ${lastName}`.trim(),
               first_name: firstName,
               last_name: lastName,
               applying_to: applyingTo,
-            },
-          },
-        });
+              // Add debug info
+              _debug: {
+                signupId,
+                timestamp: new Date().toISOString(),
+                clientInfo: window.navigator.userAgent
+              }
+            }
+          }
+        };
+        
+        // Create a safe version for logging (without password)
+        const loggableAuthData = {
+          ...authDataToSend,
+          password: '••••••••',
+          options: {
+            ...authDataToSend.options,
+            data: {
+              ...authDataToSend.options.data,
+              // Ensure we log the exact value and type of applyingTo
+              _applyingToDebug: {
+                value: applyingTo,
+                type: typeof applyingTo,
+                isUndefined: applyingTo === undefined,
+                isNull: applyingTo === null,
+                isEmpty: applyingTo === ''
+              }
+            }
+          }
+        };
+        
+        console.log(`[${signupId}] 📤 Supabase Auth Payload:`, loggableAuthData);
+        
+        // Step 1: Create user via Supabase Auth
+        console.log(`[${signupId}] Step 1 - Creating user via Supabase Auth`);
+        try {
+          // Use the authDataToSend we already prepared
+          const { data: authData, error: authError } = await supabase.auth.signUp(authDataToSend);
 
-        console.log('🔍 DEBUG: Auth signup result:', { authData, authError });
+          // Log the response with more detailed error info
+          console.log(`[${signupId}] Auth signup response:`, { 
+            hasUser: !!authData?.user,
+            session: authData?.session ? 'Session created' : 'No session',
+            error: authError ? {
+              message: authError.message,
+              name: authError.name,
+              status: (authError as any).status,
+              // Include any additional error details if available
+              details: (authError as any).details,
+              hint: (authError as any).hint,
+              code: (authError as any).code
+            } : null,
+            // Include the raw response for debugging
+            rawResponse: authData || authError
+          });
+          
+          // Verify applying_to was received by Supabase
+          if (authData?.user) {
+            const userMetadata = authData.user.user_metadata as any;
+            console.log(`[${signupId}] ✅ Auth User Created:`, {
+              userId: authData.user.id,
+              applyingToInMetadata: userMetadata?.applying_to,
+              originalApplyingTo: applyingTo,
+              valuesMatch: userMetadata?.applying_to === applyingTo
+            });
+          }
 
-        if (authError) {
-          console.error('❌ DEBUG: Auth error:', authError);
-          throw authError;
+          if (authError) {
+            console.error(`❌ [${signupId}] Auth error details:`, {
+              message: authError.message,
+              name: authError.name,
+              status: (authError as any).status
+              // Removed cause as it's not part of AuthError type
+            });
+            throw authError;
+          }
+
+          if (!authData.user) {
+            const error = new Error('User creation failed - no user object returned');
+            console.error(`❌ [${signupId}] ${error.message}`);
+            throw error;
+          }
+
+          console.log(`✅ [${signupId}] User created successfully:`, {
+            userId: authData.user.id,
+            email: authData.user.email,
+            confirmed: authData.user.confirmed_at ? 'Yes' : 'No (needs email verification)'
+          });
+
+          // Profile is automatically created by database trigger
+          console.log(`[${signupId}] ✅ Profile will be created automatically by database trigger`);
+          
+          console.groupEnd(); // Close the debug group
+          
+          toast({
+            title: "Account created!",
+            description: "Please check your email to confirm your account.",
+          });
+          
+        } catch (signupError: any) {
+          console.error(`❌ [${signupId}] Signup process failed:`, {
+            name: signupError.name,
+            message: signupError.message,
+            stack: signupError.stack,
+            ...(signupError.details && { details: signupError.details }),
+            ...(signupError.hint && { hint: signupError.hint }),
+            ...(signupError.code && { code: signupError.code })
+          });
+          throw signupError;
         }
-        if (!authData.user) {
-          console.error('❌ DEBUG: No user created');
-          throw new Error('User creation failed');
-        }
-
-        console.log('✅ DEBUG: User created successfully:', authData.user.id);
-
-        // Step 2: Use atomic function to ensure profile consistency
-        console.log('🔍 DEBUG: Step 2 - Calling atomic signup function');
-        console.log('📝 Atomic function params:', {
-          p_user_id: authData.user.id,
-          p_email: email,
-          p_first_name: firstName,
-          p_last_name: lastName,
-          p_applying_to: applyingTo
-        });
-
-        const { data: signupResult, error: signupError } = await supabase.rpc('create_user_profiles_atomic', {
-          p_user_id: authData.user.id,
-          p_email: email,
-          p_first_name: firstName,
-          p_last_name: lastName,
-          p_applying_to: applyingTo
-        });
-
-        console.log('🔍 DEBUG: Atomic function result:', { signupResult, signupError });
-
-        if (signupError) {
-          console.error('❌ DEBUG: Signup function error:', signupError);
-          throw new Error(signupError.message || 'Signup failed');
-        }
-
-        // Check if the function returned success
-        if (!signupResult || !signupResult.success) {
-          const errorMessage = signupResult?.error || 'Signup failed';
-          console.error('❌ DEBUG: Atomic function returned failure:', signupResult);
-          throw new Error(errorMessage);
-        }
-
-        console.log('✅ DEBUG: Atomic signup successful:', signupResult);
-
-        toast({
-          title: "Account created!",
-          description: "Please check your email to confirm your account.",
-        });
       }
     } catch (error: any) {
+      console.error(`🔥 [${signupId}] CRITICAL: Signup failed:`, {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+        ...(error.details && { details: error.details }),
+        ...(error.hint && { hint: error.hint }),
+        ...(error.code && { code: error.code })
+      });
+      
+      // User-friendly error messages
+      let errorMessage = error.message || 'An unknown error occurred';
+      
+      // Map common error codes to friendly messages
+      if (error.status === 400) {
+        errorMessage = 'Invalid email or password format';
+      } else if (error.status === 429) {
+        errorMessage = 'Too many signup attempts. Please try again later.';
+      } else if (error.message?.includes('already registered')) {
+        errorMessage = 'This email is already registered. Please sign in instead.';
+      }
+      
       toast({
         title: "Error",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
+      console.groupEnd(); // Close the debug group
       setLoading(false);
     }
   };
@@ -235,14 +344,14 @@ const Auth = () => {
                 {!isSignIn && (
                   <div className="space-y-2">
                     <Label htmlFor="applyingTo">What are you applying to? <span className="text-red-500">*</span></Label>
-                    <Select value={applyingTo} onValueChange={setApplyingTo}>
+                    <Select value={applyingTo} onValueChange={setApplyingTo} required>
                       <SelectTrigger className="h-12 text-base">
                         <SelectValue placeholder="Select your program type" />
                       </SelectTrigger>
                       <SelectContent>
-                        {getValidApplyingToValues().map((value) => (
+                        {getProgramOptions().map(({ value, label }) => (
                           <SelectItem key={value} value={value}>
-                            {value}
+                            {label}
                           </SelectItem>
                         ))}
                       </SelectContent>

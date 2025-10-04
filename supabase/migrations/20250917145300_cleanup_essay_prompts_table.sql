@@ -34,6 +34,6 @@ ALTER COLUMN title SET NOT NULL;
 -- prompt (TEXT, NOT NULL)
 -- word_limit (TEXT, NOT NULL)
 -- prompt_selection_type (TEXT, NOT NULL)
--- school_program_type (school_program_type enum)
+-- school_program_type (TEXT with CHECK constraint)
 -- created_at (TIMESTAMP WITH TIME ZONE, NOT NULL)
 -- updated_at (TIMESTAMP WITH TIME ZONE, NOT NULL)

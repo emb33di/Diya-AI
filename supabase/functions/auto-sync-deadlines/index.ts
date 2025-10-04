@@ -88,9 +88,9 @@ const MBA_REGULAR_DECISION_DEADLINES = [
 // Function to get regular decision deadline data based on program type
 function getRegularDecisionDeadlineDataByProgramType(programType: string) {
   switch (programType) {
-    case 'MBA':
+    case 'mba':
       return MBA_REGULAR_DECISION_DEADLINES;
-    case 'Undergraduate':
+    case 'undergraduate':
       return UNDERGRADUATE_REGULAR_DECISION_DEADLINES;
     default:
       // Default to undergraduate for backward compatibility
@@ -161,7 +161,7 @@ serve(async (req) => {
     }
 
     // Use centralized mapping function
-    const userProgramType = getUserProgramTypeFromProfile(userProfile, 'Undergraduate')
+    const userProgramType = getUserProgramTypeFromProfile(userProfile, 'undergraduate')
     console.log(`User program type: ${userProgramType}`)
 
     // Get appropriate deadline data based on program type

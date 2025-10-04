@@ -103,7 +103,7 @@ async function upsertEssayPrompt(prompt) {
       prompt: prompt.prompt?.trim(),
       word_limit: prompt.word_limit?.trim(),
       prompt_selection_type: prompt.prompt_selection_type?.trim() || prompt.selection_type?.trim() || "required",
-      school_program_type: prompt.school_program_type?.trim() || "Undergraduate"
+      school_program_type: prompt.school_program_type?.trim() || "undergraduate"
     };
 
     // Check if record already exists
@@ -177,7 +177,7 @@ function flattenPrompts(collegeData, programType) {
       prompt: prompt.prompt,
       word_limit: prompt.word_limit,
       prompt_selection_type: prompt.selection_type || collegeData.selection_type || "required", // Prompt-level selection
-      school_program_type: collegeData.school_program_type || programType || "Undergraduate",
+      school_program_type: collegeData.school_program_type || programType || "undergraduate",
       // Additional metadata for better understanding
       total_prompts_available: collegeData.prompts.length,
       selection_rule_description: requirements.description

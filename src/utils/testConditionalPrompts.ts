@@ -8,7 +8,7 @@ import { ApplyingToType } from '../utils/userProfileUtils';
 export async function testConditionalPrompts() {
   console.log('Testing conditional prompt system...');
   
-  const testCases: ApplyingToType[] = ['Undergraduate', 'MBA', 'LLM', 'PhD', 'Masters'];
+  const testCases: ApplyingToType[] = ['undergraduate', 'mba', 'llm', 'phd', 'masters'];
   
   for (const applyingTo of testCases) {
     try {
