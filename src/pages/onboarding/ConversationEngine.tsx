@@ -614,7 +614,6 @@ const ConversationEngine = ({
             (conversation as any).off('input_audio_transcription.completed', handleUserTranscript);
             (conversation as any).off('response.audio_transcript.delta', handleOutputDelta);
             (conversation as any).off('response.output_text.done', handleOutputDone);
-            (conversation as any).off('response.audio_transcript.delta', handleAudioTranscript);
             (conversation as any).off('output_audio_buffer.started', handleSpeechStart);
             (conversation as any).off('output_audio_buffer.stopped', handleSpeechEnd);
             (conversation as any).off('response.output_audio.delta', handleAudioTranscript);
@@ -664,7 +663,6 @@ const ConversationEngine = ({
       });
       
       // Add audio/speech event listeners for Diya's speech
-      (conversation as any).on('response.audio_transcript.delta', handleAudioTranscript);
       (conversation as any).on('output_audio_buffer.started', handleSpeechStart);
       (conversation as any).on('output_audio_buffer.stopped', handleSpeechEnd);
       
