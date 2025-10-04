@@ -38,7 +38,7 @@ function truncateToTokens(text: string, maxTokens: number): string {
 
 // Google Gemini API configuration
 const GEMINI_API_KEY = Deno.env.get('GOOGLE_API_KEY')
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent'
 
 // MBA-Specific Big Picture Analysis Prompt
 const MBA_BIG_PICTURE_PROMPT = `You are an expert MBA admissions consultant specializing in strategic business school application essay analysis. Analyze the following MBA application essay holistically and provide honest, direct feedback about its strategic strengths and areas for improvement.
@@ -162,7 +162,8 @@ async function analyzeMBABigPicture(essayContent: string, essayPrompt?: string, 
       temperature: 0.3,
       topK: 40,
       topP: 0.95,
-      maxOutputTokens: 1024,
+        maxOutputTokens: 4096,
+      responseMimeType: "application/json"
     }
   }
 
@@ -182,11 +183,21 @@ async function analyzeMBABigPicture(essayContent: string, essayPrompt?: string, 
 
     const data = await response.json()
     
-    if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
-      throw new Error('Invalid response from Gemini API')
+    // Safely extract text from candidates without assuming parts[0]
+    const parts = data?.candidates?.[0]?.content?.parts
+    if (!Array.isArray(parts) || parts.length === 0) {
+      throw new Error('Invalid response from Gemini API: missing content parts')
     }
-
-    const responseText = data.candidates[0].content.parts[0].text
+    
+    const responseText = parts
+      .map((p: any) => p?.text)
+      .filter(Boolean)
+      .join('\n')
+      .trim()
+    
+    if (!responseText) {
+      throw new Error('Invalid response from Gemini API: empty content text')
+    }
     console.log('MBA Big Picture Agent Response:', responseText)
     
     // Extract JSON from response with improved error handling

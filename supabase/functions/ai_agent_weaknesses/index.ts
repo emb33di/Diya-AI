@@ -24,7 +24,7 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 // Google Gemini API configuration
 const GEMINI_API_KEY = Deno.env.get('GOOGLE_API_KEY')
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent'
 
 // Weaknesses Analysis Prompt
 const WEAKNESSES_PROMPT = `You are an expert college admissions counselor specializing in identifying strategic weaknesses in college application essays. Analyze the following essay and provide honest, direct feedback about areas that need improvement for maximum admissions impact.
@@ -107,7 +107,8 @@ async function analyzeWeaknesses(essayContent: string, essayPrompt?: string): Pr
       temperature: 0.3,
       topK: 40,
       topP: 0.95,
-      maxOutputTokens: 1024,
+        maxOutputTokens: 4096,
+      responseMimeType: "application/json"
     }
   }
 
@@ -127,11 +128,25 @@ async function analyzeWeaknesses(essayContent: string, essayPrompt?: string): Pr
 
     const data = await response.json()
     
-    if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
-      throw new Error('Invalid response from Gemini API')
+    // Debug: log full response structure to diagnose issues
+    console.log('Gemini API full response:', JSON.stringify(data, null, 2))
+    
+    // Safely extract text from candidates without assuming parts[0]
+    const parts = data?.candidates?.[0]?.content?.parts
+    if (!Array.isArray(parts) || parts.length === 0) {
+      console.error('Gemini response missing parts. Full response:', JSON.stringify(data, null, 2))
+      throw new Error('Invalid response from Gemini API: missing content parts')
     }
-
-    const responseText = data.candidates[0].content.parts[0].text
+    
+    const responseText = parts
+      .map((p: any) => p?.text)
+      .filter(Boolean)
+      .join('\n')
+      .trim()
+    
+    if (!responseText) {
+      throw new Error('Invalid response from Gemini API: empty content text')
+    }
     console.log('Weaknesses Agent Response:', responseText)
     
     // Extract JSON from response

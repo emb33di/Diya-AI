@@ -23,7 +23,7 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 // Google Gemini API configuration
 const GEMINI_API_KEY = Deno.env.get('GOOGLE_API_KEY')
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent'
 
 // Strengths Analysis Prompt
 const STRENGTHS_PROMPT = `You are an expert college admissions counselor specializing in identifying strategic strengths in college application essays. Analyze the following essay and provide honest, direct feedback about what the student is doing well strategically.
@@ -112,7 +112,8 @@ async function analyzeStrengths(essayContent: string, essayPrompt?: string, weak
       temperature: 0.3,
       topK: 40,
       topP: 0.95,
-      maxOutputTokens: 1024,
+        maxOutputTokens: 4096,
+      responseMimeType: "application/json"
     }
   }
 
@@ -130,13 +131,36 @@ async function analyzeStrengths(essayContent: string, essayPrompt?: string, weak
       throw new Error(`Gemini API error: ${response.status} - ${errorText}`)
     }
 
-    const data = await response.json()
+      const data = await response.json()
+      
+      // Debug: log full response structure to diagnose issues
+      console.log('Gemini API full response:', JSON.stringify(data, null, 2))
+      
+      // Monitor token usage
+      if (data.usageMetadata) {
+        console.log(`Token usage - Prompt: ${data.usageMetadata.promptTokenCount}, Total: ${data.usageMetadata.totalTokenCount}`)
+        if (data.usageMetadata.totalTokenCount > 1800) {
+          console.warn(`⚠️ High token usage: ${data.usageMetadata.totalTokenCount}/2048 tokens used`)
+        }
+      }
+      
+      // Safely extract text from candidates without assuming parts[0]
+      const parts = data?.candidates?.[0]?.content?.parts
+      if (!Array.isArray(parts) || parts.length === 0) {
+        console.error('Gemini response missing parts. Full response:', JSON.stringify(data, null, 2))
+        throw new Error('Invalid response from Gemini API: missing content parts')
+      }
     
-    if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
-      throw new Error('Invalid response from Gemini API')
+    const responseText = parts
+      .map((p: any) => p?.text)
+      .filter(Boolean)
+      .join('\n')
+      .trim()
+    
+    if (!responseText) {
+      throw new Error('Invalid response from Gemini API: empty content text')
     }
-
-    const responseText = data.candidates[0].content.parts[0].text
+    
     console.log('Strengths Agent Response:', responseText)
     
     // Extract JSON from response

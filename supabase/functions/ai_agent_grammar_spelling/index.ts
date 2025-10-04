@@ -36,7 +36,7 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 // Google Gemini API configuration
 const GEMINI_API_KEY = Deno.env.get('GOOGLE_API_KEY')
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent'
 
 // Grammar and Spelling Analysis Prompt
 const GRAMMAR_SPELLING_PROMPT = `You are an expert grammar and spelling checker specializing in mechanical errors in college application essays. Your role is to identify and suggest corrections for grammar, punctuation, and spelling mistakes.
@@ -140,7 +140,7 @@ async function analyzeGrammarSpelling(
       temperature: 0.2, // Lower temperature for more consistent grammar checking
       topK: 40,
       topP: 0.95,
-      maxOutputTokens: 2048, // Increased to allow for more comments
+        maxOutputTokens: 4096, // Increased to allow for more comments
     }
   }
 
@@ -160,11 +160,21 @@ async function analyzeGrammarSpelling(
 
     const data = await response.json()
     
-    if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
-      throw new Error('Invalid response from Gemini API')
+    // Safely extract text from candidates without assuming parts[0]
+    const parts = data?.candidates?.[0]?.content?.parts
+    if (!Array.isArray(parts) || parts.length === 0) {
+      throw new Error('Invalid response from Gemini API: missing content parts')
     }
-
-    const responseText = data.candidates[0].content.parts[0].text
+    
+    const responseText = parts
+      .map((p: any) => p?.text)
+      .filter(Boolean)
+      .join('\n')
+      .trim()
+    
+    if (!responseText) {
+      throw new Error('Invalid response from Gemini API: empty content text')
+    }
     console.log(`Grammar & Spelling Agent Response:`, responseText)
     
     // Extract JSON from response with improved error handling

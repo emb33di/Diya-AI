@@ -906,6 +906,16 @@ export class SemanticDocumentService {
         throw new Error('User not authenticated');
       }
 
+      // Debug: log request shape before invoking edge function
+      try {
+        console.log('[AI_DEBUG] Invoking generate-semantic-comments', {
+          documentId: request.documentId,
+          blocksCount: request.blocks?.length,
+          promptLength: request.context?.prompt ? String(request.context?.prompt).length : 0,
+          wordLimit: request.context?.wordLimit
+        });
+      } catch (_) {}
+
       // Call the Supabase edge function for semantic comments
       const { data, error } = await supabase.functions.invoke('generate-semantic-comments', {
         body: request,
@@ -913,6 +923,17 @@ export class SemanticDocumentService {
           Authorization: `Bearer ${session.access_token}`,
         }
       });
+
+      // Debug: log raw edge response summary
+      try {
+        console.log('[AI_DEBUG] Edge response (generate-semantic-comments)', {
+          hasError: Boolean(error),
+          errorMessage: error?.message,
+          dataSuccess: (data as any)?.success,
+          dataMessage: (data as any)?.message,
+          commentsCount: Array.isArray((data as any)?.comments) ? (data as any)?.comments.length : undefined
+        });
+      } catch (_) {}
 
       if (error) {
         console.error(`SemanticDocumentService: Edge function error generating AI comments for document ${request.documentId} - ${error.message}`);
@@ -930,7 +951,14 @@ export class SemanticDocumentService {
         }
       };
     } catch (error) {
-      console.error(`SemanticDocumentService: Error generating AI comments for document ${request.documentId} - ${error.message}`);
+      console.error(`SemanticDocumentService: Error generating AI comments for document ${request.documentId} - ${error instanceof Error ? error.message : String(error)}`);
+      // Debug: flag potential strengths agent response shape issue for console triage
+      try {
+        const msg = error instanceof Error ? error.message : String(error);
+        if (msg.includes("Cannot read properties of undefined (reading '0')") || msg.includes('Invalid response from Gemini API')) {
+          console.warn('[AI_DEBUG] Suspected strengths agent response shape issue (missing parts[0].text). Check server logs for strengths agent.');
+        }
+      } catch (_) {}
       return {
         success: false,
         comments: [],

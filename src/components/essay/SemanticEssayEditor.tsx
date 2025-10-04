@@ -199,11 +199,11 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
             }
           }
           
-          // Need to migrate from legacy system
+          // Create new semantic document
           setMigrationStatus({
             isMigrating: true,
             progress: 0,
-            message: 'Migrating from legacy system...'
+            message: 'Creating new document...'
           });
 
           // Create new semantic document directly
@@ -214,7 +214,9 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
             blocks,
             metadata: {
               essayId,
-              version: 1
+              version: 1,
+              prompt: prompt || '',
+              wordLimit: wordLimit || 650
             },
             createdAt: new Date(),
             updatedAt: new Date()
@@ -400,13 +402,23 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
     setLoadingStep(0);
 
     try {
+      // Debug: log request payload summary
+      try {
+        console.log('[ESSAY_DEBUG] generateAIComments request', {
+          documentId: document.id,
+          blocksCount: document.blocks?.length,
+          promptLength: document.metadata?.prompt ? String(document.metadata?.prompt).length : 0,
+          wordLimit: document.metadata?.wordLimit
+        });
+      } catch (_) {}
+
       // Start AI generation in parallel with loading animation
       const aiGenerationPromise = semanticDocumentService.generateAIComments({
         documentId: document.id,
         blocks: document.blocks,
         context: {
-          prompt: document.metadata.prompt,
-          wordLimit: document.metadata.wordLimit
+          prompt: prompt || document.metadata.prompt || '',
+          wordLimit: wordLimit || document.metadata.wordLimit || 650
         }
       });
 
@@ -421,6 +433,16 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
 
       // Wait for AI generation to complete
       const response = await aiGenerationPromise;
+
+      // Debug: log response shape
+      try {
+        console.log('[ESSAY_DEBUG] generateAIComments response', {
+          success: response.success,
+          message: response.message,
+          commentsCount: Array.isArray(response.comments) ? response.comments.length : undefined,
+          meta: response.metadata
+        });
+      } catch (_) {}
 
       if (response.success) {
         // Add a small delay to ensure database insert is complete
@@ -471,6 +493,13 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
         timestamp: new Date().toISOString(),
         message: 'User cannot generate AI feedback for their essay'
       });
+      // Extra debug hint for strengths agent failure signature
+      try {
+        const msg = error instanceof Error ? error.message : String(error);
+        if (msg.includes("Cannot read properties of undefined (reading '0')") || msg.includes('Invalid response from Gemini API')) {
+          console.warn('[ESSAY_DEBUG] Potential strengths agent parsing issue detected. Please share logs above and server logs for ai_agent_strengths.');
+        }
+      } catch (_) {}
     }
     // Note: Don't auto-close the loading pane - let user click "See AI Comments" button
   };
@@ -498,8 +527,8 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
         documentId: document.id,
         blocks: document.blocks,
         context: {
-          prompt: document.metadata.prompt,
-          wordLimit: document.metadata.wordLimit
+          prompt: prompt || document.metadata.prompt || '',
+          wordLimit: wordLimit || document.metadata.wordLimit || 650
         }
       });
 
