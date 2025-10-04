@@ -2,7 +2,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import OnboardingGuard from "@/components/OnboardingGuard";
-import ProfileCompletionGuard from "@/components/ProfileCompletionGuard";
 import GradientBackground from "@/components/GradientBackground";
 import { useAuth } from "@/hooks/useAuth";
 import { useDashboardData } from "@/hooks/useDashboardData";
@@ -143,7 +142,6 @@ const Dashboard = () => {
 
   return (
     <OnboardingGuard pageName="Dashboard">
-      <ProfileCompletionGuard pageName="Dashboard">
         <GradientBackground>
           <main className="container mx-auto px-6 py-8">
         {/* Welcome Section */}
@@ -304,7 +302,6 @@ const Dashboard = () => {
         </div>
         </main>
         </GradientBackground>
-      </ProfileCompletionGuard>
     </OnboardingGuard>
   );
 };

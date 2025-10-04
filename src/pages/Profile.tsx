@@ -198,7 +198,6 @@ export default function Profile() {
   const { aiPopulatedFields, isAIPopulated, clearAIData, setAIPopulatedFields } = useAIIntegration();
   
   // Local state for form management
-  const [isOnboardingCompletionFlow, setIsOnboardingCompletionFlow] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [profileMode, setProfileMode] = useState<'edit' | 'review'>('edit');
   
@@ -502,15 +501,6 @@ export default function Profile() {
   };
 
   useEffect(() => {
-    // Check if user is coming from onboarding completion
-    const onboardingFlow = localStorage.getItem('onboarding_completion_flow');
-    if (onboardingFlow === 'true') {
-      setIsOnboardingCompletionFlow(true);
-      // Clear the flag
-      localStorage.removeItem('onboarding_completion_flow');
-    }
-    
-    
     loadProfile();
     loadSATScores();
     loadACTScores();
@@ -739,8 +729,8 @@ export default function Profile() {
       // This will cause the useProfileCompletion hook to recalculate completion percentage
       window.dispatchEvent(new CustomEvent('profileUpdated'));
 
-      // If this is the onboarding completion flow or profile review, mark onboarding as complete and navigate to dashboard
-      if (isOnboardingCompletionFlow || profileMode === 'review') {
+      // If this is profile review, mark onboarding as complete and navigate to dashboard
+      if (profileMode === 'review') {
         const success = await markOnboardingCompleted(false); // Normal completion, not skipped
         if (success) {
           toast({
@@ -777,19 +767,12 @@ export default function Profile() {
         <div className="container mx-auto py-8 max-w-4xl">
       <div className="mb-8">
         <h1 className="text-3xl font-bold">
-          {isOnboardingCompletionFlow 
-            ? "Complete Your Profile" 
-            : profileMode === 'review' 
-              ? "Review Your Profile" 
-              : "Profile"}
+          {profileMode === 'review' ? "Review Your Profile" : "Profile"}
         </h1>
         <p className="text-muted-foreground">
-          {isOnboardingCompletionFlow 
-            ? "Great! You've completed your onboarding call. Now let's finalize your profile with the information we gathered. Please review and complete any missing required fields marked with *."
-            : profileMode === 'review'
-              ? "Please review your profile information and make any necessary changes. Once you're satisfied, click 'Complete Profile' to unlock all features."
-              : "Complete your profile to start using Diya."
-          }
+          {profileMode === 'review'
+            ? "Please review your profile information and make any necessary changes. Once you're satisfied, click 'Complete Profile' to unlock all features."
+            : "Complete your profile to start using Diya."}
         </p>
       </div>
 
@@ -885,18 +868,16 @@ export default function Profile() {
               type="submit" 
               disabled={loading}
               onClick={() => {
-                if (isOnboardingCompletionFlow || profileMode === 'review') {
+                if (profileMode === 'review') {
                   handleProfileCompletion();
                 }
               }}
             >
               {loading 
                 ? "Saving..." 
-                : isOnboardingCompletionFlow 
-                  ? "Save Profile" 
-                  : profileMode === 'review'
-                    ? "Save Profile"
-                    : "Save Profile"
+                : profileMode === 'review'
+                  ? "Save Profile"
+                  : "Save Profile"
               }
             </Button>
           </div>

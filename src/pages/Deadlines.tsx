@@ -8,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 import { Calendar, Clock, CheckCircle2, AlertCircle, Star, Target, Shield, Filter, RefreshCw, Loader2 } from "lucide-react";
 import OnboardingGuard from "@/components/OnboardingGuard";
-import ProfileCompletionGuard from "@/components/ProfileCompletionGuard";
 import GradientBackground from "@/components/GradientBackground";
 import { supabase } from "@/integrations/supabase/client";
 import { 
@@ -263,7 +262,6 @@ const Deadlines = () => {
   if (loading) {
     return (
       <OnboardingGuard pageName="Deadlines">
-        <ProfileCompletionGuard pageName="Deadlines">
           <GradientBackground>
             <div className="flex items-center justify-center min-h-screen">
               <div className="text-center">
@@ -272,14 +270,12 @@ const Deadlines = () => {
               </div>
             </div>
           </GradientBackground>
-        </ProfileCompletionGuard>
       </OnboardingGuard>
     );
   }
 
   return (
     <OnboardingGuard pageName="Deadlines">
-      <ProfileCompletionGuard pageName="Deadlines">
         <GradientBackground>
         <main className="container mx-auto px-6 py-8">
           <div className="flex items-center justify-between mb-8">
@@ -492,7 +488,6 @@ const Deadlines = () => {
           )}
         </main>
         </GradientBackground>
-      </ProfileCompletionGuard>
     </OnboardingGuard>
   );
 };

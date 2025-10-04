@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import OnboardingGuard from "@/components/OnboardingGuard";
-import ProfileCompletionGuard from "@/components/ProfileCompletionGuard";
 import GradientBackground from "@/components/GradientBackground";
 import { EssayPromptService, EssayPrompt, EssayPromptSelection } from "@/services/essayPromptService";
 import { semanticDocumentService } from "@/services/semanticDocumentService";
@@ -926,7 +925,6 @@ const Essays = () => {
   };
   if (loading) {
     return <OnboardingGuard pageName="Essays">
-      <ProfileCompletionGuard pageName="Essays">
         <GradientBackground>
           <main className="container mx-auto px-6 py-8">
             <div className="flex items-center justify-center h-64">
@@ -937,13 +935,11 @@ const Essays = () => {
             </div>
           </main>
         </GradientBackground>
-      </ProfileCompletionGuard>
       </OnboardingGuard>;
   }
   // Mobile UI Render
   if (isMobile) {
     return <OnboardingGuard pageName="Essays">
-      <ProfileCompletionGuard pageName="Essays">
         <GradientBackground>
           
           {/* Mobile Step 1: School Selection */}
@@ -1361,13 +1357,11 @@ const Essays = () => {
           )}
 
         </GradientBackground>
-      </ProfileCompletionGuard>
     </OnboardingGuard>;
   }
 
   // Desktop UI (unchanged)
   return <OnboardingGuard pageName="Essays">
-    <ProfileCompletionGuard pageName="Essays">
       <GradientBackground>
         {/* Header */}
         <div className="sticky top-0 z-40 bg-transparent backdrop-blur supports-[backdrop-filter]:bg-transparent border-b border-border/50">
@@ -1677,7 +1671,6 @@ const Essays = () => {
           isDeleting={deletingEssay}
         />
       </GradientBackground>
-    </ProfileCompletionGuard>
     </OnboardingGuard>;
 };
 export default Essays;

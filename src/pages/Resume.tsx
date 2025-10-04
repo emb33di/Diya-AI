@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import OnboardingGuard from "@/components/OnboardingGuard";
-import ProfileCompletionGuard from "@/components/ProfileCompletionGuard";
 import GradientBackground from "@/components/GradientBackground";
 import MobileResponsiveWrapper from "@/components/MobileResponsiveWrapper";
 import ResumePreview from "@/components/ResumePreview";
@@ -88,7 +87,6 @@ const Resume = () => {
 
   return (
     <OnboardingGuard pageName="Resume">
-      <ProfileCompletionGuard pageName="Resume">
         <GradientBackground>
           <MobileResponsiveWrapper>
             <main className="container mx-auto">
@@ -186,7 +184,6 @@ const Resume = () => {
         userProfile={userProfile}
       />
         </GradientBackground>
-      </ProfileCompletionGuard>
     </OnboardingGuard>
   );
 };

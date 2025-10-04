@@ -10,7 +10,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Calendar, Clock, CheckCircle2, AlertCircle, Star, Target, Shield, Filter, RefreshCw, Loader2, Plus, Edit, Trash2, Mail, Phone, User } from "lucide-react";
 import OnboardingGuard from "@/components/OnboardingGuard";
-import ProfileCompletionGuard from "@/components/ProfileCompletionGuard";
 import GradientBackground from "@/components/GradientBackground";
 import { supabase } from "@/integrations/supabase/client";
 import { 
@@ -349,7 +348,6 @@ const LOR = () => {
   if (loading) {
     return (
       <OnboardingGuard pageName="LOR">
-        <ProfileCompletionGuard pageName="LOR">
           <GradientBackground>
             <div className="flex items-center justify-center min-h-screen">
               <div className="text-center">
@@ -358,14 +356,12 @@ const LOR = () => {
               </div>
             </div>
           </GradientBackground>
-        </ProfileCompletionGuard>
       </OnboardingGuard>
     );
   }
 
   return (
     <OnboardingGuard pageName="LOR">
-      <ProfileCompletionGuard pageName="LOR">
         <GradientBackground>
             <main className="container mx-auto px-6 py-8">
               <div className="flex items-center justify-between mb-8">
@@ -1228,7 +1224,6 @@ const LOR = () => {
               </Dialog>
             </main>
         </GradientBackground>
-      </ProfileCompletionGuard>
     </OnboardingGuard>
   );
 };

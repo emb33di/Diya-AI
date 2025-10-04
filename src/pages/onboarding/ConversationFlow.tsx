@@ -434,12 +434,9 @@ export const useConversationFlow = ({
               localStorage.removeItem('previous_onboarding_context');
               localStorage.removeItem('onboarding_remaining_time');
 
-            // Set flag to indicate user is coming from onboarding completion
-            localStorage.setItem('onboarding_completion_flow', 'true');
-            
-            // Navigate to profile page for AI-populated form review
+            // Navigate to dashboard after completion
             setShowLoadingModal(false);
-            navigate('/profile');
+            navigate('/dashboard');
         } else if (user) {
           console.error(`[CONVERSATION_ID_MISSING] User: ${user.id} (${user.email}) - No conversation ID captured during session end:`, {
             timestamp: new Date().toISOString()

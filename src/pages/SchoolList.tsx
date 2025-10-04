@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import OnboardingGuard from "@/components/OnboardingGuard";
-import ProfileCompletionGuard from "@/components/ProfileCompletionGuard";
 import GradientBackground from "@/components/GradientBackground";
 import { supabase } from "@/integrations/supabase/client";
 import AddSchoolModal from "@/components/AddSchoolModal";
@@ -682,7 +681,6 @@ const SchoolList = () => {
 
   return (
     <OnboardingGuard pageName="Schools">
-      <ProfileCompletionGuard pageName="Schools">
         <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
@@ -837,7 +835,6 @@ const SchoolList = () => {
         </button>
       </div>
     )}
-      </ProfileCompletionGuard>
     </OnboardingGuard>
   );
 };

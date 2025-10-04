@@ -3,7 +3,6 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useProfileCompletion } from "@/hooks/useProfileCompletion";
 import { getUserFirstName, fetchUserProfileData } from "@/utils/userNameUtils";
 import {
   DropdownMenu,
@@ -27,25 +26,6 @@ const Header = () => {
   const [loading, setLoading] = useState(true);
   const [userFirstName, setUserFirstName] = useState<string>('');
   const { onboardingCompleted, loading: onboardingLoading } = useAuth();
-  const { completionPercentage, missingFields, loading: profileLoading } = useProfileCompletion();
-  
-  // Protected pages that require profile completion
-  const protectedPages = ['/dashboard', '/schools', '/resume', '/essays', '/deadlines', '/lor'];
-  
-  // Function to handle navigation with profile completion check
-  const handleNavigation = (path: string, e: React.MouseEvent) => {
-    // If onboarding is not completed, let normal navigation happen (OnboardingGuard will handle it)
-    if (!onboardingCompleted) {
-      return;
-    }
-    
-    // If it's a protected page and profile is not complete, prevent navigation
-    if (protectedPages.includes(path) && completionPercentage < 100) {
-      e.preventDefault();
-      // Navigate to profile page instead
-      navigate('/profile');
-    }
-  };
   
   const fetchUserProfile = async (userId: string) => {
     try {
@@ -187,24 +167,15 @@ const Header = () => {
                 <TooltipTrigger asChild>
                   <Link 
                     to="/dashboard" 
-                    onClick={(e) => handleNavigation('/dashboard', e)}
                     className={`text-sm font-medium transition-colors px-3 py-1 ${
                       isActive('/dashboard') 
                         ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
                         : 'text-black hover:text-black'
-                    } ${
-                      onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/dashboard')
-                        ? 'opacity-60 cursor-not-allowed' : ''
                     }`}
                   >
                     Dashboard
                   </Link>
                 </TooltipTrigger>
-                {onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/dashboard') && (
-                  <TooltipContent>
-                    <p>Please complete your Profile.</p>
-                  </TooltipContent>
-                )}
               </Tooltip>
             </TooltipProvider>
             <TooltipProvider>
@@ -212,24 +183,15 @@ const Header = () => {
                 <TooltipTrigger asChild>
                   <Link 
                     to="/schools" 
-                    onClick={(e) => handleNavigation('/schools', e)}
                     className={`text-sm font-medium transition-colors px-3 py-1 ${
                       isActive('/schools') 
                         ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
                         : 'text-black hover:text-black'
-                    } ${
-                      onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/schools')
-                        ? 'opacity-60 cursor-not-allowed' : ''
                     }`}
                   >
                     Schools
                   </Link>
                 </TooltipTrigger>
-                {onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/schools') && (
-                  <TooltipContent>
-                    <p>Please complete your Profile.</p>
-                  </TooltipContent>
-                )}
               </Tooltip>
             </TooltipProvider>
             <TooltipProvider>
@@ -237,24 +199,15 @@ const Header = () => {
                 <TooltipTrigger asChild>
                   <Link 
                     to="/resume" 
-                    onClick={(e) => handleNavigation('/resume', e)}
                     className={`text-sm font-medium transition-colors px-3 py-1 ${
                       isActive('/resume') 
                         ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
                         : 'text-black hover:text-black'
-                    } ${
-                      onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/resume')
-                        ? 'opacity-60 cursor-not-allowed' : ''
                     }`}
                   >
                     Resume
                   </Link>
                 </TooltipTrigger>
-                {onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/resume') && (
-                  <TooltipContent>
-                    <p>Please complete your Profile.</p>
-                  </TooltipContent>
-                )}
               </Tooltip>
             </TooltipProvider>
             <TooltipProvider>
@@ -262,24 +215,15 @@ const Header = () => {
                 <TooltipTrigger asChild>
                   <Link 
                     to="/essays" 
-                    onClick={(e) => handleNavigation('/essays', e)}
                     className={`text-sm font-medium transition-colors px-3 py-1 ${
                       isActive('/essays') 
                         ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
                         : 'text-black hover:text-black'
-                    } ${
-                      onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/essays')
-                        ? 'opacity-60 cursor-not-allowed' : ''
                     }`}
                   >
                     Essays
                   </Link>
                 </TooltipTrigger>
-                {onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/essays') && (
-                  <TooltipContent>
-                    <p>Please complete your Profile.</p>
-                  </TooltipContent>
-                )}
               </Tooltip>
             </TooltipProvider>
             <TooltipProvider>
@@ -287,24 +231,15 @@ const Header = () => {
                 <TooltipTrigger asChild>
                   <Link 
                     to="/lor" 
-                    onClick={(e) => handleNavigation('/lor', e)}
                     className={`text-sm font-medium transition-colors px-3 py-1 ${
                       isActive('/lor') 
                         ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
                         : 'text-black hover:text-black'
-                    } ${
-                      onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/lor')
-                        ? 'opacity-60 cursor-not-allowed' : ''
                     }`}
                   >
                     LOR
                   </Link>
                 </TooltipTrigger>
-                {onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/lor') && (
-                  <TooltipContent>
-                    <p>Please complete your Profile.</p>
-                  </TooltipContent>
-                )}
               </Tooltip>
             </TooltipProvider>
             <TooltipProvider>
@@ -312,24 +247,15 @@ const Header = () => {
                 <TooltipTrigger asChild>
                   <Link 
                     to="/deadlines" 
-                    onClick={(e) => handleNavigation('/deadlines', e)}
                     className={`text-sm font-medium transition-colors px-3 py-1 ${
                       isActive('/deadlines') 
                         ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
                         : 'text-black hover:text-black'
-                    } ${
-                      onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/deadlines')
-                        ? 'opacity-60 cursor-not-allowed' : ''
                     }`}
                   >
                     Progress
                   </Link>
                 </TooltipTrigger>
-                {onboardingCompleted && completionPercentage < 100 && protectedPages.includes('/deadlines') && (
-                  <TooltipContent>
-                    <p>Please complete your Profile.</p>
-                  </TooltipContent>
-                )}
               </Tooltip>
             </TooltipProvider>
             <Link 

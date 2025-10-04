@@ -27,16 +27,12 @@ const OnboardingGuard: React.FC<OnboardingGuardProps> = ({
     );
   }
 
-  // Check if user is in onboarding completion flow (for profile page)
-  const isOnboardingCompletionFlow = pageName === "Profile" && 
-    localStorage.getItem('onboarding_completion_flow') === 'true';
-
   // If onboarding is not completed and access is not allowed, show lock screen
-  if (!onboardingCompleted && !allowAccess && !isOnboardingCompletionFlow) {
+  if (!onboardingCompleted && !allowAccess) {
     return <OnboardingLock pageName={pageName} />;
   }
 
-  // If onboarding is completed, access is allowed, or user is in completion flow, show the children
+  // If onboarding is completed or access is allowed, show the children
   return <>{children}</>;
 };
 
