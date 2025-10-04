@@ -64,7 +64,7 @@ export function getProgramTypeFromAgentId(agentId: string): ApplyingToType | nul
  * @returns True if all agents are configured
  */
 export function validateAgentConfiguration(): boolean {
-  const requiredTypes: ApplyingToType[] = ['Undergraduate', 'MBA', 'LLM', 'PhD', 'Masters'];
+  const requiredTypes: ApplyingToType[] = ['undergraduate', 'mba', 'llm', 'phd', 'masters'];
   
   for (const type of requiredTypes) {
     const agentId = AGENT_ID_MAP[type];

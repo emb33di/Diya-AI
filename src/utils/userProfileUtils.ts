@@ -62,18 +62,18 @@ export async function getUserProgramType(): Promise<SchoolProgramType | null> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
 
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('user_profiles')
       .select('applying_to')
       .eq('user_id', user.id)
       .maybeSingle();
 
-    if (error) {
+    if (error || !data) {
       console.error('Error fetching user program type:', error);
       return null;
     }
 
-    return mapApplyingToToProgramType(data?.applying_to);
+    return mapApplyingToToProgramType((data as any)?.applying_to);
   } catch (error) {
     console.error('Error in getUserProgramType:', error);
     return null;
@@ -85,7 +85,7 @@ export async function getUserProgramType(): Promise<SchoolProgramType | null> {
  */
 export async function isUndergraduateUser(): Promise<boolean> {
   const programType = await getUserProgramType();
-  return programType === 'Undergraduate';
+  return programType === 'undergraduate';
 }
 
 /**
@@ -93,7 +93,7 @@ export async function isUndergraduateUser(): Promise<boolean> {
  */
 export async function isMBAUser(): Promise<boolean> {
   const programType = await getUserProgramType();
-  return programType === 'MBA';
+  return programType === 'mba';
 }
 
 /**
@@ -101,7 +101,7 @@ export async function isMBAUser(): Promise<boolean> {
  */
 export async function isGraduateUser(): Promise<boolean> {
   const programType = await getUserProgramType();
-  return ['MBA', 'LLM', 'PhD', 'Masters'].includes(programType || '');
+  return ['mba', 'llm', 'phd', 'masters'].includes(programType || '');
 }
 
 /**

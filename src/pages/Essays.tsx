@@ -211,7 +211,7 @@ const Essays = () => {
             
             // Add Common Application and UCAS as school options for undergraduate students
             const userProgramType = await getUserProgramType();
-            if (userProgramType === 'Undergraduate') {
+            if (userProgramType === 'undergraduate') {
               // Check if user has any UK schools
               const hasUKSchools = transformedSchools.some(school => {
                 const ukSchools = [
@@ -252,8 +252,6 @@ const Essays = () => {
             return transformedSchools;
           } catch (error) {
             console.error('[ESSAYS_ERROR] Failed to load school list:', {
-              userId: user?.id || 'unknown',
-              userEmail: user?.email || 'unknown',
               attempt: 4 - retries,
               error: error instanceof Error ? error.message : 'Unknown error',
               timestamp: new Date().toISOString(),
@@ -283,8 +281,6 @@ const Essays = () => {
           }
         } catch (error) {
           console.error('[ESSAYS_ERROR] Failed to load onboarding transcript:', {
-            userId: user?.id || 'unknown',
-            userEmail: user?.email || 'unknown',
             error: error instanceof Error ? error.message : 'Unknown error',
             timestamp: new Date().toISOString(),
             message: 'User onboarding conversation could not be loaded for essay context'
@@ -294,8 +290,6 @@ const Essays = () => {
         
       } catch (error) {
         console.error('[ESSAYS_ERROR] Failed to load essays page data:', {
-          userId: user?.id || 'unknown',
-          userEmail: user?.email || 'unknown',
           error: error instanceof Error ? error.message : 'Unknown error',
           timestamp: new Date().toISOString(),
           message: 'User cannot access essays page - schools and data loading failed'
@@ -334,8 +328,6 @@ const Essays = () => {
           }
         } catch (error) {
           console.error('[ESSAYS_ERROR] Failed to load essays for school:', {
-            userId: user?.id || 'unknown',
-            userEmail: user?.email || 'unknown',
             schoolId: selectedSchool,
             error: error instanceof Error ? error.message : 'Unknown error',
             timestamp: new Date().toISOString(),
@@ -364,8 +356,6 @@ const Essays = () => {
         }
       } catch (error) {
         console.error('[ESSAYS_ERROR] Failed to load Common App prompts:', {
-          userId: user?.id || 'unknown',
-          userEmail: user?.email || 'unknown',
           error: error instanceof Error ? error.message : 'Unknown error',
           timestamp: new Date().toISOString(),
           message: 'User cannot see Common Application essay prompts'
@@ -457,8 +447,6 @@ const Essays = () => {
           setEssays(essaysFromPrompts);
         } catch (error) {
           console.error('[ESSAYS_ERROR] Failed to load essay prompts:', {
-            userId: user?.id || 'unknown',
-            userEmail: user?.email || 'unknown',
             schoolId: selectedSchool,
             error: error instanceof Error ? error.message : 'Unknown error',
             timestamp: new Date().toISOString(),
@@ -520,8 +508,6 @@ const Essays = () => {
       // Custom essay created successfully
     } catch (error) {
       console.error('[ESSAYS_ERROR] Failed to create custom essay:', {
-        userId: user?.id || 'unknown',
-        userEmail: user?.email || 'unknown',
         schoolId: selectedSchool,
         error: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString(),
@@ -561,8 +547,6 @@ const Essays = () => {
       setEssayToDelete(null);
     } catch (error) {
       console.error('[ESSAYS_ERROR] Failed to delete essay:', {
-        userId: user?.id || 'unknown',
-        userEmail: user?.email || 'unknown',
         essayId: essayToDelete.id,
         error: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString(),
@@ -611,8 +595,6 @@ const Essays = () => {
       // Migration successful
     } catch (error) {
       console.error('[ESSAYS_ERROR] Failed to migrate essay:', {
-        userId: user?.id || 'unknown',
-        userEmail: user?.email || 'unknown',
         essayId: essay.id,
         error: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString(),
@@ -651,10 +633,7 @@ const Essays = () => {
       // New essay created from prompt
     } catch (error) {
       console.error('[ESSAYS_ERROR] Failed to create essay from prompt:', {
-        userId: user?.id || 'unknown',
-        userEmail: user?.email || 'unknown',
         schoolId: selectedSchool,
-        promptId: selectedPrompt?.id,
         error: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString(),
         message: 'User cannot create essay from selected prompt'
@@ -698,8 +677,6 @@ const Essays = () => {
       // Common App essay created
     } catch (error) {
       console.error('[ESSAYS_ERROR] Failed to create Common App essay:', {
-        userId: user?.id || 'unknown',
-        userEmail: user?.email || 'unknown',
         promptId: selectedCommonAppPrompt?.id,
         error: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString(),
@@ -905,8 +882,6 @@ const Essays = () => {
       setLastSaved(new Date());
     } catch (error) {
       console.error('[ESSAYS_ERROR] Failed to save essay content:', {
-        userId: user?.id || 'unknown',
-        userEmail: user?.email || 'unknown',
         essayId: selectedEssay?.id,
         error: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString(),
@@ -1325,8 +1300,6 @@ const Essays = () => {
                               // Switched to new prompt
                             } catch (error) {
                               console.error('[ESSAYS_ERROR] Failed to switch prompt:', {
-                                userId: user?.id || 'unknown',
-                                userEmail: user?.email || 'unknown',
                                 schoolId: selectedSchool,
                                 promptId: newPrompt.id,
                                 error: error instanceof Error ? error.message : 'Unknown error',
@@ -1357,8 +1330,6 @@ const Essays = () => {
                               // Created new essay for prompt
                             } catch (error) {
                               console.error('[ESSAYS_ERROR] Failed to create essay for prompt:', {
-                                userId: user?.id || 'unknown',
-                                userEmail: user?.email || 'unknown',
                                 schoolId: selectedSchool,
                                 promptId: newPrompt.id,
                                 error: error instanceof Error ? error.message : 'Unknown error',
@@ -1537,8 +1508,6 @@ const Essays = () => {
                         // Switched to new prompt
                       } catch (error) {
                         console.error('[ESSAYS_ERROR] Failed to switch prompt:', {
-                          userId: user?.id || 'unknown',
-                          userEmail: user?.email || 'unknown',
                           schoolId: selectedSchool,
                           promptId: newPrompt.id,
                           error: error instanceof Error ? error.message : 'Unknown error',
@@ -1569,8 +1538,6 @@ const Essays = () => {
                         // Created new essay for prompt
                       } catch (error) {
                         console.error('[ESSAYS_ERROR] Failed to create essay for prompt:', {
-                          userId: user?.id || 'unknown',
-                          userEmail: user?.email || 'unknown',
                           schoolId: selectedSchool,
                           promptId: newPrompt.id,
                           error: error instanceof Error ? error.message : 'Unknown error',

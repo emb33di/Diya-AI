@@ -197,7 +197,7 @@ export class CollegeEssayAdvisorsExtractor {
       return {
         university_info: {
           college_name: universityName,
-          school_program_type: "Undergraduate",
+          school_program_type: "undergraduate",
           university_url: universityUrl,
           error: error.message
         },
