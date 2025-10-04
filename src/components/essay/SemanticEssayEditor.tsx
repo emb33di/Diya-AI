@@ -33,7 +33,6 @@ import {
   CheckSquare,
   Sidebar,
   Plus,
-  Lock,
 } from 'lucide-react';
 
 interface EssayPrompt {
@@ -452,33 +451,6 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
         const updatedDocument = await semanticDocumentService.loadDocument(document.id);
         if (updatedDocument) {
           setDocument(updatedDocument);
-          
-          // Create a version with AI feedback
-          try {
-            const htmlContent = semanticDocumentService.convertBlocksToHtml(updatedDocument.blocks);
-            const allAnnotations = semanticDocumentService.getAllAnnotations(updatedDocument);
-            const aiAnnotations = allAnnotations.filter(a => a.author === 'ai');
-            
-            await EssayVersionService.createAIFeedbackVersion(
-              essayId,
-              htmlContent,
-              updatedDocument.title,
-              updatedDocument.metadata.prompt,
-              'gemini-2.5-flash-lite',
-              aiAnnotations.length,
-              aiAnnotations.filter(a => a.metadata?.agentType === 'big-picture').length,
-              aiAnnotations.filter(a => a.metadata?.agentType !== 'big-picture').length,
-              aiAnnotations.filter(a => a.metadata?.subcategory === 'opening-sentence').length,
-              aiAnnotations.filter(a => a.metadata?.subcategory === 'transition').length,
-              aiAnnotations.filter(a => a.metadata?.agentType === 'paragraph').length
-            );
-            
-            // Reload versions to show the new version
-            await loadEssayVersions();
-          } catch (versionError) {
-            console.error('Failed to create AI feedback version:', versionError);
-            // Don't fail the whole operation if version creation fails
-          }
         }
       }
 
@@ -976,11 +948,8 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                                     <div className={`w-2 h-2 rounded-full ${
                                       currentVersion.is_active ? 'bg-blue-500' : 'bg-gray-400'
                                     }`} />
-                                    <span className="truncate flex items-center space-x-1">
+                                      <span className="truncate flex items-center space-x-1">
                                       <span>{currentVersion.version_name || `Version ${currentVersion.version_number}`}</span>
-                                      {!currentVersion.is_active && (
-                                        <Lock className="h-3 w-3 text-gray-400" />
-                                      )}
                                     </span>
                                   </div>
                                 ) : null}
@@ -996,13 +965,9 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                                     <div className="flex-1">
                                       <div className="font-medium flex items-center space-x-2">
                                         <span>{version.version_name || `Version ${version.version_number}`}</span>
-                                        {!version.is_active && (
-                                          <Lock className="h-3 w-3 text-gray-400" />
-                                        )}
                                       </div>
                                       <div className="text-xs text-gray-500">
                                         {version.version_description || 'Essay Version'}
-                                        {!version.is_active && ' • Read-only'}
                                       </div>
                                     </div>
                                   </div>

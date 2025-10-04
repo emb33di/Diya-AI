@@ -30,15 +30,17 @@ export class EssayVersionService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    // Create a new semantic document for this version (without comments)
+    // Create a new semantic document for this version (without unresolved comments)
     const newSemanticDocument: SemanticDocument = {
       id: crypto.randomUUID(),
       title: currentDocument.title,
-      blocks: currentDocument.blocks, // Copy current content
+      blocks: currentDocument.blocks.map(block => ({
+        ...block,
+        annotations: (block.annotations || []).filter(a => a.resolved === true)
+      })),
       metadata: {
         ...currentDocument.metadata,
-        essayId,
-        isReadOnly: false // This version is editable (will be active)
+        essayId
       },
       createdAt: new Date(),
       updatedAt: new Date()
@@ -49,12 +51,12 @@ export class EssayVersionService {
 
     // Prepare version content
     const versionContent = {
-      blocks: currentDocument.blocks,
+      blocks: newSemanticDocument.blocks,
       metadata: newSemanticDocument.metadata
     };
 
     // Use atomic database function to create version
-    const { data: versionId, error } = await supabase.rpc('create_fresh_draft_essay_version', {
+    const { data: versionIdRaw, error } = await supabase.rpc('create_fresh_draft_essay_version', {
       essay_uuid: essayId,
       user_uuid: user.id,
       semantic_document_uuid: newSemanticDocument.id,
@@ -68,9 +70,9 @@ export class EssayVersionService {
       throw error;
     }
 
-    // Update read-only status for all versions
-    await this.updateVersionReadOnlyStatus(essayId);
+    // Read-only status no longer enforced for versions
 
+    const versionId = versionIdRaw as unknown as string;
     return versionId;
   }
 
@@ -105,18 +107,15 @@ export class EssayVersionService {
           id: `block_${Date.now()}`,
           type: 'paragraph',
           content: essayContent,
+          position: 0,
+          annotations: [],
           metadata: {
-            wordCount: essayContent.split(' ').filter(w => w.length > 0).length,
-            lastModified: new Date().toISOString()
+            wordCount: essayContent.split(' ').filter(w => w.length > 0).length
           }
         }
       ],
       metadata: {
-        totalWordCount: essayContent.split(' ').filter(w => w.length > 0).length,
-        totalCharacterCount: essayContent.length,
-        lastSaved: new Date().toISOString(),
-        essayId,
-        isReadOnly: true // AI feedback versions are read-only
+        essayId
       },
       createdAt: new Date(),
       updatedAt: new Date()
@@ -132,7 +131,7 @@ export class EssayVersionService {
     };
 
     // Use atomic database function to create version with AI feedback
-    const { data: versionId, error } = await supabase.rpc('create_ai_feedback_essay_version', {
+    const { data: versionIdRaw, error } = await supabase.rpc('create_ai_feedback_essay_version', {
       essay_uuid: essayId,
       user_uuid: user.id,
       semantic_document_uuid: semanticDocument.id,
@@ -156,6 +155,7 @@ export class EssayVersionService {
       throw error;
     }
 
+    const versionId = versionIdRaw as unknown as string;
     return versionId;
   }
 
@@ -164,7 +164,7 @@ export class EssayVersionService {
    * Uses database function for consistent ordering
    */
   static async getEssayVersions(essayId: string): Promise<EssayVersion[]> {
-    const { data: versions, error } = await supabase.rpc('get_essay_versions', {
+    const { data: versionsRaw, error } = await supabase.rpc('get_essay_versions', {
       essay_uuid: essayId
     });
 
@@ -173,6 +173,7 @@ export class EssayVersionService {
       throw error;
     }
 
+    const versions = versionsRaw as unknown as EssayVersion[];
     return versions || [];
   }
 
@@ -181,7 +182,7 @@ export class EssayVersionService {
    * Uses database function for reliable active version retrieval
    */
   static async getActiveVersion(essayId: string): Promise<EssayVersion | null> {
-    const { data: versions, error } = await supabase.rpc('get_active_essay_version', {
+    const { data: versionsRaw, error } = await supabase.rpc('get_active_essay_version', {
       essay_uuid: essayId
     });
 
@@ -191,6 +192,7 @@ export class EssayVersionService {
     }
 
     // Return the first (and only) active version, or null if none exists
+    const versions = versionsRaw as unknown as EssayVersion[];
     return versions && versions.length > 0 ? versions[0] : null;
   }
 
@@ -200,7 +202,7 @@ export class EssayVersionService {
    * Also updates semantic documents to mark non-active versions as read-only
    */
   static async switchToVersion(essayId: string, versionId: string): Promise<boolean> {
-    const { data: success, error } = await supabase.rpc('switch_to_essay_version', {
+    const { data: successRaw, error } = await supabase.rpc('switch_to_essay_version', {
       essay_uuid: essayId,
       version_uuid: versionId
     });
@@ -210,51 +212,22 @@ export class EssayVersionService {
       throw error;
     }
 
-    if (success) {
-      // Update semantic documents to reflect read-only status
-      await this.updateVersionReadOnlyStatus(essayId);
-    }
+    // No read-only toggling across versions; older versions remain editable
 
+    const success = Boolean(successRaw as unknown as boolean);
     return success;
   }
 
-  /**
-   * Update semantic documents to mark non-active versions as read-only
-   */
-  private static async updateVersionReadOnlyStatus(essayId: string): Promise<void> {
-    try {
-      // Get all versions for this essay
-      const versions = await this.getEssayVersions(essayId);
-      
-      // Update semantic documents based on active status
-      for (const version of versions) {
-        if (version.semantic_document_id) {
-          const document = await semanticDocumentService.loadDocument(version.semantic_document_id);
-          if (document) {
-            // Mark as read-only if not active, editable if active
-            const updatedDocument = {
-              ...document,
-              metadata: {
-                ...document.metadata,
-                isReadOnly: !version.is_active
-              }
-            };
-            
-            await semanticDocumentService.saveDocument(updatedDocument);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error updating version read-only status:', error);
-      // Don't throw error as this is a secondary operation
-    }
+  // Read-only enforcement removed: keeping method stub as no-op for backward compatibility
+  private static async updateVersionReadOnlyStatus(_essayId: string): Promise<void> {
+    return;
   }
 
   /**
    * Get a specific version by ID
    */
   static async getVersion(versionId: string): Promise<EssayVersion | null> {
-    const { data: version, error } = await supabase
+    const { data: version, error } = await (supabase as any)
       .from('essay_versions')
       .select('*')
       .eq('id', versionId)
@@ -292,7 +265,7 @@ export class EssayVersionService {
     essayContent: string,
     essayTitle?: string
   ): Promise<void> {
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from('essay_versions')
       .update({
         essay_content: essayContent,
@@ -311,7 +284,7 @@ export class EssayVersionService {
    * Delete a version
    */
   static async deleteVersion(versionId: string): Promise<void> {
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from('essay_versions')
       .delete()
       .eq('id', versionId);

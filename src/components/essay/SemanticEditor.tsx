@@ -100,10 +100,10 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
   // Refs for textarea management
   const textareaRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
 
-  // Check if document is read-only
+  // All versions are editable; remove read-only gating
   const isReadOnly = useCallback(() => {
-    return state.document.metadata?.isReadOnly === true;
-  }, [state.document.metadata]);
+    return false;
+  }, []);
 
   // Initialize document from initial content
   useEffect(() => {
@@ -194,14 +194,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
 
   // Add a new block
   const addNewBlock = useCallback((position?: number) => {
-    if (isReadOnly()) {
-      toast({
-        title: "Read-Only Version",
-        description: "This version is read-only. Switch to the latest version to make edits.",
-        variant: "destructive",
-      });
-      return null;
-    }
+    // Editing always allowed
 
     const newPosition = position !== undefined ? position : state.document.blocks.length;
     
@@ -265,14 +258,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
 
   // Delete a block
   const deleteBlock = useCallback((blockId: string) => {
-    if (isReadOnly()) {
-      toast({
-        title: "Read-Only Version",
-        description: "This version is read-only. Switch to the latest version to make edits.",
-        variant: "destructive",
-      });
-      return;
-    }
+    // Editing always allowed
 
     setState(prev => {
       // Don't allow deleting all blocks
@@ -306,14 +292,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
 
   // Start editing a block
   const startEditingBlock = useCallback((blockId: string) => {
-    if (isReadOnly()) {
-      toast({
-        title: "Read-Only Version",
-        description: "This version is read-only. Switch to the latest version to make edits.",
-        variant: "destructive",
-      });
-      return;
-    }
+    // Editing always allowed
 
     setEditingBlockId(blockId);
     setState(prev => ({ ...prev, isEditing: true }));
@@ -334,9 +313,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
 
   // Update block content
   const updateBlockContent = useCallback((blockId: string, content: string) => {
-    if (isReadOnly()) {
-      return; // Silently ignore updates in read-only mode
-    }
+    // Editing always allowed
 
     setState(prev => ({
       ...prev,
