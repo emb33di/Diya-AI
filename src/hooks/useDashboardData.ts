@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from './useAuth';
 import { EssayService, Essay } from '@/services/essayService';
-import { DeadlineService, UserDeadline } from '@/services/deadlineService';
+import { DeadlineService, UserDeadline, UserDeadlinesResponse } from '@/services/deadlineService';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface SchoolCategory {
@@ -14,13 +14,6 @@ export interface DashboardData {
   essays: Essay[];
   deadlines: UserDeadline[];
   schoolCategories: SchoolCategory[];
-  essayProgress: {
-    totalEssays: number;
-    completedEssays: number;
-    draftEssays: number;
-    inReviewEssays: number;
-    progressPercentage: number;
-  };
   upcomingDeadlines: UserDeadline[];
   loading: boolean;
   error: string | null;
@@ -32,13 +25,6 @@ export const useDashboardData = () => {
     essays: [],
     deadlines: [],
     schoolCategories: [],
-    essayProgress: {
-      totalEssays: 0,
-      completedEssays: 0,
-      draftEssays: 0,
-      inReviewEssays: 0,
-      progressPercentage: 0,
-    },
     upcomingDeadlines: [],
     loading: true,
     error: null,
@@ -72,22 +58,23 @@ export const useDashboardData = () => {
             supabase
               .from('school_recommendations')
               .select('school, category, application_status')
-              .eq('student_id', userId),
+              .eq('student_id', userId as any),
             timeoutPromise
           ])
         ]);
 
         // Handle essays
-        const essaysData = essays.status === 'fulfilled' ? essays.value : [];
+        const essaysData = essays.status === 'fulfilled' ? (essays.value as Essay[]) : [];
         
         // Handle deadlines
-        const deadlines = deadlineResponse.status === 'fulfilled' && deadlineResponse.value.success 
-          ? deadlineResponse.value.deadlines 
+        const deadlineResponseData = deadlineResponse.status === 'fulfilled' ? deadlineResponse.value as UserDeadlinesResponse : null;
+        const deadlines = deadlineResponseData && deadlineResponseData.success 
+          ? deadlineResponseData.deadlines 
           : [];
 
         // Handle school recommendations
         const schoolRecommendations = schoolRecommendationsResult.status === 'fulfilled' 
-          ? schoolRecommendationsResult.value.data 
+          ? (schoolRecommendationsResult.value as any)?.data 
           : null;
         
         if (schoolRecommendationsResult.status === 'rejected') {
@@ -99,13 +86,6 @@ export const useDashboardData = () => {
             message: 'User cannot see their school recommendations on dashboard'
           });
         }
-
-        // Calculate essay progress
-        const totalEssays = essaysData.length;
-        const completedEssays = essaysData.filter(e => e.status === 'final' || e.status === 'submitted').length;
-        const draftEssays = essaysData.filter(e => e.status === 'draft').length;
-        const inReviewEssays = essaysData.filter(e => e.status === 'review').length;
-        const progressPercentage = totalEssays > 0 ? Math.round((completedEssays / totalEssays) * 100) : 0;
 
         // Calculate school categories
         const reachCount = schoolRecommendations?.filter(s => s.category === 'reach').length || 0;
@@ -149,13 +129,6 @@ export const useDashboardData = () => {
             essays: essaysData,
             deadlines,
             schoolCategories,
-            essayProgress: {
-              totalEssays,
-              completedEssays,
-              draftEssays,
-              inReviewEssays,
-              progressPercentage,
-            },
             upcomingDeadlines,
             loading: false,
             error: null,

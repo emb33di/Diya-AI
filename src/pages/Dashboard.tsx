@@ -6,17 +6,18 @@ import GradientBackground from "@/components/GradientBackground";
 import { useAuth } from "@/hooks/useAuth";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { useProfileCompletion } from "@/hooks/useProfileCompletion";
-import { Link } from "react-router-dom";
+import { useApplicationProgress } from "@/hooks/useApplicationProgress";
+import { Link, useNavigate } from "react-router-dom";
 
 import { BookOpen, Calendar, CheckCircle, Target, Users, PenTool, Clock, AlertCircle } from "lucide-react";
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const { user, profile, loading: authLoading, error: authError } = useAuth();
   const { 
     essays, 
     deadlines, 
     schoolCategories, 
-    essayProgress, 
     upcomingDeadlines, 
     loading, 
     error 
@@ -29,6 +30,13 @@ const Dashboard = () => {
     loading: profileLoading, 
     error: profileError 
   } = useProfileCompletion();
+  const { 
+    progressPercentage: applicationProgressPercentage,
+    completedTasks,
+    totalTasks,
+    schoolsWithTasks,
+    loading: applicationProgressLoading 
+  } = useApplicationProgress();
 
 
   // Get user's display name with consistent fallback logic
@@ -46,9 +54,16 @@ const Dashboard = () => {
 
   // Profile completion is now calculated by the useProfileCompletion hook
 
+  // Calculate overall application progress (profile + tasks)
+  const overallProgress = Math.round((profileCompletion + applicationProgressPercentage) / 2);
+  
   const progressData = [
-    { label: "Essay Progress", value: essayProgress.progressPercentage, color: "bg-accent" },
-    { label: "School Research", value: schoolCategories.reduce((acc, cat) => acc + cat.count, 0) > 0 ? 70 : 0, color: "bg-success" },
+    { 
+      label: "Application Progress", 
+      value: overallProgress, 
+      color: "bg-primary", 
+      details: `${completedTasks}/${totalTasks} tasks completed across ${schoolsWithTasks} schools`
+    },
   ];
 
   // Filter deadlines due this week (next 7 days)
@@ -88,8 +103,7 @@ const Dashboard = () => {
     safety: "text-success"
   };
 
-
-  if (authLoading || loading || profileLoading) {
+  if (authLoading || loading || profileLoading || applicationProgressLoading) {
     return (
       <OnboardingGuard pageName="Dashboard">
         <GradientBackground>
@@ -168,13 +182,6 @@ const Dashboard = () => {
                 <Progress value={item.value} className="h-2" />
                 {item.details && (
                   <p className="text-xs text-muted-foreground mt-2">{item.details}</p>
-                )}
-                {item.showButton && (
-                  <div className="mt-3">
-                    <Button size="sm" asChild>
-                      <Link to="/profile">Complete Profile</Link>
-                    </Button>
-                  </div>
                 )}
               </CardContent>
             </Card>
