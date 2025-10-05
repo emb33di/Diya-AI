@@ -730,16 +730,53 @@ const Essays = () => {
       }
     }
     
-    // Find the prompt and create/select the corresponding essay
+    // Find the prompt
     const prompt = essayPrompts.find(p => p.id === promptId);
     if (!prompt) return;
 
-    // Find the corresponding essay
-    const essay = essays.find(e => e.promptNumber === prompt.prompt_number);
-    if (!essay) return;
+    // Debug: log prompt selection
+    try {
+      console.log('[ESSAY_DEBUG] handlePromptChange', {
+        promptId,
+        selectedSchool,
+        promptNumber: prompt.prompt_number
+      });
+    } catch (_) {}
 
-    // Use the existing essay selection logic
-    await handleEssaySelect(essay);
+    // If a new-format essay already exists for this prompt, select it
+    const existingNewEssay = newEssays.find(e => e.prompt_id === prompt.id && !e.prompt_text);
+    if (existingNewEssay) {
+      persistEssaySelection(existingNewEssay.id);
+      setSelectedEssay(null);
+      return;
+    }
+
+    // Otherwise, create a new essay for this prompt and select it
+    const essayData: CreateEssayData = {
+      title: prompt.title || `${selectedSchool || ''} - Prompt ${prompt.prompt_number}`,
+      school_name: selectedSchool || '',
+      prompt_id: prompt.id,
+      initial_content: ''
+    };
+    try {
+      const newEssay = await EssayService.createEssay(essayData);
+      setNewEssays(prev => [...prev, newEssay]);
+      persistEssaySelection(newEssay.id);
+      setSelectedEssay(null);
+    } catch (error) {
+      console.error('[ESSAYS_ERROR] Failed to create/select essay from prompt:', {
+        schoolId: selectedSchool,
+        promptId: prompt.id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User cannot open essay for selected prompt'
+      });
+      toast({
+        title: 'Error',
+        description: 'Failed to open essay for this prompt. Please try again.',
+        variant: 'destructive'
+      });
+    }
   };
   const handleEssaySelect = async (essay: Essay) => {
     // Mobile navigation: move to editor step and set selected prompt
@@ -1298,6 +1335,19 @@ const Essays = () => {
                           return 650; // Default word limit
                         })()}
                         onPromptChange={async (promptId) => {
+                          try {
+                            console.log('[ESSAY_DEBUG] In-editor onPromptChange (mobile)', { promptId });
+                          } catch (_) {}
+                          // Handle prompt change - support custom essays and preloaded prompts
+                          if (promptId.startsWith('custom-')) {
+                            const essayId = promptId.replace('custom-', '');
+                            const customEssay = newEssays.find(e => e.id === essayId);
+                            if (customEssay) {
+                              persistEssaySelection(customEssay.id);
+                              setSelectedEssay(null);
+                              return;
+                            }
+                          }
                           // Handle prompt change - find or create essay for the new prompt
                           const newPrompt = essayPrompts.find(p => p.id === promptId);
                           if (!newPrompt) return;
@@ -1529,6 +1579,19 @@ const Essays = () => {
                     return 650; // Default word limit
                   })()}
                   onPromptChange={async (promptId) => {
+                    try {
+                      console.log('[ESSAY_DEBUG] In-editor onPromptChange (desktop)', { promptId });
+                    } catch (_) {}
+                    // Handle prompt change - support custom essays and preloaded prompts
+                    if (promptId.startsWith('custom-')) {
+                      const essayId = promptId.replace('custom-', '');
+                      const customEssay = newEssays.find(e => e.id === essayId);
+                      if (customEssay) {
+                        persistEssaySelection(customEssay.id);
+                        setSelectedEssay(null);
+                        return;
+                      }
+                    }
                     // Handle prompt change - find or create essay for the new prompt
                     const newPrompt = essayPrompts.find(p => p.id === promptId);
                     if (!newPrompt) return;
