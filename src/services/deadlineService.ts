@@ -345,4 +345,58 @@ export class DeadlineService {
       this.calculateDaysRemaining(d.regularDecisionDeadline) >= 0
     );
   }
+
+  /**
+   * Update task completion status
+   */
+  static async updateTaskCompletion(
+    schoolId: string,
+    taskType: string,
+    completed: boolean
+  ): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('school_application_tasks')
+        .update({ 
+          completed: completed,
+          completed_at: completed ? new Date().toISOString() : null
+        })
+        .eq('school_recommendation_id', schoolId)
+        .eq('task_type', taskType);
+
+      if (error) {
+        console.error(`DeadlineService: Failed to update task completion for school ${schoolId}, task ${taskType} - ${error.message}`);
+        throw error;
+      }
+      
+      console.log(`DeadlineService: Successfully updated task ${taskType} completion to ${completed} for school ${schoolId}`);
+      return true;
+    } catch (error) {
+      console.error(`DeadlineService: Error updating task completion for school ${schoolId}, task ${taskType} - ${error.message}`);
+      return false;
+    }
+  }
+
+  /**
+   * Get tasks for a school
+   */
+  static async getSchoolTasks(schoolId: string): Promise<any[]> {
+    try {
+      const { data, error } = await supabase
+        .from('school_application_tasks')
+        .select('*')
+        .eq('school_recommendation_id', schoolId)
+        .order('priority', { ascending: false });
+
+      if (error) {
+        console.error(`DeadlineService: Failed to get tasks for school ${schoolId} - ${error.message}`);
+        throw error;
+      }
+      
+      return data || [];
+    } catch (error) {
+      console.error(`DeadlineService: Error getting tasks for school ${schoolId} - ${error.message}`);
+      return [];
+    }
+  }
 } 

@@ -168,6 +168,30 @@ const Deadlines = () => {
     }
   };
 
+  // Handle task completion toggle
+  const handleTaskToggle = async (schoolId: string, taskType: string, completed: boolean) => {
+    try {
+      const success = await DeadlineService.updateTaskCompletion(schoolId, taskType, completed);
+      
+      if (success) {
+        // Update local state
+        setDeadlines(prev => prev.map(d => 
+          d.id === schoolId ? {
+            ...d,
+            tasks: d.tasks.map(task => 
+              task.type === taskType ? { ...task, completed } : task
+            )
+          } : d
+        ));
+      } else {
+        setError("Failed to update task completion");
+      }
+    } catch (err) {
+      console.error('Error updating task completion:', err);
+      setError("Failed to update task completion");
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed': return 'bg-green-500 text-white';
@@ -442,12 +466,16 @@ const Deadlines = () => {
                   <h4 className="font-medium text-sm">Required Tasks:</h4>
                   <div className="space-y-2">
                     {deadline.tasks.map((task) => (
-                      <div key={task.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+                      <div 
+                        key={task.id} 
+                        className="flex items-center justify-between p-2 rounded-lg bg-muted/30 hover:bg-muted/50 cursor-pointer transition-colors"
+                        onClick={() => handleTaskToggle(deadline.id, task.type, !task.completed)}
+                      >
                         <div className="flex items-center space-x-3">
                           <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
                             task.completed 
                               ? 'bg-green-500 border-green-500' 
-                              : 'border-muted-foreground'
+                              : 'border-muted-foreground hover:border-green-500'
                           }`}>
                             {task.completed && <CheckCircle2 className="h-3 w-3 text-white" />}
                           </div>
