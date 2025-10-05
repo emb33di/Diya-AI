@@ -30,6 +30,7 @@ export interface DeadlineTask {
   dueDate: string;
   completed: boolean;
   priority: 'low' | 'medium' | 'high';
+  type: 'application_form' | 'essays' | 'test_scores' | 'financial_aid' | 'recommendations' | 'transcripts' | 'portfolio';
 }
 
 export interface DeadlineSyncResponse {
@@ -153,8 +154,14 @@ export class DeadlineService {
         }
       }
 
+      // Get task completion data for all schools
+      const { data: taskData } = await supabase
+        .from('school_application_tasks')
+        .select('*')
+        .in('school_recommendation_id', filteredSchools.map(s => s.id));
+
       // Process each school into deadline format
-      const deadlines: UserDeadline[] = filteredSchools.map(school => {
+      const deadlines: UserDeadline[] = await Promise.all(filteredSchools.map(async school => {
         const daysRemaining = school.regular_decision_deadline 
           ? this.calculateDaysRemaining(school.regular_decision_deadline)
           : null;
@@ -163,15 +170,19 @@ export class DeadlineService {
           ? this.getUrgencyLevel(daysRemaining)
           : 'low';
 
-        // Generate tasks for this school
-        const tasks: DeadlineTask[] = [
+        // Get tasks for this school from database, or create default ones
+        const schoolTasks = taskData?.filter(task => task.school_recommendation_id === school.id) || [];
+        
+        // Create default tasks if none exist
+        const defaultTasks = [
           {
             id: `${school.id}-application`,
             title: "Application Form",
             description: "Complete and submit the main application",
             dueDate: school.regular_decision_deadline || 'TBD',
             completed: false,
-            priority: "high"
+            priority: "high" as const,
+            type: "application_form" as const
           },
           {
             id: `${school.id}-essays`,
@@ -179,7 +190,8 @@ export class DeadlineService {
             description: "Write and submit required essays",
             dueDate: school.regular_decision_deadline || 'TBD',
             completed: false,
-            priority: "high"
+            priority: "high" as const,
+            type: "essays" as const
           },
           {
             id: `${school.id}-test-scores`,
@@ -187,7 +199,8 @@ export class DeadlineService {
             description: "Submit official test scores",
             dueDate: school.regular_decision_deadline || 'TBD',
             completed: false,
-            priority: "low"
+            priority: "low" as const,
+            type: "test_scores" as const
           },
           {
             id: `${school.id}-financial-aid`,
@@ -195,9 +208,20 @@ export class DeadlineService {
             description: "Complete FAFSA and CSS Profile",
             dueDate: school.regular_decision_deadline || 'TBD',
             completed: false,
-            priority: "low"
+            priority: "low" as const,
+            type: "financial_aid" as const
           }
         ];
+
+        // Merge database tasks with default tasks
+        const tasks: DeadlineTask[] = defaultTasks.map(defaultTask => {
+          const dbTask = schoolTasks.find(task => task.task_type === defaultTask.type);
+          return {
+            ...defaultTask,
+            completed: dbTask ? dbTask.completed : false,
+            id: dbTask ? dbTask.id : defaultTask.id
+          };
+        });
 
         return {
           id: school.id,
@@ -212,7 +236,7 @@ export class DeadlineService {
           urgencyLevel,
           tasks
         };
-      });
+      }));
 
       // Sort by urgency (critical first, then by days remaining)
       deadlines.sort((a, b) => {
