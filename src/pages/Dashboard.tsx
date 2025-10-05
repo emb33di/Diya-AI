@@ -55,8 +55,8 @@ const Dashboard = () => {
 
   // Profile completion is now calculated by the useProfileCompletion hook
 
-  // Calculate overall application progress (profile + tasks)
-  const overallProgress = Math.round((profileCompletion + applicationProgressPercentage) / 2);
+  // Use only task completion for progress ring
+  const overallProgress = applicationProgressPercentage;
 
   // Filter deadlines due this week (next 7 days)
   const thisWeekDeadlines = upcomingDeadlines.filter(deadline => {
@@ -158,34 +158,34 @@ const Dashboard = () => {
           </p>
         </div>
 
-        {/* Main Dashboard Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 mb-8">
+        {/* Top Row - Progress Ring and Due This Week */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4 mb-6">
           {/* Left Side - Progress Ring */}
-          <div className="flex flex-col items-center order-1 lg:order-1">
-            <Card className="bg-gradient-card shadow-lg w-full max-w-md lg:max-w-lg">
-              <CardHeader className="text-center pb-6">
+          <div className="flex flex-col items-center">
+            <Card className="bg-gradient-card shadow-lg w-full">
+              <CardHeader className="text-center pb-4">
                 <CardTitle className="text-xl font-semibold">
                   Application Progress
                 </CardTitle>
               </CardHeader>
-              <CardContent className="flex flex-col items-center space-y-6">
+              <CardContent className="flex flex-col items-center space-y-4">
                 <CircularProgress 
                   value={overallProgress} 
-                  size={180} 
+                  size={160} 
                   strokeWidth={12}
                   className="text-primary"
                 >
                   <div className="text-center">
-                    <div className="text-3xl lg:text-4xl font-bold text-primary">
+                    <div className="text-2xl lg:text-3xl font-bold text-primary">
                       {overallProgress}%
                     </div>
-                    <div className="text-sm lg:text-base text-muted-foreground">
+                    <div className="text-xs lg:text-sm text-muted-foreground">
                       Complete
                     </div>
                   </div>
                 </CircularProgress>
                 <div className="text-center">
-                  <p className="text-sm lg:text-base text-muted-foreground">
+                  <p className="text-xs lg:text-sm text-muted-foreground">
                     {completedTasks}/{totalTasks} tasks completed across {schoolsWithTasks} schools
                   </p>
                 </div>
@@ -193,10 +193,9 @@ const Dashboard = () => {
             </Card>
           </div>
 
-          {/* Right Side - Deadlines and Categories */}
-          <div className="space-y-4 order-2 lg:order-2">
-            {/* Due This Week */}
-            <Card className="shadow-lg">
+          {/* Right Side - Due This Week */}
+          <div>
+            <Card className="shadow-lg h-full">
               <CardHeader>
                 <div className="flex items-center space-x-2">
                   <Calendar className="h-5 w-5 text-primary" />
@@ -206,10 +205,10 @@ const Dashboard = () => {
                   Deadlines and tasks due in the next 7 days
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3">
                 {thisWeekTasks.length > 0 ? (
                   thisWeekTasks.map((task, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                    <div key={index} className="flex items-center justify-between p-2 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
                       <div className="flex items-center space-x-3">
                         <div className={`h-2 w-2 rounded-full ${
                           task.urgent ? 'bg-warning' : 'bg-success'
@@ -227,55 +226,10 @@ const Dashboard = () => {
                     </div>
                   ))
                 ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p>Nothing due this week</p>
-                    <p className="text-sm">Make sure to relax a bit!</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* School Categories */}
-            <Card className="shadow-lg">
-              <CardHeader>
-                <div className="flex items-center space-x-2">
-                  <BookOpen className="h-5 w-5 text-primary" />
-                  <CardTitle>School Categories</CardTitle>
-                </div>
-                <CardDescription>
-                  Your organized college list
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {schoolCategories.map((category) => {
-                  const IconComponent = schoolCategoryIcons[category.category];
-                  const colorClass = schoolCategoryColors[category.category];
-                  
-                  return (
-                    <div key={category.name} className="flex items-center justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
-                      <div className="flex items-center space-x-3">
-                        <IconComponent className={`h-5 w-5 ${colorClass}`} />
-                        <div>
-                          <p className="font-medium">{category.name}</p>
-                          <p className="text-sm text-muted-foreground">{category.count} schools</p>
-                        </div>
-                      </div>
-                      <Button size="sm" variant="outline" asChild>
-                        <Link to="/schools">View List</Link>
-                      </Button>
-                    </div>
-                  );
-                })}
-                
-                {schoolCategories.every(cat => cat.count === 0) && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <BookOpen className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p>No schools added yet</p>
-                    <p className="text-sm mb-4">Start building your college list</p>
-                    <Button asChild>
-                      <Link to="/schools">Add Schools</Link>
-                    </Button>
+                  <div className="text-center py-6 text-muted-foreground">
+                    <Clock className="h-6 w-6 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">Nothing due this week</p>
+                    <p className="text-xs">Make sure to relax a bit!</p>
                   </div>
                 )}
               </CardContent>
@@ -283,32 +237,79 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {/* School Categories - Full Width Below */}
+        <div className="mb-6">
+          <Card className="shadow-lg">
+            <CardHeader>
+              <div className="flex items-center space-x-2">
+                <BookOpen className="h-5 w-5 text-primary" />
+                <CardTitle>School Categories</CardTitle>
+              </div>
+              <CardDescription>
+                Your organized college list
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {schoolCategories.map((category) => {
+                const IconComponent = schoolCategoryIcons[category.category];
+                const colorClass = schoolCategoryColors[category.category];
+                
+                return (
+                  <div key={category.name} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center space-x-3">
+                      <IconComponent className={`h-5 w-5 ${colorClass}`} />
+                      <div>
+                        <p className="font-medium">{category.name}</p>
+                        <p className="text-sm text-muted-foreground">{category.count} schools</p>
+                      </div>
+                    </div>
+                    <Button size="sm" variant="outline" asChild>
+                      <Link to="/schools">View List</Link>
+                    </Button>
+                  </div>
+                );
+              })}
+              
+              {schoolCategories.every(cat => cat.count === 0) && (
+                <div className="text-center py-6 text-muted-foreground">
+                  <BookOpen className="h-6 w-6 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No schools added yet</p>
+                  <p className="text-xs mb-3">Start building your college list</p>
+                  <Button size="sm" asChild>
+                    <Link to="/schools">Add Schools</Link>
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Quick Actions */}
-        <div className="mt-6 lg:mt-8">
-          <h2 className="text-lg lg:text-xl font-display font-semibold mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 lg:gap-4">
-            <Button variant="outline" className="h-auto p-4 flex-col space-y-2" asChild>
+        <div className="mt-4 lg:mt-6">
+          <h2 className="text-lg lg:text-xl font-display font-semibold mb-3">Quick Actions</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-3">
+            <Button variant="outline" className="h-auto p-3 flex-col space-y-1" asChild>
               <Link to="/essays">
-                <PenTool className="h-6 w-6 text-primary" />
-                <span className="text-sm">Start New Essay</span>
+                <PenTool className="h-5 w-5 text-primary" />
+                <span className="text-xs">Start New Essay</span>
               </Link>
             </Button>
-            <Button variant="outline" className="h-auto p-4 flex-col space-y-2" asChild>
+            <Button variant="outline" className="h-auto p-3 flex-col space-y-1" asChild>
               <Link to="/deadlines">
-                <Calendar className="h-6 w-6 text-primary" />
-                <span className="text-sm">View Deadlines</span>
+                <Calendar className="h-5 w-5 text-primary" />
+                <span className="text-xs">View Deadlines</span>
               </Link>
             </Button>
-            <Button variant="outline" className="h-auto p-4 flex-col space-y-2" asChild>
+            <Button variant="outline" className="h-auto p-3 flex-col space-y-1" asChild>
               <Link to="/schools">
-                <BookOpen className="h-6 w-6 text-primary" />
-                <span className="text-sm">Research Schools</span>
+                <BookOpen className="h-5 w-5 text-primary" />
+                <span className="text-xs">Research Schools</span>
               </Link>
             </Button>
-            <Button variant="outline" className="h-auto p-4 flex-col space-y-2" asChild>
+            <Button variant="outline" className="h-auto p-3 flex-col space-y-1" asChild>
               <Link to="/profile">
-                <Users className="h-6 w-6 text-primary" />
-                <span className="text-sm">View Profile</span>
+                <Users className="h-5 w-5 text-primary" />
+                <span className="text-xs">View Profile</span>
               </Link>
             </Button>
           </div>
