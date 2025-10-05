@@ -49,7 +49,7 @@ const Navigation = () => {
               onClick={() => handleScrollTo('founder')} 
               className="text-sm font-medium text-white/90 hover:text-white transition-colors duration-200"
             >
-              Team
+              Founder
             </button>
             <button 
               onClick={() => handleScrollTo('faq')} 

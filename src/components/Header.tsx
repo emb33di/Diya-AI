@@ -336,7 +336,7 @@ const Header = () => {
                   }} 
                   className="h-12 px-4 text-base font-medium text-white hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/10"
                 >
-                  Team
+                  Founder
                 </button>
                 <button 
                   onClick={() => {
