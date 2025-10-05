@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { CircularProgress } from "@/components/ui/circular-progress";
 import OnboardingGuard from "@/components/OnboardingGuard";
 import GradientBackground from "@/components/GradientBackground";
 import { useAuth } from "@/hooks/useAuth";
@@ -56,15 +57,6 @@ const Dashboard = () => {
 
   // Calculate overall application progress (profile + tasks)
   const overallProgress = Math.round((profileCompletion + applicationProgressPercentage) / 2);
-  
-  const progressData = [
-    { 
-      label: "Application Progress", 
-      value: overallProgress, 
-      color: "bg-primary", 
-      details: `${completedTasks}/${totalTasks} tasks completed across ${schoolsWithTasks} schools`
-    },
-  ];
 
   // Filter deadlines due this week (next 7 days)
   const thisWeekDeadlines = upcomingDeadlines.filter(deadline => {
@@ -166,121 +158,135 @@ const Dashboard = () => {
           </p>
         </div>
 
-        {/* Progress Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {progressData.map((item) => (
-            <Card key={item.label} className="bg-gradient-card shadow-md hover:shadow-lg transition-shadow">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  {item.label}
+        {/* Main Dashboard Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 mb-8">
+          {/* Left Side - Progress Ring */}
+          <div className="flex flex-col items-center order-1 lg:order-1">
+            <Card className="bg-gradient-card shadow-lg w-full max-w-md lg:max-w-lg">
+              <CardHeader className="text-center pb-6">
+                <CardTitle className="text-xl font-semibold">
+                  Application Progress
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-2xl font-bold">{item.value}%</span>
+              <CardContent className="flex flex-col items-center space-y-6">
+                <CircularProgress 
+                  value={overallProgress} 
+                  size={180} 
+                  strokeWidth={12}
+                  className="text-primary"
+                >
+                  <div className="text-center">
+                    <div className="text-3xl lg:text-4xl font-bold text-primary">
+                      {overallProgress}%
+                    </div>
+                    <div className="text-sm lg:text-base text-muted-foreground">
+                      Complete
+                    </div>
+                  </div>
+                </CircularProgress>
+                <div className="text-center">
+                  <p className="text-sm lg:text-base text-muted-foreground">
+                    {completedTasks}/{totalTasks} tasks completed across {schoolsWithTasks} schools
+                  </p>
                 </div>
-                <Progress value={item.value} className="h-2" />
-                {item.details && (
-                  <p className="text-xs text-muted-foreground mt-2">{item.details}</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Right Side - Deadlines and Categories */}
+          <div className="space-y-4 order-2 lg:order-2">
+            {/* Due This Week */}
+            <Card className="shadow-lg">
+              <CardHeader>
+                <div className="flex items-center space-x-2">
+                  <Calendar className="h-5 w-5 text-primary" />
+                  <CardTitle>Due This Week</CardTitle>
+                </div>
+                <CardDescription>
+                  Deadlines and tasks due in the next 7 days
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {thisWeekTasks.length > 0 ? (
+                  thisWeekTasks.map((task, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                      <div className="flex items-center space-x-3">
+                        <div className={`h-2 w-2 rounded-full ${
+                          task.urgent ? 'bg-warning' : 'bg-success'
+                        }`} />
+                        <div>
+                          <p className="font-medium text-sm">{task.title}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Due: {task.due}
+                          </p>
+                        </div>
+                      </div>
+                      <Button size="sm" variant="ghost" asChild>
+                        <Link to="/deadlines">View</Link>
+                      </Button>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>Nothing due this week</p>
+                    <p className="text-sm">Make sure to relax a bit!</p>
+                  </div>
                 )}
               </CardContent>
             </Card>
-          ))}
-        </div>
 
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Due This Week */}
-          <Card className="shadow-lg">
-            <CardHeader>
-              <div className="flex items-center space-x-2">
-                <Calendar className="h-5 w-5 text-primary" />
-                <CardTitle>Due This Week</CardTitle>
-              </div>
-              <CardDescription>
-                Deadlines and tasks due in the next 7 days
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {thisWeekTasks.length > 0 ? (
-                thisWeekTasks.map((task, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
-                    <div className="flex items-center space-x-3">
-                      <div className={`h-2 w-2 rounded-full ${
-                        task.urgent ? 'bg-warning' : 'bg-success'
-                      }`} />
-                      <div>
-                        <p className="font-medium text-sm">{task.title}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Due: {task.due}
-                        </p>
-                      </div>
-                    </div>
-                    <Button size="sm" variant="ghost" asChild>
-                      <Link to="/deadlines">View</Link>
-                    </Button>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p>Nothing due this week</p>
-                  <p className="text-sm">Make sure to relax a bit!</p>
+            {/* School Categories */}
+            <Card className="shadow-lg">
+              <CardHeader>
+                <div className="flex items-center space-x-2">
+                  <BookOpen className="h-5 w-5 text-primary" />
+                  <CardTitle>School Categories</CardTitle>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* School Categories */}
-          <Card className="shadow-lg">
-            <CardHeader>
-              <div className="flex items-center space-x-2">
-                <BookOpen className="h-5 w-5 text-primary" />
-                <CardTitle>School Categories</CardTitle>
-              </div>
-              <CardDescription>
-                Your organized college list
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {schoolCategories.map((category) => {
-                const IconComponent = schoolCategoryIcons[category.category];
-                const colorClass = schoolCategoryColors[category.category];
+                <CardDescription>
+                  Your organized college list
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {schoolCategories.map((category) => {
+                  const IconComponent = schoolCategoryIcons[category.category];
+                  const colorClass = schoolCategoryColors[category.category];
+                  
+                  return (
+                    <div key={category.name} className="flex items-center justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                      <div className="flex items-center space-x-3">
+                        <IconComponent className={`h-5 w-5 ${colorClass}`} />
+                        <div>
+                          <p className="font-medium">{category.name}</p>
+                          <p className="text-sm text-muted-foreground">{category.count} schools</p>
+                        </div>
+                      </div>
+                      <Button size="sm" variant="outline" asChild>
+                        <Link to="/schools">View List</Link>
+                      </Button>
+                    </div>
+                  );
+                })}
                 
-                return (
-                  <div key={category.name} className="flex items-center justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
-                    <div className="flex items-center space-x-3">
-                      <IconComponent className={`h-5 w-5 ${colorClass}`} />
-                      <div>
-                        <p className="font-medium">{category.name}</p>
-                        <p className="text-sm text-muted-foreground">{category.count} schools</p>
-                      </div>
-                    </div>
-                    <Button size="sm" variant="outline" asChild>
-                      <Link to="/schools">View List</Link>
+                {schoolCategories.every(cat => cat.count === 0) && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <BookOpen className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>No schools added yet</p>
+                    <p className="text-sm mb-4">Start building your college list</p>
+                    <Button asChild>
+                      <Link to="/schools">Add Schools</Link>
                     </Button>
                   </div>
-                );
-              })}
-              
-              {schoolCategories.every(cat => cat.count === 0) && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <BookOpen className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p>No schools added yet</p>
-                  <p className="text-sm mb-4">Start building your college list</p>
-                  <Button asChild>
-                    <Link to="/schools">Add Schools</Link>
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         {/* Quick Actions */}
-        <div className="mt-8">
-          <h2 className="text-xl font-display font-semibold mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="mt-6 lg:mt-8">
+          <h2 className="text-lg lg:text-xl font-display font-semibold mb-4">Quick Actions</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 lg:gap-4">
             <Button variant="outline" className="h-auto p-4 flex-col space-y-2" asChild>
               <Link to="/essays">
                 <PenTool className="h-6 w-6 text-primary" />
