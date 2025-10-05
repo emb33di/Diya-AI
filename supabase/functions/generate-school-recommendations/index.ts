@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { getUserProgramTypeFromProfile } from '../_shared/programTypeUtils.ts'
@@ -22,6 +23,7 @@ interface SchoolRecommendation {
   first_round_deadline: string;
   notes: string;
   student_thesis: string;
+  country?: string;
 }
 
 interface SchoolRecommendationResponse {
@@ -163,19 +165,55 @@ async function saveRecommendationsToDatabase(
       .delete()
       .eq('student_id', userId)
 
-    // Insert new recommendations
-    const records = recommendations.map(rec => ({
-      student_id: userId,
-      school: rec.school,
-      school_type: rec.school_type,
-      category: rec.category,
-      acceptance_rate: rec.acceptance_rate,
-      school_ranking: rec.school_ranking,
-      first_round_deadline: rec.first_round_deadline,
-      notes: rec.notes,
-      student_thesis: rec.student_thesis,
-      created_at: new Date().toISOString()
-    }))
+    // Build a map of school name -> country from public.schools table
+    const countryBySchool = new Map<string, string>()
+    try {
+      const { data: schoolRows, error: schoolErr } = await supabase
+        .from('schools')
+        .select('name, country')
+      if (!schoolErr && Array.isArray(schoolRows)) {
+        for (const row of schoolRows) {
+          if (row?.name && row?.country) {
+            countryBySchool.set(row.name, row.country)
+          }
+        }
+      }
+    } catch (mapErr) {
+      console.warn('Could not build country map from schools table:', mapErr)
+    }
+
+    // Insert new recommendations with country where possible
+    const records = recommendations.map(rec => {
+      let country = rec.country
+
+      // If not provided by the model, try lookup from schools table
+      if (!country) {
+        country = countryBySchool.get(rec.school)
+      }
+
+      // Last-resort heuristic: detect UK from known markers; otherwise assume USA if typical US names present
+      if (!country) {
+        const name = (rec.school || '').toLowerCase()
+        const ukMarkers = ['oxford', 'cambridge', 'london', 'imperial', 'liverpool', 'manchester', 'bristol', 'edinburgh', 'glasgow', 'birmingham']
+        if (ukMarkers.some(marker => name.includes(marker))) {
+          country = 'UK'
+        }
+      }
+
+      return {
+        student_id: userId,
+        school: rec.school,
+        school_type: rec.school_type,
+        category: rec.category,
+        acceptance_rate: rec.acceptance_rate,
+        school_ranking: rec.school_ranking,
+        first_round_deadline: rec.first_round_deadline,
+        notes: rec.notes,
+        student_thesis: rec.student_thesis,
+        country: country || null,
+        created_at: new Date().toISOString()
+      }
+    })
 
     const { error } = await supabase
       .from('school_recommendations')

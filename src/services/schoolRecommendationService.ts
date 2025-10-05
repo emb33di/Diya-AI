@@ -9,6 +9,7 @@ export interface SchoolRecommendation {
   first_round_deadline: string;
   notes: string;
   student_thesis: string;
+  country?: string;
 }
 
 export interface SchoolRecommendationResponse {
@@ -80,7 +81,7 @@ export class SchoolRecommendationService {
       }
 
       // Transform the data to match the expected format
-      const transformedRecommendations: SchoolRecommendation[] = recommendations.map(rec => ({
+      const transformedRecommendations: SchoolRecommendation[] = recommendations.map((rec: any) => ({
         school: rec.school,
         school_type: rec.school_type,
         category: rec.category,
@@ -88,7 +89,8 @@ export class SchoolRecommendationService {
         school_ranking: rec.school_ranking || 'N/A',
         first_round_deadline: rec.first_round_deadline || 'TBD',
         notes: rec.notes || '',
-        student_thesis: rec.student_thesis || ''
+        student_thesis: rec.student_thesis || '',
+        country: rec.country || undefined
       }));
 
       return {

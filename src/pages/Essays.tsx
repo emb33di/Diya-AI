@@ -29,6 +29,7 @@ interface School {
   ranking: string;
   applicationDeadline: string;
   notes: string;
+  country?: string;
 }
 interface Essay {
   id: string;
@@ -198,21 +199,46 @@ const Essays = () => {
               throw error;
             }
             
-            const transformedSchools: School[] = recommendations.map(rec => ({
+            const transformedSchools: School[] = recommendations.map((rec: any) => ({
               id: rec.id,
               name: rec.school,
               category: rec.category as 'reach' | 'target' | 'safety',
               acceptanceRate: rec.acceptance_rate || 'N/A',
               ranking: rec.school_ranking || 'N/A',
               applicationDeadline: rec.first_round_deadline || 'TBD',
-              notes: rec.notes || rec.student_thesis || 'No notes available'
+              notes: rec.notes || rec.student_thesis || 'No notes available',
+              country: rec.country || undefined
             }));
             
             // Add Common Application and UCAS as school options for undergraduate students
             const userProgramType = await getUserProgramType();
-            if (userProgramType === 'undergraduate') {
-              // Check if user has any UK schools
-              const hasUKSchools = transformedSchools.some(school => {
+            if ((userProgramType || '').toLowerCase() === 'undergraduate') {
+              let hasUSSchools = false;
+              let hasUKSchools = false;
+
+              // Try to detect countries using the public undergraduate schools dataset
+              try {
+                const response = await fetch('/undergraduate-schools.json');
+                const data = await response.json();
+                const schoolsFromCatalog = Array.isArray(data?.schools) ? data.schools : [];
+
+                if (schoolsFromCatalog.length > 0) {
+                  const countryByName = new Map<string, string>();
+                  for (const s of schoolsFromCatalog) {
+                    if (s?.name && s?.country) {
+                      countryByName.set(s.name, s.country);
+                    }
+                  }
+
+                  hasUSSchools = transformedSchools.some(s => countryByName.get(s.name) === 'USA');
+                  hasUKSchools = transformedSchools.some(s => countryByName.get(s.name) === 'UK');
+                }
+              } catch (e) {
+                console.warn('[ESSAYS_WARN] Could not load undergraduate-schools.json to detect countries');
+              }
+
+              // Fallback: name-based detection for UK schools if not detected via catalog
+              if (!hasUKSchools) {
                 const ukSchools = [
                   'University of Oxford',
                   'University of Cambridge', 
@@ -220,21 +246,23 @@ const Essays = () => {
                   'University College London (UCL)',
                   'London School of Economics and Political Science (LSE)'
                 ];
-                return ukSchools.includes(school.name);
-              });
-              
-              // Add Common Application
-              transformedSchools.unshift({
-                id: 'common-app',
-                name: 'Common Application',
-                category: 'target',
-                acceptanceRate: 'N/A',
-                ranking: 'N/A',
-                applicationDeadline: 'TBD',
-                notes: 'Required for all undergraduate applications'
-              });
-              
-              // Add UCAS if user has UK schools
+                hasUKSchools = transformedSchools.some(school => ukSchools.includes(school.name));
+              }
+
+              // Only add Common Application if the user has at least one US school
+              if (hasUSSchools) {
+                transformedSchools.unshift({
+                  id: 'common-app',
+                  name: 'Common Application',
+                  category: 'target',
+                  acceptanceRate: 'N/A',
+                  ranking: 'N/A',
+                  applicationDeadline: 'TBD',
+                  notes: 'Required for all undergraduate applications'
+                });
+              }
+
+              // Only add UCAS if the user has at least one UK school
               if (hasUKSchools) {
                 transformedSchools.unshift({
                   id: 'ucas-uk',
