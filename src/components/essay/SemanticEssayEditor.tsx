@@ -775,7 +775,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                                           return selectedPrompt ? (
                                             <div className="flex items-center space-x-2">
                                               <span className="truncate font-medium">
-                                                {selectedPrompt.prompt_number ? `Prompt ${selectedPrompt.prompt_number}` : 'Custom Prompt'}
+                                                {selectedPrompt.prompt_number ? `Prompt ${selectedPrompt.prompt_number}` : (selectedPrompt as any).title || 'Custom Prompt'}
                                               </span>
                                               {selectedPrompt.has_draft && (
                                                 <Badge variant="outline" className={`text-xs ${getStatusColor(selectedPrompt.draft_status)}`}>
@@ -792,7 +792,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                                         <SelectItem key={prompt.id} value={prompt.id}>
                                           <div className="flex items-center space-x-2 w-full">
                                             <span className="flex-1 truncate">
-                                              {prompt.prompt_number ? `Prompt ${prompt.prompt_number}` : 'Custom Prompt'}
+                                              {prompt.prompt_number ? `Prompt ${prompt.prompt_number}` : (prompt as any).title || 'Custom Prompt'}
                                             </span>
                                             <div className="flex items-center space-x-1 ml-2">
                                               {prompt.has_draft && (
@@ -823,7 +823,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                                           return selectedPrompt ? (
                                             <div className="flex items-center space-x-2">
                                               <span className="truncate font-medium">
-                                                {selectedPrompt.prompt_number ? `Prompt ${selectedPrompt.prompt_number}` : 'Custom Prompt'}
+                                                {selectedPrompt.prompt_number ? `Prompt ${selectedPrompt.prompt_number}` : (selectedPrompt as any).title || 'Custom Prompt'}
                                               </span>
                                               {selectedPrompt.has_draft && (
                                                 <Badge variant="outline" className={`text-xs ${getStatusColor(selectedPrompt.draft_status)}`}>
@@ -840,7 +840,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                                         <SelectItem key={prompt.id} value={prompt.id}>
                                           <div className="flex items-center space-x-2 w-full">
                                             <span className="flex-1 truncate">
-                                              {prompt.prompt_number ? `Prompt ${prompt.prompt_number}` : 'Custom Prompt'}
+                                              {prompt.prompt_number ? `Prompt ${prompt.prompt_number}` : (prompt as any).title || 'Custom Prompt'}
                                             </span>
                                             <div className="flex items-center space-x-1 ml-2">
                                               {prompt.has_draft && (

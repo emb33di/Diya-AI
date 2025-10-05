@@ -15,6 +15,7 @@ interface EssayPrompt {
   draft_status?: 'not_started' | 'draft' | 'review' | 'final' | 'submitted';
   prompt_selection_type?: string;
   how_many?: string;
+  title?: string; // For custom prompts, this will be the essay title
 }
 
 interface PromptDropdownProps {
@@ -101,7 +102,7 @@ const PromptDropdown: React.FC<PromptDropdownProps> = ({
                         return selectedPrompt ? (
                           <div className="flex items-center space-x-2">
                             <span className="truncate font-medium">
-                              {selectedPrompt.prompt_number ? `Prompt ${selectedPrompt.prompt_number}` : 'Custom Prompt'}
+                              {selectedPrompt.prompt_number ? `Prompt ${selectedPrompt.prompt_number}` : (selectedPrompt.title || 'Custom Prompt')}
                             </span>
                             {selectedPrompt.has_draft && (
                               <Badge variant="outline" className={`text-xs ${getStatusColor(selectedPrompt.draft_status)}`}>
@@ -118,7 +119,7 @@ const PromptDropdown: React.FC<PromptDropdownProps> = ({
                       <SelectItem key={prompt.id} value={prompt.id}>
                         <div className="flex items-center space-x-2 w-full">
                           <span className="flex-1 truncate">
-                            {prompt.prompt_number ? `Prompt ${prompt.prompt_number}` : 'Custom Prompt'}
+                            {prompt.prompt_number ? `Prompt ${prompt.prompt_number}` : (prompt.title || (prompt.prompt ? (prompt.prompt.length > 60 ? `${prompt.prompt.slice(0, 60)}…` : prompt.prompt) : 'Custom Prompt'))}
                           </span>
                           <div className="flex items-center space-x-1 ml-2">
                             {prompt.has_draft && (
@@ -156,7 +157,7 @@ const PromptDropdown: React.FC<PromptDropdownProps> = ({
                         return selectedPrompt ? (
                           <div className="flex items-center space-x-2">
                             <span className="truncate font-medium">
-                              {selectedPrompt.prompt_number ? `Prompt ${selectedPrompt.prompt_number}` : 'Custom Prompt'}
+                              {selectedPrompt.prompt_number ? `Prompt ${selectedPrompt.prompt_number}` : (selectedPrompt.title || (selectedPrompt.prompt ? (selectedPrompt.prompt.length > 60 ? `${selectedPrompt.prompt.slice(0, 60)}…` : selectedPrompt.prompt) : 'Custom Prompt'))}
                             </span>
                             {selectedPrompt.has_draft && (
                               <Badge variant="outline" className={`text-xs ${getStatusColor(selectedPrompt.draft_status)}`}>
@@ -173,7 +174,7 @@ const PromptDropdown: React.FC<PromptDropdownProps> = ({
                       <SelectItem key={prompt.id} value={prompt.id}>
                         <div className="flex items-center space-x-2 w-full">
                           <span className="flex-1 truncate">
-                            {prompt.prompt_number ? `Prompt ${prompt.prompt_number}` : 'Custom Prompt'}
+                            {prompt.prompt_number ? `Prompt ${prompt.prompt_number}` : (prompt.title || 'Custom Prompt')}
                           </span>
                           <div className="flex items-center space-x-1 ml-2">
                             {prompt.has_draft && (

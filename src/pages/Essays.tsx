@@ -718,6 +718,18 @@ const Essays = () => {
   const handlePromptChange = async (promptId: string) => {
     setSelectedPromptId(promptId);
     
+    // Check if this is a custom prompt
+    if (promptId.startsWith('custom-')) {
+      const essayId = promptId.replace('custom-', '');
+      const customEssay = newEssays.find(e => e.id === essayId);
+      if (customEssay) {
+        // Select the custom essay directly
+        persistEssaySelection(customEssay.id);
+        setSelectedEssay(null);
+        return;
+      }
+    }
+    
     // Find the prompt and create/select the corresponding essay
     const prompt = essayPrompts.find(p => p.id === promptId);
     if (!prompt) return;
@@ -1223,29 +1235,53 @@ const Essays = () => {
                           }
                           return undefined;
                         })()}
-                        prompts={essayPrompts.map(prompt => {
-                          // Find if there's a draft for this prompt
-                          const associatedEssay = essays.find(e => e.promptNumber === prompt.prompt_number);
-                          const associatedNewEssay = newEssays.find(e => 
-                            (e.title === associatedEssay?.title || 
-                            (e.school_name === associatedEssay?.schoolName && e.title.includes(associatedEssay?.promptNumber || ''))) &&
-                            !e.prompt_text
-                          );
-                          
-                          return {
-                            id: prompt.id,
-                            prompt: prompt.prompt,
-                            prompt_number: prompt.prompt_number,
-                            is_required: prompt.selection_type === 'required' && prompt.prompt_selection_type === 'required',
-                            word_limit: prompt.word_limit,
-                            has_draft: !!(associatedEssay || associatedNewEssay),
-                            draft_status: associatedNewEssay ? associatedNewEssay.status : associatedEssay?.status,
-                            prompt_selection_type: prompt.prompt_selection_type,
-                            how_many: prompt.how_many
-                          };
-                        })}
+                        prompts={(() => {
+                          // Start with preloaded prompts
+                          const preloadedPrompts = essayPrompts.map(prompt => {
+                            // Find if there's a draft for this prompt
+                            const associatedEssay = essays.find(e => e.promptNumber === prompt.prompt_number);
+                            const associatedNewEssay = newEssays.find(e => 
+                              (e.title === associatedEssay?.title || 
+                              (e.school_name === associatedEssay?.schoolName && e.title.includes(associatedEssay?.promptNumber || ''))) &&
+                              !e.prompt_text
+                            );
+                            
+                            return {
+                              id: prompt.id,
+                              prompt: prompt.prompt,
+                              prompt_number: prompt.prompt_number,
+                              is_required: prompt.selection_type === 'required' && prompt.prompt_selection_type === 'required',
+                              word_limit: prompt.word_limit,
+                              has_draft: !!(associatedEssay || associatedNewEssay),
+                              draft_status: associatedNewEssay ? associatedNewEssay.status : associatedEssay?.status,
+                              prompt_selection_type: prompt.prompt_selection_type,
+                              how_many: prompt.how_many
+                            };
+                          });
+
+                          // Add custom prompts from essays with prompt_text
+                          const customPrompts = newEssays
+                            .filter(essay => essay.prompt_text)
+                            .map(essay => ({
+                              id: `custom-${essay.id}`, // Use custom prefix to avoid conflicts
+                              prompt: essay.prompt_text!,
+                              prompt_number: undefined, // Custom prompts don't have numbers
+                              is_required: false, // Custom prompts are typically optional
+                              word_limit: essay.word_limit || 'No limit',
+                              has_draft: true, // Custom essays always have drafts
+                              draft_status: essay.status,
+                              prompt_selection_type: 'optional',
+                              how_many: '1'
+                            }));
+
+                          return [...preloadedPrompts, ...customPrompts];
+                        })()}
                         selectedPromptId={(() => {
                           const essay = newEssays.find(e => e.id === selectedNewEssayId);
+                          if (essay?.prompt_text) {
+                            // This is a custom essay, return the custom prompt ID
+                            return `custom-${essay.id}`;
+                          }
                           return essay?.prompt_id || undefined;
                         })()}
                         wordLimit={(() => {
@@ -1424,34 +1460,59 @@ const Essays = () => {
                     }
                     return undefined;
                   })()}
-                  prompts={essayPrompts.map(prompt => {
-                    // Find if there's a draft for this prompt
-                    const associatedEssay = essays.find(e => e.promptNumber === prompt.prompt_number);
-                    const associatedNewEssay = newEssays.find(e => 
-                      (e.title === associatedEssay?.title || 
-                      (e.school_name === associatedEssay?.schoolName && e.title.includes(associatedEssay?.promptNumber || ''))) &&
-                      !e.prompt_text
-                    );
-                    
-                    // Only show has_draft as true if there's actual content, not just an empty essay entry
-                    const hasActualContent = (associatedNewEssay && associatedNewEssay.content?.blocks && 
-                                           associatedNewEssay.content.blocks.some(block => block.content && block.content.trim().length > 0)) || 
-                                           !!associatedEssay;
-                    
-                    return {
-                      id: prompt.id,
-                      prompt: prompt.prompt,
-                      prompt_number: prompt.prompt_number,
-                      is_required: prompt.selection_type === 'required' && prompt.prompt_selection_type === 'required',
-                      word_limit: prompt.word_limit,
-                      has_draft: hasActualContent,
-                      draft_status: associatedNewEssay ? associatedNewEssay.status : associatedEssay?.status,
-                      prompt_selection_type: prompt.prompt_selection_type,
-                      how_many: prompt.how_many
-                    };
-                  })}
+                  prompts={(() => {
+                    // Start with preloaded prompts
+                    const preloadedPrompts = essayPrompts.map(prompt => {
+                      // Find if there's a draft for this prompt
+                      const associatedEssay = essays.find(e => e.promptNumber === prompt.prompt_number);
+                      const associatedNewEssay = newEssays.find(e => 
+                        (e.title === associatedEssay?.title || 
+                        (e.school_name === associatedEssay?.schoolName && e.title.includes(associatedEssay?.promptNumber || ''))) &&
+                        !e.prompt_text
+                      );
+                      
+                      // Only show has_draft as true if there's actual content, not just an empty essay entry
+                      const hasActualContent = (associatedNewEssay && associatedNewEssay.content?.blocks && 
+                                             associatedNewEssay.content.blocks.some(block => block.content && block.content.trim().length > 0)) || 
+                                             !!associatedEssay;
+                      
+                      return {
+                        id: prompt.id,
+                        prompt: prompt.prompt,
+                        prompt_number: prompt.prompt_number,
+                        is_required: prompt.selection_type === 'required' && prompt.prompt_selection_type === 'required',
+                        word_limit: prompt.word_limit,
+                        has_draft: hasActualContent,
+                        draft_status: associatedNewEssay ? associatedNewEssay.status : associatedEssay?.status,
+                        prompt_selection_type: prompt.prompt_selection_type,
+                        how_many: prompt.how_many
+                      };
+                    });
+
+                    // Add custom prompts from essays with prompt_text
+                    const customPrompts = newEssays
+                      .filter(essay => essay.prompt_text)
+                      .map(essay => ({
+                        id: `custom-${essay.id}`, // Use custom prefix to avoid conflicts
+                        prompt: essay.prompt_text!,
+                        prompt_number: undefined, // Custom prompts don't have numbers
+                        is_required: false, // Custom prompts are typically optional
+                        word_limit: essay.word_limit || 'No limit',
+                        has_draft: true, // Custom essays always have drafts
+                        draft_status: essay.status,
+                        prompt_selection_type: 'optional',
+                        how_many: '1',
+                        title: essay.title // Include the essay title for display
+                      }));
+
+                    return [...preloadedPrompts, ...customPrompts];
+                  })()}
                   selectedPromptId={(() => {
                     const essay = newEssays.find(e => e.id === selectedNewEssayId);
+                    if (essay?.prompt_text) {
+                      // This is a custom essay, return the custom prompt ID
+                      return `custom-${essay.id}`;
+                    }
                     return essay?.prompt_id || undefined;
                   })()}
                   wordLimit={(() => {
@@ -1593,29 +1654,50 @@ const Essays = () => {
               ) : selectedSchool ? (
                 // Show prompt dropdown when school is selected but no essay is chosen
                 <div className="min-h-full overflow-y-auto p-6">
-                  {essayPrompts.length > 0 ? (
+                  {essayPrompts.length > 0 || newEssays.some(e => e.prompt_text) ? (
                     <PromptDropdown
-                      prompts={essayPrompts.map(prompt => {
-                        // Find if there's a draft for this prompt
-                        const associatedEssay = essays.find(e => e.promptNumber === prompt.prompt_number);
-                        const associatedNewEssay = newEssays.find(e => 
-                          (e.title === associatedEssay?.title || 
-                          (e.school_name === associatedEssay?.schoolName && e.title.includes(associatedEssay?.promptNumber || ''))) &&
-                          !e.prompt_text
-                        );
-                        
-                        return {
-                          id: prompt.id,
-                          prompt: prompt.prompt,
-                          prompt_number: prompt.prompt_number,
-                          is_required: prompt.selection_type === 'required' && prompt.prompt_selection_type === 'required',
-                          word_limit: prompt.word_limit,
-                          has_draft: !!(associatedEssay || associatedNewEssay),
-                          draft_status: associatedNewEssay ? associatedNewEssay.status : associatedEssay?.status,
-                          prompt_selection_type: prompt.prompt_selection_type,
-                          how_many: prompt.how_many
-                        };
-                      })}
+                      prompts={(() => {
+                        // Start with preloaded prompts
+                        const preloadedPrompts = essayPrompts.map(prompt => {
+                          // Find if there's a draft for this prompt
+                          const associatedEssay = essays.find(e => e.promptNumber === prompt.prompt_number);
+                          const associatedNewEssay = newEssays.find(e => 
+                            (e.title === associatedEssay?.title || 
+                            (e.school_name === associatedEssay?.schoolName && e.title.includes(associatedEssay?.promptNumber || ''))) &&
+                            !e.prompt_text
+                          );
+                          
+                          return {
+                            id: prompt.id,
+                            prompt: prompt.prompt,
+                            prompt_number: prompt.prompt_number,
+                            is_required: prompt.selection_type === 'required' && prompt.prompt_selection_type === 'required',
+                            word_limit: prompt.word_limit,
+                            has_draft: !!(associatedEssay || associatedNewEssay),
+                            draft_status: associatedNewEssay ? associatedNewEssay.status : associatedEssay?.status,
+                            prompt_selection_type: prompt.prompt_selection_type,
+                            how_many: prompt.how_many
+                          };
+                        });
+
+                        // Add custom prompts from essays with prompt_text
+                        const customPrompts = newEssays
+                          .filter(essay => essay.prompt_text)
+                          .map(essay => ({
+                            id: `custom-${essay.id}`, // Use custom prefix to avoid conflicts
+                            prompt: essay.prompt_text!,
+                            prompt_number: undefined, // Custom prompts don't have numbers
+                            is_required: false, // Custom prompts are typically optional
+                            word_limit: essay.word_limit || 'No limit',
+                            has_draft: true, // Custom essays always have drafts
+                            draft_status: essay.status,
+                            prompt_selection_type: 'optional',
+                            how_many: '1',
+                            title: essay.title // Include the essay title for display
+                          }));
+
+                        return [...preloadedPrompts, ...customPrompts];
+                      })()}
                       selectedPromptId={selectedPromptId}
                       onPromptChange={handlePromptChange}
                       className="max-w-4xl mx-auto"
