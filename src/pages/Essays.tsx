@@ -1426,6 +1426,14 @@ const Essays = () => {
                             }
                           }
                         }}
+                        onDelete={async (essayId) => {
+                          // Find the essay to delete
+                          const essayToDelete = newEssays.find(e => e.id === essayId);
+                          if (essayToDelete) {
+                            setEssayToDelete(essayToDelete);
+                            setShowDeleteDialog(true);
+                          }
+                        }}
                       />
                     ) : (
                       <Textarea 
@@ -1668,6 +1676,14 @@ const Essays = () => {
                           variant: "destructive"
                         });
                       }
+                    }
+                  }}
+                  onDelete={async (essayId) => {
+                    // Find the essay to delete
+                    const essayToDelete = newEssays.find(e => e.id === essayId);
+                    if (essayToDelete) {
+                      setEssayToDelete(essayToDelete);
+                      setShowDeleteDialog(true);
                     }
                   }}
                 />

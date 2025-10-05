@@ -22,6 +22,7 @@ import { Badge } from '@/components/ui/badge';
 import { getDraftStatusLabel, getDraftStatusColor } from '@/utils/statusUtils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
   FileText, 
   MessageSquare, 
@@ -33,6 +34,7 @@ import {
   CheckSquare,
   Sidebar,
   Plus,
+  Trash2,
 } from 'lucide-react';
 
 interface EssayPrompt {
@@ -58,6 +60,7 @@ interface SemanticEssayEditorProps {
   initialContent?: string;
   onTitleChange?: (newTitle: string) => void;
   onContentChange?: (content: string) => void;
+  onDelete?: (essayId: string) => void;
   className?: string;
 }
 
@@ -72,6 +75,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
   initialContent = '',
   onTitleChange,
   onContentChange,
+  onDelete,
   className = ''
 }) => {
   const [document, setDocument] = useState<SemanticDocument | null>(null);
@@ -98,6 +102,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
   const [essayVersions, setEssayVersions] = useState<EssayVersion[]>([]);
   const [currentVersion, setCurrentVersion] = useState<EssayVersion | null>(null);
   const [isCreatingVersion, setIsCreatingVersion] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Toast for user feedback
   const { toast } = useToast();
@@ -639,6 +644,14 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
     };
   };
 
+  // Handle essay deletion
+  const handleDeleteEssay = () => {
+    if (onDelete) {
+      onDelete(essayId);
+    }
+    setShowDeleteDialog(false);
+  };
+
   // Debug logging for loading states (only log when there are issues)
   if (isLoading || migrationStatus.isMigrating) {
     console.log('SemanticEssayEditor render - isLoading:', isLoading, 'isMigrating:', migrationStatus.isMigrating, 'document:', !!document);
@@ -875,6 +888,21 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                   {/* Subtle accent line */}
                   <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500"></div>
                   
+                  {/* Delete button - only show for custom essays */}
+                  {onDelete && (
+                    <div className="absolute top-4 right-4">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowDeleteDialog(true)}
+                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        title="Delete essay"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                  
                   <div className="flex flex-col sm:flex-row sm:items-start space-y-4 sm:space-y-0 sm:space-x-4">
                     <div className="flex-shrink-0 self-center sm:self-start sm:mt-1">
                       <div className="p-3 bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg border border-blue-100">
@@ -1086,6 +1114,41 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
           setNoGrammarErrorsFound(false); // Reset for next time
         }}
       />
+
+      {/* Delete Essay Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertCircle className="h-5 w-5" />
+              Delete Essay
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete <strong>"{title}"</strong>? This action cannot be undone.
+              <br /><br />
+              This will permanently remove the essay and all its content, including any AI feedback and comments.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleDeleteEssay}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete Essay
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );
