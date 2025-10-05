@@ -183,8 +183,7 @@ const BlogPost = () => {
                 <div className="flex flex-wrap gap-2">
                   {post.tags.map(tag => (
                     <Badge key={tag} variant="outline" className="flex items-center gap-1">
-                      <Tag className="h-3 w-3" />
-                      {tag}
+                      {tag.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                     </Badge>
                   ))}
                 </div>

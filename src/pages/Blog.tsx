@@ -155,8 +155,7 @@ const Blog = () => {
                   onClick={() => setSelectedTag(tag)}
                   className="mb-2"
                 >
-                  <Tag className="h-3 w-3 mr-1" />
-                  {tag}
+                  {tag.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                 </Button>
               ))}
             </div>
