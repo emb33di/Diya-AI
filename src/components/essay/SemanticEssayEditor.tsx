@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import SemanticEditor from './SemanticEditor';
 import AICommentsLoadingPane, { AI_COMMENTS_LOADING_STEPS } from './AICommentsLoadingPane';
 import GrammarLoadingPane, { GRAMMAR_LOADING_STEPS } from './GrammarLoadingPane';
+import CommentSidebar from './CommentSidebar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -84,6 +85,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [mobileView, setMobileView] = useState<'essay' | 'comments'>('essay');
   const [isGeneratingAIComments, setIsGeneratingAIComments] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
   const [isGeneratingGrammar, setIsGeneratingGrammar] = useState(false);
@@ -280,6 +282,84 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
       previousSelectedId: selectedAnnotation?.id
     });
     setSelectedAnnotation(annotation);
+  };
+
+  // Handle annotation resolve
+  const handleAnnotationResolve = async (annotationId: string) => {
+    if (!document) return;
+    
+    try {
+      const success = semanticDocumentService.resolveAnnotation(document, annotationId, user?.id || 'anonymous');
+      
+      if (success) {
+        // Update local state
+        const updatedBlocks = document.blocks.map(block => ({
+          ...block,
+          annotations: block.annotations?.map(annotation => 
+            annotation.id === annotationId 
+              ? { ...annotation, resolved: true }
+              : annotation
+          ) || []
+        }));
+        
+        const updatedDocument = { ...document, blocks: updatedBlocks };
+        setDocument(updatedDocument);
+        
+        // Clear selection if this was the selected annotation
+        if (selectedAnnotation?.id === annotationId) {
+          setSelectedAnnotation(null);
+        }
+        
+        toast({
+          title: "Comment Resolved",
+          description: "The comment has been marked as resolved.",
+        });
+      }
+    } catch (error) {
+      console.error('Failed to resolve annotation:', error);
+      toast({
+        title: "Error",
+        description: "Failed to resolve comment. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Handle annotation delete
+  const handleAnnotationDelete = async (annotationId: string) => {
+    if (!document) return;
+    
+    try {
+      const success = semanticDocumentService.deleteAnnotation(document, annotationId);
+      
+      if (success) {
+        // Update local state
+        const updatedBlocks = document.blocks.map(block => ({
+          ...block,
+          annotations: block.annotations?.filter(annotation => annotation.id !== annotationId) || []
+        }));
+        
+        const updatedDocument = { ...document, blocks: updatedBlocks };
+        setDocument(updatedDocument);
+        
+        // Clear selection if this was the selected annotation
+        if (selectedAnnotation?.id === annotationId) {
+          setSelectedAnnotation(null);
+        }
+        
+        toast({
+          title: "Comment Deleted",
+          description: "The comment has been deleted.",
+        });
+      }
+    } catch (error) {
+      console.error('Failed to delete annotation:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete comment. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   // Handle save status changes
@@ -714,11 +794,44 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
     <div className={`semantic-essay-editor ${className}`}>
       <div className="w-full">
         <div className="mt-6">
-          <div className="flex gap-6">
+          {/* Mobile Navigation */}
+          <div className="lg:hidden mb-4">
+            <div className="flex bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setMobileView('essay')}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                  mobileView === 'essay'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <FileText className="h-4 w-4 inline mr-2" />
+                Essay
+              </button>
+              <button
+                onClick={() => setMobileView('comments')}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                  mobileView === 'comments'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <MessageSquare className="h-4 w-4 inline mr-2" />
+                Comments
+                {document && document.blocks.some(block => block.annotations && block.annotations.length > 0) && (
+                  <Badge variant="destructive" className="ml-2 text-xs">
+                    {document.blocks.reduce((total, block) => total + (block.annotations?.length || 0), 0)}
+                  </Badge>
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex gap-6 lg:gap-6 gap-0">
             {/* Main Content Area */}
-            <div className="flex-1 space-y-4">
+            <div className={`flex-1 space-y-4 ${mobileView === 'comments' ? 'hidden lg:block' : ''}`}>
               {/* Header */}
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between px-4 lg:px-0">
                 <div className="flex-1">
                   {/* Prompt Selection */}
                   {prompts.length > 0 ? (
@@ -1071,7 +1184,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
 
 
               {/* Editor */}
-              <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-8 min-h-[600px] h-full">
+              <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-4 lg:p-8 min-h-[600px] h-full mx-4 lg:mx-0 w-full overflow-hidden">
                 <SemanticEditor
                   documentId={document.id}
                   essayId={essayId}
@@ -1083,6 +1196,20 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                   showCommentSidebar={showCommentSidebar}
                   selectedAnnotationId={selectedAnnotation?.id}
                   onHideSidebar={() => setShowCommentSidebar(false)}
+                />
+              </div>
+            </div>
+
+            {/* Mobile Comments View */}
+            <div className={`lg:hidden ${mobileView === 'essay' ? 'hidden' : 'block'}`}>
+              <div className="bg-white rounded-lg shadow-lg border border-gray-200 h-full min-h-[600px] mx-4">
+                <CommentSidebar
+                  blocks={document.blocks}
+                  onAnnotationResolve={handleAnnotationResolve}
+                  onAnnotationDelete={handleAnnotationDelete}
+                  onAnnotationSelect={handleAnnotationSelect}
+                  selectedAnnotationId={selectedAnnotation?.id}
+                  className="h-full border-0 rounded-lg"
                 />
               </div>
             </div>

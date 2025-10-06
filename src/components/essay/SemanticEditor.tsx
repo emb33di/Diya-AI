@@ -973,16 +973,19 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
                 }, 0);
               }
             }}
-            className="min-h-[2.5rem] resize-none border-none shadow-none focus-visible:ring-0 text-base"
+            className="min-h-[2.5rem] resize-none border-none shadow-none focus-visible:ring-0 text-base w-full overflow-wrap-anywhere break-words"
             style={{
               fontFamily: 'Arial, sans-serif',
               lineHeight: '1.6',
+              wordWrap: 'break-word',
+              overflowWrap: 'anywhere',
+              hyphens: 'auto',
             }}
             placeholder={block.position === 0 ? "Start writing here..." : ""}
           />
         ) : (
           <div
-            className={`min-h-[2.5rem] p-2 rounded transition-colors text-base ${
+            className={`min-h-[2.5rem] p-2 rounded transition-colors text-base w-full overflow-wrap-anywhere break-words ${
               isReadOnly() 
                 ? 'cursor-default bg-gray-50 text-gray-500' 
                 : 'cursor-text hover:bg-gray-50'
@@ -992,6 +995,9 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
             style={{
               fontFamily: 'Arial, sans-serif',
               lineHeight: '1.6',
+              wordWrap: 'break-word',
+              overflowWrap: 'anywhere',
+              hyphens: 'auto',
             }}
           >
             {block.content ? (
@@ -1017,11 +1023,11 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
   };
 
   return (
-    <div className={`clean-semantic-editor ${className} ${showCommentSidebar ? 'flex h-full' : 'h-full'}`}>
+    <div className={`clean-semantic-editor ${className} ${showCommentSidebar ? 'flex h-full' : 'h-full'} w-full overflow-hidden`}>
       {/* Main Editor Area */}
-      <div className={`${showCommentSidebar ? 'flex-1 min-w-0 pr-4' : 'w-full'}`}>
+      <div className={`${showCommentSidebar ? 'flex-1 min-w-0 pr-4 lg:pr-4 pr-0' : 'w-full'} overflow-hidden`}>
         {/* Editor Content */}
-        <div className="relative pl-12">
+        <div className="relative pl-4 lg:pl-12 w-full overflow-hidden">
           {/* Render all blocks */}
           {state.document.blocks
             .sort((a, b) => a.position - b.position)
@@ -1032,14 +1038,16 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
 
       {/* Comment Sidebar */}
       {showCommentSidebar && (
-        <CommentSidebar
-          blocks={state.document.blocks}
-          onAnnotationResolve={resolveAnnotation}
-          onAnnotationDelete={deleteAnnotation}
-          onAnnotationSelect={onAnnotationSelect}
-          selectedAnnotationId={selectedAnnotationId}
-          onHideSidebar={onHideSidebar}
-        />
+        <div className="hidden lg:block">
+          <CommentSidebar
+            blocks={state.document.blocks}
+            onAnnotationResolve={resolveAnnotation}
+            onAnnotationDelete={deleteAnnotation}
+            onAnnotationSelect={onAnnotationSelect}
+            selectedAnnotationId={selectedAnnotationId}
+            onHideSidebar={onHideSidebar}
+          />
+        </div>
       )}
 
       {/* AI Comments Loading Pane */}

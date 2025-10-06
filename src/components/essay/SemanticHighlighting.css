@@ -1,5 +1,16 @@
 /* Semantic Editor Inline Highlighting Styles */
 
+/* Mobile Text Wrapping */
+.clean-semantic-editor textarea,
+.clean-semantic-editor div[contenteditable],
+.clean-semantic-editor .block-content {
+  word-wrap: break-word !important;
+  overflow-wrap: anywhere !important;
+  hyphens: auto !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
 /* Comment Sidebar Text Handling */
 .comment-sidebar {
   overflow-wrap: anywhere;
