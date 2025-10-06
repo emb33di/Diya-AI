@@ -196,22 +196,10 @@ const ArchiveModal = ({ isOpen, onClose, onSchoolRestored }: ArchiveModalProps) 
                   </CardHeader>
                   
                   <CardContent className="space-y-3">
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div className="flex items-center space-x-2">
-                        <Users className="h-3 w-3 text-muted-foreground" />
-                        <span>Accept: {school.acceptance_rate || 'N/A'}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <GraduationCap className="h-3 w-3 text-muted-foreground" />
-                        <span>Rank: #{school.school_ranking || 'N/A'}</span>
-                      </div>
+                    <div className="flex items-center space-x-2 text-sm">
+                      <GraduationCap className="h-3 w-3 text-muted-foreground" />
+                      <span>Rank: #{school.school_ranking || 'N/A'}</span>
                     </div>
-                    
-                    {school.regularDecisionDeadline && school.regularDecisionDeadline !== 'N/A' && (
-                      <div className="text-sm">
-                        <span className="font-medium">Deadline:</span> {school.regularDecisionDeadline}
-                      </div>
-                    )}
                     
                     <div className="text-xs text-muted-foreground">
                       Archived: {formatDate(school.archived_at)}

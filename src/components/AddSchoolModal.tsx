@@ -322,7 +322,6 @@ const AddSchoolModal: React.FC<AddSchoolModalProps> = ({ isOpen, onClose, onAddS
                           </p>
                           <div className="flex items-center gap-2 mt-2">
                             <Badge variant="secondary">#{school.ranking}</Badge>
-                            <Badge variant="outline">{school.acceptance_rate}</Badge>
                             <Badge variant="outline">{school.tier}</Badge>
                           </div>
                         </div>
@@ -360,7 +359,7 @@ const AddSchoolModal: React.FC<AddSchoolModalProps> = ({ isOpen, onClose, onAddS
                         <div className="flex-1">
                           <div className="font-medium text-sm">{school.name}</div>
                           <div className="text-xs text-muted-foreground">
-                            {school.city}, {school.state} • #{school.ranking} • {school.acceptance_rate}
+                            {school.city}, {school.state} • #{school.ranking}
                           </div>
                         </div>
                         <Button
@@ -446,25 +445,14 @@ const AddSchoolModal: React.FC<AddSchoolModalProps> = ({ isOpen, onClose, onAddS
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="acceptance-rate">Acceptance Rate</Label>
-                  <Input
-                    id="acceptance-rate"
-                    value={customSchoolData.acceptance_rate}
-                    onChange={(e) => setCustomSchoolData({...customSchoolData, acceptance_rate: e.target.value})}
-                    placeholder="e.g., 15%"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="school-ranking">Ranking</Label>
-                  <Input
-                    id="school-ranking"
-                    value={customSchoolData.school_ranking}
-                    onChange={(e) => setCustomSchoolData({...customSchoolData, school_ranking: e.target.value})}
-                    placeholder="e.g., 25"
-                  />
-                </div>
+              <div>
+                <Label htmlFor="school-ranking">Ranking</Label>
+                <Input
+                  id="school-ranking"
+                  value={customSchoolData.school_ranking}
+                  onChange={(e) => setCustomSchoolData({...customSchoolData, school_ranking: e.target.value})}
+                  placeholder="e.g., 25"
+                />
               </div>
 
               <div>

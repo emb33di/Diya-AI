@@ -594,28 +594,9 @@ const SchoolList = () => {
         </CardHeader>
         
         <CardContent className="space-y-3">
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            <div className="flex items-center space-x-2">
-              <Users className="h-3 w-3 text-muted-foreground" />
-              <span>Accept: {school.acceptanceRate}</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <GraduationCap className="h-3 w-3 text-muted-foreground" />
-              <span>Rank: #{school.ranking}</span>
-            </div>
-          </div>
-          
-          <div className="space-y-2">
-            {school.applicationDeadline && school.applicationDeadline !== 'N/A' && school.applicationDeadline !== 'TBD' && (
-              <div className="text-sm">
-                <span className="font-medium">Application Deadline:</span> {school.applicationDeadline}
-              </div>
-            )}
-            {school.regularDecisionDeadline && school.regularDecisionDeadline !== 'N/A' && (
-              <div className="text-sm text-green-600">
-                <span className="font-medium">Deadline:</span> {school.regularDecisionDeadline}
-              </div>
-            )}
+          <div className="flex items-center space-x-2 text-sm">
+            <GraduationCap className="h-3 w-3 text-muted-foreground" />
+            <span>Rank: #{school.ranking}</span>
           </div>
           
           {/* Only show "Why it's a good match" if user didn't skip onboarding */}
@@ -805,15 +786,9 @@ const SchoolList = () => {
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div className="flex items-center space-x-2">
-                    <Users className="h-3 w-3 text-muted-foreground" />
-                    <span>Accept: {activeSchool.acceptanceRate}</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <GraduationCap className="h-3 w-3 text-muted-foreground" />
-                    <span>Rank: #{activeSchool.ranking}</span>
-                  </div>
+                <div className="flex items-center space-x-2 text-sm">
+                  <GraduationCap className="h-3 w-3 text-muted-foreground" />
+                  <span>Rank: #{activeSchool.ranking}</span>
                 </div>
               </CardContent>
             </Card>
