@@ -26,7 +26,6 @@ interface ActivityEditorProps {
 }
 
 const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEditorProps) => {
-  const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   
@@ -205,8 +204,6 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
   }, [localActivity.bullets, saveChanges]);
 
   // Title editing handlers
-  const handleTitleEdit = useCallback(() => setIsEditingTitle(true), []);
-  const handleTitleSave = useCallback(() => setIsEditingTitle(false), []);
   const handleTitleChange = useCallback((value: string) => {
     saveToUndoStack();
     setLocalActivity(prev => ({ ...prev, title: value }));
@@ -235,6 +232,30 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
       languages: 'Languages'
     };
     return labels[category] || category;
+  }, []);
+
+  // Get field-specific labels for academic entries
+  const getFieldLabel = useCallback((category: string) => {
+    const fieldLabels: Record<string, string> = {
+      academic: 'Institution Name',
+      experience: 'Company Name',
+      projects: 'Project Name',
+      extracurricular: 'Organization Name',
+      volunteering: 'Organization Name'
+    };
+    return fieldLabels[category] || 'Title';
+  }, []);
+
+  // Get field-specific placeholders for academic entries
+  const getFieldPlaceholder = useCallback((category: string) => {
+    const fieldPlaceholders: Record<string, string> = {
+      academic: 'e.g., The University of Chicago',
+      experience: 'e.g., Google Inc.',
+      projects: 'e.g., E-commerce Website',
+      extracurricular: 'e.g., Debate Team',
+      volunteering: 'e.g., Red Cross'
+    };
+    return fieldPlaceholders[category] || 'e.g., Enter name...';
   }, []);
 
   // Check if category shows dates
@@ -308,64 +329,33 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
     <Card className="shadow-lg group">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2 flex-1">
-            {isEditingTitle ? (
-              <Textarea
+          <div className="flex-1">
+            {/* Field Label - Uneditable */}
+            <div 
+              className="text-lg font-semibold capitalize mb-2"
+              style={{ 
+                fontFamily: 'inherit',
+                fontSize: '1.125rem',
+                lineHeight: '1.5',
+                fontWeight: '600'
+              }}
+            >
+              {getFieldLabel(category)}
+            </div>
+            
+            {/* Text Input Field */}
+            <div className="space-y-2">
+              <Input
                 value={localActivity.title}
-                onChange={(e) => {
-                  handleTitleChange(e.target.value);
-                  autoResizeTextarea(e.target);
-                }}
+                onChange={(e) => handleTitleChange(e.target.value)}
                 onBlur={(e) => {
                   handleTitleBlur(e.target.value);
-                  handleTitleSave();
                 }}
-                onKeyDown={(e) => {
-                  handleKeyDown(e, 'title');
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleTitleBlur(e.currentTarget.value);
-                    handleTitleSave();
-                  }
-                }}
-                placeholder={`Enter ${getCategoryLabel(category).toLowerCase()} title...`}
-                className="text-lg font-semibold border-none shadow-none p-2 rounded transition-colors min-h-[1.5rem] resize-none focus:outline-none focus:ring-0 focus:border-none"
-                autoFocus
-                style={{ 
-                  fontFamily: 'inherit',
-                  fontSize: '1.125rem',
-                  lineHeight: '1.5',
-                  fontWeight: '600',
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  outline: 'none',
-                  boxShadow: 'none'
-                }}
+                onKeyDown={(e) => handleKeyDown(e, 'title')}
+                placeholder={getFieldPlaceholder(category)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
               />
-            ) : (
-              <div 
-                className="text-lg font-semibold capitalize cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors min-h-[1.5rem] whitespace-pre-wrap"
-                onClick={handleTitleEdit}
-                style={{ 
-                  fontFamily: 'inherit',
-                  fontSize: '1.125rem',
-                  lineHeight: '1.5',
-                  fontWeight: '600'
-                }}
-              >
-                {localActivity.title || `${getCategoryLabel(category)} Entry`}
-              </div>
-            )}
-            {!isEditingTitle && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleTitleEdit}
-                className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <Edit3 className="h-3 w-3" />
-              </Button>
-            )}
+            </div>
           </div>
           
           <div className="flex items-center space-x-2">
