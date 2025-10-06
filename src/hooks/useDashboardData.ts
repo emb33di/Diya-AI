@@ -3,6 +3,7 @@ import { useAuth } from './useAuth';
 import { EssayService, Essay } from '@/services/essayService';
 import { DeadlineService, UserDeadline, UserDeadlinesResponse } from '@/services/deadlineService';
 import { supabase } from '@/integrations/supabase/client';
+import { LORService, type LORDeadlineInfo } from '@/services/lorService';
 
 export interface SchoolCategory {
   name: string;
@@ -15,6 +16,7 @@ export interface DashboardData {
   deadlines: UserDeadline[];
   schoolCategories: SchoolCategory[];
   upcomingDeadlines: UserDeadline[];
+  upcomingLorDeadlines: LORDeadlineInfo[];
   loading: boolean;
   error: string | null;
 }
@@ -26,6 +28,7 @@ export const useDashboardData = () => {
     deadlines: [],
     schoolCategories: [],
     upcomingDeadlines: [],
+    upcomingLorDeadlines: [],
     loading: true,
     error: null,
   });
@@ -51,9 +54,10 @@ export const useDashboardData = () => {
         );
 
         // Fetch all data in parallel for better performance
-        const [essays, deadlineResponse, schoolRecommendationsResult] = await Promise.allSettled([
+        const [essays, deadlineResponse, lorDeadlinesResult, schoolRecommendationsResult] = await Promise.allSettled([
           Promise.race([EssayService.getUserEssays(), timeoutPromise]),
           Promise.race([DeadlineService.getUserDeadlines(userId), timeoutPromise]),
+          Promise.race([LORService.getUserLORDeadlines(userId), timeoutPromise]),
           Promise.race([
             supabase
               .from('school_recommendations')
@@ -70,6 +74,11 @@ export const useDashboardData = () => {
         const deadlineResponseData = deadlineResponse.status === 'fulfilled' ? deadlineResponse.value as UserDeadlinesResponse : null;
         const deadlines = deadlineResponseData && deadlineResponseData.success 
           ? deadlineResponseData.deadlines 
+          : [];
+
+        // Handle LOR deadlines
+        const lorDeadlines: LORDeadlineInfo[] = lorDeadlinesResult.status === 'fulfilled' 
+          ? (lorDeadlinesResult.value as LORDeadlineInfo[]) 
           : [];
 
         // Handle school recommendations
@@ -114,14 +123,31 @@ export const useDashboardData = () => {
           }
         ];
 
-        // Get upcoming deadlines (next 5)
+        // Get upcoming deadlines (next 5) - including custom deadlines
         const upcomingDeadlines = deadlines
-          .filter(d => d.regularDecisionDeadline && DeadlineService.calculateDaysRemaining(d.regularDecisionDeadline) >= 0)
+          .filter(d => {
+            // Check if using custom deadline
+            if (d.useCustomDeadline && d.customDeadline) {
+              return DeadlineService.calculateDaysRemaining(d.customDeadline) >= 0;
+            }
+            // Fall back to regular decision deadline
+            return d.regularDecisionDeadline && DeadlineService.calculateDaysRemaining(d.regularDecisionDeadline) >= 0;
+          })
           .sort((a, b) => {
-            const aDays = a.regularDecisionDeadline ? DeadlineService.calculateDaysRemaining(a.regularDecisionDeadline) : Infinity;
-            const bDays = b.regularDecisionDeadline ? DeadlineService.calculateDaysRemaining(b.regularDecisionDeadline) : Infinity;
+            // Get the effective deadline date for comparison
+            const aDeadline = a.useCustomDeadline && a.customDeadline ? a.customDeadline : a.regularDecisionDeadline;
+            const bDeadline = b.useCustomDeadline && b.customDeadline ? b.customDeadline : b.regularDecisionDeadline;
+            
+            const aDays = aDeadline ? DeadlineService.calculateDaysRemaining(aDeadline) : Infinity;
+            const bDays = bDeadline ? DeadlineService.calculateDaysRemaining(bDeadline) : Infinity;
             return aDays - bDays;
           })
+          .slice(0, 5);
+
+        // Get upcoming LOR deadlines (next 5)
+        const upcomingLorDeadlines = lorDeadlines
+          .filter(ld => ld.daysRemaining >= 0)
+          .sort((a, b) => a.daysRemaining - b.daysRemaining)
           .slice(0, 5);
 
         if (isMounted) {
@@ -130,6 +156,7 @@ export const useDashboardData = () => {
             deadlines,
             schoolCategories,
             upcomingDeadlines,
+            upcomingLorDeadlines,
             loading: false,
             error: null,
           });

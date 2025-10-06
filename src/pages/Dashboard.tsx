@@ -19,7 +19,8 @@ const Dashboard = () => {
     essays, 
     deadlines, 
     schoolCategories, 
-    upcomingDeadlines, 
+    upcomingDeadlines,
+    upcomingLorDeadlines,
     loading, 
     error 
   } = useDashboardData();
@@ -58,30 +59,78 @@ const Dashboard = () => {
   // Use only task completion for progress ring
   const overallProgress = applicationProgressPercentage;
 
-  // Filter deadlines due this week (next 7 days)
+  // Filter deadlines due this week (next 7 days) - including custom deadlines
   const thisWeekDeadlines = upcomingDeadlines.filter(deadline => {
-    const daysRemaining = deadline.regularDecisionDeadline ? 
-      Math.ceil((new Date(deadline.regularDecisionDeadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0;
+    // Get the effective deadline date
+    const effectiveDeadline = deadline.useCustomDeadline && deadline.customDeadline 
+      ? deadline.customDeadline 
+      : deadline.regularDecisionDeadline;
+    
+    const daysRemaining = effectiveDeadline ? 
+      Math.ceil((new Date(effectiveDeadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0;
     return daysRemaining >= 0 && daysRemaining <= 7;
   });
 
   // Format deadline tasks from this week's deadlines
   const thisWeekTasks = thisWeekDeadlines.map(deadline => {
-    const daysRemaining = deadline.regularDecisionDeadline ? 
-      Math.ceil((new Date(deadline.regularDecisionDeadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0;
+    // Get the effective deadline date
+    const effectiveDeadline = deadline.useCustomDeadline && deadline.customDeadline 
+      ? deadline.customDeadline 
+      : deadline.regularDecisionDeadline;
+    
+    const daysRemaining = effectiveDeadline ? 
+      Math.ceil((new Date(effectiveDeadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0;
     
     let dueText = '';
     if (daysRemaining === 0) dueText = 'Today';
     else if (daysRemaining === 1) dueText = 'Tomorrow';
     else dueText = `${daysRemaining} days`;
 
+    // Add indicator for custom deadlines
+    const deadlineType = deadline.useCustomDeadline && deadline.customDeadline ? 'Personal' : 'Regular';
+    const title = `Submit ${deadline.schoolName} application (${deadlineType})`;
+
     return {
-      title: `Submit ${deadline.schoolName} application`,
+      title,
       due: dueText,
       urgent: daysRemaining <= 3,
       overdue: false
     };
   });
+
+  // Include LOR deadlines due this week (already filtered to next 5 in hook)
+  const thisWeekLorTasks = (upcomingLorDeadlines || []).filter(ld => ld.daysRemaining <= 7).map(ld => {
+    const daysRemaining = ld.daysRemaining;
+    let dueText = '';
+    if (daysRemaining === 0) dueText = 'Today';
+    else if (daysRemaining === 1) dueText = 'Tomorrow';
+    else dueText = `${daysRemaining} days`;
+
+    let title = '';
+    if (ld.deadlineType === 'reach_out') {
+      title = `Reach out to ${ld.recommenderName}`;
+    } else if (ld.deadlineType === 'check_in') {
+      title = `Check-in with ${ld.recommenderName}`;
+    } else {
+      title = `Submit LOR for ${ld.recommenderName}`;
+    }
+
+    return {
+      title,
+      due: dueText,
+      urgent: daysRemaining <= 3,
+      overdue: false
+    };
+  });
+
+  const combinedThisWeekTasks = [...thisWeekTasks, ...thisWeekLorTasks]
+    .sort((a, b) => {
+      // Sort by urgency (urgent first), then by days text parsed to number when possible
+      if (a.urgent !== b.urgent) return a.urgent ? -1 : 1;
+      const parseDays = (t: { due: string }) => t.due === 'Today' ? 0 : t.due === 'Tomorrow' ? 1 : parseInt(t.due.replace(/[^0-9]/g, ''), 10) || 9999;
+      return parseDays(a) - parseDays(b);
+    })
+    .slice(0, 7);
 
   const schoolCategoryIcons = {
     reach: Target,
@@ -206,8 +255,8 @@ const Dashboard = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                {thisWeekTasks.length > 0 ? (
-                  thisWeekTasks.map((task, index) => (
+                {combinedThisWeekTasks.length > 0 ? (
+                  combinedThisWeekTasks.map((task, index) => (
                     <div key={index} className="flex items-center justify-between p-2 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
                       <div className="flex items-center space-x-3">
                         <div className={`h-2 w-2 rounded-full ${

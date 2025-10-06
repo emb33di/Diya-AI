@@ -33,6 +33,8 @@ interface UserDeadlineData {
   early_decision_1_deadline: string | null;
   early_decision_2_deadline: string | null;
   regular_decision_deadline: string | null;
+  custom_deadline: string | null;
+  use_custom_deadline: boolean;
   application_status: 'not_started' | 'in_progress' | 'completed' | 'overdue';
   days_remaining: number | null;
   urgency_level: 'low' | 'medium' | 'high' | 'critical' | 'overdue';
@@ -170,6 +172,20 @@ function generateWeeklyDeadlineEmail(userData: UserDeadlineData[], firstName?: s
     const urgencyEmoji = getUrgencyEmoji(deadline.urgency_level);
     const urgencyColor = getUrgencyColor(deadline.urgency_level);
     
+    // Determine deadline type
+    let deadlineType = '';
+    if (deadline.use_custom_deadline && deadline.custom_deadline) {
+      deadlineType = 'Personal Deadline';
+    } else if (deadline.regular_decision_deadline) {
+      deadlineType = 'Regular Decision';
+    } else if (deadline.early_decision_1_deadline) {
+      deadlineType = 'Early Decision 1';
+    } else if (deadline.early_decision_2_deadline) {
+      deadlineType = 'Early Decision 2';
+    } else if (deadline.early_action_deadline) {
+      deadlineType = 'Early Action';
+    }
+    
     return `
       <tr style="border-bottom: 1px solid #e5e7eb;">
         <td style="padding: 15px 12px; vertical-align: top;">
@@ -178,7 +194,7 @@ function generateWeeklyDeadlineEmail(userData: UserDeadlineData[], firstName?: s
             <div>
               <strong style="color: #1f2937; font-size: 16px;">${deadline.school_name}</strong>
               <div style="color: #6b7280; font-size: 14px; margin-top: 2px;">
-                ${deadline.category.charAt(0).toUpperCase() + deadline.category.slice(1)} School
+                ${deadline.category.charAt(0).toUpperCase() + deadline.category.slice(1)} School • ${deadlineType}
               </div>
             </div>
           </div>
@@ -566,6 +582,8 @@ async function getUsersWithUpcomingDeadlines(): Promise<UserDeadlineData[]> {
         early_decision_1_deadline,
         early_decision_2_deadline,
         regular_decision_deadline,
+        custom_deadline,
+        use_custom_deadline,
         application_status,
         user_profiles!inner(
           email,
@@ -589,35 +607,63 @@ async function getUsersWithUpcomingDeadlines(): Promise<UserDeadlineData[]> {
       const userProfile = row.user_profiles;
       if (!userProfile) continue;
       
-      // Calculate days remaining for each deadline type
-      const deadlines = [
-        { type: 'early_action', deadline: row.early_action_deadline },
-        { type: 'early_decision_1', deadline: row.early_decision_1_deadline },
-        { type: 'early_decision_2', deadline: row.early_decision_2_deadline },
-        { type: 'regular_decision', deadline: row.regular_decision_deadline }
-      ];
-      
-      for (const { type, deadline } of deadlines) {
-        if (deadline && deadline !== 'N/A') {
-          const daysRemaining = calculateDaysRemaining(deadline);
-          const urgencyLevel = getUrgencyLevel(daysRemaining);
-          
-          // Only include deadlines that are coming up (within 60 days) or overdue
-          if (daysRemaining !== null && (daysRemaining <= 60 || daysRemaining < 0)) {
-            processedData.push({
-              user_id: row.user_id,
-              email: userProfile.email,
-              first_name: userProfile.first_name,
-              school_name: row.school_name,
-              category: row.category,
-              early_action_deadline: type === 'early_action' ? deadline : null,
-              early_decision_1_deadline: type === 'early_decision_1' ? deadline : null,
-              early_decision_2_deadline: type === 'early_decision_2' ? deadline : null,
-              regular_decision_deadline: type === 'regular_decision' ? deadline : null,
-              application_status: row.application_status,
-              days_remaining: daysRemaining,
-              urgency_level: urgencyLevel
-            });
+      // Check if using custom deadline first
+      if (row.use_custom_deadline && row.custom_deadline && row.custom_deadline !== 'N/A') {
+        const daysRemaining = calculateDaysRemaining(row.custom_deadline);
+        const urgencyLevel = getUrgencyLevel(daysRemaining);
+        
+        // Only include deadlines that are coming up (within 60 days) or overdue
+        if (daysRemaining !== null && (daysRemaining <= 60 || daysRemaining < 0)) {
+          processedData.push({
+            user_id: row.user_id,
+            email: userProfile.email,
+            first_name: userProfile.first_name,
+            school_name: row.school_name,
+            category: row.category,
+            early_action_deadline: null,
+            early_decision_1_deadline: null,
+            early_decision_2_deadline: null,
+            regular_decision_deadline: null,
+            custom_deadline: row.custom_deadline,
+            use_custom_deadline: true,
+            application_status: row.application_status,
+            days_remaining: daysRemaining,
+            urgency_level: urgencyLevel
+          });
+        }
+      } else {
+        // Calculate days remaining for each official deadline type
+        const deadlines = [
+          { type: 'early_action', deadline: row.early_action_deadline },
+          { type: 'early_decision_1', deadline: row.early_decision_1_deadline },
+          { type: 'early_decision_2', deadline: row.early_decision_2_deadline },
+          { type: 'regular_decision', deadline: row.regular_decision_deadline }
+        ];
+        
+        for (const { type, deadline } of deadlines) {
+          if (deadline && deadline !== 'N/A') {
+            const daysRemaining = calculateDaysRemaining(deadline);
+            const urgencyLevel = getUrgencyLevel(daysRemaining);
+            
+            // Only include deadlines that are coming up (within 60 days) or overdue
+            if (daysRemaining !== null && (daysRemaining <= 60 || daysRemaining < 0)) {
+              processedData.push({
+                user_id: row.user_id,
+                email: userProfile.email,
+                first_name: userProfile.first_name,
+                school_name: row.school_name,
+                category: row.category,
+                early_action_deadline: type === 'early_action' ? deadline : null,
+                early_decision_1_deadline: type === 'early_decision_1' ? deadline : null,
+                early_decision_2_deadline: type === 'early_decision_2' ? deadline : null,
+                regular_decision_deadline: type === 'regular_decision' ? deadline : null,
+                custom_deadline: null,
+                use_custom_deadline: false,
+                application_status: row.application_status,
+                days_remaining: daysRemaining,
+                urgency_level: urgencyLevel
+              });
+            }
           }
         }
       }

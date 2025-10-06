@@ -5,8 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DatePicker } from "@/components/ui/date-picker";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-import { Calendar, Clock, CheckCircle2, AlertCircle, Star, Target, Shield, Filter, RefreshCw, Loader2 } from "lucide-react";
+import { Calendar, Clock, CheckCircle2, AlertCircle, Star, Target, Shield, Filter, RefreshCw, Loader2, Edit3 } from "lucide-react";
 import OnboardingGuard from "@/components/OnboardingGuard";
 import GradientBackground from "@/components/GradientBackground";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,6 +16,7 @@ import {
   DeadlineService,
   type UserDeadline 
 } from "@/services/deadlineService";
+import { getUserProgramType } from "@/utils/userProfileUtils";
 
 const Deadlines = () => {
   const navigate = useNavigate();
@@ -23,6 +26,7 @@ const Deadlines = () => {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>('all');
   const [stats, setStats] = useState<any>(null);
+  const [editingDeadline, setEditingDeadline] = useState<string | null>(null);
 
   // Fetch user's deadlines
   useEffect(() => {
@@ -239,22 +243,48 @@ const Deadlines = () => {
     }
   };
 
+  // Simple custom deadline handler
+  const handleUpdateCustomDeadline = async (schoolId: string, deadlineDate: Date | undefined) => {
+    try {
+      const dateString = deadlineDate ? deadlineDate.toISOString().split('T')[0] : null;
+      const success = await DeadlineService.updateCustomDeadline(schoolId, dateString, true);
+      
+      if (success) {
+        setDeadlines(prev => prev.map(d => 
+          d.id === schoolId ? { ...d, customDeadline: dateString, useCustomDeadline: true } : d
+        ));
+        setEditingDeadline(null);
+      } else {
+        setError("Failed to update custom deadline");
+      }
+    } catch (err) {
+      console.error('Error updating custom deadline:', err);
+      setError("Failed to update custom deadline");
+    }
+  };
+
   const getDisplayDeadline = (deadline: UserDeadline) => {
-    // Debug logging
-    console.log(`School: ${deadline.schoolName}, Deadline: "${deadline.regularDecisionDeadline}"`);
+    // If using custom deadline, show the custom deadline
+    if (deadline.useCustomDeadline && deadline.customDeadline) {
+      return { 
+        type: 'Personal Deadline', 
+        date: deadline.customDeadline,
+        isCustom: true
+      };
+    }
     
-    // Only show Regular Decision deadlines
-    // Handle both null values and "null" strings
+    // Fall back to official deadlines
     if (deadline.regularDecisionDeadline && 
         deadline.regularDecisionDeadline !== 'null' && 
         deadline.regularDecisionDeadline.trim() !== '') {
       return { 
         type: 'Regular Decision', 
-        date: deadline.regularDecisionDeadline 
+        date: deadline.regularDecisionDeadline,
+        isCustom: false
       };
     }
 
-    return { type: 'No deadline set', date: null };
+    return { type: 'No deadline set', date: null, isCustom: false };
   };
 
   const calculateProgress = (tasks: any[]) => {
@@ -424,11 +454,57 @@ const Deadlines = () => {
                               ? `${getDisplayDeadline(deadline).type}: ${new Date(getDisplayDeadline(deadline).date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
                               : 'No date set'
                             }
+                            {getDisplayDeadline(deadline).isCustom && (
+                              <Badge variant="outline" className="ml-2 text-xs">
+                                Personal
+                              </Badge>
+                            )}
                           </span>
                         </div>
                         
-
+                        {/* Simple Edit Button */}
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setEditingDeadline(deadline.id)}
+                                className="h-6 w-6 p-0"
+                              >
+                                <Edit3 className="h-3 w-3" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Change to personal deadline</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </div>
+
+                      {/* Simple Date Picker */}
+                      {editingDeadline === deadline.id && (
+                        <div className="mt-3 p-3 bg-muted/30 rounded-lg">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Personal Deadline</label>
+                            <DatePicker
+                              value={deadline.customDeadline ? new Date(deadline.customDeadline) : undefined}
+                              onChange={(date) => handleUpdateCustomDeadline(deadline.id, date)}
+                              placeholder="Select personal deadline"
+                              className="h-8"
+                            />
+                            <div className="flex justify-end space-x-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setEditingDeadline(null)}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     
                     <div className="flex flex-col items-end space-y-2">

@@ -17,6 +17,9 @@ export interface UserDeadline {
   earlyDecision1Deadline: string | null;
   earlyDecision2Deadline: string | null;
   regularDecisionDeadline: string | null;
+  // Simplified custom deadline fields
+  customDeadline: string | null;
+  useCustomDeadline: boolean;
   applicationStatus: 'not_started' | 'in_progress' | 'completed' | 'overdue';
   daysRemaining: number | null;
   urgencyLevel: 'low' | 'medium' | 'high' | 'critical' | 'overdue';
@@ -231,6 +234,9 @@ export class DeadlineService {
           earlyDecision1Deadline: school.early_decision_1_deadline,
           earlyDecision2Deadline: school.early_decision_2_deadline,
           regularDecisionDeadline: school.regular_decision_deadline,
+          // Simplified custom deadline fields
+          customDeadline: school.custom_deadline,
+          useCustomDeadline: school.use_custom_deadline || false,
           applicationStatus: school.application_status || 'not_started',
           daysRemaining,
           urgencyLevel,
@@ -402,25 +408,61 @@ export class DeadlineService {
   }
 
   /**
-   * Get tasks for a school
+   * Update custom deadline for a school (simplified)
    */
-  static async getSchoolTasks(schoolId: string): Promise<any[]> {
+  static async updateCustomDeadline(
+    schoolId: string, 
+    deadlineDate: string | null,
+    useCustomDeadline: boolean = true
+  ): Promise<boolean> {
     try {
-      const { data, error } = await supabase
-        .from('school_application_tasks')
-        .select('*')
-        .eq('school_recommendation_id', schoolId)
-        .order('priority', { ascending: false });
+      const updateData: any = {
+        custom_deadline: deadlineDate,
+        use_custom_deadline: useCustomDeadline,
+        last_updated: new Date().toISOString()
+      };
+
+      const { error } = await supabase
+        .from('school_recommendations')
+        .update(updateData)
+        .eq('id', schoolId);
 
       if (error) {
-        console.error(`DeadlineService: Failed to get tasks for school ${schoolId} - ${error.message}`);
+        console.error(`DeadlineService: Failed to update custom deadline for school ${schoolId} - ${error.message}`);
         throw error;
       }
       
-      return data || [];
+      console.log(`DeadlineService: Successfully updated custom deadline to ${deadlineDate} for school ${schoolId}`);
+      return true;
     } catch (error) {
-      console.error(`DeadlineService: Error getting tasks for school ${schoolId} - ${error.message}`);
-      return [];
+      console.error(`DeadlineService: Error updating custom deadline for school ${schoolId} - ${error.message}`);
+      return false;
+    }
+  }
+
+  /**
+   * Toggle between custom and official deadlines (simplified)
+   */
+  static async toggleCustomDeadline(schoolId: string, useCustom: boolean): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('school_recommendations')
+        .update({
+          use_custom_deadline: useCustom,
+          last_updated: new Date().toISOString()
+        })
+        .eq('id', schoolId);
+
+      if (error) {
+        console.error(`DeadlineService: Failed to toggle custom deadline for school ${schoolId} - ${error.message}`);
+        throw error;
+      }
+      
+      console.log(`DeadlineService: Successfully toggled custom deadline to ${useCustom} for school ${schoolId}`);
+      return true;
+    } catch (error) {
+      console.error(`DeadlineService: Error toggling custom deadline for school ${schoolId} - ${error.message}`);
+      return false;
     }
   }
 } 
