@@ -56,7 +56,7 @@ export const useOnboardingInitialization = ({
           setCumulativeSessionTime(previousTime);
 
           // Adjust remaining time based on cumulative time
-          const totalSecondsNeeded = 2 * 60; // 2 minutes for testing
+          const totalSecondsNeeded = 10 * 60; // 10 minutes
           let remainingSeconds = Math.max(0, totalSecondsNeeded - previousTime);
           
           // Check localStorage for more recent data (fallback and override)

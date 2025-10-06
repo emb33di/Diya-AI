@@ -100,7 +100,7 @@ export const ExpandedViewLayout: React.FC<Pick<OnboardingLayoutProps,
           </div>
           <Progress value={calculateProgressPercentage()} className={`h-2 ${remainingTime <= 30 ? 'bg-red-100' : remainingTime <= 60 ? 'bg-yellow-100' : ''}`} />
           <div className="text-xs text-muted-foreground text-center">
-            {remainingTime <= 30 ? 'Less than 30 seconds remaining' : remainingTime <= 60 ? 'Less than 1 minute remaining' : '2-minute conversation session (testing)'}
+            {remainingTime <= 30 ? 'Less than 30 seconds remaining' : remainingTime <= 60 ? 'Less than 1 minute remaining' : '10-minute conversation session'}
           </div>
         </div>
       )}
@@ -219,7 +219,7 @@ export const LandingViewLayout: React.FC<Pick<OnboardingLayoutProps,
                 </div>
                 <Progress value={calculateProgressPercentage()} className={`h-2 ${remainingTime <= 30 ? 'bg-red-100' : remainingTime <= 60 ? 'bg-yellow-100' : ''}`} />
                 <div className="text-xs text-muted-foreground text-center">
-                  {remainingTime <= 30 ? 'Less than 30 seconds remaining' : remainingTime <= 60 ? 'Less than 1 minute remaining' : '2-minute conversation session (testing)'}
+                  {remainingTime <= 30 ? 'Less than 30 seconds remaining' : remainingTime <= 60 ? 'Less than 1 minute remaining' : '10-minute conversation session'}
                 </div>
               </div>
             )}
@@ -254,8 +254,8 @@ export const LandingViewLayout: React.FC<Pick<OnboardingLayoutProps,
                     {!onboardingCompleted && (
                       <span className="font-medium text-primary">
                         {(hasStartedOnce || cumulativeSessionTime > 0 || currentSessionNumber > 1)
-                          ? `${Math.max(0, 2 - Math.floor(cumulativeSessionTime / 60))} minutes remaining`
-                          : 'Session duration: 2 minutes (testing)'}
+                          ? `${Math.max(0, 10 - Math.floor(cumulativeSessionTime / 60))} minutes remaining`
+                          : 'Session duration: 10 minutes'}
                       </span>
                     )}
                   </p>

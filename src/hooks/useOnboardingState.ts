@@ -82,7 +82,7 @@ export const useOnboardingState = (): OnboardingState => {
   const [hasStartedOnce, setHasStartedOnce] = useState(false);
   
   // Timer state
-  const [remainingTime, setRemainingTime] = useState(2 * 60); // 2 minutes in seconds (testing)
+  const [remainingTime, setRemainingTime] = useState(10 * 60); // 10 minutes in seconds
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   
   // UI state
@@ -163,13 +163,13 @@ export const useOnboardingState = (): OnboardingState => {
 
   // Calculate progress percentage for the progress bar
   const calculateProgressPercentage = useCallback(() => {
-    const totalSecondsNeeded = 2 * 60; // 2 minutes for testing
+    const totalSecondsNeeded = 10 * 60; // 10 minutes
     return ((totalSecondsNeeded - remainingTime) / totalSecondsNeeded) * 100;
   }, [remainingTime]);
 
   // Update remaining time when cumulative time changes
   useEffect(() => {
-    const totalSecondsNeeded = 2 * 60; // 2 minutes for testing
+    const totalSecondsNeeded = 10 * 60; // 10 minutes
     const newRemainingTime = Math.max(0, totalSecondsNeeded - cumulativeSessionTime);
     setRemainingTime(newRemainingTime);
     persistRemainingTime(newRemainingTime);

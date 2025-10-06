@@ -121,7 +121,7 @@ const BlogPost = () => {
       {/* Header */}
       <div className="border-b" style={{ backgroundColor: '#F4EDE2' }}>
         <div className="container mx-auto px-6 py-8">
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-6xl mx-auto">
             <Link to="/blog" className="inline-flex items-center text-primary hover:text-primary/80 mb-6">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Blog
@@ -169,8 +169,8 @@ const BlogPost = () => {
 
       {/* Content */}
       <div className="container mx-auto px-6 py-12">
-        <div className="max-w-4xl mx-auto">
-          <div className="grid lg:grid-cols-4 gap-12">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid lg:grid-cols-5 gap-12">
             {/* Main Content */}
             <div className="lg:col-span-3">
               <article className="rounded-lg p-8 prose prose-lg max-w-none">
@@ -182,7 +182,7 @@ const BlogPost = () => {
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Tags</h3>
                 <div className="flex flex-wrap gap-2">
                   {post.tags.map(tag => (
-                    <Badge key={tag} variant="outline" className="flex items-center gap-1">
+                    <Badge key={tag} variant="outline" className="flex items-center gap-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50">
                       {tag.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                     </Badge>
                   ))}
@@ -191,10 +191,10 @@ const BlogPost = () => {
             </div>
             
             {/* Sidebar */}
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-2">
               {/* Related Posts */}
               {relatedPosts.length > 0 && (
-                <div className="rounded-lg border p-6">
+                <div className="rounded-lg border p-6 bg-white shadow-sm">
                   <div className="mb-4">
                     <h3 className="text-lg font-semibold">Related Articles</h3>
                   </div>

@@ -42,7 +42,7 @@ interface ConversationFlowProps {
   timerRef: React.MutableRefObject<NodeJS.Timeout | null>;
   
   // Callbacks
-  markOnboardingCompleted: () => Promise<boolean>;
+  markOnboardingCompleted: (skipped?: boolean) => Promise<boolean>;
 }
 
 export const useConversationFlow = ({
@@ -199,7 +199,7 @@ export const useConversationFlow = ({
 
       // Compute cumulative time and completion
       const newCumulativeTime = cumulativeSessionTime + duration;
-      const isSessionComplete = newCumulativeTime >= 120; // Require full 2 minutes (testing)
+      const isSessionComplete = newCumulativeTime >= 600; // Require full 10 minutes
 
       // Update conversation record with end time using API service
       try {
@@ -255,7 +255,7 @@ export const useConversationFlow = ({
       setCumulativeSessionTime(newCumulativeTime);
 
       // Update remaining time before ending session
-      const totalSecondsNeededLocal = 2 * 60; // 2 minutes for testing
+      const totalSecondsNeededLocal = 10 * 60; // 10 minutes
       setRemainingTime(Math.max(0, totalSecondsNeededLocal - newCumulativeTime));
 
       // Prevent double accounting in onDisconnect
