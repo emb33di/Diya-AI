@@ -72,7 +72,7 @@ const SchoolList = () => {
   });
   const [activeSchool, setActiveSchool] = useState<School | null>(null);
 
-  // Drag and drop sensors
+  // Drag and drop sensors - optimized for mobile
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -553,7 +553,7 @@ const SchoolList = () => {
       <Card 
         ref={setNodeRef}
         style={style}
-        className={`shadow-md hover:shadow-lg transition-all duration-200 cursor-grab active:cursor-grabbing group hover:scale-[1.02] ${
+        className={`shadow-md hover:shadow-lg transition-all duration-200 cursor-grab active:cursor-grabbing group hover:scale-[1.01] lg:hover:scale-[1.02] ${
           school.category === 'reach' ? 'bg-gradient-to-br from-blue-100 to-indigo-100 border-blue-300/50' :
           school.category === 'target' ? 'bg-gradient-to-br from-orange-100 to-amber-100 border-orange-300/50' :
           'bg-gradient-to-br from-green-100 to-emerald-100 border-green-300/50'
@@ -562,20 +562,20 @@ const SchoolList = () => {
         {...listeners}
         onContextMenu={(e) => handleRightClick(e, school.id)}
       >
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-3 px-4 lg:px-6">
           <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <CardTitle className="text-lg">{school.name}</CardTitle>
+            <div className="flex-1 min-w-0">
+              <CardTitle className="text-base lg:text-lg leading-tight">{school.name}</CardTitle>
               
-              <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                <MapPin className="h-3 w-3" />
-                <span>{school.location}</span>
+              <div className="flex items-center space-x-2 text-xs lg:text-sm text-muted-foreground mt-1">
+                <MapPin className="h-3 w-3 flex-shrink-0" />
+                <span className="truncate">{school.location}</span>
               </div>
             </div>
             
-            <div className="flex items-center space-x-2">
-              {/* Drag indicator */}
-              <div className="p-1 opacity-50">
+            <div className="flex items-center space-x-1 lg:space-x-2 ml-2">
+              {/* Drag indicator - hidden on mobile for cleaner look */}
+              <div className="hidden lg:block p-1 opacity-50">
                 <GripVertical className="h-4 w-4 text-muted-foreground" />
               </div>
               
@@ -586,6 +586,7 @@ const SchoolList = () => {
                   e.stopPropagation();
                   removeSchool(school.id);
                 }}
+                className="h-8 w-8 p-0 touch-manipulation"
               >
                 <X className="h-3 w-3" />
               </Button>
@@ -593,17 +594,17 @@ const SchoolList = () => {
           </div>
         </CardHeader>
         
-        <CardContent className="space-y-3">
-          <div className="flex items-center space-x-2 text-sm">
-            <GraduationCap className="h-3 w-3 text-muted-foreground" />
+        <CardContent className="space-y-3 px-4 lg:px-6">
+          <div className="flex items-center space-x-2 text-xs lg:text-sm">
+            <GraduationCap className="h-3 w-3 text-muted-foreground flex-shrink-0" />
             <span>Rank: #{school.ranking}</span>
           </div>
           
           {/* Only show "Why it's a good match" if user didn't skip onboarding */}
           {!profile?.skipped_onboarding && (
-            <div className="text-sm">
+            <div className="text-xs lg:text-sm">
               <span className="font-medium">Why it's a good match:</span>
-              <p className="text-muted-foreground mt-1">{school.notes}</p>
+              <p className="text-muted-foreground mt-1 line-clamp-2">{school.notes}</p>
             </div>
           )}
           
@@ -615,7 +616,7 @@ const SchoolList = () => {
                 e.stopPropagation();
                 handleSchoolClick(school);
               }}
-              className="text-xs text-muted-foreground hover:text-primary transition-colors p-1 h-auto"
+              className="text-xs text-muted-foreground hover:text-primary transition-colors p-2 h-auto touch-manipulation"
             >
               View essays →
             </Button>
@@ -635,7 +636,7 @@ const SchoolList = () => {
     return (
       <div 
         ref={setNodeRef}
-        className={`space-y-4 min-h-[200px] p-4 rounded-lg transition-colors ${
+        className={`space-y-3 lg:space-y-4 min-h-[150px] lg:min-h-[200px] p-3 lg:p-4 rounded-lg transition-colors ${
           isOver ? 'bg-primary/10 border-2 border-dashed border-primary' : ''
         }`}
       >
@@ -694,36 +695,36 @@ const SchoolList = () => {
         onDragEnd={handleDragEnd}
       >
         <GradientBackground>
-          <main className="container mx-auto px-6 py-8">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-display font-bold mb-2">Schools</h1>
-            <p className="text-muted-foreground text-lg">
+          <main className="container mx-auto px-4 sm:px-6 py-6 lg:py-8">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8 space-y-4 lg:space-y-0">
+          <div className="flex-1">
+            <h1 className="text-2xl lg:text-3xl font-display font-bold mb-2">Schools</h1>
+            <p className="text-muted-foreground text-base lg:text-lg">
               Organize your target schools into Reach, Target, and Safety categories
             </p>
           </div>
-          <div className="flex items-center space-x-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
             <Button 
               onClick={() => setIsArchiveModalOpen(true)} 
               variant="outline"
-              className="shadow-lg"
+              className="shadow-lg w-full sm:w-auto"
             >
               <FileText className="h-4 w-4 mr-2" />
               View Archive
             </Button>
-            <Button onClick={() => setIsAddModalOpen(true)} className="shadow-lg">
+            <Button onClick={() => setIsAddModalOpen(true)} className="shadow-lg w-full sm:w-auto">
               <Plus className="h-4 w-4 mr-2" />
               Add School
             </Button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
           {/* Reach Schools */}
-          <div>
+          <div className="space-y-4">
             <div className="flex items-center space-x-2 mb-4">
               <Star className="h-5 w-5 text-blue-500" />
-              <h2 className="text-xl font-semibold">Reach Schools</h2>
+              <h2 className="text-lg lg:text-xl font-semibold">Reach Schools</h2>
               <Badge variant="secondary">{reachSchools.length}</Badge>
             </div>
             
@@ -735,10 +736,10 @@ const SchoolList = () => {
           </div>
 
           {/* Target Schools */}
-          <div>
+          <div className="space-y-4">
             <div className="flex items-center space-x-2 mb-4">
               <Target className="h-5 w-5 text-orange-500" />
-              <h2 className="text-xl font-semibold">Target Schools</h2>
+              <h2 className="text-lg lg:text-xl font-semibold">Target Schools</h2>
               <Badge variant="secondary">{targetSchools.length}</Badge>
             </div>
             
@@ -750,10 +751,10 @@ const SchoolList = () => {
           </div>
 
           {/* Safety Schools */}
-          <div>
+          <div className="space-y-4">
             <div className="flex items-center space-x-2 mb-4">
               <Shield className="h-5 w-5 text-green-500" />
-              <h2 className="text-xl font-semibold">Safety Schools</h2>
+              <h2 className="text-lg lg:text-xl font-semibold">Safety Schools</h2>
               <Badge variant="secondary">{safetySchools.length}</Badge>
             </div>
             
