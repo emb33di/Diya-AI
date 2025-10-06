@@ -122,6 +122,7 @@ const Header = () => {
   return (
     <header className="sticky top-0 z-50 w-full backdrop-blur-md bg-transparent">
       <div className="container mx-auto flex h-20 items-center justify-between px-6">
+        {/* Logo */}
         <Link to={loading ? "/" : (isAuthenticated ? "/dashboard" : "/")} className="flex items-center space-x-2">
           <img 
             src={location.pathname === "/" || location.pathname === "/auth" ? "/DiyaLogo White.svg" : "/DiyaLogo.svg"} 
@@ -130,6 +131,7 @@ const Header = () => {
           />
         </Link>
         
+        {/* Authenticated Navigation */}
         {isAuthenticated && (
           <nav className={`hidden md:flex items-center space-x-8 px-4 py-2 rounded-full border transition-all duration-200 ${
             location.pathname === '/onboarding' || location.pathname === '/dashboard' || 
@@ -268,100 +270,107 @@ const Header = () => {
             >
               Blog
             </Link>
-
           </nav>
         )}
         
-        <div className="flex items-center space-x-4">
+        {/* Unauthenticated Navigation - Centered */}
+        {!isAuthenticated && isLandingPage && (
+          <div className="hidden md:flex items-center space-x-6">
+            <button 
+              onClick={() => {
+                if (location.pathname === '/') {
+                  const element = document.getElementById('features');
+                  if (element) {
+                    element.scrollIntoView({ behavior: 'smooth' });
+                  }
+                } else {
+                  navigate('/#features');
+                }
+              }} 
+              className="h-12 px-4 text-base font-medium text-white hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/10"
+            >
+              About Diya
+            </button>
+            <button 
+              onClick={() => {
+                if (location.pathname === '/') {
+                  const element = document.getElementById('programs');
+                  if (element) {
+                    element.scrollIntoView({ behavior: 'smooth' });
+                  }
+                } else {
+                  navigate('/#programs');
+                }
+              }} 
+              className="h-12 px-4 text-base font-medium text-white hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/10"
+            >
+              Students
+            </button>
+            <button 
+              onClick={() => {
+                if (location.pathname === '/') {
+                  const element = document.getElementById('pricing');
+                  if (element) {
+                    element.scrollIntoView({ behavior: 'smooth' });
+                  }
+                } else {
+                  navigate('/#pricing');
+                }
+              }} 
+              className="h-12 px-4 text-base font-medium text-white hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/10"
+            >
+              Pricing
+            </button>
+            <button 
+              onClick={() => {
+                if (location.pathname === '/') {
+                  const element = document.getElementById('founder');
+                  if (element) {
+                    element.scrollIntoView({ behavior: 'smooth' });
+                  }
+                } else {
+                  navigate('/#founder');
+                }
+              }} 
+              className="h-12 px-4 text-base font-medium text-white hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/10"
+            >
+              Founder
+            </button>
+            <button 
+              onClick={() => {
+                if (location.pathname === '/') {
+                  const element = document.getElementById('faq');
+                  if (element) {
+                    element.scrollIntoView({ behavior: 'smooth' });
+                  }
+                } else {
+                  navigate('/#faq');
+                }
+              }} 
+              className="h-12 px-4 text-base font-medium text-white hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/10"
+            >
+              FAQs
+            </button>
+            <Link 
+              to="/blog" 
+              className="h-12 px-4 text-base font-medium text-white hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/10 flex items-center"
+            >
+              Blog
+            </Link>
+          </div>
+        )}
+        
+        {/* Auth Buttons */}
+        <div className="flex items-center space-x-6">
           {!isAuthenticated ? (
             <>
-              {/* Navigation Links - Centered - Only show on landing page */}
-              {isLandingPage && (
-                <div className="hidden md:flex items-center space-x-6 absolute left-1/2 transform -translate-x-1/2">
-                <button 
-                  onClick={() => {
-                    if (location.pathname === '/') {
-                      const element = document.getElementById('features');
-                      if (element) {
-                        element.scrollIntoView({ behavior: 'smooth' });
-                      }
-                    } else {
-                      navigate('/#features');
-                    }
-                  }} 
-                  className="h-12 px-4 text-base font-medium text-white hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/10"
-                >
-                  About Diya
-                </button>
-                <button 
-                  onClick={() => {
-                    if (location.pathname === '/') {
-                      const element = document.getElementById('programs');
-                      if (element) {
-                        element.scrollIntoView({ behavior: 'smooth' });
-                      }
-                    } else {
-                      navigate('/#programs');
-                    }
-                  }} 
-                  className="h-12 px-4 text-base font-medium text-white hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/10"
-                >
-                  Students
-                </button>
-                <button 
-                  onClick={() => {
-                    if (location.pathname === '/') {
-                      const element = document.getElementById('pricing');
-                      if (element) {
-                        element.scrollIntoView({ behavior: 'smooth' });
-                      }
-                    } else {
-                      navigate('/#pricing');
-                    }
-                  }} 
-                  className="h-12 px-4 text-base font-medium text-white hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/10"
-                >
-                  Pricing
-                </button>
-                <button 
-                  onClick={() => {
-                    if (location.pathname === '/') {
-                      const element = document.getElementById('founder');
-                      if (element) {
-                        element.scrollIntoView({ behavior: 'smooth' });
-                      }
-                    } else {
-                      navigate('/#founder');
-                    }
-                  }} 
-                  className="h-12 px-4 text-base font-medium text-white hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/10"
-                >
-                  Founder
-                </button>
-                <button 
-                  onClick={() => {
-                    if (location.pathname === '/') {
-                      const element = document.getElementById('faq');
-                      if (element) {
-                        element.scrollIntoView({ behavior: 'smooth' });
-                      }
-                    } else {
-                      navigate('/#faq');
-                    }
-                  }} 
-                  className="h-12 px-4 text-base font-medium text-white hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/10"
-                >
-                  FAQs
-                </button>
-                <Link 
-                  to="/blog" 
-                  className="h-12 px-4 text-base font-medium text-white hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/10 flex items-center"
-                >
-                  Blog
-                </Link>
-                </div>
-              )}
-              <Link to="/auth">
+              <Link 
+                to="/auth?mode=signin" 
+                className="text-sm font-medium text-white hover:text-white/80 transition-colors duration-200 cursor-pointer"
+              >
+                Sign In
+              </Link>
+              <Link to="/auth?mode=signup">
                 <Button size="lg" className="hover:shadow-[0_0_30px_hsl(var(--primary)/0.6)] transition-all duration-200 hover:bg-primary text-white">
                   Get Started For Free
                 </Button>

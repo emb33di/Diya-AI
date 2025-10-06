@@ -147,7 +147,7 @@ const PricingSection = () => {
             </div>
 
             <Button 
-              onClick={() => navigate('/auth')}
+              onClick={() => navigate('/auth?mode=signup')}
               className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium mt-auto"
             >
               Upgrade to Expert
@@ -158,7 +158,7 @@ const PricingSection = () => {
         {/* Centered Button */}
         <div className="text-center mt-8 sm:mt-12">
           <Button 
-            onClick={() => navigate('/auth')}
+            onClick={() => navigate('/auth?mode=signup')}
             className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-8 py-3 text-lg"
           >
             Get Started Today for Free

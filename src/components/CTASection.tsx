@@ -15,7 +15,7 @@ const CTASection = () => {
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-foreground font-inter">Ready to take control of your future?</h2>
             <div className="flex justify-center">
               <Button 
-                onClick={() => navigate('/auth')} 
+                onClick={() => navigate('/auth?mode=signup')} 
                 size="lg" 
                 className="text-base sm:text-lg rounded-xl sm:rounded-2xl font-semibold text-white shadow-lg hover:shadow-[0_0_50px_hsl(var(--primary)/0.6)] transition-all duration-200 my-0 mx-0 px-4 sm:px-[10px] py-3 sm:py-[10px] touch-manipulation"
               >

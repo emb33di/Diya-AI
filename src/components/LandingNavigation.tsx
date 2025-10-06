@@ -26,7 +26,7 @@ const Navigation = () => {
           </button>
 
           {/* Navigation Links - Centered */}
-          <div className="hidden md:flex items-center space-x-6 absolute left-1/2 transform -translate-x-1/2">
+          <div className="hidden md:flex items-center space-x-6">
             <button 
               onClick={() => handleScrollTo('features')} 
               className="text-sm font-medium text-white/90 hover:text-white transition-colors duration-200"
@@ -59,10 +59,21 @@ const Navigation = () => {
             </button>
           </div>
 
-          {/* Get Started Button */}
-          <Button onClick={() => navigate('/auth')} className="text-sm sm:text-base rounded-lg sm:rounded-xl font-semibold text-white shadow-lg hover:shadow-[0_0_30px_hsl(var(--primary)/0.6)] transition-all duration-200 my-0 mx-2 sm:mx-[40px] px-3 sm:px-[10px] py-2 sm:py-[10px] touch-manipulation">
-            Get Started For Free
-          </Button>
+          {/* Auth Buttons */}
+          <div className="flex items-center space-x-4 sm:space-x-6">
+            <button 
+              onClick={() => navigate('/auth?mode=signin')} 
+              className="text-sm font-medium text-white hover:text-white/80 transition-colors duration-200 cursor-pointer"
+            >
+              Sign In
+            </button>
+            <Button 
+              onClick={() => navigate('/auth?mode=signup')} 
+              className="text-sm sm:text-base rounded-lg sm:rounded-xl font-semibold text-white shadow-lg hover:shadow-[0_0_30px_hsl(var(--primary)/0.6)] transition-all duration-200 my-0 mx-1 sm:mx-2 px-2 sm:px-3 py-2 sm:py-[10px] touch-manipulation"
+            >
+              Get Started For Free
+            </Button>
+          </div>
         </div>
       </div>
     </nav>;

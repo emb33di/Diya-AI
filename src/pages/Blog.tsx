@@ -248,7 +248,7 @@ const Blog = () => {
           <p className="text-xl mb-8 text-gray-600">
             Get personalized guidance and AI-powered essay assistance with Diya AI
           </p>
-          <Link to="/auth">
+          <Link to="/auth?mode=signup">
             <Button size="lg" className="hover:shadow-lg transition-all" style={{ backgroundColor: '#D07D00', color: 'white' }}>
               Get Started For Free
             </Button>
