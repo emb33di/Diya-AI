@@ -27,6 +27,9 @@ import TermsOfService from "./pages/TermsOfService";
 import RefundPolicy from "./pages/RefundPolicy";
 import Blog from "./pages/Blog";
 import BlogPost from "./pages/BlogPost";
+import DebugErrors from "./pages/DebugErrors";
+import { initAnalytics } from "./lib/ga/init";
+import RouteTracker from "./lib/ga/RouteTracker";
 
 
 const queryClient = new QueryClient();
@@ -43,7 +46,9 @@ const App = () => (
             v7_relativeSplatPath: true,
           }}
         >
+          {initAnalytics()}
           <ScrollToTop />
+          <RouteTracker />
           <Header />
           <Routes>
             {/* Public routes */}
@@ -58,6 +63,7 @@ const App = () => (
             <Route path="/refund-policy" element={<RefundPolicy />} />
             <Route path="/blog" element={<Blog />} />
             <Route path="/blog/:slug" element={<BlogPost />} />
+            {import.meta.env.DEV && <Route path="/debug-errors" element={<DebugErrors />} />}
 
             {/* Protected routes - require authentication */}
             <Route path="/dashboard" element={<AuthenticationGuard><Dashboard /></AuthenticationGuard>} />

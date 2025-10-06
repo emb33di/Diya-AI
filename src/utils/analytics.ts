@@ -1,204 +1,227 @@
-/**
- * Google Analytics utility functions for tracking user interactions
- * in the Diya-AI college counseling platform
- */
+import { isGAReady, getGAId } from "@/lib/ga/init";
+import { EventNames, ErrorLevel, PerformanceName, ConversionType, OnboardingAction, VoiceAction, VoiceType, EssayAction, SchoolAction, SchoolCategory } from "@/lib/ga/events";
 
-// Extend the global Window interface to include gtag
-declare global {
-  interface Window {
-    gtag: (...args: any[]) => void;
+const DEBUG = ((import.meta as any)?.env?.NEXT_PUBLIC_ANALYTICS_DEBUG ?? (typeof process !== 'undefined' ? (process as any)?.env?.NEXT_PUBLIC_ANALYTICS_DEBUG : undefined)) === 'true'
+  || ((import.meta as any)?.env?.VITE_ANALYTICS_DEBUG ?? (typeof process !== 'undefined' ? (process as any)?.env?.VITE_ANALYTICS_DEBUG : undefined)) === 'true';
+
+const lastEvents: { name: string; time: number }[] = [];
+const lastErrors: Record<string, { count: number; last: number }> = {};
+const MAX_PARAMS = 25;
+
+const truncate = (val: any): any => {
+  if (typeof val === 'string') return val.length > 100 ? val.slice(0, 100) + '…' : val;
+  return val;
+};
+
+const sanitizeParams = (params?: Record<string, any>): Record<string, any> | undefined => {
+  if (!params) return undefined;
+  const out: Record<string, any> = {};
+  for (const [k, v] of Object.entries(params)) {
+    if (v === undefined || v === null || v === '') continue;
+    // Basic PII guard: avoid obvious keys
+    if (/email|e-mail|phone|fullname|full_name|first_name|last_name/i.test(k)) {
+      if (DEBUG) console.warn(`Analytics: skipped potentially sensitive field "${k}"`);
+      continue;
+    }
+    if (Array.isArray(v)) continue; // skip large arrays
+    out[k] = truncate(v);
+    if (Object.keys(out).length >= MAX_PARAMS) break;
   }
-}
+  if (Object.keys(params).length > MAX_PARAMS && DEBUG) {
+    console.warn('Analytics: Too many details—skipping some to keep GA happy.');
+  }
+  return out;
+};
 
-/**
- * Track custom events with Google Analytics
- */
+const normalizeEventName = (name: string): string => name.toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 40);
+
+const recentlySent = (name: string, windowMs = 2000): boolean => {
+  const now = Date.now();
+  const recent = lastEvents.find(e => e.name === name && now - e.time < windowMs);
+  if (recent) return true;
+  lastEvents.push({ name, time: now });
+  // keep small
+  if (lastEvents.length > 50) lastEvents.shift();
+  return false;
+};
+
 export const trackEvent = (
   eventName: string,
-  parameters?: {
-    event_category?: string;
-    event_label?: string;
-    value?: number;
-    [key: string]: any;
-  }
+  parameters?: Record<string, any>
 ) => {
-  if (typeof window !== 'undefined' && window.gtag) {
-    window.gtag('event', eventName, parameters);
-    console.log('📊 Analytics Event:', eventName, parameters);
+  const id = getGAId();
+  if (!isGAReady() || !id) return;
+  const name = normalizeEventName(eventName);
+  const params = sanitizeParams(parameters);
+  try {
+    if (recentlySent(`${name}:${JSON.stringify(params)}`)) {
+      if (DEBUG) console.log('Analytics: Duplicate skipped');
+      return;
+    }
+    (window as any).gtag('event', name, params);
+    if (DEBUG) console.log('📊 Analytics Event:', name, params);
+  } catch (err) {
+    if (DEBUG) console.warn('GA send failed - will retry later', err);
   }
 };
 
-/**
- * Track page views
- */
 export const trackPageView = (pagePath: string, pageTitle?: string) => {
-  if (typeof window !== 'undefined' && window.gtag) {
-    window.gtag('config', 'G-EG61TCBFGV', {
+  const id = getGAId();
+  if (!isGAReady() || !id) return;
+  try {
+    (window as any).gtag('config', id, {
       page_path: pagePath,
       page_title: pageTitle,
     });
-    console.log('📊 Page View:', pagePath, pageTitle);
+    if (DEBUG) console.log('📄 Page View:', pagePath, pageTitle);
+  } catch (err) {
+    if (DEBUG) console.warn('GA pageview failed', err);
   }
 };
 
-/**
- * Track user signup events
- */
 export const trackSignup = (method: 'email' | 'google' | 'apple') => {
   trackEvent('sign_up', {
-    event_category: 'engagement',
-    event_label: method,
-    method: method,
+    method,
   });
 };
 
-/**
- * Track onboarding session events
- */
 export const trackOnboardingEvent = (
-  action: 'started' | 'completed' | 'abandoned',
+  action: OnboardingAction,
   sessionNumber: number,
   additionalData?: { [key: string]: any }
 ) => {
   trackEvent('onboarding_session', {
-    event_category: 'onboarding',
-    event_label: `${action}_session_${sessionNumber}`,
     session_number: sessionNumber,
     action: action,
     ...additionalData,
   });
 };
 
-/**
- * Track voice conversation events
- */
 export const trackVoiceEvent = (
-  action: 'started' | 'ended' | 'error' | 'transcript_saved',
-  conversationType: 'onboarding' | 'brainstorming' | 'general',
+  action: VoiceAction,
+  conversationType: VoiceType,
   additionalData?: { [key: string]: any }
 ) => {
   trackEvent('voice_conversation', {
-    event_category: 'voice_interaction',
-    event_label: `${action}_${conversationType}`,
-    conversation_type: conversationType,
-    action: action,
+    type: conversationType,
+    action,
     ...additionalData,
   });
 };
 
-/**
- * Track essay-related events
- */
 export const trackEssayEvent = (
-  action: 'generated' | 'edited' | 'saved' | 'downloaded',
+  action: EssayAction,
   essayType?: string,
   additionalData?: { [key: string]: any }
 ) => {
   trackEvent('essay_interaction', {
-    event_category: 'essay_workflow',
-    event_label: `${action}_${essayType || 'unknown'}`,
-    essay_type: essayType,
-    action: action,
+    type: essayType,
+    action,
+    word_count: additionalData?.word_count,
     ...additionalData,
   });
 };
 
-/**
- * Track school recommendation events
- */
 export const trackSchoolEvent = (
-  action: 'viewed' | 'clicked' | 'added_to_list' | 'removed_from_list',
+  action: SchoolAction,
   schoolName?: string,
   additionalData?: { [key: string]: any }
 ) => {
   trackEvent('school_interaction', {
-    event_category: 'school_recommendations',
-    event_label: `${action}_${schoolName || 'unknown'}`,
+    action,
     school_name: schoolName,
-    action: action,
+    category: additionalData?.category as SchoolCategory | undefined,
     ...additionalData,
   });
 };
 
-/**
- * Track user engagement with specific features
- */
 export const trackFeatureUsage = (
   featureName: string,
   action: 'opened' | 'used' | 'completed' | 'abandoned',
   additionalData?: { [key: string]: any }
 ) => {
   trackEvent('feature_usage', {
-    event_category: 'feature_engagement',
-    event_label: `${featureName}_${action}`,
     feature_name: featureName,
     action: action,
     ...additionalData,
   });
 };
 
-/**
- * Track conversion events (important for business metrics)
- */
 export const trackConversion = (
-  conversionType: 'onboarding_complete' | 'essay_generated' | 'school_list_created' | 'profile_complete',
+  conversionType: ConversionType,
   value?: number,
   additionalData?: { [key: string]: any }
 ) => {
   trackEvent('conversion', {
-    event_category: 'conversion',
-    event_label: conversionType,
-    conversion_type: conversionType,
-    value: value,
+    type: conversionType,
+    value,
     ...additionalData,
   });
+  if (DEBUG) {
+    const friendly = {
+      onboarding_complete: 'User completed onboarding!',
+      school_list_created: 'User created a school list!',
+      paid_upgrade: 'User upgraded to paid!',
+    } as Record<ConversionType, string>;
+    console.log(`✅ Tracked: ${friendly[conversionType] || conversionType}`);
+  }
 };
 
-/**
- * Track errors for debugging
- */
 export const trackError = (
   errorType: string,
   errorMessage: string,
-  context?: { [key: string]: any }
+  context?: {
+    source?: string;
+    level?: ErrorLevel;
+    [key: string]: any;
+  }
 ) => {
-  trackEvent('error_occurred', {
-    event_category: 'error_tracking',
-    event_label: errorType,
-    error_type: errorType,
-    error_message: errorMessage,
+  const key = `${errorType}:${errorMessage}`;
+  const now = Date.now();
+  const entry = lastErrors[key] || { count: 0, last: 0 };
+  if (now - entry.last < 10000 && entry.count >= 5) {
+    if (DEBUG) console.warn('Repeated error skipped to avoid noise');
+    return;
+  }
+  entry.count = now - entry.last < 10000 ? entry.count + 1 : 1;
+  entry.last = now;
+  lastErrors[key] = entry;
+
+  const payload = sanitizeParams({
+    type: errorType,
+    message: errorMessage?.slice(0, 100), // GA also timestamps automatically
+    source: context?.source,
+    level: context?.level || 'error',
     ...context,
   });
+
+  trackEvent(EventNames.Error, payload);
+
+  if (DEBUG) {
+    const level = (context?.level || 'error') as ErrorLevel;
+    const log = level === 'critical' ? console.error : level === 'warning' ? console.warn : console.log;
+    log(`🚨 Error logged: [${errorMessage?.slice(0, 100)}]. Check GA4 DebugView for details.`, payload);
+  }
 };
 
-/**
- * Track user journey milestones
- */
 export const trackMilestone = (
-  milestone: 'first_voice_session' | 'first_essay' | 'first_school_added' | 'profile_complete',
+  milestone: 'first_essay' | 'first_school_added',
   additionalData?: { [key: string]: any }
 ) => {
   trackEvent('user_milestone', {
-    event_category: 'user_journey',
-    event_label: milestone,
     milestone: milestone,
     ...additionalData,
   });
 };
 
-/**
- * Track performance metrics
- */
 export const trackPerformance = (
-  metric: 'page_load_time' | 'voice_response_time' | 'essay_generation_time',
+  name: PerformanceName,
   value: number,
   additionalData?: { [key: string]: any }
 ) => {
   trackEvent('performance_metric', {
-    event_category: 'performance',
-    event_label: metric,
-    metric_name: metric,
-    value: value,
+    name,
+    value,
     ...additionalData,
   });
 };

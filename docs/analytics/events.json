@@ -1,0 +1,102 @@
+{
+  "events": [
+    {
+      "name": "onboarding_session",
+      "description": "Tracks user progress through onboarding flow",
+      "required": ["action", "session_number"],
+      "optional": ["stage"],
+      "pii": "none",
+      "example": {
+        "action": "completed",
+        "session_number": 1,
+        "stage": "voice_intro"
+      }
+    },
+    {
+      "name": "voice_conversation",
+      "description": "Tracks voice interaction sessions",
+      "required": ["action", "type"],
+      "optional": ["duration_seconds"],
+      "pii": "check",
+      "notes": "Never send actual voice transcripts or user inputs",
+      "example": {
+        "action": "ended",
+        "type": "brainstorming",
+        "duration_seconds": 120
+      }
+    },
+    {
+      "name": "essay_interaction",
+      "description": "Tracks essay writing and editing activities",
+      "required": ["action"],
+      "optional": ["type", "word_count"],
+      "pii": "check",
+      "notes": "Never send essay content or personal details",
+      "example": {
+        "action": "generated",
+        "type": "common_app",
+        "word_count": 650
+      }
+    },
+    {
+      "name": "school_interaction",
+      "description": "Tracks school list management",
+      "required": ["action"],
+      "optional": ["school_name", "category"],
+      "pii": "none",
+      "example": {
+        "action": "added",
+        "school_name": "Stanford University",
+        "category": "reach"
+      }
+    },
+    {
+      "name": "conversion",
+      "description": "Tracks key business conversion points",
+      "required": ["type"],
+      "optional": ["value"],
+      "pii": "none",
+      "example": {
+        "type": "paid_upgrade",
+        "value": 99
+      }
+    },
+    {
+      "name": "error_occurred",
+      "description": "Tracks application errors and issues",
+      "required": ["type", "message", "level"],
+      "optional": ["source", "user_action"],
+      "pii": "check",
+      "notes": "Never send stack traces or user data",
+      "example": {
+        "type": "network_error",
+        "message": "Voice connection failed - check internet",
+        "level": "error",
+        "source": "voice_engine",
+        "user_action": "starting_onboarding"
+      }
+    },
+    {
+      "name": "user_milestone",
+      "description": "Tracks important user journey points",
+      "required": ["milestone"],
+      "optional": [],
+      "pii": "none",
+      "example": {
+        "milestone": "first_essay"
+      }
+    },
+    {
+      "name": "performance_metric",
+      "description": "Tracks application performance metrics",
+      "required": ["name", "value"],
+      "optional": ["context"],
+      "pii": "none",
+      "example": {
+        "name": "load_time",
+        "value": 1.2,
+        "context": "essay_editor"
+      }
+    }
+  ]
+}
