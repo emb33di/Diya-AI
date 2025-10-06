@@ -15,10 +15,37 @@
         .mba-hero {
             background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
             color: white;
-            padding: 3rem 2rem;
+            padding: 1.5rem 1rem;
             border-radius: 16px;
-            margin: 2rem 0;
+            margin: 1rem 0;
             text-align: center;
+        }
+        
+        /* Mobile responsive styles */
+        @media (min-width: 640px) {
+            .mba-hero {
+                padding: 3rem 2rem;
+                margin: 2rem 0;
+            }
+        }
+        
+        /* Ensure text is readable on mobile */
+        @media (max-width: 639px) {
+            body {
+                font-size: 16px;
+                line-height: 1.6;
+            }
+            h1 {
+                font-size: 1.75rem;
+                line-height: 1.3;
+            }
+            h2 {
+                font-size: 1.5rem;
+                line-height: 1.3;
+            }
+            p {
+                margin-bottom: 1rem;
+            }
         }
         .mba-hero h1 {
             color: white;

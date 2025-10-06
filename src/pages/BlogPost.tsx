@@ -89,10 +89,10 @@ const BlogPost = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F4EDE2' }}>
+      <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: '#F4EDE2' }}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading blog post...</p>
+          <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-600 text-sm sm:text-base">Loading blog post...</p>
         </div>
       </div>
     );
@@ -100,12 +100,12 @@ const BlogPost = () => {
 
   if (!postFile) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F4EDE2' }}>
+      <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: '#F4EDE2' }}>
         <div className="text-center">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">Post Not Found</h1>
-          <p className="text-gray-600 mb-8">The blog post you're looking for doesn't exist.</p>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-4">Post Not Found</h1>
+          <p className="text-gray-600 mb-6 sm:mb-8 text-sm sm:text-base">The blog post you're looking for doesn't exist.</p>
           <Link to="/blog">
-            <Button>Back to Blog</Button>
+            <Button className="w-full sm:w-auto">Back to Blog</Button>
           </Link>
         </div>
       </div>
@@ -120,46 +120,46 @@ const BlogPost = () => {
       
       {/* Header */}
       <div className="border-b" style={{ backgroundColor: '#F4EDE2' }}>
-        <div className="container mx-auto px-6 py-8">
+        <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
           <div className="max-w-6xl mx-auto">
-            <Link to="/blog" className="inline-flex items-center text-primary hover:text-primary/80 mb-6">
+            <Link to="/blog" className="inline-flex items-center text-primary hover:text-primary/80 mb-4 sm:mb-6">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Blog
             </Link>
             
-            <div className="flex items-center gap-2 mb-4">
+            <div className="flex flex-wrap items-center gap-2 mb-4">
               <Badge variant="secondary">{post.category}</Badge>
               {post.featured && (
                 <Badge variant="default" className="bg-primary">Featured</Badge>
               )}
             </div>
             
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 leading-tight">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 sm:mb-6 leading-tight">
               {post.title}
             </h1>
             
-            <p className="text-xl text-gray-600 mb-8 leading-relaxed">
+            <p className="text-lg sm:text-xl text-gray-600 mb-6 sm:mb-8 leading-relaxed">
               {post.excerpt}
             </p>
             
-            <div className="flex items-center justify-between flex-wrap gap-4">
-              <div className="flex items-center gap-6 text-sm text-gray-500">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-xs sm:text-sm text-gray-500">
                 <div className="flex items-center gap-2">
-                  <User className="h-4 w-4" />
+                  <User className="h-3 w-3 sm:h-4 sm:w-4" />
                   {post.author}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
+                  <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
                   {formatDate(post.publishedAt)}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
+                  <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
                   {post.readTime}
                 </div>
               </div>
               
-              <Button variant="outline" size="sm" onClick={handleShare}>
-                <Share2 className="h-4 w-4 mr-2" />
+              <Button variant="outline" size="sm" onClick={handleShare} className="w-full sm:w-auto">
+                <Share2 className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
                 Share
               </Button>
             </div>
@@ -168,21 +168,21 @@ const BlogPost = () => {
       </div>
 
       {/* Content */}
-      <div className="container mx-auto px-6 py-12">
+      <div className="container mx-auto px-4 sm:px-6 py-8 sm:py-12">
         <div className="max-w-6xl mx-auto">
-          <div className="grid lg:grid-cols-5 gap-12">
+          <div className="grid lg:grid-cols-5 gap-6 lg:gap-12">
             {/* Main Content */}
             <div className="lg:col-span-3">
-              <article className="rounded-lg p-8 prose prose-lg max-w-none">
+              <article className="rounded-lg p-4 sm:p-6 lg:p-8 prose prose-sm sm:prose-base lg:prose-lg max-w-none">
                 <div dangerouslySetInnerHTML={{ __html: extractArticleContent(postFile.content) }} />
               </article>
               
               {/* Tags */}
-              <div className="mt-8">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Tags</h3>
+              <div className="mt-6 sm:mt-8">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Tags</h3>
                 <div className="flex flex-wrap gap-2">
                   {post.tags.map(tag => (
-                    <Badge key={tag} variant="outline" className="flex items-center gap-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50">
+                    <Badge key={tag} variant="outline" className="flex items-center gap-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 text-xs sm:text-sm">
                       {tag.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                     </Badge>
                   ))}
@@ -194,9 +194,9 @@ const BlogPost = () => {
             <div className="lg:col-span-2">
               {/* Related Posts */}
               {relatedPosts.length > 0 && (
-                <div className="rounded-lg border p-6 bg-white shadow-sm">
+                <div className="rounded-lg border p-4 sm:p-6 bg-white shadow-sm">
                   <div className="mb-4">
-                    <h3 className="text-lg font-semibold">Related Articles</h3>
+                    <h3 className="text-base sm:text-lg font-semibold">Related Articles</h3>
                   </div>
                   <div className="space-y-4">
                     {relatedPosts.map(relatedPost => (
@@ -205,8 +205,8 @@ const BlogPost = () => {
                         to={`/blog/${relatedPost.slug}`}
                         className="block group"
                       >
-                        <div className="border-l-2 border-transparent group-hover:border-primary pl-4 transition-colors">
-                          <h4 className="font-semibold text-sm group-hover:text-primary transition-colors line-clamp-2 mb-1">
+                        <div className="border-l-2 border-transparent group-hover:border-primary pl-3 sm:pl-4 transition-colors">
+                          <h4 className="font-semibold text-xs sm:text-sm group-hover:text-primary transition-colors line-clamp-2 mb-1">
                             {relatedPost.title}
                           </h4>
                           <p className="text-xs text-gray-600 line-clamp-2">
@@ -230,14 +230,14 @@ const BlogPost = () => {
       </div>
 
       {/* CTA Section */}
-      <div className="py-16" style={{ backgroundColor: '#F4EDE2' }}>
-        <div className="container mx-auto px-6 text-center">
-          <h2 className="text-3xl font-bold mb-4 text-gray-900">Ready to Improve Your Essays?</h2>
-          <p className="text-xl mb-8 text-gray-600">
+      <div className="py-12 sm:py-16" style={{ backgroundColor: '#F4EDE2' }}>
+        <div className="container mx-auto px-4 sm:px-6 text-center">
+          <h2 className="text-2xl sm:text-3xl font-bold mb-4 text-gray-900">Ready to Improve Your Essays?</h2>
+          <p className="text-lg sm:text-xl mb-6 sm:mb-8 text-gray-600 px-4">
             Get personalized AI-powered assistance for your college application essays
           </p>
           <Link to="/auth">
-            <Button size="lg" className="hover:shadow-lg transition-all" style={{ backgroundColor: '#D07D00', color: 'white' }}>
+            <Button size="lg" className="hover:shadow-lg transition-all w-full sm:w-auto" style={{ backgroundColor: '#D07D00', color: 'white' }}>
               Start Writing Better Essays
             </Button>
           </Link>

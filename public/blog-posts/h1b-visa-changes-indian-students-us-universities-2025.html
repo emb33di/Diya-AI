@@ -15,10 +15,37 @@
         .hero-section {
             background: linear-gradient(135deg, #D07D00 0%, #B86B00 100%);
             color: white;
-            padding: 2rem;
+            padding: 1rem;
             border-radius: 12px;
-            margin: 2rem 0;
+            margin: 1rem 0;
             text-align: center;
+        }
+        
+        /* Mobile responsive styles */
+        @media (min-width: 640px) {
+            .hero-section {
+                padding: 2rem;
+                margin: 2rem 0;
+            }
+        }
+        
+        /* Ensure text is readable on mobile */
+        @media (max-width: 639px) {
+            body {
+                font-size: 16px;
+                line-height: 1.6;
+            }
+            h1 {
+                font-size: 1.75rem;
+                line-height: 1.3;
+            }
+            h2 {
+                font-size: 1.5rem;
+                line-height: 1.3;
+            }
+            p {
+                margin-bottom: 1rem;
+            }
         }
         .hero-section h1 {
             color: white;

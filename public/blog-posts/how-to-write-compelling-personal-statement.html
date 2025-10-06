@@ -15,9 +15,9 @@
         .hero-section {
             background: linear-gradient(135deg, #D07D00 0%, #B86B00 100%);
             color: white;
-            padding: 2rem;
+            padding: 1rem;
             border-radius: 12px;
-            margin: 2rem 0;
+            margin: 1rem 0;
             text-align: center;
         }
         .hero-section h1 {
@@ -28,8 +28,8 @@
             background: #fff;
             border-left: 4px solid #D07D00;
             border-radius: 0 8px 8px 0;
-            padding: 1.5rem;
-            margin: 1.5rem 0;
+            padding: 1rem;
+            margin: 1rem 0;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
         .key-element h3 {
@@ -40,9 +40,43 @@
             background: #f8f9fa;
             border: 1px solid #dee2e6;
             border-radius: 8px;
-            padding: 1.5rem;
+            padding: 1rem;
             margin: 1rem 0;
             position: relative;
+        }
+        
+        /* Mobile responsive styles */
+        @media (min-width: 640px) {
+            .hero-section {
+                padding: 2rem;
+                margin: 2rem 0;
+            }
+            .key-element {
+                padding: 1.5rem;
+                margin: 1.5rem 0;
+            }
+            .structure-step {
+                padding: 1.5rem;
+            }
+        }
+        
+        /* Ensure text is readable on mobile */
+        @media (max-width: 639px) {
+            body {
+                font-size: 16px;
+                line-height: 1.6;
+            }
+            h1 {
+                font-size: 1.75rem;
+                line-height: 1.3;
+            }
+            h2 {
+                font-size: 1.5rem;
+                line-height: 1.3;
+            }
+            p {
+                margin-bottom: 1rem;
+            }
         }
         .warning-box {
             background: #fff3cd;
