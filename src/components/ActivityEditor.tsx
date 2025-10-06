@@ -327,15 +327,15 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
 
   return (
     <Card className="shadow-lg group">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex-1">
+      <CardHeader className="pb-3 px-4 lg:px-6">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-3 lg:space-y-0">
+          <div className="flex-1 min-w-0">
             {/* Field Label - Uneditable */}
             <div 
-              className="text-lg font-semibold capitalize mb-2"
+              className="text-base lg:text-lg font-semibold capitalize mb-2"
               style={{ 
                 fontFamily: 'inherit',
-                fontSize: '1.125rem',
+                fontSize: '1rem',
                 lineHeight: '1.5',
                 fontWeight: '600'
               }}
@@ -353,47 +353,54 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
                 }}
                 onKeyDown={(e) => handleKeyDown(e, 'title')}
                 placeholder={getFieldPlaceholder(category)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm lg:text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               />
             </div>
           </div>
           
-          <div className="flex items-center space-x-2">
-            {/* Unsaved changes indicator */}
-            {hasUnsavedChanges && (
-              <div className="flex items-center space-x-1 text-xs text-orange-600">
-                <AlertTriangle className="h-3 w-3" />
-                <span>Unsaved changes</span>
-              </div>
-            )}
-            
-            {/* Auto-save status indicator */}
-            {isAutoSaving && (
-              <div className="flex items-center space-x-1 text-xs text-gray-500">
-                <Clock className="h-3 w-3 animate-spin" />
-                <span>Saving...</span>
-              </div>
-            )}
-            {!isAutoSaving && lastSaved && !hasUnsavedChanges && (
-              <div className="flex items-center space-x-1 text-xs text-green-600">
-                <CheckCircle className="h-3 w-3" />
-                <span>Saved</span>
-              </div>
-            )}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-2 lg:space-x-2">
+            {/* Status indicators - stack on mobile */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-1 sm:space-y-0 sm:space-x-2">
+              {/* Unsaved changes indicator */}
+              {hasUnsavedChanges && (
+                <div className="flex items-center space-x-1 text-xs text-orange-600">
+                  <AlertTriangle className="h-3 w-3" />
+                  <span className="hidden sm:inline">Unsaved changes</span>
+                  <span className="sm:hidden">Unsaved</span>
+                </div>
+              )}
+              
+              {/* Auto-save status indicator */}
+              {isAutoSaving && (
+                <div className="flex items-center space-x-1 text-xs text-gray-500">
+                  <Clock className="h-3 w-3 animate-spin" />
+                  <span className="hidden sm:inline">Saving...</span>
+                  <span className="sm:hidden">Saving</span>
+                </div>
+              )}
+              {!isAutoSaving && lastSaved && !hasUnsavedChanges && (
+                <div className="flex items-center space-x-1 text-xs text-green-600">
+                  <CheckCircle className="h-3 w-3" />
+                  <span className="hidden sm:inline">Saved</span>
+                  <span className="sm:hidden">Saved</span>
+                </div>
+              )}
+            </div>
             
             <Button
               variant="outline"
               size="sm"
               onClick={() => onRemove(activity.id)}
-              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+              className="text-red-600 hover:text-red-700 hover:bg-red-50 w-full sm:w-auto touch-manipulation"
             >
               <Trash2 className="h-4 w-4" />
+              <span className="ml-2 hidden sm:inline">Remove</span>
             </Button>
           </div>
         </div>
       </CardHeader>
       
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 px-4 lg:px-6">
         {/* Position Field */}
         {showsPosition && (
           <div className="space-y-2">
@@ -428,7 +435,7 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
 
         {/* Date Fields */}
         {showsDates && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor={`fromDate-${activity.id}`}>From Date</Label>
               <Input
@@ -437,6 +444,7 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
                 onChange={(e) => handleFieldChange('fromDate', e.target.value)}
                 onBlur={(e) => handleFieldBlur('fromDate', e.target.value)}
                 placeholder="MM/YYYY"
+                className="touch-manipulation"
               />
             </div>
             <div className="space-y-2">
@@ -448,6 +456,7 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
                 onBlur={(e) => handleFieldBlur('toDate', e.target.value)}
                 placeholder="MM/YYYY"
                 disabled={localActivity.isCurrent}
+                className="touch-manipulation"
               />
             </div>
           </div>
@@ -477,23 +486,24 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
             {localActivity.bullets.map((bullet, index) => (
               <div key={index} className="space-y-2">
                 <Label className="text-sm font-medium">Bullet {index + 1}</Label>
-                <div className="flex items-start space-x-2">
+                <div className="flex flex-col sm:flex-row items-start space-y-2 sm:space-y-0 sm:space-x-2">
                   <Textarea
                     value={bullet}
                     onChange={(e) => handleBulletChange(index, e.target.value)}
                     onBlur={(e) => handleBulletBlur(index, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(e, 'bullet', index)}
                     placeholder={`Describe your ${category} experience...`}
-                    className="flex-1 min-h-[80px]"
+                    className="flex-1 min-h-[80px] w-full"
                   />
                   {localActivity.bullets.length > 1 && (
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => removeBullet(index)}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50 mt-1"
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50 w-full sm:w-auto touch-manipulation"
                     >
                       <Trash2 className="h-4 w-4" />
+                      <span className="ml-2 hidden sm:inline">Remove</span>
                     </Button>
                   )}
                 </div>
@@ -502,7 +512,7 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
             <Button
               variant="outline"
               onClick={addBullet}
-              className="w-full border-dashed"
+              className="w-full border-dashed touch-manipulation"
             >
               <Plus className="h-4 w-4 mr-2" />
               Add Another Point
@@ -519,23 +529,24 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
                 <Label className="text-sm font-medium">
                   {getCategoryLabel(category)} {index + 1}
                 </Label>
-                <div className="flex items-start space-x-2">
+                <div className="flex flex-col sm:flex-row items-start space-y-2 sm:space-y-0 sm:space-x-2">
                   <Input
                     value={item}
                     onChange={(e) => handleBulletChange(index, e.target.value)}
                     onBlur={(e) => handleBulletBlur(index, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(e, 'bullet', index)}
                     placeholder={getPlaceholderText(category, index)}
-                    className="flex-1"
+                    className="flex-1 w-full touch-manipulation"
                   />
                   {localActivity.bullets.length > 1 && (
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => removeBullet(index)}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50 w-full sm:w-auto touch-manipulation"
                     >
                       <Trash2 className="h-4 w-4" />
+                      <span className="ml-2 hidden sm:inline">Remove</span>
                     </Button>
                   )}
                 </div>
@@ -544,7 +555,7 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
             <Button
               variant="outline"
               onClick={addBullet}
-              className="w-full border-dashed"
+              className="w-full border-dashed touch-manipulation"
             >
               <Plus className="h-4 w-4 mr-2" />
               Add Another {getCategoryLabel(category).slice(0, -1)}

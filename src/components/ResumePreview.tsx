@@ -653,22 +653,22 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
         <DialogPortal>
           <DialogOverlay />
           <DialogPrimitive.Content
-            className={`fixed left-[50%] top-[50%] z-50 grid w-full translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg ${isFullscreen ? 'max-w-none w-screen h-screen' : 'max-w-6xl max-h-[90vh]'} overflow-hidden`}
+            className={`fixed left-[50%] top-[50%] z-50 grid w-full translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-3 sm:p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg ${isFullscreen ? 'max-w-none w-screen h-screen' : 'max-w-6xl max-h-[90vh]'} overflow-hidden`}
             aria-describedby="resume-preview-description"
           >
-        <DialogHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+        <DialogHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0 pb-4">
           <div className="flex flex-col space-y-1">
-            <DialogTitle className="flex items-center space-x-2">
-              <FileText className="h-5 w-5" />
-              <span>Resume Preview & PDF Export</span>
+            <DialogTitle className="flex items-center space-x-2 text-lg sm:text-xl">
+              <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="text-base sm:text-lg">Resume Preview & PDF Export</span>
             </DialogTitle>
-            <p id="resume-preview-description" className="text-sm text-muted-foreground">
+            <p id="resume-preview-description" className="text-xs sm:text-sm text-muted-foreground">
               Preview your resume and export as PDF using your browser's print function
             </p>
           </div>
-          <div className="flex items-center space-x-2">
-            {/* Zoom Controls */}
-            <div className="flex items-center space-x-1 border rounded-md">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+            {/* Zoom Controls - Hide on mobile to save space */}
+            <div className="hidden sm:flex items-center space-x-1 border rounded-md">
               <Button
                 variant="ghost"
                 size="sm"
@@ -700,12 +700,12 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
               </Button>
             </div>
 
-            {/* Fullscreen Toggle */}
+            {/* Fullscreen Toggle - Hide on mobile */}
             <Button
               variant="ghost"
               size="sm"
               onClick={toggleFullscreen}
-              className="h-8 w-8 p-0"
+              className="h-8 w-8 p-0 hidden sm:flex"
             >
               {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
             </Button>
@@ -714,7 +714,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
-                  className="flex items-center space-x-2 text-white"
+                  className="flex items-center space-x-2 text-white w-full sm:w-auto"
                   style={{ backgroundColor: '#D07D00' }}
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#B86F00'}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#D07D00'}
@@ -737,8 +737,9 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
             </DropdownMenu>
 
             {/* Close Button */}
-            <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 p-0">
+            <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 p-0 w-full sm:w-auto">
               <X className="h-4 w-4" />
+              <span className="ml-2 sm:hidden">Close</span>
             </Button>
           </div>
         </DialogHeader>

@@ -89,24 +89,24 @@ const Resume = () => {
     <OnboardingGuard pageName="Resume">
         <GradientBackground>
           <MobileResponsiveWrapper>
-            <main className="container mx-auto">
+            <main className="container mx-auto px-4 sm:px-6 py-4 lg:py-6">
             {/* Header */}
-            <div className="mb-8">
-              <div className="flex items-center justify-between mb-2">
-                <h1 className="text-3xl font-display font-bold">Resume Review</h1>
+            <div className="mb-6 lg:mb-8">
+              <div className="mb-2">
+                <h1 className="text-2xl lg:text-3xl font-display font-bold">Resume Review</h1>
               </div>
-              <p className="text-muted-foreground text-lg">
+              <p className="text-muted-foreground text-base lg:text-lg">
                 Edit and download your resume in the perfect format that your target schools are looking for!
               </p>
             </div>
 
 
             {/* Add Activity Dropdown and Action Buttons */}
-            <div className="mb-6 flex items-center justify-between">
+            <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
               <AddActivityDropdown onActivitySelect={(category) => {
                 addActivity(category.toLowerCase());
               }} />
-              <div className="flex items-center space-x-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
                 {/* Saved timestamp */}
                 {lastSaved && !saving && !saveError && (
                   <div className="flex items-center space-x-1 text-xs text-muted-foreground">
@@ -118,21 +118,22 @@ const Resume = () => {
                 <Button 
                   onClick={previewResume}
                   variant="outline"
-                  className="flex items-center space-x-2"
+                  className="flex items-center space-x-2 w-full sm:w-auto"
                 >
                   <Eye className="h-4 w-4" />
-                  <span>Preview & Download PDF</span>
+                  <span className="hidden sm:inline">Preview & Download PDF</span>
+                  <span className="sm:hidden">Preview PDF</span>
                 </Button>
               </div>
             </div>
 
             {/* Resume Editor */}
-            <div className="space-y-6">
+            <div className="space-y-4 lg:space-y-6">
               {/* Display all activity categories */}
               {Object.entries(resumeData).map(([category, activities]) => (
                 activities.length > 0 && (
-                  <div key={category} className="space-y-4">
-                    <h3 className="text-xl font-semibold capitalize">
+                  <div key={category} className="space-y-3 lg:space-y-4">
+                    <h3 className="text-lg lg:text-xl font-semibold capitalize">
                       {category === 'academic' ? 'Academic Experience' :
                        category === 'experience' ? 'Work Experience' :
                        category === 'projects' ? 'Projects' :
@@ -142,7 +143,7 @@ const Resume = () => {
                        category === 'interests' ? 'Interests' :
                        category === 'languages' ? 'Languages' : category}
                     </h3>
-                    <div className="space-y-4">
+                    <div className="space-y-3 lg:space-y-4">
                       {activities.map((activity) => (
                         <ActivityEditor
                           key={activity.id}
@@ -164,9 +165,9 @@ const Resume = () => {
               {/* Show message when no activities are added */}
               {Object.values(resumeData).every(activities => activities.length === 0) && (
                 <Card className="shadow-lg">
-                  <CardContent className="py-12">
+                  <CardContent className="py-8 lg:py-12">
                     <div className="text-center text-muted-foreground">
-                      <p className="text-lg mb-2">Resume Editor</p>
+                      <p className="text-base lg:text-lg mb-2">Resume Editor</p>
                       <p className="text-sm">Use the "Add Activity" button above to start building your resume</p>
                     </div>
                   </CardContent>
