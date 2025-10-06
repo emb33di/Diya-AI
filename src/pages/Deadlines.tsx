@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DatePicker } from "@/components/ui/date-picker";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-import { Calendar, Clock, CheckCircle2, AlertCircle, Star, Target, Shield, Filter, RefreshCw, Loader2, Edit3 } from "lucide-react";
+import { Calendar, Clock, CheckCircle2, AlertCircle, Star, Target, Shield, Filter, Loader2, Edit3 } from "lucide-react";
 import OnboardingGuard from "@/components/OnboardingGuard";
 import GradientBackground from "@/components/GradientBackground";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,7 +22,6 @@ const Deadlines = () => {
   const navigate = useNavigate();
   const [deadlines, setDeadlines] = useState<UserDeadline[]>([]);
   const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>('all');
   const [stats, setStats] = useState<any>(null);
@@ -109,33 +108,6 @@ const Deadlines = () => {
     }
   };
 
-  // Sync deadlines from the JSON data
-  const handleSyncDeadlines = async () => {
-    try {
-      setSyncing(true);
-      setError(null);
-      
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setError("User not authenticated");
-        return;
-      }
-
-      console.log('Starting deadline sync for user:', user.id);
-      const result = await DeadlineService.syncDeadlinesForUser(user.id);
-      console.log('Sync result:', result);
-      
-      await fetchDeadlines(); // Refresh the data
-      
-      // Show success message
-      setError(null);
-    } catch (err) {
-      console.error('Error syncing deadlines:', err);
-      setError("Failed to sync deadlines");
-    } finally {
-      setSyncing(false);
-    }
-  };
 
   // Update application status
   const handleStatusUpdate = async (schoolId: string, newStatus: 'not_started' | 'in_progress' | 'completed' | 'overdue') => {
@@ -341,20 +313,6 @@ const Deadlines = () => {
             </div>
             
             <div className="flex items-center space-x-4">
-              <Button 
-                onClick={handleSyncDeadlines}
-                disabled={syncing}
-                variant="outline"
-                className="flex items-center space-x-2"
-              >
-                {syncing ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-4 w-4" />
-                )}
-                <span>{syncing ? 'Syncing...' : 'Sync Deadlines'}</span>
-              </Button>
-              
               <div className="text-sm text-muted-foreground">
                 Deadlines are automatically synced when schools are added
               </div>
