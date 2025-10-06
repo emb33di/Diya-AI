@@ -79,6 +79,7 @@ const LOR = () => {
       setStats(statsData);
       setSchoolOptions(schoolOptionsData);
     } catch (err) {
+      const { data: { user } } = await supabase.auth.getUser();
       console.error('[LOR_ERROR] Failed to load LOR data:', {
         userId: user?.id || 'unknown',
         userEmail: user?.email || 'unknown',
@@ -109,6 +110,7 @@ const LOR = () => {
       resetForm();
       await fetchData();
     } catch (err) {
+      const { data: { user } } = await supabase.auth.getUser();
       console.error('[LOR_ERROR] Failed to add recommender:', {
         userId: user?.id || 'unknown',
         userEmail: user?.email || 'unknown',
@@ -132,6 +134,7 @@ const LOR = () => {
       resetForm();
       await fetchData();
     } catch (err) {
+      const { data: { user } } = await supabase.auth.getUser();
       console.error('[LOR_ERROR] Failed to update recommender:', {
         userId: user?.id || 'unknown',
         userEmail: user?.email || 'unknown',
@@ -150,6 +153,7 @@ const LOR = () => {
       await LORService.deleteRecommender(id);
       await fetchData();
     } catch (err) {
+      const { data: { user } } = await supabase.auth.getUser();
       console.error('[LOR_ERROR] Failed to delete recommender:', {
         userId: user?.id || 'unknown',
         userEmail: user?.email || 'unknown',
@@ -208,6 +212,7 @@ const LOR = () => {
       setAllocationNotes('');
       await fetchData();
     } catch (err) {
+      const { data: { user } } = await supabase.auth.getUser();
       console.error('[LOR_ERROR] Failed to add school allocation:', {
         userId: user?.id || 'unknown',
         userEmail: user?.email || 'unknown',
@@ -227,6 +232,7 @@ const LOR = () => {
       await LORService.updateSchoolAllocation(allocationId, { allocationStatus: newStatus as any });
       await fetchData();
     } catch (err) {
+      const { data: { user } } = await supabase.auth.getUser();
       console.error('[LOR_ERROR] Failed to update allocation status:', {
         userId: user?.id || 'unknown',
         userEmail: user?.email || 'unknown',
@@ -245,6 +251,7 @@ const LOR = () => {
       await LORService.removeSchoolAllocation(allocationId);
       await fetchData();
     } catch (err) {
+      const { data: { user } } = await supabase.auth.getUser();
       console.error('[LOR_ERROR] Failed to remove school allocation:', {
         userId: user?.id || 'unknown',
         userEmail: user?.email || 'unknown',
@@ -363,24 +370,24 @@ const LOR = () => {
   return (
     <OnboardingGuard pageName="LOR">
         <GradientBackground>
-            <main className="container mx-auto px-6 py-8">
-              <div className="flex items-center justify-between mb-8">
+            <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8 space-y-4 lg:space-y-0">
                 <div>
-                  <h1 className="text-3xl font-display font-bold mb-2">Letter of Recommendation</h1>
-                  <p className="text-muted-foreground text-lg">
+                  <h1 className="text-2xl lg:text-3xl font-display font-bold mb-2">Letter of Recommendation</h1>
+                  <p className="text-muted-foreground text-base lg:text-lg">
                     Manage your LOR requests and track internal deadlines
                   </p>
                 </div>
                 
-                <div className="flex items-center space-x-4">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
                   <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                     <DialogTrigger asChild>
-                      <Button>
+                      <Button className="w-full sm:w-auto">
                         <Plus className="h-4 w-4 mr-2" />
                         Add Recommender
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                    <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto mx-4 sm:mx-0">
                       <DialogHeader>
                         <DialogTitle className="flex items-center space-x-2">
                           <User className="h-5 w-5 text-primary" />
@@ -398,7 +405,7 @@ const LOR = () => {
                             <User className="h-4 w-4 text-primary" />
                             <h3 className="font-semibold text-lg">Basic Information</h3>
                           </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
                               <Label htmlFor="name" className="text-sm font-medium">
                                 Full Name <span className="text-red-500">*</span>
@@ -514,7 +521,7 @@ const LOR = () => {
                             <h3 className="font-semibold text-lg">Internal Deadlines</h3>
                           </div>
                           <div className="space-y-4">
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                               <div className="space-y-3">
                                 <Label htmlFor="deadline1" className="text-sm font-semibold">
                                   <div className="flex items-center space-x-2">
@@ -610,13 +617,17 @@ const LOR = () => {
                     </DialogContent>
                   </Dialog>
 
-                  <div className="flex items-center space-x-2">
-                    <Filter className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+                    <div className="flex items-center space-x-2">
+                      <Filter className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Filter:</span>
+                    </div>
                     <div className="flex space-x-2">
                       <Button 
                         variant={filter === 'all' ? 'default' : 'outline'} 
                         size="sm"
                         onClick={() => setFilter('all')}
+                        className="flex-1 sm:flex-none"
                       >
                         All
                       </Button>
@@ -624,6 +635,7 @@ const LOR = () => {
                         variant={filter === 'urgent' ? 'default' : 'outline'} 
                         size="sm"
                         onClick={() => setFilter('urgent')}
+                        className="flex-1 sm:flex-none"
                       >
                         Urgent
                       </Button>
@@ -634,22 +646,22 @@ const LOR = () => {
 
               {/* Stats Overview */}
               {stats && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                  <Card className="text-center p-4">
-                    <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
-                    <div className="text-sm text-muted-foreground">Total Recommenders</div>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-8">
+                  <Card className="text-center p-3 lg:p-4">
+                    <div className="text-xl lg:text-2xl font-bold text-blue-600">{stats.total}</div>
+                    <div className="text-xs lg:text-sm text-muted-foreground">Total Recommenders</div>
                   </Card>
-                  <Card className="text-center p-4">
-                    <div className="text-2xl font-bold text-green-600">{stats.submitted}</div>
-                    <div className="text-sm text-muted-foreground">Submitted</div>
+                  <Card className="text-center p-3 lg:p-4">
+                    <div className="text-xl lg:text-2xl font-bold text-green-600">{stats.submitted}</div>
+                    <div className="text-xs lg:text-sm text-muted-foreground">Submitted</div>
                   </Card>
-                  <Card className="text-center p-4">
-                    <div className="text-2xl font-bold text-orange-600">{stats.upcomingDeadlines}</div>
-                    <div className="text-sm text-muted-foreground">Upcoming Deadlines</div>
+                  <Card className="text-center p-3 lg:p-4">
+                    <div className="text-xl lg:text-2xl font-bold text-orange-600">{stats.upcomingDeadlines}</div>
+                    <div className="text-xs lg:text-sm text-muted-foreground">Upcoming Deadlines</div>
                   </Card>
-                  <Card className="text-center p-4">
-                    <div className="text-2xl font-bold text-red-600">{stats.overdueDeadlines}</div>
-                    <div className="text-sm text-muted-foreground">Overdue</div>
+                  <Card className="text-center p-3 lg:p-4">
+                    <div className="text-xl lg:text-2xl font-bold text-red-600">{stats.overdueDeadlines}</div>
+                    <div className="text-xs lg:text-sm text-muted-foreground">Overdue</div>
                   </Card>
                 </div>
               )}
@@ -679,7 +691,7 @@ const LOR = () => {
                   <CardContent>
                     <div className="space-y-3">
                       {filteredDeadlines.slice(0, 5).map((deadline) => (
-                        <div key={deadline.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                        <div key={deadline.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors space-y-2 sm:space-y-0">
                           <div className="flex items-center space-x-3">
                             <div className={`h-2 w-2 rounded-full ${
                               deadline.urgencyLevel === 'critical' || deadline.urgencyLevel === 'overdue' ? 'bg-red-500' :
@@ -708,7 +720,7 @@ const LOR = () => {
               )}
 
               {/* Recommenders List */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 lg:gap-6">
                 {filteredRecommenders.map((recommender) => (
                   <Card key={recommender.id} className="shadow-lg hover:shadow-xl transition-shadow">
                     <CardHeader className="pb-4">
@@ -719,34 +731,34 @@ const LOR = () => {
                             <span>{recommender.name}</span>
                           </CardTitle>
                           
-                          <div className="flex items-center space-x-4 mt-2">
+                          <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-4 mt-2">
                             <div className="flex items-center space-x-2">
                               <span className="text-sm font-medium">{recommender.position}</span>
                             </div>
                             {recommender.email && (
                               <div className="flex items-center space-x-2">
                                 <Mail className="h-4 w-4 text-muted-foreground" />
-                                <span className="text-sm text-muted-foreground">{recommender.email}</span>
+                                <span className="text-sm text-muted-foreground truncate">{recommender.email}</span>
                               </div>
                             )}
                           </div>
                         </div>
                         
-                        <div className="flex flex-col items-end space-y-2">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end space-y-2 sm:space-y-0 sm:space-x-2">
                           <Badge className={getStatusColor(recommender.status)}>
                             {recommender.status.replace('_', ' ')}
                           </Badge>
                           
                           <div className="flex space-x-1">
-                            <Button size="sm" variant="ghost" onClick={() => openAllocationDialog(recommender)}>
+                            <Button size="sm" variant="ghost" onClick={() => openAllocationDialog(recommender)} title="Allocate Schools">
                               <Target className="h-4 w-4" />
                             </Button>
-                            <Button size="sm" variant="ghost" onClick={() => openEditDialog(recommender)}>
+                            <Button size="sm" variant="ghost" onClick={() => openEditDialog(recommender)} title="Edit Recommender">
                               <Edit className="h-4 w-4" />
                             </Button>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
-                                <Button size="sm" variant="ghost">
+                                <Button size="sm" variant="ghost" title="Delete Recommender">
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
                               </AlertDialogTrigger>
@@ -811,9 +823,9 @@ const LOR = () => {
                       
                       {/* School Allocations */}
                       <div>
-                        <div className="flex items-center justify-between mb-2">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 space-y-2 sm:space-y-0">
                           <h4 className="font-medium text-sm">School Allocations:</h4>
-                          <Button size="sm" variant="outline" onClick={() => openAllocationDialog(recommender)}>
+                          <Button size="sm" variant="outline" onClick={() => openAllocationDialog(recommender)} className="w-full sm:w-auto">
                             <Target className="h-3 w-3 mr-1" />
                             Add School
                           </Button>
@@ -821,21 +833,21 @@ const LOR = () => {
                         {recommender.schoolAllocations && recommender.schoolAllocations.length > 0 ? (
                           <div className="space-y-2">
                             {recommender.schoolAllocations.map((allocation) => (
-                              <div key={allocation.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+                              <div key={allocation.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2 rounded-lg bg-muted/30 space-y-2 sm:space-y-0">
                                 <div className="flex items-center space-x-2">
                                   <div className={`w-2 h-2 rounded-full ${
                                     allocation.allocationStatus === 'submitted' ? 'bg-green-500' :
                                     allocation.allocationStatus === 'allocated' ? 'bg-blue-500' :
                                     allocation.allocationStatus === 'pending' ? 'bg-yellow-500' : 'bg-red-500'
                                   }`} />
-                                  <span className="text-sm font-medium">{allocation.schoolName}</span>
+                                  <span className="text-sm font-medium truncate">{allocation.schoolName}</span>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                   <Select
                                     value={allocation.allocationStatus}
                                     onValueChange={(value) => handleUpdateAllocationStatus(allocation.id, value)}
                                   >
-                                    <SelectTrigger className="w-24 h-6 text-xs">
+                                    <SelectTrigger className="w-20 sm:w-24 h-6 text-xs">
                                       <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -847,7 +859,7 @@ const LOR = () => {
                                   </Select>
                                   <AlertDialog>
                                     <AlertDialogTrigger asChild>
-                                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
+                                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0" title="Remove allocation">
                                         <Trash2 className="h-3 w-3" />
                                       </Button>
                                     </AlertDialogTrigger>
@@ -906,7 +918,7 @@ const LOR = () => {
 
               {/* Edit Dialog */}
               <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto mx-4 sm:mx-0">
                   <DialogHeader>
                     <DialogTitle className="flex items-center space-x-2">
                       <Edit className="h-5 w-5 text-primary" />
@@ -924,7 +936,7 @@ const LOR = () => {
                         <User className="h-4 w-4 text-primary" />
                         <h3 className="font-semibold text-lg">Basic Information</h3>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="edit-name" className="text-sm font-medium">
                             Full Name <span className="text-red-500">*</span>
@@ -1040,7 +1052,7 @@ const LOR = () => {
                         <h3 className="font-semibold text-lg">Internal Deadlines</h3>
                       </div>
                       <div className="space-y-4">
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                           <div className="space-y-3">
                             <Label htmlFor="edit-deadline1" className="text-sm font-semibold">
                               <div className="flex items-center space-x-2">
@@ -1138,7 +1150,7 @@ const LOR = () => {
 
               {/* School Allocation Dialog */}
               <Dialog open={isAllocationDialogOpen} onOpenChange={setIsAllocationDialogOpen}>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="max-w-2xl mx-4 sm:mx-0">
                   <DialogHeader>
                     <DialogTitle className="flex items-center space-x-2">
                       <Target className="h-5 w-5 text-primary" />
