@@ -6,6 +6,7 @@ import { parseOutspeedMessage, isValidMessageItem, safeCreateTimestamp } from '@
 import { OnboardingApiService } from '@/services/onboarding.api';
 import { useToast } from '@/components/ui/use-toast';
 import { useOnboardingStore, TranscriptMessage } from '@/stores';
+import { analytics } from '@/utils/analytics';
 
 
 interface ConversationEngineProps {
@@ -78,6 +79,13 @@ const ConversationEngine = ({
       // Use Zustand action to start session
       startSession(conversationId);
       
+      // Track voice conversation start
+      analytics.trackVoiceEvent('started', 'onboarding', {
+        conversation_id: conversationId,
+        agent_id: agentId,
+        source: source
+      });
+      
       // Save conversation tracking using API service
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -98,6 +106,13 @@ const ConversationEngine = ({
             timestamp: new Date().toISOString(),
             message: 'Failed to save conversation tracking to database - user onboarding session may not be properly recorded'
           });
+          
+          // Track the error
+          analytics.trackError('conversation_tracking_save_failed', response.error, {
+            conversation_id: conversationId,
+            user_id: user.id,
+            agent_id: agentId
+          });
         }
       }
       
@@ -112,6 +127,15 @@ const ConversationEngine = ({
         timestamp: new Date().toISOString(),
         message: 'Critical error during conversation connection - user unable to start onboarding session'
       });
+      
+      // Track the connection error
+      analytics.trackError('conversation_connect_error', error.message, {
+        conversation_id: conversationId,
+        user_id: user?.id || 'unknown',
+        agent_id: agentId,
+        source: source
+      });
+      
       endSession(); // Use Zustand action to end session on error
       toast({
         title: "Connection Error",
@@ -198,6 +222,17 @@ const ConversationEngine = ({
   const handleDisconnect = useCallback(async () => {
     console.log('Disconnected from voice agent');
 
+    // Track voice conversation end
+    const sessionDuration = sessionStartTime ? 
+      Math.max(0, (new Date().getTime() - sessionStartTime.getTime()) / 1000) : 0;
+    
+    analytics.trackVoiceEvent('ended', 'onboarding', {
+      conversation_id: conversationId,
+      session_duration: sessionDuration,
+      messages_count: messages.length,
+      agent_id: agentId
+    });
+
     // Prevent double accounting when pause/end already handled
     let newCumulativeTimeLocal = cumulativeSessionTime;
     if (!sessionFinalizedRef.current && sessionStartTime) {
@@ -221,6 +256,13 @@ const ConversationEngine = ({
               timestamp: new Date().toISOString(),
               message: 'Failed to save cumulative onboarding time to database - user progress may not be properly tracked'
             });
+            
+            // Track the error
+            analytics.trackError('cumulative_time_update_failed', response.error, {
+              user_id: user.id,
+              cumulative_time: newCumulativeTimeLocal,
+              session_duration: duration
+            });
           }
         }
       } catch (error) {
@@ -232,6 +274,13 @@ const ConversationEngine = ({
           sessionDuration: duration,
           timestamp: new Date().toISOString(),
           message: 'Critical error saving cumulative session time - user onboarding progress may be lost'
+        });
+        
+        // Track the error
+        analytics.trackError('cumulative_time_save_error', error.message, {
+          user_id: user?.id || 'unknown',
+          cumulative_time: newCumulativeTimeLocal,
+          session_duration: duration
         });
       }
     } else {
@@ -246,6 +295,13 @@ const ConversationEngine = ({
     if (messages.length > 0) {
       console.log('💾 Force saving transcript on disconnect...');
       await forceSaveTranscript();
+      
+      // Track transcript save
+      analytics.trackVoiceEvent('transcript_saved', 'onboarding', {
+        conversation_id: conversationId,
+        messages_count: messages.length,
+        session_duration: sessionDuration
+      });
     }
   }, [cumulativeSessionTime, sessionStartTime, messages, forceSaveTranscript, setCumulativeTime, endSession]);
 

@@ -13,6 +13,7 @@ import { MessagePersistenceService, ConversationMessage } from '@/services/messa
 import { useTranscriptSaver } from '@/hooks/useTranscriptSaver';
 import { OutspeedEvent } from '@/types/outspeed';
 import { parseOutspeedMessage, isValidMessageItem } from '@/utils/outspeedUtils';
+import { analytics } from '@/utils/analytics';
 
 interface BrainstormSummary {
   key_themes: string[];
@@ -115,6 +116,14 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
     onConnect: async () => {
       console.log('🔗 Connected to Outspeed voice agent');
       console.log('📊 Current state before connect:', { sessionStarted: sessionStartedRef.current, showFullScreenChat: showFullScreenChatRef.current, messagesCount: messagesRef.current.length });
+      
+      // Track brainstorming session start
+      analytics.trackVoiceEvent('started', 'brainstorming', {
+        essay_title: essayTitle,
+        target_college: targetCollege,
+        agent_id: agentId
+      });
+      
       sessionStartTimeRef.current = new Date();
       setSessionStarted(true);
       setShowFullScreenChat(true);
@@ -129,6 +138,18 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
       console.log('🔍 Disconnect reason - checking if this was intentional...');
       console.log('⏱️ Session duration:', Date.now() - (sessionStartTimeRef.current?.getTime() || Date.now()), 'ms');
       
+      // Track brainstorming session end
+      const sessionDuration = sessionStartTimeRef.current ? 
+        Math.max(0, (Date.now() - sessionStartTimeRef.current.getTime()) / 1000) : 0;
+      
+      analytics.trackVoiceEvent('ended', 'brainstorming', {
+        essay_title: essayTitle,
+        target_college: targetCollege,
+        session_duration: sessionDuration,
+        messages_count: messagesRef.current.length,
+        agent_id: agentId
+      });
+      
       setSessionStarted(false);
       setShowFullScreenChat(false);
       
@@ -136,6 +157,14 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
       if (messagesRef.current.length > 0) {
         console.log('💾 Force saving transcript on disconnect...');
         await forceSaveTranscript();
+        
+        // Track transcript save
+        analytics.trackVoiceEvent('transcript_saved', 'brainstorming', {
+          essay_title: essayTitle,
+          target_college: targetCollege,
+          messages_count: messagesRef.current.length,
+          session_duration: sessionDuration
+        });
       }
       
       setConversationId(null);
@@ -462,6 +491,16 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
         structure_suggestions: response.summary.structure_suggestions || [],
       };
 
+      // Track successful essay generation
+      analytics.trackEssayEvent('generated', 'brainstorming', {
+        essay_title: essayTitle,
+        target_college: targetCollege,
+        conversation_id: convId,
+        themes_count: summary.key_themes.length,
+        stories_count: summary.personal_stories.length,
+        angles_count: summary.essay_angles.length
+      });
+
       onSummaryGenerated(summary);
       
       toast({
@@ -470,6 +509,14 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
       });
     } catch (error) {
       console.error('Error generating summary:', error);
+      
+      // Track the error
+      analytics.trackError('essay_summary_generation_failed', error instanceof Error ? error.message : 'Unknown error', {
+        essay_title: essayTitle,
+        target_college: targetCollege,
+        conversation_id: convId
+      });
+      
       toast({
         title: "Error",
         description: `Failed to generate brainstorming summary: ${error instanceof Error ? error.message : 'Unknown error'}`,

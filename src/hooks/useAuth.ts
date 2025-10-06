@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { analytics } from '@/utils/analytics';
 
 export interface UserProfile {
   id: string;
@@ -82,11 +83,32 @@ export const useAuth = () => {
         } as UserProfile;
         setAuthState(prev => ({ ...prev, profile: updatedProfile }));
         localStorage.setItem('user_profile', JSON.stringify(updatedProfile));
+        
+        // Track onboarding completion
+        analytics.trackOnboardingEvent('completed', 1, {
+          skipped: skipped,
+          first_time_completion: isFirstTimeCompletion,
+          user_id: authState.user.id
+        });
+        
+        // Track conversion milestone
+        analytics.trackConversion('onboarding_complete', 1, {
+          skipped: skipped,
+          completion_method: skipped ? 'skipped' : 'completed'
+        });
+        
         return true;
       }
       return false;
     } catch (error) {
       console.error('Error marking onboarding as completed:', error);
+      
+      // Track the error
+      analytics.trackError('onboarding_completion_failed', error instanceof Error ? error.message : 'Unknown error', {
+        user_id: authState.user.id,
+        skipped: skipped
+      });
+      
       return false;
     }
   }, [authState.user, authState.profile]);

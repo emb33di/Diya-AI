@@ -12,6 +12,7 @@ import { useNavigate } from "react-router-dom";
 import { SchoolArchiveService } from "@/services/schoolArchiveService";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { analytics } from "@/utils/analytics";
 import {
   DndContext,
   DragOverlay,
@@ -167,6 +168,14 @@ const SchoolList = () => {
   };
 
   const handleSchoolClick = (school: School) => {
+    // Track school click event
+    analytics.trackSchoolEvent('clicked', school.name, {
+      school_category: school.category,
+      school_type: school.school_type,
+      school_ranking: school.school_ranking,
+      acceptance_rate: school.acceptance_rate
+    });
+    
     // Store the selected school in localStorage for the essays page
     localStorage.setItem('essays_selected_school', school.name);
     // Navigate to the essays page
@@ -295,6 +304,21 @@ const SchoolList = () => {
       };
       
       setSchools([...schools, newSchool]);
+      
+      // Track school addition
+      analytics.trackSchoolEvent('added_to_list', newSchoolData.school, {
+        school_category: newSchoolData.category,
+        school_type: newSchoolData.school_type,
+        school_ranking: newSchoolData.school_ranking,
+        acceptance_rate: newSchoolData.acceptance_rate,
+        total_schools: schools.length + 1
+      });
+      
+      // Track conversion milestone
+      analytics.trackConversion('school_list_created', 1, {
+        school_name: newSchoolData.school,
+        school_category: newSchoolData.category
+      });
     } catch (err) {
       console.error('[SCHOOLS_ERROR] Failed to add school:', {
         userId: user?.id || 'unknown',
