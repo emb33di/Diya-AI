@@ -18,6 +18,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { LogOut } from "lucide-react";
+import MobileNavigation from "@/components/MobileNavigation";
 
 const Header = () => {
   const location = useLocation();
@@ -133,144 +134,152 @@ const Header = () => {
         
         {/* Authenticated Navigation */}
         {isAuthenticated && (
-          <nav className={`hidden md:flex items-center space-x-8 px-4 py-2 rounded-full border transition-all duration-200 ${
-            location.pathname === '/onboarding' || location.pathname === '/dashboard' || 
-            location.pathname === '/schools' || location.pathname === '/resume' || 
-            location.pathname === '/essays' || location.pathname === '/lor' || 
-            location.pathname === '/deadlines'
-              ? 'border-primary/50' 
-              : 'border-gray-300/30'
-          }`}>
-            {onboardingLoading ? (
-              <span className="text-sm font-medium text-gray-400 px-3 py-1">
-                Onboarding
-              </span>
-            ) : onboardingCompleted === true ? (
-              <button 
-                className="text-sm font-medium transition-colors text-gray-400 cursor-not-allowed px-3 py-1"
-                disabled
-              >
-                Onboarding
-              </button>
-            ) : (
+          <>
+            {/* Desktop Navigation */}
+            <nav className={`hidden md:flex items-center space-x-8 px-4 py-2 rounded-full border transition-all duration-200 ${
+              location.pathname === '/onboarding' || location.pathname === '/dashboard' || 
+              location.pathname === '/schools' || location.pathname === '/resume' || 
+              location.pathname === '/essays' || location.pathname === '/lor' || 
+              location.pathname === '/deadlines'
+                ? 'border-primary/50' 
+                : 'border-gray-300/30'
+            }`}>
+              {onboardingLoading ? (
+                <span className="text-sm font-medium text-gray-400 px-3 py-1">
+                  Onboarding
+                </span>
+              ) : onboardingCompleted === true ? (
+                <button 
+                  className="text-sm font-medium transition-colors text-gray-400 cursor-not-allowed px-3 py-1"
+                  disabled
+                >
+                  Onboarding
+                </button>
+              ) : (
+                <Link 
+                  to="/onboarding" 
+                  className={`text-sm font-medium transition-colors px-3 py-1 ${
+                    isActive('/onboarding') 
+                      ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
+                      : 'text-black hover:text-black'
+                  }`}
+                >
+                  Onboarding
+                </Link>
+              )}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link 
+                      to="/dashboard" 
+                      className={`text-sm font-medium transition-colors px-3 py-1 ${
+                        isActive('/dashboard') 
+                          ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
+                          : 'text-black hover:text-black'
+                      }`}
+                    >
+                      Dashboard
+                    </Link>
+                  </TooltipTrigger>
+                </Tooltip>
+              </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link 
+                      to="/schools" 
+                      className={`text-sm font-medium transition-colors px-3 py-1 ${
+                        isActive('/schools') 
+                          ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
+                          : 'text-black hover:text-black'
+                      }`}
+                    >
+                      Schools
+                    </Link>
+                  </TooltipTrigger>
+                </Tooltip>
+              </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link 
+                      to="/resume" 
+                      className={`text-sm font-medium transition-colors px-3 py-1 ${
+                        isActive('/resume') 
+                          ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
+                          : 'text-black hover:text-black'
+                      }`}
+                    >
+                      Resume
+                    </Link>
+                  </TooltipTrigger>
+                </Tooltip>
+              </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link 
+                      to="/essays" 
+                      className={`text-sm font-medium transition-colors px-3 py-1 ${
+                        isActive('/essays') 
+                          ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
+                          : 'text-black hover:text-black'
+                      }`}
+                    >
+                      Essays
+                    </Link>
+                  </TooltipTrigger>
+                </Tooltip>
+              </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link 
+                      to="/lor" 
+                      className={`text-sm font-medium transition-colors px-3 py-1 ${
+                        isActive('/lor') 
+                          ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
+                          : 'text-black hover:text-black'
+                      }`}
+                    >
+                      LOR
+                    </Link>
+                  </TooltipTrigger>
+                </Tooltip>
+              </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link 
+                      to="/deadlines" 
+                      className={`text-sm font-medium transition-colors px-3 py-1 ${
+                        isActive('/deadlines') 
+                          ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
+                          : 'text-black hover:text-black'
+                      }`}
+                    >
+                      Progress
+                    </Link>
+                  </TooltipTrigger>
+                </Tooltip>
+              </TooltipProvider>
               <Link 
-                to="/onboarding" 
+                to="/blog" 
                 className={`text-sm font-medium transition-colors px-3 py-1 ${
-                  isActive('/onboarding') 
+                  isActive('/blog') 
                     ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
                     : 'text-black hover:text-black'
                 }`}
               >
-                Onboarding
+                Blog
               </Link>
-            )}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Link 
-                    to="/dashboard" 
-                    className={`text-sm font-medium transition-colors px-3 py-1 ${
-                      isActive('/dashboard') 
-                        ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
-                        : 'text-black hover:text-black'
-                    }`}
-                  >
-                    Dashboard
-                  </Link>
-                </TooltipTrigger>
-              </Tooltip>
-            </TooltipProvider>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Link 
-                    to="/schools" 
-                    className={`text-sm font-medium transition-colors px-3 py-1 ${
-                      isActive('/schools') 
-                        ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
-                        : 'text-black hover:text-black'
-                    }`}
-                  >
-                    Schools
-                  </Link>
-                </TooltipTrigger>
-              </Tooltip>
-            </TooltipProvider>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Link 
-                    to="/resume" 
-                    className={`text-sm font-medium transition-colors px-3 py-1 ${
-                      isActive('/resume') 
-                        ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
-                        : 'text-black hover:text-black'
-                    }`}
-                  >
-                    Resume
-                  </Link>
-                </TooltipTrigger>
-              </Tooltip>
-            </TooltipProvider>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Link 
-                    to="/essays" 
-                    className={`text-sm font-medium transition-colors px-3 py-1 ${
-                      isActive('/essays') 
-                        ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
-                        : 'text-black hover:text-black'
-                    }`}
-                  >
-                    Essays
-                  </Link>
-                </TooltipTrigger>
-              </Tooltip>
-            </TooltipProvider>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Link 
-                    to="/lor" 
-                    className={`text-sm font-medium transition-colors px-3 py-1 ${
-                      isActive('/lor') 
-                        ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
-                        : 'text-black hover:text-black'
-                    }`}
-                  >
-                    LOR
-                  </Link>
-                </TooltipTrigger>
-              </Tooltip>
-            </TooltipProvider>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Link 
-                    to="/deadlines" 
-                    className={`text-sm font-medium transition-colors px-3 py-1 ${
-                      isActive('/deadlines') 
-                        ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
-                        : 'text-black hover:text-black'
-                    }`}
-                  >
-                    Progress
-                  </Link>
-                </TooltipTrigger>
-              </Tooltip>
-            </TooltipProvider>
-            <Link 
-              to="/blog" 
-              className={`text-sm font-medium transition-colors px-3 py-1 ${
-                isActive('/blog') 
-                  ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
-                  : 'text-black hover:text-black'
-              }`}
-            >
-              Blog
-            </Link>
-          </nav>
+            </nav>
+            
+            {/* Mobile Navigation */}
+            <div className="md:hidden">
+              <MobileNavigation />
+            </div>
+          </>
         )}
         
         {/* Unauthenticated Navigation - Centered */}
