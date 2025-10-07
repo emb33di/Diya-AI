@@ -6,7 +6,7 @@ export const PROGRAMS = {
   masters: "Master's Degree", 
   mba: 'MBA',
   phd: 'PhD',
-  llm: 'LLM'
+  llm: 'Law'
 } as const;
 
 export type ProgramKey = keyof typeof PROGRAMS;
