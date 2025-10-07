@@ -20,6 +20,11 @@ export const PAYWALL_FEATURES: Record<string, PaywallFeature> = {
     description: 'Detailed scoring and analysis of your essays',
     requiresPro: true,
   },
+  'grammar_check': {
+    name: 'Grammar Check',
+    description: 'AI-powered grammar and style suggestions for your essay',
+    requiresPro: true,
+  },
   
   // Resume features
   'unlimited_resume_formatting': {

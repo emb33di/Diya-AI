@@ -36,7 +36,11 @@ import {
   Sidebar,
   Plus,
   Trash2,
+  Crown,
 } from 'lucide-react';
+import PaywallGuard from '@/components/PaywallGuard';
+import UpgradeModal from '@/components/UpgradeModal';
+import { usePaywall } from '@/hooks/usePaywall';
 
 interface EssayPrompt {
   id: string;
@@ -105,6 +109,8 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
   const [currentVersion, setCurrentVersion] = useState<EssayVersion | null>(null);
   const [isCreatingVersion, setIsCreatingVersion] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const { isPro } = usePaywall();
+  const [showUpgrade, setShowUpgrade] = useState(false);
 
   // Toast for user feedback
   const { toast } = useToast();
@@ -1128,25 +1134,64 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                           <Plus className="h-4 w-4 mr-2" />
                           {isCreatingVersion ? 'Creating...' : 'New Version'}
                         </Button>
-                        <Button 
-                          onClick={generateAIComments} 
-                          disabled={isGeneratingAIComments}
-                          variant="outline"
-                          size="sm"
+                        <PaywallGuard 
+                          featureKey="unlimited_essay_feedback"
+                          fallback={
+                            <Button 
+                              onClick={() => setShowUpgrade(true)} 
+                              disabled={isGeneratingAIComments}
+                              variant="outline"
+                              size="sm"
+                              title="Pro users only"
+                            >
+                              <Sparkles className="h-4 w-4 mr-2" />
+                              AI Comments
+                              <Crown className="h-3 w-3 ml-2 text-primary" />
+                            </Button>
+                          }
                         >
-                          <Sparkles className="h-4 w-4 mr-2" />
-                          AI Comments
-                        </Button>
-                        <Button 
-                          onClick={generateGrammarComments} 
-                          disabled={isGeneratingGrammar}
-                          variant="outline"
-                          size="sm"
-                          className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                          <Button 
+                            onClick={generateAIComments} 
+                            disabled={isGeneratingAIComments}
+                            variant="outline"
+                            size="sm"
+                            title="Pro users only"
+                          >
+                            <Sparkles className="h-4 w-4 mr-2" />
+                            AI Comments
+                            <Crown className="h-3 w-3 ml-2 text-primary" />
+                          </Button>
+                        </PaywallGuard>
+                        <PaywallGuard
+                          featureKey="grammar_check"
+                          fallback={
+                            <Button 
+                              onClick={() => setShowUpgrade(true)} 
+                              disabled={isGeneratingGrammar}
+                              variant="outline"
+                              size="sm"
+                              className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                              title="Pro users only"
+                            >
+                              <CheckSquare className="h-4 w-4 mr-2" />
+                              Grammar Check
+                              <Crown className="h-3 w-3 ml-2 text-primary" />
+                            </Button>
+                          }
                         >
-                          <CheckSquare className="h-4 w-4 mr-2" />
-                          Grammar Check
-                        </Button>
+                          <Button 
+                            onClick={generateGrammarComments} 
+                            disabled={isGeneratingGrammar}
+                            variant="outline"
+                            size="sm"
+                            className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                            title="Pro users only"
+                          >
+                            <CheckSquare className="h-4 w-4 mr-2" />
+                            Grammar Check
+                            <Crown className="h-3 w-3 ml-2 text-primary" />
+                          </Button>
+                        </PaywallGuard>
                         {!showCommentSidebar && (
                           <Button 
                             onClick={() => setShowCommentSidebar(true)}
@@ -1276,6 +1321,15 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <UpgradeModal
+        isOpen={showUpgrade}
+        onClose={() => setShowUpgrade(false)}
+        featureKey={isGeneratingGrammar ? 'grammar_check' : 'unlimited_essay_feedback'}
+        title="Upgrade to Pro"
+        description="AI Comments and Grammar Check are Pro features."
+        checkoutPath="/checkout"
+      />
 
     </div>
   );

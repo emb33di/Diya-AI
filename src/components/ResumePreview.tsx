@@ -20,7 +20,8 @@ import {
   ZoomOut,
   FileText,
   FileDown,
-  ChevronDown
+  ChevronDown,
+  Crown
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -733,9 +734,11 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
                   style={{ backgroundColor: '#D07D00' }}
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#B86F00'}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#D07D00'}
+                  title="Pro users only"
                 >
                   <Download className="h-4 w-4" />
                   <span>Download</span>
+                  <Crown className="h-3 w-3" />
                   <ChevronDown className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -743,33 +746,33 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
                 <PaywallGuard 
                   featureKey="unlimited_resume_formatting"
                   fallback={
-                    <DropdownMenuItem onClick={() => setShowUpgrade(true)} className="cursor-pointer">
+                    <DropdownMenuItem onClick={() => setShowUpgrade(true)} className="cursor-pointer" title="Pro users only">
                       <FileText className="h-4 w-4 mr-2" />
                       Download PDF
-                      <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">Pro</span>
+                      <Crown className="h-3 w-3 ml-2 text-primary" />
                     </DropdownMenuItem>
                   }
                 >
-                  <DropdownMenuItem onClick={handleDownloadPDF} className="cursor-pointer">
+                  <DropdownMenuItem onClick={handleDownloadPDF} className="cursor-pointer" title="Pro users only">
                     <FileText className="h-4 w-4 mr-2" />
                     Download PDF
-                    <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">Pro</span>
+                    <Crown className="h-3 w-3 ml-2 text-primary" />
                   </DropdownMenuItem>
                 </PaywallGuard>
                 <PaywallGuard 
                   featureKey="unlimited_resume_formatting"
                   fallback={
-                    <DropdownMenuItem onClick={() => setShowUpgrade(true)} className="cursor-pointer">
+                    <DropdownMenuItem onClick={() => setShowUpgrade(true)} className="cursor-pointer" title="Pro users only">
                       <FileDown className="h-4 w-4 mr-2" />
                       Download DOCX
-                      <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">Pro</span>
+                      <Crown className="h-3 w-3 ml-2 text-primary" />
                     </DropdownMenuItem>
                   }
                 >
-                  <DropdownMenuItem onClick={handleDownloadDOCX} className="cursor-pointer">
+                  <DropdownMenuItem onClick={handleDownloadDOCX} className="cursor-pointer" title="Pro users only">
                     <FileDown className="h-4 w-4 mr-2" />
                     Download DOCX
-                    <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">Pro</span>
+                    <Crown className="h-3 w-3 ml-2 text-primary" />
                   </DropdownMenuItem>
                 </PaywallGuard>
               </DropdownMenuContent>
