@@ -17,7 +17,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { LogOut, CreditCard, ChevronDown } from "lucide-react";
+import { LogOut, CreditCard, ChevronDown, Settings } from "lucide-react";
 import MobileNavigation from "@/components/MobileNavigation";
 
 const Header = () => {
@@ -440,6 +440,12 @@ const Header = () => {
                   <Link to="/subscription" className="flex items-center space-x-2">
                     <CreditCard className="h-4 w-4" />
                     <span>Subscription</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/settings" className="flex items-center space-x-2">
+                    <Settings className="h-4 w-4" />
+                    <span>Settings</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />

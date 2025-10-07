@@ -31,6 +31,8 @@ import SuccessfulTemplates from "./pages/SuccessfulTemplates";
 import DebugErrors from "./pages/DebugErrors";
 import Subscription from "./pages/Subscription";
 import Payments from "./pages/Payments";
+import Settings from "./pages/Settings";
+import PasswordReset from "./pages/PasswordReset";
 import { initAnalytics } from "./lib/ga/init";
 import RouteTracker from "./lib/ga/RouteTracker";
 
@@ -60,6 +62,7 @@ const App = () => {
             {/* Public routes */}
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/password-reset" element={<PasswordReset />} />
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/about" element={<About />} />
             <Route path="/about-diya" element={<AboutDiya />} />
@@ -78,6 +81,7 @@ const App = () => {
             <Route path="/schools" element={<AuthenticationGuard><SchoolList /></AuthenticationGuard>} />
             <Route path="/deadlines" element={<AuthenticationGuard><Deadlines /></AuthenticationGuard>} />
             <Route path="/profile" element={<AuthenticationGuard><Profile /></AuthenticationGuard>} />
+            <Route path="/settings" element={<AuthenticationGuard><Settings /></AuthenticationGuard>} />
             <Route path="/subscription" element={<AuthenticationGuard><Subscription /></AuthenticationGuard>} />
             <Route path="/payments" element={<AuthenticationGuard><Payments /></AuthenticationGuard>} />
             <Route path="/onboarding" element={<AuthenticationGuard><Onboarding /></AuthenticationGuard>} />
