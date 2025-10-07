@@ -104,7 +104,7 @@ const Blog = () => {
             
             {/* Search Bar */}
             <div className="relative max-w-md mx-auto px-4">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 sm:h-5 sm:w-5" />
+              <Search className="absolute left-6 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 sm:h-5 sm:w-5 z-10" />
               <Input
                 type="text"
                 placeholder="Search articles..."
