@@ -25,6 +25,9 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { generateDocxFromResumeData } from '@/utils/docxGenerator';
+import { usePaywall } from '@/hooks/usePaywall';
+import UpgradeModal from '@/components/UpgradeModal';
+import PaywallGuard from '@/components/PaywallGuard';
 
 interface ResumePreviewProps {
   isOpen: boolean;
@@ -48,6 +51,8 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [zoom, setZoom] = useState(100);
   const { toast } = useToast();
+  const { isPro } = usePaywall();
+  const [showUpgrade, setShowUpgrade] = useState(false);
 
   // Load resume preview HTML when component opens
   useEffect(() => {
@@ -61,7 +66,11 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
     
     try {
       // Check if we have local resume data first
-      if (resumeData && Object.values(resumeData).some(activities => activities.length > 0)) {
+      if (
+        resumeData &&
+        Object.values(resumeData as Record<string, any[]>)
+          .some((activities: any) => Array.isArray(activities) && activities.length > 0)
+      ) {
         const html = generateResumeHtmlFromData(resumeData);
         setHtmlContent(html);
         return;
@@ -95,15 +104,13 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
       }
     } catch (error) {
       console.error('[RESUME_ERROR] Failed to generate resume preview:', {
-        userId: user?.id || 'unknown',
-        userEmail: user?.email || 'unknown',
         error: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString(),
         message: 'User cannot preview their resume - HTML generation failed'
       });
       toast({
         title: "Preview failed",
-        description: `Failed to generate resume preview: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        description: `Failed to generate preview: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive"
       });
     } finally {
@@ -114,7 +121,15 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
   // DOCX generation and download
   const handleDownloadDOCX = async () => {
     try {
-      if (!resumeData || Object.values(resumeData).every(activities => activities.length === 0)) {
+      if (!isPro) {
+        setShowUpgrade(true);
+        return;
+      }
+      if (
+        !resumeData ||
+        Object.values(resumeData as Record<string, any[]>)
+          .every((activities: any) => !Array.isArray(activities) || activities.length === 0)
+      ) {
         toast({
           title: "No resume data",
           description: "Please add some resume activities before downloading.",
@@ -126,8 +141,6 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
       await generateDocxFromResumeData(resumeData, userProfile || {});
     } catch (error) {
       console.error('[RESUME_ERROR] Failed to generate DOCX document:', {
-        userId: user?.id || 'unknown',
-        userEmail: user?.email || 'unknown',
         error: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString(),
         message: 'User cannot download their resume as Word document'
@@ -142,6 +155,10 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
 
   // Primary PDF generation using browser print (reliable and cost-effective)
   const handleDownloadPDF = () => {
+    if (!isPro) {
+      setShowUpgrade(true);
+      return;
+    }
     try {
       // Generate HTML content from local data
       const htmlContent = generateResumeHtmlFromData(resumeData);
@@ -295,8 +312,6 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
       }
     } catch (error) {
       console.error('[RESUME_ERROR] Failed to generate PDF document:', {
-        userId: user?.id || 'unknown',
-        userEmail: user?.email || 'unknown',
         error: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString(),
         message: 'User cannot download their resume as PDF - print dialog failed'
@@ -725,14 +740,38 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleDownloadPDF} className="cursor-pointer">
-                  <FileText className="h-4 w-4 mr-2" />
-                  Download PDF
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleDownloadDOCX} className="cursor-pointer">
-                  <FileDown className="h-4 w-4 mr-2" />
-                  Download DOCX
-                </DropdownMenuItem>
+                <PaywallGuard 
+                  featureKey="unlimited_resume_formatting"
+                  fallback={
+                    <DropdownMenuItem onClick={() => setShowUpgrade(true)} className="cursor-pointer">
+                      <FileText className="h-4 w-4 mr-2" />
+                      Download PDF
+                      <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">Pro</span>
+                    </DropdownMenuItem>
+                  }
+                >
+                  <DropdownMenuItem onClick={handleDownloadPDF} className="cursor-pointer">
+                    <FileText className="h-4 w-4 mr-2" />
+                    Download PDF
+                    <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">Pro</span>
+                  </DropdownMenuItem>
+                </PaywallGuard>
+                <PaywallGuard 
+                  featureKey="unlimited_resume_formatting"
+                  fallback={
+                    <DropdownMenuItem onClick={() => setShowUpgrade(true)} className="cursor-pointer">
+                      <FileDown className="h-4 w-4 mr-2" />
+                      Download DOCX
+                      <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">Pro</span>
+                    </DropdownMenuItem>
+                  }
+                >
+                  <DropdownMenuItem onClick={handleDownloadDOCX} className="cursor-pointer">
+                    <FileDown className="h-4 w-4 mr-2" />
+                    Download DOCX
+                    <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">Pro</span>
+                  </DropdownMenuItem>
+                </PaywallGuard>
               </DropdownMenuContent>
             </DropdownMenu>
 
@@ -860,6 +899,14 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
           </DialogPrimitive.Content>
         </DialogPortal>
       </Dialog>
+      <UpgradeModal 
+        isOpen={showUpgrade} 
+        onClose={() => setShowUpgrade(false)} 
+        featureKey="unlimited_resume_formatting" 
+        title="Upgrade to Pro to Download PDF" 
+        description="Downloading your resume as a PDF is a Pro feature. Preview remains free."
+        checkoutPath="/checkout" 
+      />
     </>
   );
 };

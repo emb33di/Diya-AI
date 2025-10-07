@@ -10,6 +10,7 @@ export interface UserProfile {
   onboarding_complete: boolean;
   skipped_onboarding: boolean;
   profile_saved: boolean;
+  user_tier: string | null;
 }
 
 export interface AuthState {
@@ -121,7 +122,7 @@ export const useAuth = () => {
         // Fetch profile from user_profiles table only
         const { data: profile, error } = await supabase
           .from('user_profiles')
-          .select('id, full_name, email_address, onboarding_complete, skipped_onboarding, profile_saved')
+          .select('id, full_name, email_address, onboarding_complete, skipped_onboarding, profile_saved, user_tier')
           .eq('user_id', user.id)
           .maybeSingle();
 
@@ -142,7 +143,7 @@ export const useAuth = () => {
               skipped_onboarding: false,
               profile_saved: false,
             })
-            .select('id, full_name, email_address, onboarding_complete, skipped_onboarding, profile_saved')
+            .select('id, full_name, email_address, onboarding_complete, skipped_onboarding, profile_saved, user_tier')
             .single();
 
           if (createError) throw createError;
@@ -160,6 +161,7 @@ export const useAuth = () => {
           onboarding_complete: finalProfile.onboarding_complete || false,
           skipped_onboarding: finalProfile.skipped_onboarding || false,
           profile_saved: finalProfile.profile_saved || false,
+          user_tier: finalProfile.user_tier || 'Free',
         };
 
         if (isMounted) {

@@ -44,6 +44,7 @@ export interface Database {
           onboarding_complete: boolean
           skipped_onboarding: boolean
           cumulative_onboarding_time: number
+          user_tier: string | null
           created_at: string
           updated_at: string
         }
@@ -81,6 +82,7 @@ export interface Database {
           onboarding_complete?: boolean
           skipped_onboarding?: boolean
           cumulative_onboarding_time?: number
+          user_tier?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -118,6 +120,7 @@ export interface Database {
           onboarding_complete?: boolean
           skipped_onboarding?: boolean
           cumulative_onboarding_time?: number
+          user_tier?: string | null
           created_at?: string
           updated_at?: string
         }
