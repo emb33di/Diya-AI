@@ -28,13 +28,19 @@ import RefundPolicy from "./pages/RefundPolicy";
 import Blog from "./pages/Blog";
 import BlogPost from "./pages/BlogPost";
 import DebugErrors from "./pages/DebugErrors";
+import Subscription from "./pages/Subscription";
+import Payments from "./pages/Payments";
 import { initAnalytics } from "./lib/ga/init";
 import RouteTracker from "./lib/ga/RouteTracker";
 
 
 const queryClient = new QueryClient();
 
-const App = () => (
+const App = () => {
+  // Initialize analytics
+  initAnalytics();
+  
+  return (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -46,7 +52,6 @@ const App = () => (
             v7_relativeSplatPath: true,
           }}
         >
-          {initAnalytics()}
           <ScrollToTop />
           <RouteTracker />
           <Header />
@@ -71,6 +76,8 @@ const App = () => (
             <Route path="/schools" element={<AuthenticationGuard><SchoolList /></AuthenticationGuard>} />
             <Route path="/deadlines" element={<AuthenticationGuard><Deadlines /></AuthenticationGuard>} />
             <Route path="/profile" element={<AuthenticationGuard><Profile /></AuthenticationGuard>} />
+            <Route path="/subscription" element={<AuthenticationGuard><Subscription /></AuthenticationGuard>} />
+            <Route path="/payments" element={<AuthenticationGuard><Payments /></AuthenticationGuard>} />
             <Route path="/onboarding" element={<AuthenticationGuard><Onboarding /></AuthenticationGuard>} />
             <Route path="/resume" element={<AuthenticationGuard><Resume /></AuthenticationGuard>} />
             <Route path="/lor" element={<AuthenticationGuard><LOR /></AuthenticationGuard>} />
@@ -82,6 +89,7 @@ const App = () => (
       </TooltipProvider>
     </QueryClientProvider>
   </HelmetProvider>
-);
+  );
+};
 
 export default App;

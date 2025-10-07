@@ -17,7 +17,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { LogOut } from "lucide-react";
+import { LogOut, CreditCard } from "lucide-react";
 import MobileNavigation from "@/components/MobileNavigation";
 
 const Header = () => {
@@ -400,6 +400,12 @@ const Header = () => {
                   <Link to="/profile" className="flex items-center space-x-2">
                     {getInitialsAvatar(userFirstName || 'User')}
                     <span>Profile</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/subscription" className="flex items-center space-x-2">
+                    <CreditCard className="h-4 w-4" />
+                    <span>Subscription</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
