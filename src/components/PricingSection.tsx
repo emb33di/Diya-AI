@@ -79,7 +79,7 @@ const PricingSection = () => {
                 Pro
               </h3>
               <div className="mb-4">
-                <span className="text-3xl sm:text-4xl font-extrabold text-primary">₹10,000</span>
+                <span className="text-3xl sm:text-4xl font-extrabold text-primary">₹9,999</span>
                 <p className="text-sm text-white mt-1">AI-powered counseling and feedback</p>
               </div>
             </div>
