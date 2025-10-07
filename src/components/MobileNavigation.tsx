@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, Home, GraduationCap, FileText, PenTool, Users, Calendar, BookOpen } from "lucide-react";
+import { Menu, Home, GraduationCap, FileText, PenTool, Users, Calendar, BookOpen, ChevronDown, FolderOpen } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -8,10 +8,16 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { useAuth } from "@/hooks/useAuth";
 
 const MobileNavigation = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [resourcesOpen, setResourcesOpen] = useState(false);
   const location = useLocation();
   const { onboardingCompleted, loading: onboardingLoading } = useAuth();
 
@@ -60,11 +66,18 @@ const MobileNavigation = () => {
       icon: <Calendar className="h-5 w-5" />,
       disabled: false,
     },
+  ];
+
+  const resourcesItems = [
     {
       path: "/blog",
       label: "Blog",
       icon: <BookOpen className="h-5 w-5" />,
-      disabled: false,
+    },
+    {
+      path: "/successful-templates",
+      label: "Successful Templates",
+      icon: <FolderOpen className="h-5 w-5" />,
     },
   ];
 
@@ -110,6 +123,34 @@ const MobileNavigation = () => {
               )}
             </div>
           ))}
+          
+          {/* Resources Section */}
+          <div className="px-4">
+            <Collapsible open={resourcesOpen} onOpenChange={setResourcesOpen}>
+              <CollapsibleTrigger className="flex items-center space-x-3 py-3 px-3 rounded-lg transition-colors text-gray-700 hover:text-primary hover:bg-gray-50 w-full">
+                <FolderOpen className="h-5 w-5" />
+                <span className="text-sm font-medium">Resources</span>
+                <ChevronDown className={`h-4 w-4 ml-auto transition-transform ${resourcesOpen ? 'rotate-180' : ''}`} />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-1 mt-1">
+                {resourcesItems.map((item) => (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={handleLinkClick}
+                    className={`flex items-center space-x-3 py-2 px-6 rounded-lg transition-colors ${
+                      isActive(item.path)
+                        ? "text-primary bg-primary/10 border border-primary/20"
+                        : "text-gray-600 hover:text-primary hover:bg-gray-50"
+                    }`}
+                  >
+                    {item.icon}
+                    <span className="text-sm font-medium">{item.label}</span>
+                  </Link>
+                ))}
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
         </nav>
       </SheetContent>
     </Sheet>

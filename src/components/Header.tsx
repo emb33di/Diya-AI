@@ -17,7 +17,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { LogOut, CreditCard } from "lucide-react";
+import { LogOut, CreditCard, ChevronDown } from "lucide-react";
 import MobileNavigation from "@/components/MobileNavigation";
 
 const Header = () => {
@@ -263,16 +263,36 @@ const Header = () => {
                   </TooltipTrigger>
                 </Tooltip>
               </TooltipProvider>
-              <Link 
-                to="/blog" 
-                className={`text-sm font-medium transition-colors px-3 py-1 ${
-                  isActive('/blog') 
-                    ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
-                    : 'text-black hover:text-black'
-                }`}
-              >
-                Blog
-              </Link>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className={`text-sm font-medium transition-colors px-3 py-1 flex items-center gap-1 ${
+                          isActive('/blog') || isActive('/successful-templates')
+                            ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
+                            : 'text-black hover:text-black'
+                        }`}>
+                          Resources
+                          <ChevronDown className="h-3 w-3" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-48">
+                        <DropdownMenuItem asChild>
+                          <Link to="/blog" className="flex items-center">
+                            Blog
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link to="/successful-templates" className="flex items-center">
+                            Successful Templates
+                          </Link>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TooltipTrigger>
+                </Tooltip>
+              </TooltipProvider>
             </nav>
             
             {/* Mobile Navigation */}
@@ -360,12 +380,26 @@ const Header = () => {
             >
               FAQs
             </button>
-            <Link 
-              to="/blog" 
-              className="h-12 px-4 text-base font-medium text-white hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/10 flex items-center"
-            >
-              Blog
-            </Link>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="h-12 px-4 text-base font-medium text-white hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/10 flex items-center gap-1">
+                  Resources
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-48">
+                <DropdownMenuItem asChild>
+                  <Link to="/blog" className="flex items-center">
+                    Blog
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/successful-templates" className="flex items-center">
+                    Successful Templates
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         )}
         
