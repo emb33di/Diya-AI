@@ -72,7 +72,7 @@ const Pricing = () => {
             <CardHeader>
               <CardTitle className="text-2xl">Pro</CardTitle>
               <CardDescription>AI-powered counseling</CardDescription>
-              <div className="text-3xl font-bold">₹10,000<span className="text-lg font-normal text-muted-foreground">/one-time</span></div>
+              <div className="text-3xl font-bold">₹9,999<span className="text-lg font-normal text-muted-foreground">/one-time</span></div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-3">
