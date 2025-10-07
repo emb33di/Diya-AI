@@ -21,7 +21,8 @@ import {
   FileText,
   FileDown,
   ChevronDown,
-  Crown
+  Crown,
+  Lock
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -738,7 +739,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
                 >
                   <Download className="h-4 w-4" />
                   <span>Download</span>
-                  <Crown className="h-3 w-3" />
+                  {isPro ? <Crown className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
                   <ChevronDown className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -749,14 +750,14 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
                     <DropdownMenuItem onClick={() => setShowUpgrade(true)} className="cursor-pointer" title="Pro users only">
                       <FileText className="h-4 w-4 mr-2" />
                       Download PDF
-                      <Crown className="h-3 w-3 ml-2 text-primary" />
+                      {isPro ? <Crown className="h-3 w-3 ml-2 text-primary" /> : <Lock className="h-3 w-3 ml-2 text-primary" />}
                     </DropdownMenuItem>
                   }
                 >
                   <DropdownMenuItem onClick={handleDownloadPDF} className="cursor-pointer" title="Pro users only">
                     <FileText className="h-4 w-4 mr-2" />
                     Download PDF
-                    <Crown className="h-3 w-3 ml-2 text-primary" />
+                    {isPro ? <Crown className="h-3 w-3 ml-2 text-primary" /> : <Lock className="h-3 w-3 ml-2 text-primary" />}
                   </DropdownMenuItem>
                 </PaywallGuard>
                 <PaywallGuard 
@@ -765,14 +766,14 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
                     <DropdownMenuItem onClick={() => setShowUpgrade(true)} className="cursor-pointer" title="Pro users only">
                       <FileDown className="h-4 w-4 mr-2" />
                       Download DOCX
-                      <Crown className="h-3 w-3 ml-2 text-primary" />
+                      {isPro ? <Crown className="h-3 w-3 ml-2 text-primary" /> : <Lock className="h-3 w-3 ml-2 text-primary" />}
                     </DropdownMenuItem>
                   }
                 >
                   <DropdownMenuItem onClick={handleDownloadDOCX} className="cursor-pointer" title="Pro users only">
                     <FileDown className="h-4 w-4 mr-2" />
                     Download DOCX
-                    <Crown className="h-3 w-3 ml-2 text-primary" />
+                    {isPro ? <Crown className="h-3 w-3 ml-2 text-primary" /> : <Lock className="h-3 w-3 ml-2 text-primary" />}
                   </DropdownMenuItem>
                 </PaywallGuard>
               </DropdownMenuContent>

@@ -37,6 +37,7 @@ import {
   Plus,
   Trash2,
   Crown,
+  Lock,
 } from 'lucide-react';
 import PaywallGuard from '@/components/PaywallGuard';
 import UpgradeModal from '@/components/UpgradeModal';
@@ -1146,7 +1147,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                             >
                               <Sparkles className="h-4 w-4 mr-2" />
                               AI Comments
-                              <Crown className="h-3 w-3 ml-2 text-primary" />
+                              {isPro ? <Crown className="h-3 w-3 ml-2 text-primary" /> : <Lock className="h-3 w-3 ml-2 text-primary" />}
                             </Button>
                           }
                         >
@@ -1159,7 +1160,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                           >
                             <Sparkles className="h-4 w-4 mr-2" />
                             AI Comments
-                            <Crown className="h-3 w-3 ml-2 text-primary" />
+                            {isPro ? <Crown className="h-3 w-3 ml-2 text-primary" /> : <Lock className="h-3 w-3 ml-2 text-primary" />}
                           </Button>
                         </PaywallGuard>
                         <PaywallGuard
@@ -1175,7 +1176,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                             >
                               <CheckSquare className="h-4 w-4 mr-2" />
                               Grammar Check
-                              <Crown className="h-3 w-3 ml-2 text-primary" />
+                              {isPro ? <Crown className="h-3 w-3 ml-2 text-primary" /> : <Lock className="h-3 w-3 ml-2 text-primary" />}
                             </Button>
                           }
                         >
@@ -1189,7 +1190,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                           >
                             <CheckSquare className="h-4 w-4 mr-2" />
                             Grammar Check
-                            <Crown className="h-3 w-3 ml-2 text-primary" />
+                            {isPro ? <Crown className="h-3 w-3 ml-2 text-primary" /> : <Lock className="h-3 w-3 ml-2 text-primary" />}
                           </Button>
                         </PaywallGuard>
                         {!showCommentSidebar && (
