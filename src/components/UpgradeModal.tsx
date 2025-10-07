@@ -23,11 +23,24 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
   description = "Unlock premium features and take your application to the next level",
   checkoutPath = "/pricing",
 }) => {
-  const { getFeatureInfo, getProFeatures, getFreeFeatures } = usePaywall();
+  const { getFeatureInfo } = usePaywall();
   const navigate = useNavigate();
 
-  const proFeatures = getProFeatures();
-  const freeFeatures = getFreeFeatures();
+  // Mirror features exactly as shown on the landing page pricing section
+  const freeFeatures: string[] = [
+    'Voice onboarding call with Diya',
+    'Deadline tracking and reminders',
+    'All your essays, in one place',
+    'Resume management',
+    'Limited access to LOR templates, successful essays, and sample resumes',
+  ];
+
+  const proFeatures: string[] = [
+    'Unlimited access to Diya essay feedback and scoring',
+    'Unlimited access to Diya resume enhancements',
+    'Full access to templates and successful essays',
+    'Access to weekly webinars and college guidance videos',
+  ];
 
   const handleUpgrade = () => {
     navigate(checkoutPath);
@@ -61,17 +74,12 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {freeFeatures.slice(0, 4).map((feature, index) => (
+                  {freeFeatures.map((feature, index) => (
                     <div key={index} className="flex items-center gap-2">
                       <Check className="h-4 w-4 text-green-500" />
-                      <span className="text-sm">{feature.name}</span>
+                      <span className="text-sm">{feature}</span>
                     </div>
                   ))}
-                  {freeFeatures.length > 4 && (
-                    <div className="text-xs text-muted-foreground">
-                      +{freeFeatures.length - 4} more features
-                    </div>
-                  )}
                 </div>
               </CardContent>
             </Card>
@@ -86,21 +94,16 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
               <CardHeader className="text-center">
                 <CardTitle className="text-lg">Pro</CardTitle>
                 <CardDescription>Everything in Free, plus:</CardDescription>
-                <div className="text-2xl font-bold text-primary">₹2,999<span className="text-sm font-normal text-muted-foreground">/month</span></div>
+                <div className="text-2xl font-bold text-primary">₹9,999<span className="text-sm font-normal text-muted-foreground"> one-time</span></div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {proFeatures.slice(0, 4).map((feature, index) => (
+                  {proFeatures.map((feature, index) => (
                     <div key={index} className="flex items-center gap-2">
                       <Sparkles className="h-4 w-4 text-primary" />
-                      <span className="text-sm">{feature.name}</span>
+                      <span className="text-sm">{feature}</span>
                     </div>
                   ))}
-                  {proFeatures.length > 4 && (
-                    <div className="text-xs text-muted-foreground">
-                      +{proFeatures.length - 4} more features
-                    </div>
-                  )}
                 </div>
               </CardContent>
             </Card>
