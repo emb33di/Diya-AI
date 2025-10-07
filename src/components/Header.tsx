@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { usePaywall } from "@/hooks/usePaywall";
 import { getUserFirstName, fetchUserProfileData } from "@/utils/userNameUtils";
 import {
   DropdownMenu,
@@ -17,7 +18,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { LogOut, CreditCard, ChevronDown, Settings } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { LogOut, CreditCard, ChevronDown, Settings, Crown } from "lucide-react";
 import MobileNavigation from "@/components/MobileNavigation";
 
 const Header = () => {
@@ -27,6 +29,7 @@ const Header = () => {
   const [loading, setLoading] = useState(true);
   const [userFirstName, setUserFirstName] = useState<string>('');
   const { onboardingCompleted, loading: onboardingLoading } = useAuth();
+  const { userTier, isPro } = usePaywall();
   
   const fetchUserProfile = async (userId: string) => {
     try {
@@ -431,9 +434,18 @@ const Header = () => {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem asChild>
-                  <Link to="/profile" className="flex items-center space-x-2">
-                    {getInitialsAvatar(userFirstName || 'User')}
-                    <span>Profile</span>
+                  <Link to="/profile" className="flex items-center justify-between w-full">
+                    <div className="flex items-center space-x-2">
+                      {getInitialsAvatar(userFirstName || 'User')}
+                      <span>Profile</span>
+                    </div>
+                    <Badge 
+                      variant={isPro ? "default" : "secondary"}
+                      className={isPro ? "bg-primary" : ""}
+                    >
+                      {isPro && <Crown className="h-3 w-3 mr-1" />}
+                      {userTier}
+                    </Badge>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
