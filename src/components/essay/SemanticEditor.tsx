@@ -580,6 +580,16 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     window.location.reload();
   };
 
+  // Handle "See Grammar Comments" button click
+  const handleSeeGrammarComments = () => {
+    // Close the loading pane
+    setIsGeneratingGrammar(false);
+    setGrammarLoadingStep(0);
+    
+    // Refresh the page to show the newly generated comments
+    window.location.reload();
+  };
+
   // Generate grammar comments for all blocks
   const generateGrammarComments = useCallback(async () => {
     setIsGeneratingGrammar(true);
@@ -627,13 +637,8 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
       setGrammarLoadingStep(GRAMMAR_LOADING_STEPS.length);
     } catch (error) {
       console.error('Failed to generate grammar comments:', error);
-    } finally {
-      // Reset after a short delay to show completion
-      setTimeout(() => {
-        setIsGeneratingGrammar(false);
-        setGrammarLoadingStep(0);
-      }, 1000);
     }
+    // Note: Don't auto-close the loading pane - let user click "See Grammar Comments" button
   }, [state.document]);
 
   // Resolve annotation
@@ -1068,11 +1073,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
         steps={GRAMMAR_LOADING_STEPS}
         currentStepIndex={grammarLoadingStep}
         noErrorsFound={noGrammarErrorsFound}
-        onComplete={() => {
-          setIsGeneratingGrammar(false);
-          setGrammarLoadingStep(0);
-          setNoGrammarErrorsFound(false); // Reset for next time
-        }}
+        onSeeGrammarComments={handleSeeGrammarComments}
       />
 
     </div>

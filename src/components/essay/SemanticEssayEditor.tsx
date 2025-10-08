@@ -578,6 +578,16 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
     window.location.reload();
   };
 
+  // Handle "See Grammar Comments" button click
+  const handleSeeGrammarComments = () => {
+    // Close the loading pane
+    setIsGeneratingGrammar(false);
+    setGrammarLoadingStep(0);
+    
+    // Refresh the page to show the newly generated comments
+    window.location.reload();
+  };
+
   // Generate grammar comments
   const generateGrammarComments = async () => {
     if (!document) return;
@@ -634,13 +644,8 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
         timestamp: new Date().toISOString(),
         message: 'User cannot generate grammar feedback for their essay'
       });
-    } finally {
-      // Reset after a short delay to show completion
-      setTimeout(() => {
-        setIsGeneratingGrammar(false);
-        setGrammarLoadingStep(0);
-      }, 1000);
     }
+    // Note: Don't auto-close the loading pane - let user click "See Grammar Comments" button
   };
 
   // Export document as DOCX
@@ -1281,11 +1286,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
         steps={GRAMMAR_LOADING_STEPS}
         currentStepIndex={grammarLoadingStep}
         noErrorsFound={noGrammarErrorsFound}
-        onComplete={() => {
-          setIsGeneratingGrammar(false);
-          setGrammarLoadingStep(0);
-          setNoGrammarErrorsFound(false); // Reset for next time
-        }}
+        onSeeGrammarComments={handleSeeGrammarComments}
       />
 
       {/* Delete Essay Confirmation Dialog */}

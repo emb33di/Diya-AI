@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle2, Loader2, CheckSquare, Eye, Zap, FileCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 interface LoadingStep {
   id: string;
@@ -15,6 +16,7 @@ interface GrammarLoadingPaneProps {
   steps: LoadingStep[];
   currentStepIndex: number;
   onComplete?: () => void;
+  onSeeGrammarComments?: () => void;
   className?: string;
   noErrorsFound?: boolean;
 }
@@ -24,6 +26,7 @@ const GrammarLoadingPane: React.FC<GrammarLoadingPaneProps> = ({
   steps,
   currentStepIndex,
   onComplete,
+  onSeeGrammarComments,
   className,
   noErrorsFound = false
 }) => {
@@ -39,15 +42,7 @@ const GrammarLoadingPane: React.FC<GrammarLoadingPaneProps> = ({
     }
   }, [currentStepIndex]);
 
-  // Call onComplete when all steps are done
-  useEffect(() => {
-    if (currentStepIndex >= steps.length && onComplete) {
-      const timer = setTimeout(() => {
-        onComplete();
-      }, 1000); // Small delay to show completion
-      return () => clearTimeout(timer);
-    }
-  }, [currentStepIndex, steps.length, onComplete]);
+  // Note: Don't auto-close the loading pane - let user click "See Grammar Comments" button
 
   if (!isVisible) return null;
 
@@ -184,6 +179,23 @@ const GrammarLoadingPane: React.FC<GrammarLoadingPaneProps> = ({
             />
           </div>
         </div>
+
+        {/* See Grammar Comments Button - Only show when complete */}
+        {currentStepIndex >= steps.length && onSeeGrammarComments && (
+          <div className="mt-8 text-center">
+            <Button
+              onClick={onSeeGrammarComments}
+              size="lg"
+              className="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white font-semibold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+            >
+              <Eye className="h-5 w-5 mr-2" />
+              See Grammar Comments
+            </Button>
+            <p className="text-sm text-gray-500 mt-3">
+              Click to refresh and view your grammar suggestions
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
