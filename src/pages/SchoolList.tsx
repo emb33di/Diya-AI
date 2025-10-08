@@ -71,6 +71,7 @@ const SchoolList = () => {
     schoolId: ''
   });
   const [activeSchool, setActiveSchool] = useState<School | null>(null);
+  const [expandedExplanations, setExpandedExplanations] = useState<Set<string>>(new Set());
 
   // Drag and drop sensors - optimized for mobile
   const sensors = useSensors(
@@ -172,10 +173,22 @@ const SchoolList = () => {
       case 'liberal_arts':
         return 'Liberal Arts University';
       case 'research_university':
-        return 'Research University';
+        return 'Research';
       default:
         return schoolType.charAt(0).toUpperCase() + schoolType.slice(1) + ' University';
     }
+  };
+
+  const toggleExplanation = (schoolId: string) => {
+    setExpandedExplanations(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(schoolId)) {
+        newSet.delete(schoolId);
+      } else {
+        newSet.add(schoolId);
+      }
+      return newSet;
+    });
   };
 
   const handleSchoolClick = (school: School) => {
@@ -615,7 +628,20 @@ const SchoolList = () => {
           {!profile?.skipped_onboarding && (
             <div className="text-xs lg:text-sm">
               <span className="font-medium">Why it's a good match:</span>
-              <p className="text-muted-foreground mt-1 line-clamp-2">{school.notes}</p>
+              <p className={`text-muted-foreground mt-1 ${expandedExplanations.has(school.id) ? '' : 'line-clamp-2'}`}>
+                {school.notes}
+              </p>
+              {school.notes && school.notes.length > 100 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleExplanation(school.id);
+                  }}
+                  className="text-primary hover:text-primary/80 text-xs mt-1 font-medium transition-colors"
+                >
+                  {expandedExplanations.has(school.id) ? 'See less' : 'See more'}
+                </button>
+              )}
             </div>
           )}
           
