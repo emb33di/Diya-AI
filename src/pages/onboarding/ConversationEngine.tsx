@@ -62,6 +62,11 @@ const ConversationEngine = ({
   const calculateProgressPercentageRef = useRef(calculateProgressPercentage);
   const eventListenersSetupRef = useRef(false);
   const conversationInstanceRef = useRef<any>(null);
+  // Prevent duplicate display of the very first assistant intro by skipping
+  // response.* events until we've recorded the first assistant message
+  const firstAssistantDisplayedRef = useRef<boolean>(false);
+  const firstAssistantTextRef = useRef<string | null>(null);
+  const firstAssistantIgnoreUntilRef = useRef<number | null>(null);
 
   // Update refs when values change
   useEffect(() => {
@@ -297,7 +302,7 @@ const ConversationEngine = ({
       await forceSaveTranscript();
       
       // Track transcript save
-      analytics.trackVoiceEvent('transcript_saved', 'onboarding', {
+      analytics.trackVoiceEvent('saved', 'onboarding', {
         conversation_id: conversationId,
         messages_count: messages.length,
         session_duration: sessionDuration
@@ -536,6 +541,13 @@ const ConversationEngine = ({
           return;
         }
 
+        // Surgical fix: skip assistant response.* events until the first assistant
+        // message is captured via conversation.item.created to avoid duplicate intro
+        if (debugLabel.startsWith('response.') && !firstAssistantDisplayedRef.current) {
+          console.log('⏭️ Skipping initial assistant response from', debugLabel, 'to prevent duplicate intro');
+          return;
+        }
+
         // Normalize the item to ensure it has the expected structure
         const normalized = {
           id: item.id || `item_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -552,6 +564,25 @@ const ConversationEngine = ({
         const parsedMessage = parseOutspeedMessage(normalized, item);
         if (parsedMessage) {
           try {
+            // First-message-only dedup window: once the first assistant line is recorded,
+            // ignore any additional identical assistant items briefly to prevent double intro
+            if (parsedMessage.source === 'ai') {
+              const normalizedText = (parsedMessage.text || '').trim();
+              if (!firstAssistantDisplayedRef.current) {
+                firstAssistantTextRef.current = normalizedText;
+                firstAssistantDisplayedRef.current = true;
+                firstAssistantIgnoreUntilRef.current = Date.now() + 1500; // ~1.5s window
+                console.log('✅ First assistant message recorded via', debugLabel);
+              } else if (
+                firstAssistantIgnoreUntilRef.current &&
+                Date.now() < firstAssistantIgnoreUntilRef.current &&
+                firstAssistantTextRef.current &&
+                normalizedText === firstAssistantTextRef.current
+              ) {
+                console.log('⏭️ Ignoring duplicate assistant intro during dedup window from', debugLabel);
+                return;
+              }
+            }
             handleMessage(parsedMessage);
           } catch (messageError) {
             const getUserForError = async () => {
