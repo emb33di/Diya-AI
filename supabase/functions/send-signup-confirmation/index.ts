@@ -43,7 +43,10 @@ async function sendEmail(to: string, subject: string, html: string): Promise<boo
     from: from,
     to: [to],
     subject: subject,
-    html: html
+    html: html,
+    // Disable tracking to prevent resend-links.com SSL issues
+    click_tracking: false,
+    open_tracking: false
   };
 
   try {

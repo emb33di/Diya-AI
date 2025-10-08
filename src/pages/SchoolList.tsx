@@ -164,7 +164,16 @@ const SchoolList = () => {
 
   const capitalizeSchoolType = (schoolType: string) => {
     if (!schoolType) return 'University';
-    return schoolType.charAt(0).toUpperCase() + schoolType.slice(1) + ' University';
+    
+    // Handle special cases for proper display
+    switch (schoolType.toLowerCase()) {
+      case 'ivy_league':
+        return 'Ivy League University';
+      case 'liberal_arts':
+        return 'Liberal Arts University';
+      default:
+        return schoolType.charAt(0).toUpperCase() + schoolType.slice(1) + ' University';
+    }
   };
 
   const handleSchoolClick = (school: School) => {

@@ -165,7 +165,7 @@ const Auth = () => {
           email,
           password, // Keep the actual password for the API call
           options: {
-            emailRedirectTo: `${window.location.origin}/`,
+            emailRedirectTo: `https://www.meetdiya.com/auth`,
             data: {
               full_name: `${firstName} ${lastName}`.trim(),
               first_name: firstName,
@@ -263,13 +263,15 @@ const Auth = () => {
           console.log(`[${signupId}] ✅ Profile will be created automatically by database trigger`);
           
           // Send custom confirmation email
-          try {
+        try {
             const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-signup-confirmation`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
               },
+              // Ensure the request completes even if the route changes
+              keepalive: true,
               body: JSON.stringify({
                 email,
                 firstName

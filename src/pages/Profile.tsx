@@ -7,34 +7,15 @@ import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { 
-  useTestScores, 
-  useGeographicPreferences, 
-  useAIIntegration, 
   useProfileData,
-  type TestScore,
-  type GeographicPreference,
   type ProfileFormData
 } from "@/hooks/profile";
 import { 
-  AIFormField, 
-  TestScoreManager, 
-  GeographicPreferencesManager, 
-  MajorSelector,
-  PersonalInfoSection,
-  AcademicProfileSection,
-  CollegePreferencesSection,
-  FinancialInfoSection,
-  AdditionalInfoSection
+  PersonalInfoSection
 } from "@/components/profile/shared";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Separator } from "@/components/ui/separator";
+import { Form } from "@/components/ui/form";
 import { cn } from "@/lib/utils";
 import OnboardingGuard from "@/components/OnboardingGuard";
 import GradientBackground from "@/components/GradientBackground";
@@ -192,18 +173,10 @@ export default function Profile() {
   
   // Use extracted hooks
   const { profileData, loading, isCreatingProfile, loadProfile, saveProfile, setProfileData } = useProfileData();
-  const { scores: satScores, loadScores: loadSATScores, addScore: addSATScore, deleteScore: deleteSATScore } = useTestScores('SAT');
-  const { scores: actScores, loadScores: loadACTScores, addScore: addACTScore, deleteScore: deleteACTScore } = useTestScores('ACT');
-  const { preferences: geographicPreferences, loadPreferences: loadGeographicPreferences, addPreference: addGeographicPreference, deletePreference: deleteGeographicPreference } = useGeographicPreferences();
-  const { aiPopulatedFields, isAIPopulated, clearAIData, setAIPopulatedFields } = useAIIntegration();
   
   // Local state for form management
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [profileMode, setProfileMode] = useState<'edit' | 'review'>('edit');
-  
-  // State for profile extraction
-  const [isTestingExtraction, setIsTestingExtraction] = useState(false);
-  const [extractionResults, setExtractionResults] = useState<any>(null);
 
   const form = useForm<ProfileFormData>({
     // Remove zodResolver to prevent automatic validation
@@ -257,31 +230,19 @@ export default function Profile() {
   const handleProfileCompletion = async () => {
     const formData = form.getValues();
     
-    // Validate required fields based on application type
+    // Validate only visible fields from Personal Information section
     const errors: Record<string, string> = {};
     
-    // Always required fields
+    // Always required fields (visible in Personal Information section)
     if (!formData.full_name) errors.full_name = "Full name is required";
-    if (!formData.email_address) errors.email_address = "Email address is required";
     if (!formData.country_code) errors.country_code = "Country code is required";
     if (!formData.phone_number) errors.phone_number = "Phone number is required";
-    if (!formData.applying_to) errors.applying_to = "Please select what you're applying to";
 
-    // Application-specific validation
+    // Application-specific validation for visible fields only
     if (formData.applying_to === "undergraduate") {
-      if (!formData.high_school_name) errors.high_school_name = "High school name is required";
-      if (!formData.high_school_graduation_year) errors.high_school_graduation_year = "High school graduation year is required";
-      if (!formData.school_board) errors.school_board = "School board is required";
-      if (!formData.year_of_study) errors.year_of_study = "Year of study is required";
       if (!formData.intended_majors) errors.intended_majors = "Intended major is required";
-    } else if (['mba', 'masters', 'phd', 'llm'].includes(formData.applying_to)) {
-      if (!formData.college_name) errors.college_name = "College name is required";
-      if (!formData.college_graduation_year) errors.college_graduation_year = "College graduation year is required";
-      if (!formData.college_gpa) errors.college_gpa = "College GPA is required";
-      if (!formData.test_type) errors.test_type = "Test type is required";
-      if (formData.test_type !== "Not yet taken" && !formData.test_score) {
-        errors.test_score = "Test score is required";
-      }
+    } else if (['masters', 'phd'].includes(formData.applying_to)) {
+      if (!formData.masters_field_of_focus) errors.masters_field_of_focus = "Field of focus is required";
     }
 
     if (Object.keys(errors).length > 0) {
@@ -298,13 +259,6 @@ export default function Profile() {
     await onSubmit(formData);
   };
 
-  // Clear test score when "Not yet taken" is selected
-  useEffect(() => {
-    const testType = form.watch("test_type");
-    if (testType === "Not yet taken") {
-      form.setValue("test_score", undefined);
-    }
-  }, [form.watch("test_type")]);
 
   // Watch for form changes to track unsaved changes
   useEffect(() => {
@@ -334,177 +288,9 @@ export default function Profile() {
   // Major selection functions are now handled by MajorSelector component
 
 
-  // Extract profile and populate form using Supabase Edge Function
-  const extractAndPopulateProfile = async () => {
-    setIsTestingExtraction(true);
-    setExtractionResults(null);
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
-
-      // Get the user's most recent conversation
-      const { data: conversations, error: conversationsError } = await supabase
-        .from('conversations')
-        .select('id, created_at, summary')
-        .eq('user_id', user.id as any)
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      if (conversationsError) {
-        throw new Error(`Failed to fetch conversations: ${conversationsError.message}`);
-      }
-
-      if (!conversations || conversations.length === 0) {
-        throw new Error('No conversations found. Please have a conversation with Diya first.');
-      }
-
-      const conversationId = (conversations[0] as any)?.id;
-      if (!conversationId) {
-        throw new Error('Invalid conversation data');
-      }
-
-      console.log('🚀 Calling enhanced-profile-extraction Edge Function...');
-      console.log(`📝 Conversation ID: ${conversationId}`);
-      console.log(`👤 User ID: ${user.id}`);
-
-      // Call the Supabase Edge Function
-      const { data, error } = await supabase.functions.invoke('enhanced-profile-extraction', {
-        body: {
-          conversation_id: conversationId,
-          user_id: user.id
-          // school_type will be determined from user profile automatically
-        }
-      });
-
-      if (error) {
-        console.error('❌ Edge Function error:', error);
-        throw new Error(`Edge Function error: ${error.message}`);
-      }
-
-      console.log('✅ Edge Function response received:', data);
-      setExtractionResults(data);
-      
-      // If extraction was successful, populate the form with extracted data
-      if (data.success && data.extracted_profile) {
-        populateFormWithExtractedData(data.extracted_profile);
-      }
-    } catch (error) {
-      console.error('❌ Error extracting profile:', error);
-    } finally {
-      setIsTestingExtraction(false);
-    }
-  };
-
-  // Populate form with extracted profile data
-  const populateFormWithExtractedData = (extractedProfile: any) => {
-    try {
-      console.log('🔄 Populating form with extracted data:', extractedProfile);
-      
-      // Map extracted profile data to form fields
-      const formData: Partial<ProfileFormData> = {};
-      
-      // Personal Information
-      if (extractedProfile.personal_info) {
-        if (extractedProfile.personal_info.full_name) {
-          formData.full_name = extractedProfile.personal_info.full_name;
-        }
-        if (extractedProfile.personal_info.email_address) {
-          formData.email_address = extractedProfile.personal_info.email_address;
-        }
-        if (extractedProfile.personal_info.country_code) {
-          formData.country_code = extractedProfile.personal_info.country_code;
-        }
-        if (extractedProfile.personal_info.applying_to) {
-          formData.applying_to = extractedProfile.personal_info.applying_to;
-        }
-      }
-
-      // Academic Background
-      if (extractedProfile.academic_background) {
-        if (extractedProfile.academic_background.high_school_name) {
-          formData.high_school_name = extractedProfile.academic_background.high_school_name;
-        }
-        if (extractedProfile.academic_background.high_school_graduation_year) {
-          formData.high_school_graduation_year = parseInt(extractedProfile.academic_background.high_school_graduation_year);
-        }
-        if (extractedProfile.academic_background.gpa_unweighted) {
-          formData.class_12_half_yearly_score = parseFloat(extractedProfile.academic_background.gpa_unweighted);
-        }
-        if (extractedProfile.academic_background.intended_majors) {
-          formData.intended_majors = Array.isArray(extractedProfile.academic_background.intended_majors) 
-            ? extractedProfile.academic_background.intended_majors.join(', ')
-            : extractedProfile.academic_background.intended_majors;
-        }
-        if (extractedProfile.academic_background.sat_score) {
-          formData.test_score = parseInt(extractedProfile.academic_background.sat_score);
-          formData.test_type = 'SAT';
-        }
-        if (extractedProfile.academic_background.act_score) {
-          formData.test_score = parseInt(extractedProfile.academic_background.act_score);
-          formData.test_type = 'ACT';
-        }
-      }
-
-      // College Preferences
-      if (extractedProfile.college_preferences) {
-        if (extractedProfile.college_preferences.ideal_college_size) {
-          formData.ideal_college_size = extractedProfile.college_preferences.ideal_college_size;
-        }
-        if (extractedProfile.college_preferences.ideal_college_setting) {
-          formData.ideal_college_setting = extractedProfile.college_preferences.ideal_college_setting;
-        }
-        if (extractedProfile.college_preferences.must_haves) {
-          formData.must_haves = extractedProfile.college_preferences.must_haves;
-        }
-        if (extractedProfile.college_preferences.deal_breakers) {
-          formData.deal_breakers = extractedProfile.college_preferences.deal_breakers;
-        }
-      }
-
-      // Financial Information
-      if (extractedProfile.financial_info) {
-        if (extractedProfile.financial_info.college_budget) {
-          formData.looking_for_scholarships = 'yes'; // If budget is mentioned, assume they're looking for aid
-        }
-        if (extractedProfile.financial_info.financial_aid_importance) {
-          formData.looking_for_financial_aid = extractedProfile.financial_info.financial_aid_importance === 'Crucial' ? 'yes' : 'no';
-        }
-      }
-
-      // Additional Information
-      if (extractedProfile.additional_info) {
-        if (extractedProfile.additional_info.specific_questions) {
-          formData.specific_questions = extractedProfile.additional_info.specific_questions;
-        }
-      }
-
-      // Update form with extracted data
-      Object.entries(formData).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          form.setValue(key as keyof ProfileFormData, value);
-        }
-      });
-
-      // Mark fields as AI-populated for visual indication
-      const populatedFields = Object.keys(formData).filter(key => formData[key as keyof ProfileFormData] !== undefined);
-      setAIPopulatedFields(new Set(populatedFields));
-      
-      console.log('✅ Form populated with extracted data:', formData);
-      console.log('📝 AI-populated fields:', populatedFields);
-      
-    } catch (error) {
-      console.error('❌ Error populating form with extracted data:', error);
-    }
-  };
 
   useEffect(() => {
     loadProfile();
-    loadSATScores();
-    loadACTScores();
-    loadGeographicPreferences();
   }, []);
 
   // Populate form when profileData is loaded
@@ -553,77 +339,16 @@ export default function Profile() {
 
       const errors: Record<string, string> = {};
 
+      // Validate only visible fields from Personal Information section
       if (!data.full_name) errors.full_name = "Full name is required";
-      if (!data.email_address) {
-        errors.email_address = "Email address is required";
-      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email_address)) {
-        errors.email_address = "Please enter a valid email address";
-      }
       if (!data.country_code) errors.country_code = "Country code is required";
       if (!data.phone_number) errors.phone_number = "Phone number is required";
-      if (!data.applying_to) errors.applying_to = "Please select what you're applying to";
 
-      // High school fields only required for Undergraduate applications
-      if (data.applying_to === "undergraduate") {
-        if (!data.high_school_name) errors.high_school_name = "High school name is required";
-        if (!data.school_board) errors.school_board = "School board is required";
-        if (!data.year_of_study) errors.year_of_study = "Year of study is required";
-      }
-      
-      // Conditional validation based on applying_to
+      // Application-specific validation for visible fields only
       if (data.applying_to === "undergraduate") {
         if (!data.intended_majors) errors.intended_majors = "Intended major is required";
-      } else if (data.applying_to === "masters") {
+      } else if (['masters', 'phd'].includes(data.applying_to)) {
         if (!data.masters_field_of_focus) errors.masters_field_of_focus = "Field of focus is required";
-        if (!data.college_name) errors.college_name = "College name is required";
-        if (!data.college_graduation_year) errors.college_graduation_year = "College graduation year is required";
-        if (!data.college_gpa) errors.college_gpa = "College GPA is required";
-        if (!data.test_type) errors.test_type = "Test type is required";
-        if (data.test_type && data.test_type !== "Not yet taken" && !data.test_score) {
-          errors.test_score = "Test score is required";
-        }
-      } else if (data.applying_to === "phd") {
-        if (!data.masters_field_of_focus) errors.masters_field_of_focus = "Field of focus is required";
-        if (!data.college_name) errors.college_name = "College name is required";
-        if (!data.college_graduation_year) errors.college_graduation_year = "College graduation year is required";
-        if (!data.college_gpa) errors.college_gpa = "College GPA is required";
-        if (!data.test_type) errors.test_type = "Test type is required";
-        if (data.test_type && data.test_type !== "Not yet taken" && !data.test_score) {
-          errors.test_score = "Test score is required";
-        }
-      } else if (data.applying_to === "mba" || data.applying_to === "llm") {
-        if (!data.college_name) errors.college_name = "College name is required";
-        if (!data.college_graduation_year) errors.college_graduation_year = "College graduation year is required";
-        if (!data.college_gpa) errors.college_gpa = "College GPA is required";
-        if (!data.test_type) errors.test_type = "Test type is required";
-        if (data.test_type && data.test_type !== "Not yet taken" && !data.test_score) {
-          errors.test_score = "Test score is required";
-        }
-      }
-
-      // Conditional validation based on year_of_study
-      if (data.year_of_study === "Graduate") {
-        if (!data.undergraduate_cgpa) {
-          errors.undergraduate_cgpa = "Undergraduate CGPA is required";
-        } else if (data.undergraduate_cgpa < 0 || data.undergraduate_cgpa > 10) {
-          errors.undergraduate_cgpa = "CGPA must be between 0 and 10";
-        }
-      } else if (data.year_of_study === "11th" || data.year_of_study === "12th") {
-        if (!data.class_10_score) {
-          errors.class_10_score = "Class 10 Grade is required";
-        } else if (data.class_10_score < 0 || data.class_10_score > 100) {
-          errors.class_10_score = "Grade must be between 0 and 100";
-        }
-        if (!data.class_11_score) {
-          errors.class_11_score = "Class 11 Grade is required";
-        } else if (data.class_11_score < 0 || data.class_11_score > 100) {
-          errors.class_11_score = "Grade must be between 0 and 100";
-        }
-        if (!data.class_12_half_yearly_score) {
-          errors.class_12_half_yearly_score = "Class 12 Half-Yearly Grade is required";
-        } else if (data.class_12_half_yearly_score < 0 || data.class_12_half_yearly_score > 100) {
-          errors.class_12_half_yearly_score = "Grade must be between 0 and 100";
-        }
       }
 
       // If there are validation errors, set them and return
@@ -778,90 +503,13 @@ export default function Profile() {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          {/* AI Profile Extraction Section */}
-          <Card className="border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50">
-              <CardHeader className="text-center">
-                <CardTitle className="text-orange-800"> Diya Profile Builder</CardTitle>
-                <CardDescription className="text-orange-700">
-                  Let AI extract your profile details from your conversation with Diya to save time filling out forms.
-                </CardDescription>
-              </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-center">
-                <Button 
-                  onClick={extractAndPopulateProfile}
-                  disabled={isTestingExtraction}
-                  className="text-white shadow-lg"
-                  style={{ backgroundColor: '#D07D00' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#B86A00'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#D07D00'}
-                >
-                  {isTestingExtraction ? "Extracting..." : "Extract profile details from call with Diya"}
-                </Button>
-              </div>
-
-            </CardContent>
-          </Card>
-
           {/* Personal Information */}
           <PersonalInfoSection
             form={form}
-            isAIPopulated={isAIPopulated}
+            isAIPopulated={() => false}
             clearFieldError={clearFieldError}
             countryCodes={countryCodes}
           />
-
-          {/* Academic Profile */}
-          <AcademicProfileSection
-            form={form}
-            isAIPopulated={isAIPopulated}
-            clearFieldError={clearFieldError}
-            satScores={satScores}
-            actScores={actScores}
-            addSATScore={addSATScore}
-            deleteSATScore={deleteSATScore}
-            addACTScore={addACTScore}
-            deleteACTScore={deleteACTScore}
-          />
-
-          {/* College Preferences */}
-          <CollegePreferencesSection
-            form={form}
-            geographicPreferences={geographicPreferences}
-            addGeographicPreference={(preference) => addGeographicPreference(preference.preference)}
-            deleteGeographicPreference={deleteGeographicPreference}
-          />
-
-          {/* Financial Information */}
-          <FinancialInfoSection form={form} />
-
-          {/* Additional Undergraduate Information */}
-          <AdditionalInfoSection form={form} />
-
-          {/* AI Profile Extraction Section */}
-          <Card className="border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50">
-              <CardHeader className="text-center">
-                <CardTitle className="text-orange-800"> Diya Profile Builder</CardTitle>
-                <CardDescription className="text-orange-700">
-                  Let AI extract your profile details from your conversation with Diya to save time filling out forms.
-                </CardDescription>
-              </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-center">
-                <Button 
-                  onClick={extractAndPopulateProfile}
-                  disabled={isTestingExtraction}
-                  className="text-white shadow-lg"
-                  style={{ backgroundColor: '#D07D00' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#B86A00'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#D07D00'}
-                >
-                  {isTestingExtraction ? "Extracting..." : "Extract profile details from call with Diya"}
-                </Button>
-              </div>
-
-            </CardContent>
-          </Card>
 
           <div className="flex justify-end gap-4">
             <Button 
