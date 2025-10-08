@@ -171,6 +171,8 @@ const SchoolList = () => {
         return 'Ivy League University';
       case 'liberal_arts':
         return 'Liberal Arts University';
+      case 'research_university':
+        return 'Research University';
       default:
         return schoolType.charAt(0).toUpperCase() + schoolType.slice(1) + ' University';
     }
@@ -606,7 +608,7 @@ const SchoolList = () => {
         <CardContent className="space-y-3 px-4 lg:px-6">
           <div className="flex items-center space-x-2 text-xs lg:text-sm">
             <GraduationCap className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-            <span>Rank: #{school.ranking}</span>
+            <span>Rank: {school.ranking ? `#${school.ranking}` : 'N/A'}</span>
           </div>
           
           {/* Only show "Why it's a good match" if user didn't skip onboarding */}
@@ -798,7 +800,7 @@ const SchoolList = () => {
               <CardContent className="space-y-3">
                 <div className="flex items-center space-x-2 text-sm">
                   <GraduationCap className="h-3 w-3 text-muted-foreground" />
-                  <span>Rank: #{activeSchool.ranking}</span>
+                  <span>Rank: {activeSchool.ranking ? `#${activeSchool.ranking}` : 'N/A'}</span>
                 </div>
               </CardContent>
             </Card>
