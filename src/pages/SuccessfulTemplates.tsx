@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Helmet } from "react-helmet-async";
-import { FileText, ExternalLink, Eye, Award } from "lucide-react";
+import { FileText, ExternalLink, Award } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -48,7 +48,7 @@ const SuccessfulTemplates = () => {
         type: 'Essay Supplement',
         school: 'University of Chicago',
         rating: 4.8,
-        url: '/templates/essays/Undergraduate/UChicago Essay Supplement.pdf'
+        url: '/templates/essays/Undergraduate/UChicago%20Essay%20Supplement.pdf'
       };
 
       templateFiles.push(uChicagoEssay);
@@ -240,18 +240,14 @@ const SuccessfulTemplates = () => {
                           
                           <div className="space-y-3">
                             <div className="flex gap-2 pt-2">
-                              <Button size="sm" className="flex-1 group-hover:bg-primary group-hover:text-white transition-colors">
-                                <Eye className="h-3 w-3 mr-1" />
-                                Preview
-                              </Button>
                               <Button 
                                 size="sm" 
                                 variant="outline" 
-                                className="flex-1 group-hover:border-primary group-hover:text-primary transition-colors"
+                                className="w-full group-hover:border-primary group-hover:text-primary transition-colors"
                                 onClick={() => window.open(template.url, '_blank')}
                               >
                                 <ExternalLink className="h-3 w-3 mr-1" />
-                                Open
+                                Open Template
                               </Button>
                             </div>
                           </div>
@@ -305,18 +301,14 @@ const SuccessfulTemplates = () => {
                           
                           <div className="space-y-3">
                             <div className="flex gap-2 pt-2">
-                              <Button size="sm" className="flex-1 group-hover:bg-primary group-hover:text-white transition-colors">
-                                <Eye className="h-3 w-3 mr-1" />
-                                Preview
-                              </Button>
                               <Button 
                                 size="sm" 
                                 variant="outline" 
-                                className="flex-1 group-hover:border-primary group-hover:text-primary transition-colors"
+                                className="w-full group-hover:border-primary group-hover:text-primary transition-colors"
                                 onClick={() => window.open(template.url, '_blank')}
                               >
                                 <ExternalLink className="h-3 w-3 mr-1" />
-                                Open
+                                Open Template
                               </Button>
                             </div>
                           </div>
@@ -370,18 +362,14 @@ const SuccessfulTemplates = () => {
                           
                           <div className="space-y-3">
                             <div className="flex gap-2 pt-2">
-                              <Button size="sm" className="flex-1 group-hover:bg-primary group-hover:text-white transition-colors">
-                                <Eye className="h-3 w-3 mr-1" />
-                                Preview
-                              </Button>
                               <Button 
                                 size="sm" 
                                 variant="outline" 
-                                className="flex-1 group-hover:border-primary group-hover:text-primary transition-colors"
+                                className="w-full group-hover:border-primary group-hover:text-primary transition-colors"
                                 onClick={() => window.open(template.url, '_blank')}
                               >
                                 <ExternalLink className="h-3 w-3 mr-1" />
-                                Open
+                                Open Template
                               </Button>
                             </div>
                           </div>
@@ -425,18 +413,14 @@ const SuccessfulTemplates = () => {
                       
                       <div className="space-y-3">
                         <div className="flex gap-2 pt-2">
-                          <Button size="sm" className="flex-1 group-hover:bg-primary group-hover:text-white transition-colors">
-                            <Eye className="h-3 w-3 mr-1" />
-                            Preview
-                          </Button>
                           <Button 
                             size="sm" 
                             variant="outline" 
-                            className="flex-1 group-hover:border-primary group-hover:text-primary transition-colors"
+                            className="w-full group-hover:border-primary group-hover:text-primary transition-colors"
                             onClick={() => window.open(template.url, '_blank')}
                           >
                             <ExternalLink className="h-3 w-3 mr-1" />
-                            Open
+                            Open Template
                           </Button>
                         </div>
                       </div>
