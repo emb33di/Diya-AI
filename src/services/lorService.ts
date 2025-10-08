@@ -13,6 +13,14 @@ export interface LORRecommender {
   internalDeadline3?: string; // When recommender should submit
   status: 'not_contacted' | 'contacted' | 'agreed' | 'in_progress' | 'submitted' | 'declined';
   notes?: string;
+  // Tracking fields
+  reachedOut?: boolean;
+  checkedIn?: boolean;
+  submittedRecommendation?: boolean;
+  // Tracking timestamps
+  reachedOutAt?: string;
+  checkedInAt?: string;
+  submittedRecommendationAt?: string;
   createdAt: string;
   updatedAt: string;
   schoolAllocations?: LORSchoolAllocation[];
@@ -93,8 +101,28 @@ export class LORService {
       }
 
       // Transform the data to match our interface
-      const recommenders = (data || []).map(recommender => ({
-        ...recommender,
+      const recommenders = (data || []).map((recommender: any) => ({
+        id: recommender.id,
+        userId: recommender.user_id,
+        name: recommender.name,
+        position: recommender.position,
+        email: recommender.email,
+        phone: recommender.phone,
+        relationship: recommender.relationship,
+        // Map database field names to interface field names
+        internalDeadline1: recommender.internal_deadline_1,
+        internalDeadline2: recommender.internal_deadline_2,
+        internalDeadline3: recommender.internal_deadline_3,
+        status: recommender.status,
+        notes: recommender.notes,
+        reachedOut: recommender.reached_out || false,
+        checkedIn: recommender.checked_in || false,
+        submittedRecommendation: recommender.submitted_recommendation || false,
+        reachedOutAt: recommender.reached_out_at,
+        checkedInAt: recommender.checked_in_at,
+        submittedRecommendationAt: recommender.submitted_recommendation_at,
+        createdAt: recommender.created_at,
+        updatedAt: recommender.updated_at,
         schoolAllocations: recommender.school_allocations?.map((allocation: any) => ({
           id: allocation.id,
           lorRecommenderId: recommender.id,
@@ -106,6 +134,14 @@ export class LORService {
           updatedAt: allocation.updated_at
         })) || []
       }));
+
+      // Debug logging to check what's being retrieved
+      console.log('[LOR_SERVICE_DEBUG] Retrieved recommenders:', recommenders.map(r => ({
+        name: r.name,
+        internalDeadline1: r.internalDeadline1,
+        internalDeadline2: r.internalDeadline2,
+        internalDeadline3: r.internalDeadline3
+      })));
 
       return recommenders;
     } catch (error) {
@@ -132,8 +168,21 @@ export class LORService {
         status: recommender.status,
         internal_deadline_1: recommender.internalDeadline1,
         internal_deadline_2: recommender.internalDeadline2,
-        internal_deadline_3: recommender.internalDeadline3
+        internal_deadline_3: recommender.internalDeadline3,
+        reached_out: recommender.reachedOut || false,
+        checked_in: recommender.checkedIn || false,
+        submitted_recommendation: recommender.submittedRecommendation || false
       };
+
+      // Debug logging to check what's being inserted
+      console.log('[LOR_SERVICE_DEBUG] Data being inserted:', {
+        name: insertData.name,
+        position: insertData.position,
+        internal_deadline_1: insertData.internal_deadline_1,
+        internal_deadline_2: insertData.internal_deadline_2,
+        internal_deadline_3: insertData.internal_deadline_3,
+        status: insertData.status
+      });
 
       // Only add optional fields that have values
       if (recommender.email && recommender.email.trim()) {
@@ -160,7 +209,30 @@ export class LORService {
         throw new Error('Failed to add recommender');
       }
 
-      return data;
+      return {
+        id: (data as any).id,
+        userId: (data as any).user_id,
+        name: (data as any).name,
+        position: (data as any).position,
+        email: (data as any).email,
+        phone: (data as any).phone,
+        relationship: (data as any).relationship,
+        // Map database field names to interface field names
+        internalDeadline1: (data as any).internal_deadline_1,
+        internalDeadline2: (data as any).internal_deadline_2,
+        internalDeadline3: (data as any).internal_deadline_3,
+        status: (data as any).status,
+        notes: (data as any).notes,
+        reachedOut: (data as any).reached_out || false,
+        checkedIn: (data as any).checked_in || false,
+        submittedRecommendation: (data as any).submitted_recommendation || false,
+        reachedOutAt: (data as any).reached_out_at,
+        checkedInAt: (data as any).checked_in_at,
+        submittedRecommendationAt: (data as any).submitted_recommendation_at,
+        createdAt: (data as any).created_at,
+        updatedAt: (data as any).updated_at,
+        schoolAllocations: []
+      };
     } catch (error) {
       console.error('[LOR_SERVICE_ERROR] Failed to add recommender:', {
         userId: recommender.userId,
@@ -192,13 +264,22 @@ export class LORService {
         updateData.phone = updates.phone && updates.phone.trim() ? updates.phone : null;
       }
       if (updates.internalDeadline1 !== undefined) {
-        updateData.internal_deadline_1 = updates.internalDeadline1 && updates.internalDeadline1.trim() ? updates.internalDeadline1 : null;
+        updateData.internal_deadline_1 = updates.internalDeadline1;
       }
       if (updates.internalDeadline2 !== undefined) {
-        updateData.internal_deadline_2 = updates.internalDeadline2 && updates.internalDeadline2.trim() ? updates.internalDeadline2 : null;
+        updateData.internal_deadline_2 = updates.internalDeadline2;
       }
       if (updates.internalDeadline3 !== undefined) {
-        updateData.internal_deadline_3 = updates.internalDeadline3 && updates.internalDeadline3.trim() ? updates.internalDeadline3 : null;
+        updateData.internal_deadline_3 = updates.internalDeadline3;
+      }
+      if (updates.reachedOut !== undefined) {
+        updateData.reached_out = updates.reachedOut;
+      }
+      if (updates.checkedIn !== undefined) {
+        updateData.checked_in = updates.checkedIn;
+      }
+      if (updates.submittedRecommendation !== undefined) {
+        updateData.submitted_recommendation = updates.submittedRecommendation;
       }
 
       const { data, error } = await supabase
@@ -213,9 +294,113 @@ export class LORService {
         throw new Error('Failed to update recommender');
       }
 
-      return data;
+      return {
+        id: (data as any).id,
+        userId: (data as any).user_id,
+        name: (data as any).name,
+        position: (data as any).position,
+        email: (data as any).email,
+        phone: (data as any).phone,
+        relationship: (data as any).relationship,
+        // Map database field names to interface field names
+        internalDeadline1: (data as any).internal_deadline_1,
+        internalDeadline2: (data as any).internal_deadline_2,
+        internalDeadline3: (data as any).internal_deadline_3,
+        status: (data as any).status,
+        notes: (data as any).notes,
+        reachedOut: (data as any).reached_out || false,
+        checkedIn: (data as any).checked_in || false,
+        submittedRecommendation: (data as any).submitted_recommendation || false,
+        reachedOutAt: (data as any).reached_out_at,
+        checkedInAt: (data as any).checked_in_at,
+        submittedRecommendationAt: (data as any).submitted_recommendation_at,
+        createdAt: (data as any).created_at,
+        updatedAt: (data as any).updated_at,
+        schoolAllocations: []
+      };
     } catch (error) {
       console.error('Error in updateRecommender:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update tracking status for a recommender
+   */
+  static async updateTrackingStatus(id: string, trackingField: 'reachedOut' | 'checkedIn' | 'submittedRecommendation', value: boolean): Promise<LORRecommender> {
+    try {
+      const updateData: any = {};
+      const now = new Date().toISOString();
+      
+      // Set the boolean field
+      updateData[trackingField === 'reachedOut' ? 'reached_out' : 
+                 trackingField === 'checkedIn' ? 'checked_in' : 
+                 'submitted_recommendation'] = value;
+      
+      // Set the timestamp field when marking as completed
+      if (value) {
+        updateData[trackingField === 'reachedOut' ? 'reached_out_at' : 
+                   trackingField === 'checkedIn' ? 'checked_in_at' : 
+                   'submitted_recommendation_at'] = now;
+      } else {
+        // Clear timestamp when unmarking
+        updateData[trackingField === 'reachedOut' ? 'reached_out_at' : 
+                   trackingField === 'checkedIn' ? 'checked_in_at' : 
+                   'submitted_recommendation_at'] = null;
+      }
+
+      const { data, error } = await supabase
+        .from('lor_recommenders')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[LOR_SERVICE_ERROR] Failed to update tracking status:', {
+          id: id,
+          trackingField: trackingField,
+          value: value,
+          error: error.message,
+          timestamp: new Date().toISOString(),
+          message: 'User cannot update recommender tracking status'
+        });
+        throw new Error('Failed to update tracking status');
+      }
+
+      return {
+        id: (data as any).id,
+        userId: (data as any).user_id,
+        name: (data as any).name,
+        position: (data as any).position,
+        email: (data as any).email,
+        phone: (data as any).phone,
+        relationship: (data as any).relationship,
+        // Map database field names to interface field names
+        internalDeadline1: (data as any).internal_deadline_1,
+        internalDeadline2: (data as any).internal_deadline_2,
+        internalDeadline3: (data as any).internal_deadline_3,
+        status: (data as any).status,
+        notes: (data as any).notes,
+        reachedOut: (data as any).reached_out || false,
+        checkedIn: (data as any).checked_in || false,
+        submittedRecommendation: (data as any).submitted_recommendation || false,
+        reachedOutAt: (data as any).reached_out_at,
+        checkedInAt: (data as any).checked_in_at,
+        submittedRecommendationAt: (data as any).submitted_recommendation_at,
+        createdAt: (data as any).created_at,
+        updatedAt: (data as any).updated_at,
+        schoolAllocations: []
+      };
+    } catch (error) {
+      console.error('[LOR_SERVICE_ERROR] Failed to update tracking status:', {
+        id: id,
+        trackingField: trackingField,
+        value: value,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User cannot modify recommender tracking'
+      });
       throw error;
     }
   }
@@ -398,14 +583,14 @@ export class LORService {
       }
 
       return {
-        id: data.id,
+        id: (data as any).id,
         lorRecommenderId: data.lor_recommender_id,
         schoolRecommendationId: data.school_recommendation_id,
         schoolName: data.school_recommendations?.school || 'Unknown School',
         allocationStatus: data.allocation_status,
-        notes: data.notes,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at
+        notes: (data as any).notes,
+        createdAt: (data as any).created_at,
+        updatedAt: (data as any).updated_at
       };
     } catch (error) {
       console.error('Error in addSchoolAllocation:', error);
@@ -446,14 +631,14 @@ export class LORService {
       }
 
       return {
-        id: data.id,
+        id: (data as any).id,
         lorRecommenderId: data.lor_recommender_id,
         schoolRecommendationId: data.school_recommendation_id,
         schoolName: data.school_recommendations?.school || 'Unknown School',
         allocationStatus: data.allocation_status,
-        notes: data.notes,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at
+        notes: (data as any).notes,
+        createdAt: (data as any).created_at,
+        updatedAt: (data as any).updated_at
       };
     } catch (error) {
       console.error('[LOR_SERVICE_ERROR] Failed to update school allocation:', {

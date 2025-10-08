@@ -13,6 +13,7 @@ interface DatePickerProps {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  defaultDate?: Date;
 }
 
 export function DatePicker({
@@ -20,7 +21,8 @@ export function DatePicker({
   onChange,
   placeholder = "Pick a date",
   disabled = false,
-  className
+  className,
+  defaultDate = new Date()
 }: DatePickerProps) {
   return (
     <Popover>
@@ -43,6 +45,7 @@ export function DatePicker({
           mode="single"
           selected={value}
           onSelect={onChange}
+          defaultMonth={value || defaultDate}
           initialFocus
         />
       </PopoverContent>

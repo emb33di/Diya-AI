@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Calendar, Clock, CheckCircle2, AlertCircle, Star, Target, Shield, Filter, RefreshCw, Loader2, Plus, Edit, Trash2, Mail, Phone, User } from "lucide-react";
 import OnboardingGuard from "@/components/OnboardingGuard";
 import GradientBackground from "@/components/GradientBackground";
@@ -20,6 +21,7 @@ import {
   type LORSchoolAllocation,
   type SchoolOption
 } from "@/services/lorService";
+import { LORTrackingButtons } from "@/components/LORTrackingButtons";
 
 const LOR = () => {
   const [recommenders, setRecommenders] = useState<LORRecommender[]>([]);
@@ -45,9 +47,9 @@ const LOR = () => {
     position: '',
     email: '',
     phone: '',
-    internalDeadline1: '',
-    internalDeadline2: '',
-    internalDeadline3: '',
+    internalDeadline1: undefined as Date | undefined,
+    internalDeadline2: undefined as Date | undefined,
+    internalDeadline3: undefined as Date | undefined,
     status: 'not_contacted' as 'not_contacted' | 'contacted' | 'agreed' | 'in_progress' | 'submitted' | 'declined'
   });
 
@@ -101,10 +103,30 @@ const LOR = () => {
         return;
       }
 
-      await LORService.addRecommender({
-        userId: user.id,
-        ...formData
+      // Debug logging to check form data
+      console.log('[LOR_DEBUG] Form data being submitted:', {
+        name: formData.name,
+        position: formData.position,
+        internalDeadline1: formData.internalDeadline1,
+        internalDeadline2: formData.internalDeadline2,
+        internalDeadline3: formData.internalDeadline3,
+        status: formData.status
       });
+
+      // Convert Date objects to ISO strings for database storage
+      const recommenderData = {
+        userId: user.id,
+        name: formData.name,
+        position: formData.position,
+        email: formData.email,
+        phone: formData.phone,
+        internalDeadline1: formData.internalDeadline1?.toISOString(),
+        internalDeadline2: formData.internalDeadline2?.toISOString(),
+        internalDeadline3: formData.internalDeadline3?.toISOString(),
+        status: formData.status
+      };
+
+      await LORService.addRecommender(recommenderData);
 
       setIsAddDialogOpen(false);
       resetForm();
@@ -127,7 +149,19 @@ const LOR = () => {
     if (!editingRecommender) return;
 
     try {
-      await LORService.updateRecommender(editingRecommender.id, formData);
+      // Convert Date objects to ISO strings for database storage
+      const updateData = {
+        name: formData.name,
+        position: formData.position,
+        email: formData.email,
+        phone: formData.phone,
+        internalDeadline1: formData.internalDeadline1?.toISOString(),
+        internalDeadline2: formData.internalDeadline2?.toISOString(),
+        internalDeadline3: formData.internalDeadline3?.toISOString(),
+        status: formData.status
+      };
+
+      await LORService.updateRecommender(editingRecommender.id, updateData);
       
       setIsEditDialogOpen(false);
       setEditingRecommender(null);
@@ -173,9 +207,9 @@ const LOR = () => {
       position: recommender.position,
       email: recommender.email || '',
       phone: recommender.phone || '',
-      internalDeadline1: recommender.internalDeadline1 || '',
-      internalDeadline2: recommender.internalDeadline2 || '',
-      internalDeadline3: recommender.internalDeadline3 || '',
+      internalDeadline1: recommender.internalDeadline1 ? new Date(recommender.internalDeadline1) : undefined,
+      internalDeadline2: recommender.internalDeadline2 ? new Date(recommender.internalDeadline2) : undefined,
+      internalDeadline3: recommender.internalDeadline3 ? new Date(recommender.internalDeadline3) : undefined,
       status: recommender.status as 'not_contacted' | 'contacted' | 'agreed' | 'in_progress' | 'submitted' | 'declined'
     });
     setIsEditDialogOpen(true);
@@ -187,9 +221,9 @@ const LOR = () => {
       position: '',
       email: '',
       phone: '',
-      internalDeadline1: '',
-      internalDeadline2: '',
-      internalDeadline3: '',
+      internalDeadline1: undefined,
+      internalDeadline2: undefined,
+      internalDeadline3: undefined,
       status: 'not_contacted'
     });
   };
@@ -532,17 +566,12 @@ const LOR = () => {
                                     <span className="text-red-500">*</span>
                                   </div>
                                 </Label>
-                                <div className="relative">
-                                  <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                  <Input
-                                    id="deadline1"
-                                    type="date"
-                                    value={formData.internalDeadline1}
-                                    onChange={(e) => setFormData({ ...formData, internalDeadline1: e.target.value })}
-                                    className="h-12 pr-10 text-base border-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all [&::-webkit-calendar-picker-indicator]:hidden"
-                                    required
-                                  />
-                                </div>
+                                <DatePicker
+                                  value={formData.internalDeadline1}
+                                  onChange={(date) => setFormData({ ...formData, internalDeadline1: date })}
+                                  placeholder="Select date to reach out"
+                                  className="h-12 border-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                                />
                                 <p className="text-xs text-muted-foreground">
                                   When to contact them
                                 </p>
@@ -558,17 +587,12 @@ const LOR = () => {
                                     <span className="text-red-500">*</span>
                                   </div>
                                 </Label>
-                                <div className="relative">
-                                  <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                  <Input
-                                    id="deadline2"
-                                    type="date"
-                                    value={formData.internalDeadline2}
-                                    onChange={(e) => setFormData({ ...formData, internalDeadline2: e.target.value })}
-                                    className="h-12 pr-10 text-base border-2 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition-all [&::-webkit-calendar-picker-indicator]:hidden"
-                                    required
-                                  />
-                                </div>
+                                <DatePicker
+                                  value={formData.internalDeadline2}
+                                  onChange={(date) => setFormData({ ...formData, internalDeadline2: date })}
+                                  placeholder="Select date to check-in"
+                                  className="h-12 border-2 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition-all"
+                                />
                                 <p className="text-xs text-muted-foreground">
                                   Follow up on progress
                                 </p>
@@ -584,17 +608,12 @@ const LOR = () => {
                                     <span className="text-red-500">*</span>
                                   </div>
                                 </Label>
-                                <div className="relative">
-                                  <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                  <Input
-                                    id="deadline3"
-                                    type="date"
-                                    value={formData.internalDeadline3}
-                                    onChange={(e) => setFormData({ ...formData, internalDeadline3: e.target.value })}
-                                    className="h-12 pr-10 text-base border-2 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all [&::-webkit-calendar-picker-indicator]:hidden"
-                                    required
-                                  />
-                                </div>
+                                <DatePicker
+                                  value={formData.internalDeadline3}
+                                  onChange={(date) => setFormData({ ...formData, internalDeadline3: date })}
+                                  placeholder="Select date to submit LOR"
+                                  className="h-12 border-2 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all"
+                                />
                                 <p className="text-xs text-muted-foreground">
                                   When they should submit
                                 </p>
@@ -745,10 +764,6 @@ const LOR = () => {
                         </div>
                         
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end space-y-2 sm:space-y-0 sm:space-x-2">
-                          <Badge className={getStatusColor(recommender.status)}>
-                            {recommender.status.replace('_', ' ')}
-                          </Badge>
-                          
                           <div className="flex space-x-1">
                             <Button size="sm" variant="ghost" onClick={() => openAllocationDialog(recommender)} title="Allocate Schools">
                               <Target className="h-4 w-4" />
@@ -790,29 +805,6 @@ const LOR = () => {
                         </div>
                       )}
                       
-                      <div>
-                        <h4 className="font-medium text-sm mb-2">Internal Deadlines:</h4>
-                        <div className="space-y-2">
-                          {recommender.internalDeadline1 && (
-                            <div className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
-                              <span className="text-sm">Reach Out:</span>
-                              <span className="text-sm font-medium">{new Date(recommender.internalDeadline1).toLocaleDateString()}</span>
-                            </div>
-                          )}
-                          {recommender.internalDeadline2 && (
-                            <div className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
-                              <span className="text-sm">Check-in:</span>
-                              <span className="text-sm font-medium">{new Date(recommender.internalDeadline2).toLocaleDateString()}</span>
-                            </div>
-                          )}
-                          {recommender.internalDeadline3 && (
-                            <div className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
-                              <span className="text-sm">Submit LOR:</span>
-                              <span className="text-sm font-medium">{new Date(recommender.internalDeadline3).toLocaleDateString()}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
                       
                       {recommender.notes && (
                         <div>
@@ -820,6 +812,18 @@ const LOR = () => {
                           <p className="text-sm text-muted-foreground">{recommender.notes}</p>
                         </div>
                       )}
+                      
+                      {/* Tracking Progress */}
+                      <LORTrackingButtons
+                        recommenderId={recommender.id}
+                        reachedOut={recommender.reachedOut}
+                        checkedIn={recommender.checkedIn}
+                        submittedRecommendation={recommender.submittedRecommendation}
+                        internalDeadline1={recommender.internalDeadline1}
+                        internalDeadline2={recommender.internalDeadline2}
+                        internalDeadline3={recommender.internalDeadline3}
+                        onUpdate={fetchData}
+                      />
                       
                       {/* School Allocations */}
                       <div>
@@ -1063,17 +1067,12 @@ const LOR = () => {
                                 <span className="text-red-500">*</span>
                               </div>
                             </Label>
-                            <div className="relative">
-                              <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                              <Input
-                                id="edit-deadline1"
-                                type="date"
-                                value={formData.internalDeadline1}
-                                onChange={(e) => setFormData({ ...formData, internalDeadline1: e.target.value })}
-                                className="h-12 pr-10 text-base border-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all [&::-webkit-calendar-picker-indicator]:hidden"
-                                required
-                              />
-                            </div>
+                            <DatePicker
+                              value={formData.internalDeadline1}
+                              onChange={(date) => setFormData({ ...formData, internalDeadline1: date })}
+                              placeholder="Select date to reach out"
+                              className="h-12 border-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                            />
                             <p className="text-xs text-muted-foreground">
                               When to contact them
                             </p>
@@ -1089,17 +1088,12 @@ const LOR = () => {
                                 <span className="text-red-500">*</span>
                               </div>
                             </Label>
-                            <div className="relative">
-                              <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                              <Input
-                                id="edit-deadline2"
-                                type="date"
-                                value={formData.internalDeadline2}
-                                onChange={(e) => setFormData({ ...formData, internalDeadline2: e.target.value })}
-                                className="h-12 pr-10 text-base border-2 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition-all [&::-webkit-calendar-picker-indicator]:hidden"
-                                required
-                              />
-                            </div>
+                            <DatePicker
+                              value={formData.internalDeadline2}
+                              onChange={(date) => setFormData({ ...formData, internalDeadline2: date })}
+                              placeholder="Select date to check-in"
+                              className="h-12 border-2 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition-all"
+                            />
                             <p className="text-xs text-muted-foreground">
                               Follow up on progress
                             </p>
@@ -1115,17 +1109,12 @@ const LOR = () => {
                                 <span className="text-red-500">*</span>
                               </div>
                             </Label>
-                            <div className="relative">
-                              <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                              <Input
-                                id="edit-deadline3"
-                                type="date"
-                                value={formData.internalDeadline3}
-                                onChange={(e) => setFormData({ ...formData, internalDeadline3: e.target.value })}
-                                className="h-12 pr-10 text-base border-2 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all [&::-webkit-calendar-picker-indicator]:hidden"
-                                required
-                              />
-                            </div>
+                            <DatePicker
+                              value={formData.internalDeadline3}
+                              onChange={(date) => setFormData({ ...formData, internalDeadline3: date })}
+                              placeholder="Select date to submit LOR"
+                              className="h-12 border-2 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all"
+                            />
                             <p className="text-xs text-muted-foreground">
                               When they should submit
                             </p>
