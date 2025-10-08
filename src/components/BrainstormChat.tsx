@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { getUserDisplayName, fetchUserProfileData } from "@/utils/userNameUtils";
 import { useConversation } from '@outspeed/react';
+import { OutspeedAPI } from '@/utils/outspeedAPI';
 import VoiceOrb from "@/components/VoiceOrb";
 import { ConversationProcessingService } from "@/services/conversationProcessingService";
 import { MessagePersistenceService, ConversationMessage } from '@/services/messagePersistenceService';
@@ -36,6 +37,8 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [agentId, setAgentId] = useState<string | null>(null);
   const [sessionStarted, setSessionStarted] = useState(false);
+  const [conversationReady, setConversationReady] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const [studentName, setStudentName] = useState<string>('');
   const [onboardingTranscript, setOnboardingTranscript] = useState<string>('');
   const [connectionError, setConnectionError] = useState<string | null>(null);
@@ -76,6 +79,7 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
   const conversationIdRef = useRef(conversationId);
   const messagesRef = useRef(messages);
   const sessionStartTimeRef = useRef<Date | null>(null);
+  const firstAIMessageCompletedRef = useRef(false);
   
   // Update refs when state changes
   useEffect(() => {
@@ -105,7 +109,7 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
           type: 'server_vad',
           threshold: 0.5,
           prefix_padding_ms: 300,
-          silence_duration_ms: 500
+          silence_duration_ms: 2000
         }
       } as any);
     }
@@ -200,6 +204,13 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
         if (event.item.role === 'assistant') {
           console.log('--- RAW AI EVENT FOR DEBUGGING ---');
           console.log(JSON.stringify(event.item, null, 2));
+          
+          // Mark conversation as ready after first AI message is completed
+          if (!firstAIMessageCompletedRef.current) {
+            setConversationReady(true);
+            firstAIMessageCompletedRef.current = true;
+            console.log('🎯 Brainstorming conversation is now ready - first AI message completed');
+          }
         }
         
         // Validate that this is a message item we should process
@@ -229,6 +240,15 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
 
     // Set up the event listener
     conversation.on('conversation.item.created', handleNewItem);
+    
+    // Add speech event listeners
+    (conversation as any).on('output_audio_buffer.started', () => {
+      setIsSpeaking(true);
+    });
+    (conversation as any).on('output_audio_buffer.stopped', () => {
+      setIsSpeaking(false);
+    });
+    
     listenerSetupRef.current = true; // Mark as set up
 
     // Cleanup function with safe checks
@@ -598,9 +618,9 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
               <div className="flex-1 w-full flex items-center justify-center min-h-0">
                 <div className="w-80 h-80 max-w-full max-h-full aspect-square">
                   <VoiceOrb
-                    isListening={sessionStarted && conversation && !conversation.isSpeaking}
-                    isSpeaking={conversation?.isSpeaking || false}
-                    isThinking={sessionStarted && conversation && !conversation.isSpeaking && audioLevel < 0.1}
+                    isListening={sessionStarted && conversationReady && !isSpeaking}
+                    isSpeaking={isSpeaking}
+                    isThinking={sessionStarted && conversationReady && !isSpeaking && audioLevel < 0.1}
                     audioLevel={audioLevel}
                     audioOutputLevel={audioOutputLevel}
                     className="w-full h-full"
@@ -609,7 +629,8 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
               </div>
               <div className="text-center mt-4 md:mt-6 flex-shrink-0">
                 <h3 className="text-lg font-medium">
-                  {conversation?.isSpeaking ? "Diya is speaking..." : "Diya is listening..."}
+                  {isSpeaking ? "Diya is speaking..." : 
+                   conversationReady ? "Diya is listening..." : "Diya is getting ready..."}
                 </h3>
                 <p className="text-sm text-muted-foreground">
                   Share your thoughts and experiences naturally - just like talking to a friend!

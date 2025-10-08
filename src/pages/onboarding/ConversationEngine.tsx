@@ -54,6 +54,7 @@ const ConversationEngine = ({
   const addCompletedMessage = useOnboardingStore(state => state.addCompletedMessage);
   const updateInProgressMessage = useOnboardingStore(state => state.updateInProgressMessage);
   const setIsSpeaking = useOnboardingStore(state => state.setIsSpeaking);
+  const setConversationReady = useOnboardingStore(state => state.setConversationReady);
   const setCumulativeTime = useOnboardingStore(state => state.setCumulativeTime);
   
   // Local refs for this component
@@ -468,7 +469,7 @@ const ConversationEngine = ({
             type: 'server_vad',
             threshold: 0.5,
             prefix_padding_ms: 300,
-            silence_duration_ms: 500
+            silence_duration_ms: 2000
           }
         };
         
@@ -663,6 +664,12 @@ const ConversationEngine = ({
         };
         
         processItem(aiMessage, 'response.output_text.done');
+        
+        // Mark conversation as ready after first AI message is completed
+        if (!firstAssistantDisplayedRef.current) {
+          setConversationReady(true);
+          console.log('🎯 Conversation is now ready - first AI message completed');
+        }
       }
     };
 

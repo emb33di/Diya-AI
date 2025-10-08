@@ -19,6 +19,7 @@ interface OnboardingState {
   messages: TranscriptMessage[];
   processedMessageIds: Set<string>;
   isSpeaking: boolean;
+  conversationReady: boolean;
   cumulativeSessionTime: number;
 
   // Actions - Named for events, not just setting variables
@@ -27,6 +28,7 @@ interface OnboardingState {
   addCompletedMessage: (message: TranscriptMessage) => void;
   updateInProgressMessage: (message: TranscriptMessage) => void;
   setIsSpeaking: (speaking: boolean) => void;
+  setConversationReady: (ready: boolean) => void;
   setCumulativeTime: (time: number) => void;
   resetConversation: () => void;
 }
@@ -41,6 +43,7 @@ export const useOnboardingStore = create<OnboardingState>()(
       messages: [],
       processedMessageIds: new Set(),
       isSpeaking: false,
+      conversationReady: false,
       cumulativeSessionTime: 0,
 
       // --- ACTIONS ---
@@ -59,6 +62,7 @@ export const useOnboardingStore = create<OnboardingState>()(
           sessionState: 'idle',
           sessionStartTime: null,
           isSpeaking: false,
+          conversationReady: false,
         });
       },
       
@@ -89,6 +93,8 @@ export const useOnboardingStore = create<OnboardingState>()(
 
       setIsSpeaking: (speaking) => set({ isSpeaking: speaking }),
       
+      setConversationReady: (ready) => set({ conversationReady: ready }),
+      
       setCumulativeTime: (time) => set({ cumulativeSessionTime: time }),
 
       // Resets the state for a new conversation
@@ -98,6 +104,9 @@ export const useOnboardingStore = create<OnboardingState>()(
           processedMessageIds: new Set(),
           conversationId: null,
           sessionState: 'idle',
+          isSpeaking: false,
+          conversationReady: false,
+          cumulativeSessionTime: 0,
         });
       },
     })

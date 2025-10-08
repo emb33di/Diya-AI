@@ -91,6 +91,7 @@ const Onboarding = () => {
   const messages = useOnboardingStore(state => state.messages);
   const processedMessageIds = useOnboardingStore(state => state.processedMessageIds);
   const isSpeaking = useOnboardingStore(state => state.isSpeaking);
+  const conversationReady = useOnboardingStore(state => state.conversationReady);
   const conversationId = useOnboardingStore(state => state.conversationId);
   
   // Derived state
@@ -373,6 +374,7 @@ const Onboarding = () => {
           calculateProgressPercentage={calculateProgressPercentage}
           showTranscript={showTranscript}
           isSpeaking={isSpeaking}
+          conversationReady={conversationReady}
           audioLevel={audioLevel}
           audioOutputLevel={audioOutputLevel}
           isProcessingMetadata={isProcessingMetadata}

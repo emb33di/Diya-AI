@@ -18,6 +18,7 @@ interface OnboardingLayoutProps {
   calculateProgressPercentage: () => number;
   showTranscript: boolean;
   isSpeaking: boolean;
+  conversationReady: boolean;
   audioLevel: number;
   audioOutputLevel: number;
   isProcessingMetadata: boolean;
@@ -61,7 +62,7 @@ interface OnboardingLayoutProps {
 export const ExpandedViewLayout: React.FC<Pick<OnboardingLayoutProps, 
   'expandedView' | 'sessionStarted' | 'cumulativeSessionTime' | 'remainingTime' | 
   'formatTime' | 'calculateProgressPercentage' | 'showTranscript' | 'isSpeaking' | 
-  'audioLevel' | 'audioOutputLevel' | 'isProcessingMetadata' | 'messages' | 
+  'conversationReady' | 'audioLevel' | 'audioOutputLevel' | 'isProcessingMetadata' | 'messages' | 
   'messagesEndRef' | 'transcriptScrollRef' | 'onEndConversation' | 'onClearTranscript' | 
   'onSetShowTranscript'
 >> = ({
@@ -73,6 +74,7 @@ export const ExpandedViewLayout: React.FC<Pick<OnboardingLayoutProps,
   calculateProgressPercentage,
   showTranscript,
   isSpeaking,
+  conversationReady,
   audioLevel,
   audioOutputLevel,
   isProcessingMetadata,
@@ -110,14 +112,17 @@ export const ExpandedViewLayout: React.FC<Pick<OnboardingLayoutProps,
           <div className="flex-1 w-full flex items-center justify-center min-h-0">
             <VoiceSection
               variant="expanded"
-              isListening={sessionStarted}
+              isListening={sessionStarted && conversationReady}
               isSpeaking={isSpeaking}
               audioLevel={audioLevel}
               audioOutputLevel={audioOutputLevel}
             />
           </div>
           <div className="text-center mt-4 md:mt-6 flex-shrink-0">
-            <h3 className="text-lg font-medium">{isSpeaking ? "Diya is speaking..." : "Diya is listening..."}</h3>
+            <h3 className="text-lg font-medium">
+              {isSpeaking ? "Diya is speaking..." : 
+               conversationReady ? "Diya is listening..." : "Diya is getting ready..."}
+            </h3>
             <p className="text-sm text-muted-foreground">Share your thoughts and experiences naturally - just like talking to a friend!</p>
             <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-xs text-blue-700 font-medium">
