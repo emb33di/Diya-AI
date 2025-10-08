@@ -75,8 +75,8 @@ const MobileNavigation = () => {
       icon: <BookOpen className="h-5 w-5" />,
     },
     {
-      path: "/successful-templates",
-      label: "Successful Templates",
+      path: "/successful-examples",
+      label: "Successful Examples",
       icon: <FolderOpen className="h-5 w-5" />,
     },
   ];

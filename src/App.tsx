@@ -27,7 +27,7 @@ import TermsOfService from "./pages/TermsOfService";
 import RefundPolicy from "./pages/RefundPolicy";
 import Blog from "./pages/Blog";
 import BlogPost from "./pages/BlogPost";
-import SuccessfulTemplates from "./pages/SuccessfulTemplates";
+import SuccessfulExamples from "./pages/SuccessfulExamples";
 import DebugErrors from "./pages/DebugErrors";
 import Subscription from "./pages/Subscription";
 import Payments from "./pages/Payments";
@@ -72,7 +72,7 @@ const App = () => {
             <Route path="/refund-policy" element={<RefundPolicy />} />
             <Route path="/blog" element={<Blog />} />
             <Route path="/blog/:slug" element={<BlogPost />} />
-            <Route path="/successful-templates" element={<SuccessfulTemplates />} />
+            <Route path="/successful-examples" element={<SuccessfulExamples />} />
             {import.meta.env.DEV && <Route path="/debug-errors" element={<DebugErrors />} />}
 
             {/* Protected routes - require authentication */}
