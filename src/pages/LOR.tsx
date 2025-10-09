@@ -49,8 +49,7 @@ const LOR = () => {
     phone: '',
     internalDeadline1: undefined as Date | undefined,
     internalDeadline2: undefined as Date | undefined,
-    internalDeadline3: undefined as Date | undefined,
-    status: 'not_contacted' as 'not_contacted' | 'contacted' | 'agreed' | 'in_progress' | 'submitted' | 'declined'
+    internalDeadline3: undefined as Date | undefined
   });
 
   // Fetch data on component mount
@@ -109,8 +108,7 @@ const LOR = () => {
         position: formData.position,
         internalDeadline1: formData.internalDeadline1,
         internalDeadline2: formData.internalDeadline2,
-        internalDeadline3: formData.internalDeadline3,
-        status: formData.status
+        internalDeadline3: formData.internalDeadline3
       });
 
       // Convert Date objects to ISO strings for database storage
@@ -122,8 +120,7 @@ const LOR = () => {
         phone: formData.phone,
         internalDeadline1: formData.internalDeadline1?.toISOString(),
         internalDeadline2: formData.internalDeadline2?.toISOString(),
-        internalDeadline3: formData.internalDeadline3?.toISOString(),
-        status: formData.status
+        internalDeadline3: formData.internalDeadline3?.toISOString()
       };
 
       await LORService.addRecommender(recommenderData);
@@ -157,8 +154,7 @@ const LOR = () => {
         phone: formData.phone,
         internalDeadline1: formData.internalDeadline1?.toISOString(),
         internalDeadline2: formData.internalDeadline2?.toISOString(),
-        internalDeadline3: formData.internalDeadline3?.toISOString(),
-        status: formData.status
+        internalDeadline3: formData.internalDeadline3?.toISOString()
       };
 
       await LORService.updateRecommender(editingRecommender.id, updateData);
@@ -209,8 +205,7 @@ const LOR = () => {
       phone: recommender.phone || '',
       internalDeadline1: recommender.internalDeadline1 ? new Date(recommender.internalDeadline1) : undefined,
       internalDeadline2: recommender.internalDeadline2 ? new Date(recommender.internalDeadline2) : undefined,
-      internalDeadline3: recommender.internalDeadline3 ? new Date(recommender.internalDeadline3) : undefined,
-      status: recommender.status as 'not_contacted' | 'contacted' | 'agreed' | 'in_progress' | 'submitted' | 'declined'
+      internalDeadline3: recommender.internalDeadline3 ? new Date(recommender.internalDeadline3) : undefined
     });
     setIsEditDialogOpen(true);
   };
@@ -223,8 +218,7 @@ const LOR = () => {
       phone: '',
       internalDeadline1: undefined,
       internalDeadline2: undefined,
-      internalDeadline3: undefined,
-      status: 'not_contacted'
+      internalDeadline3: undefined
     });
   };
 
@@ -298,29 +292,6 @@ const LOR = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'submitted': return 'bg-green-500 text-white';
-      case 'in_progress': return 'bg-blue-500 text-white';
-      case 'agreed': return 'bg-purple-500 text-white';
-      case 'contacted': return 'bg-yellow-500 text-white';
-      case 'not_contacted': return 'bg-gray-500 text-white';
-      case 'declined': return 'bg-red-500 text-white';
-      default: return 'bg-gray-500 text-white';
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'submitted': return <CheckCircle2 className="h-4 w-4" />;
-      case 'in_progress': return <Clock className="h-4 w-4" />;
-      case 'agreed': return <Star className="h-4 w-4" />;
-      case 'contacted': return <Mail className="h-4 w-4" />;
-      case 'not_contacted': return <AlertCircle className="h-4 w-4" />;
-      case 'declined': return <AlertCircle className="h-4 w-4" />;
-      default: return <Clock className="h-4 w-4" />;
-    }
-  };
 
   const getUrgencyColor = (urgencyLevel: string) => {
     switch (urgencyLevel) {
@@ -377,7 +348,7 @@ const LOR = () => {
       const recommenderDeadlines = deadlines.filter(d => d.id.startsWith(recommender.id));
       return recommenderDeadlines.some(d => d.urgencyLevel === 'critical' || d.urgencyLevel === 'high');
     }
-    return recommender.status === filter;
+    return true;
   });
 
   const filteredDeadlines = deadlines.filter(deadline => {
@@ -492,61 +463,6 @@ const LOR = () => {
                           </div>
                         </div>
 
-                        {/* Status Section */}
-                        <div className="space-y-4">
-                          <div className="flex items-center space-x-2 pb-2 border-b">
-                            <CheckCircle2 className="h-4 w-4 text-primary" />
-                            <h3 className="font-semibold text-lg">Current Status</h3>
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="status" className="text-sm font-medium">
-                              Status
-                            </Label>
-                            <Select value={formData.status} onValueChange={(value: any) => setFormData({ ...formData, status: value })}>
-                              <SelectTrigger className="h-10">
-                                <SelectValue placeholder="Select current status" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="not_contacted">
-                                  <div className="flex items-center space-x-2">
-                                    <AlertCircle className="h-4 w-4 text-gray-500" />
-                                    <span>Not Contacted</span>
-                                  </div>
-                                </SelectItem>
-                                <SelectItem value="contacted">
-                                  <div className="flex items-center space-x-2">
-                                    <Mail className="h-4 w-4 text-blue-500" />
-                                    <span>Contacted</span>
-                                  </div>
-                                </SelectItem>
-                                <SelectItem value="agreed">
-                                  <div className="flex items-center space-x-2">
-                                    <Star className="h-4 w-4 text-purple-500" />
-                                    <span>Agreed</span>
-                                  </div>
-                                </SelectItem>
-                                <SelectItem value="in_progress">
-                                  <div className="flex items-center space-x-2">
-                                    <Clock className="h-4 w-4 text-orange-500" />
-                                    <span>In Progress</span>
-                                  </div>
-                                </SelectItem>
-                                <SelectItem value="submitted">
-                                  <div className="flex items-center space-x-2">
-                                    <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                    <span>Submitted</span>
-                                  </div>
-                                </SelectItem>
-                                <SelectItem value="declined">
-                                  <div className="flex items-center space-x-2">
-                                    <AlertCircle className="h-4 w-4 text-red-500" />
-                                    <span>Declined</span>
-                                  </div>
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
 
                         {/* Internal Deadlines Section */}
                         <div className="space-y-4">
@@ -671,10 +587,6 @@ const LOR = () => {
                     <div className="text-xs lg:text-sm text-muted-foreground">Total Recommenders</div>
                   </Card>
                   <Card className="text-center p-3 lg:p-4">
-                    <div className="text-xl lg:text-2xl font-bold text-green-600">{stats.submitted}</div>
-                    <div className="text-xs lg:text-sm text-muted-foreground">Submitted</div>
-                  </Card>
-                  <Card className="text-center p-3 lg:p-4">
                     <div className="text-xl lg:text-2xl font-bold text-orange-600">{stats.upcomingDeadlines}</div>
                     <div className="text-xs lg:text-sm text-muted-foreground">Upcoming Deadlines</div>
                   </Card>
@@ -726,9 +638,6 @@ const LOR = () => {
                           <div className="flex items-center space-x-2">
                             <Badge className={getUrgencyBadgeColor(deadline.urgencyLevel)}>
                               {deadline.daysRemaining < 0 ? 'Overdue' : `${deadline.daysRemaining} days`}
-                            </Badge>
-                            <Badge variant="outline" className={getStatusColor(deadline.status)}>
-                              {deadline.status.replace('_', ' ')}
                             </Badge>
                           </div>
                         </div>
@@ -993,61 +902,6 @@ const LOR = () => {
                       </div>
                     </div>
 
-                    {/* Status Section */}
-                    <div className="space-y-4">
-                      <div className="flex items-center space-x-2 pb-2 border-b">
-                        <CheckCircle2 className="h-4 w-4 text-primary" />
-                        <h3 className="font-semibold text-lg">Current Status</h3>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="edit-status" className="text-sm font-medium">
-                          Status
-                        </Label>
-                        <Select value={formData.status} onValueChange={(value: any) => setFormData({ ...formData, status: value })}>
-                          <SelectTrigger className="h-10">
-                            <SelectValue placeholder="Select current status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="not_contacted">
-                              <div className="flex items-center space-x-2">
-                                <AlertCircle className="h-4 w-4 text-gray-500" />
-                                <span>Not Contacted</span>
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="contacted">
-                              <div className="flex items-center space-x-2">
-                                <Mail className="h-4 w-4 text-blue-500" />
-                                <span>Contacted</span>
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="agreed">
-                              <div className="flex items-center space-x-2">
-                                <Star className="h-4 w-4 text-purple-500" />
-                                <span>Agreed</span>
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="in_progress">
-                              <div className="flex items-center space-x-2">
-                                <Clock className="h-4 w-4 text-orange-500" />
-                                <span>In Progress</span>
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="submitted">
-                              <div className="flex items-center space-x-2">
-                                <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                <span>Submitted</span>
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="declined">
-                              <div className="flex items-center space-x-2">
-                                <AlertCircle className="h-4 w-4 text-red-500" />
-                                <span>Declined</span>
-                              </div>
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
 
                     {/* Internal Deadlines Section */}
                     <div className="space-y-4">

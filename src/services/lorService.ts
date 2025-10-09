@@ -11,7 +11,6 @@ export interface LORRecommender {
   internalDeadline1?: string; // When to reach out
   internalDeadline2?: string; // Check-in about progress
   internalDeadline3?: string; // When recommender should submit
-  status: 'not_contacted' | 'contacted' | 'agreed' | 'in_progress' | 'submitted' | 'declined';
   notes?: string;
   // Tracking fields
   reachedOut?: boolean;
@@ -50,17 +49,10 @@ export interface LORDeadlineInfo {
   deadlineDate: string;
   daysRemaining: number;
   urgencyLevel: 'low' | 'medium' | 'high' | 'critical' | 'overdue';
-  status: string;
 }
 
 export interface LORStats {
   total: number;
-  notContacted: number;
-  contacted: number;
-  agreed: number;
-  inProgress: number;
-  submitted: number;
-  declined: number;
   upcomingDeadlines: number;
   overdueDeadlines: number;
 }
@@ -113,7 +105,6 @@ export class LORService {
         internalDeadline1: recommender.internal_deadline_1,
         internalDeadline2: recommender.internal_deadline_2,
         internalDeadline3: recommender.internal_deadline_3,
-        status: recommender.status,
         notes: recommender.notes,
         reachedOut: recommender.reached_out || false,
         checkedIn: recommender.checked_in || false,
@@ -165,7 +156,6 @@ export class LORService {
         user_id: recommender.userId,
         name: recommender.name,
         position: recommender.position,
-        status: recommender.status,
         internal_deadline_1: recommender.internalDeadline1,
         internal_deadline_2: recommender.internalDeadline2,
         internal_deadline_3: recommender.internalDeadline3,
@@ -221,7 +211,6 @@ export class LORService {
         internalDeadline1: (data as any).internal_deadline_1,
         internalDeadline2: (data as any).internal_deadline_2,
         internalDeadline3: (data as any).internal_deadline_3,
-        status: (data as any).status,
         notes: (data as any).notes,
         reachedOut: (data as any).reached_out || false,
         checkedIn: (data as any).checked_in || false,
@@ -254,7 +243,6 @@ export class LORService {
       
       if (updates.name !== undefined) updateData.name = updates.name;
       if (updates.position !== undefined) updateData.position = updates.position;
-      if (updates.status !== undefined) updateData.status = updates.status;
       
       // Handle optional fields - only update if they have values or are explicitly set to null
       if (updates.email !== undefined) {
@@ -306,7 +294,6 @@ export class LORService {
         internalDeadline1: (data as any).internal_deadline_1,
         internalDeadline2: (data as any).internal_deadline_2,
         internalDeadline3: (data as any).internal_deadline_3,
-        status: (data as any).status,
         notes: (data as any).notes,
         reachedOut: (data as any).reached_out || false,
         checkedIn: (data as any).checked_in || false,
@@ -380,7 +367,6 @@ export class LORService {
         internalDeadline1: (data as any).internal_deadline_1,
         internalDeadline2: (data as any).internal_deadline_2,
         internalDeadline3: (data as any).internal_deadline_3,
-        status: (data as any).status,
         notes: (data as any).notes,
         reachedOut: (data as any).reached_out || false,
         checkedIn: (data as any).checked_in || false,
@@ -444,8 +430,7 @@ export class LORService {
             deadlineType: 'reach_out',
             deadlineDate: recommender.internalDeadline1,
             daysRemaining: this.calculateDaysRemaining(recommender.internalDeadline1),
-            urgencyLevel: this.getUrgencyLevel(this.calculateDaysRemaining(recommender.internalDeadline1)),
-            status: recommender.status
+            urgencyLevel: this.getUrgencyLevel(this.calculateDaysRemaining(recommender.internalDeadline1))
           });
         }
 
@@ -457,8 +442,7 @@ export class LORService {
             deadlineType: 'check_in',
             deadlineDate: recommender.internalDeadline2,
             daysRemaining: this.calculateDaysRemaining(recommender.internalDeadline2),
-            urgencyLevel: this.getUrgencyLevel(this.calculateDaysRemaining(recommender.internalDeadline2)),
-            status: recommender.status
+            urgencyLevel: this.getUrgencyLevel(this.calculateDaysRemaining(recommender.internalDeadline2))
           });
         }
 
@@ -470,8 +454,7 @@ export class LORService {
             deadlineType: 'submit',
             deadlineDate: recommender.internalDeadline3,
             daysRemaining: this.calculateDaysRemaining(recommender.internalDeadline3),
-            urgencyLevel: this.getUrgencyLevel(this.calculateDaysRemaining(recommender.internalDeadline3)),
-            status: recommender.status
+            urgencyLevel: this.getUrgencyLevel(this.calculateDaysRemaining(recommender.internalDeadline3))
           });
         }
       });
@@ -500,12 +483,6 @@ export class LORService {
 
       const stats: LORStats = {
         total: recommenders.length,
-        notContacted: recommenders.filter(r => r.status === 'not_contacted').length,
-        contacted: recommenders.filter(r => r.status === 'contacted').length,
-        agreed: recommenders.filter(r => r.status === 'agreed').length,
-        inProgress: recommenders.filter(r => r.status === 'in_progress').length,
-        submitted: recommenders.filter(r => r.status === 'submitted').length,
-        declined: recommenders.filter(r => r.status === 'declined').length,
         upcomingDeadlines: deadlines.filter(d => d.daysRemaining >= 0 && d.daysRemaining <= 7).length,
         overdueDeadlines: deadlines.filter(d => d.daysRemaining < 0).length
       };
