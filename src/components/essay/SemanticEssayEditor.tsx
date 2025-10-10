@@ -389,27 +389,25 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
     }
   };
 
-  // Create a new version (fresh draft)
+  // Create a new version (clone text + comments, editable)
   const createNewVersion = async () => {
     if (!document) return;
 
     setIsCreatingVersion(true);
     
     try {
-      // Get the next version number from the database
+      // Get the next version number from the database (for naming only)
       const versions = await EssayVersionService.getEssayVersions(essayId);
       const nextVersionNumber = versions.length > 0 
         ? Math.max(...versions.map(v => v.version_number)) + 1 
         : 1;
-      
-      console.log('Creating Version', nextVersionNumber, '...');
-      
-      // Create new version
-      const versionId = await EssayVersionService.createFreshDraftVersion(
+
+      // Create new version cloning text + comments, mark has_ai_feedback=false
+      const versionId = await EssayVersionService.createClonedVersionWithComments(
         essayId,
         document,
         `Version ${nextVersionNumber}`,
-        'Fresh draft without previous comments'
+        'Cloned with existing comments and highlights'
       );
 
       // Reload versions to get updated list
@@ -426,7 +424,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
 
       toast({
         title: "New Version Created",
-        description: "You can now continue editing without the previous comments.",
+        description: "Version cloned with comments and highlights. You can edit now.",
       });
 
     } catch (error) {
@@ -543,6 +541,18 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
         const updatedDocument = await semanticDocumentService.loadDocument(document.id);
         if (updatedDocument) {
           setDocument(updatedDocument);
+        }
+
+        // Mark current active version as having AI feedback (read-only)
+        try {
+          const active = await EssayVersionService.getActiveVersion(essayId);
+          if (active) {
+            await EssayVersionService.setHasAIFeedback(active.id, true);
+            // Refresh versions and currentVersion state
+            await loadEssayVersions();
+          }
+        } catch (e) {
+          console.warn('Failed to mark version has_ai_feedback:', e);
         }
       }
 
@@ -1247,6 +1257,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                   showCommentSidebar={showCommentSidebar}
                   selectedAnnotationId={selectedAnnotation?.id}
                   onHideSidebar={() => setShowCommentSidebar(false)}
+                  readOnly={Boolean(currentVersion?.has_ai_feedback)}
                 />
               </div>
             </div>

@@ -50,6 +50,7 @@ interface CleanSemanticEditorProps {
   selectedAnnotationId?: string;
   onHideSidebar?: () => void;
   className?: string;
+  readOnly?: boolean;
 }
 
 const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
@@ -64,7 +65,8 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
   showCommentSidebar = false,
   selectedAnnotationId,
   onHideSidebar,
-  className = ''
+  className = '',
+  readOnly = false
 }) => {
   // Simple, clean state management
   const [state, setState] = useState<SemanticEditorState>({
@@ -104,10 +106,10 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
   const redoStackRef = useRef<SemanticDocument[]>([]);
   const lastInputAtRef = useRef<number>(0);
 
-  // All versions are editable; remove read-only gating
+  // Respect read-only mode passed by parent
   const isReadOnly = useCallback(() => {
-    return false;
-  }, []);
+    return Boolean(readOnly);
+  }, [readOnly]);
 
   
 
@@ -1154,28 +1156,39 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
             placeholder={block.position === 0 ? "Start writing here..." : ""}
           />
         ) : (
-          <div
-            className={`min-h-[2.5rem] p-2 rounded transition-colors text-base w-full overflow-wrap-anywhere break-words ${
-              isReadOnly() 
-                ? 'cursor-default bg-gray-50 text-gray-500' 
-                : 'cursor-text hover:bg-gray-50'
-            }`}
-            onClick={() => startEditingBlock(block.id)}
-            title={isReadOnly() ? "This version is read-only" : "Click to edit"}
-            style={{
-              fontFamily: 'Arial, sans-serif',
-              lineHeight: '1.6',
-              wordWrap: 'break-word',
-              overflowWrap: 'anywhere',
-              hyphens: 'auto',
-            }}
-          >
-            {block.content ? (
-              renderHighlightedText(block.content, block.annotations)
-            ) : (
-              <span className="text-gray-400 italic">
-                {block.position === 0 ? "Start writing here..." : "Click to add content..."}
-              </span>
+          <div className="relative">
+            <div
+              className={`min-h-[2.5rem] p-2 rounded transition-colors text-base w-full overflow-wrap-anywhere break-words ${
+                isReadOnly()
+                  ? 'cursor-not-allowed bg-gray-50 text-gray-500'
+                  : 'cursor-text hover:bg-gray-50'
+              }`}
+              onClick={() => {
+                if (!isReadOnly()) startEditingBlock(block.id);
+              }}
+              title={isReadOnly() ? 'Editor text is read-only. Create a new version to edit.' : 'Click to edit'}
+              style={{
+                fontFamily: 'Arial, sans-serif',
+                lineHeight: '1.6',
+                wordWrap: 'break-word',
+                overflowWrap: 'anywhere',
+                hyphens: 'auto',
+              }}
+            >
+              {block.content ? (
+                renderHighlightedText(block.content, block.annotations)
+              ) : (
+                <span className="text-gray-400 italic">
+                  {block.position === 0 ? 'Start writing here...' : 'Click to add content...'}
+                </span>
+              )}
+            </div>
+            {isReadOnly() && (
+              <div className="pointer-events-none absolute inset-0 flex items-start opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <div className="ml-2 mt-1 text-[11px] text-gray-600 bg-gray-100/80 border border-gray-300 rounded px-2 py-0.5">
+                  Editor is read-only. Click "New Version" to edit.
+                </div>
+              </div>
             )}
           </div>
         )}

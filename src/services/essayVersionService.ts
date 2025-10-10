@@ -12,6 +12,8 @@ export interface EssayVersion {
   version_description?: string;
   is_active: boolean;
   semantic_document_id: string; // Links to semantic document
+  is_fresh_draft: boolean;
+  has_ai_feedback: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -71,6 +73,64 @@ export class EssayVersionService {
     }
 
     // Read-only status no longer enforced for versions
+
+    const versionId = versionIdRaw as unknown as string;
+    return versionId;
+  }
+
+  /**
+   * Create a new version that CLONES text and ALL comments (annotations)
+   * New version remains editable and has_ai_feedback is FALSE.
+   */
+  static async createClonedVersionWithComments(
+    essayId: string,
+    currentDocument: SemanticDocument,
+    versionName?: string,
+    versionDescription?: string
+  ): Promise<string> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    // Create a new semantic document for this version (preserve annotations)
+    const newSemanticDocument: SemanticDocument = {
+      id: crypto.randomUUID(),
+      title: currentDocument.title,
+      blocks: currentDocument.blocks.map(block => ({
+        ...block,
+        // Keep annotations exactly as-is to preserve inline highlights
+        annotations: [...(block.annotations || [])]
+      })),
+      metadata: {
+        ...currentDocument.metadata,
+        essayId
+      },
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    // Save the new semantic document first
+    await semanticDocumentService.saveDocument(newSemanticDocument);
+
+    // Prepare version content
+    const versionContent = {
+      blocks: newSemanticDocument.blocks,
+      metadata: newSemanticDocument.metadata
+    };
+
+    // Use the fresh draft function so has_ai_feedback is false and new version becomes active
+    const { data: versionIdRaw, error } = await supabase.rpc('create_fresh_draft_essay_version', {
+      essay_uuid: essayId,
+      user_uuid: user.id,
+      semantic_document_uuid: newSemanticDocument.id,
+      version_content: versionContent,
+      version_name_param: versionName,
+      version_description_param: versionDescription ?? 'Cloned with existing comments and highlights'
+    });
+
+    if (error) {
+      console.error('Error creating cloned version with comments:', error);
+      throw error;
+    }
 
     const versionId = versionIdRaw as unknown as string;
     return versionId;
@@ -221,6 +281,21 @@ export class EssayVersionService {
   // Read-only enforcement removed: keeping method stub as no-op for backward compatibility
   private static async updateVersionReadOnlyStatus(_essayId: string): Promise<void> {
     return;
+  }
+
+  /**
+   * Mark a version as having AI feedback (controls read-only behavior in UI)
+   */
+  static async setHasAIFeedback(versionId: string, hasAI: boolean): Promise<void> {
+    const { error } = await (supabase as any)
+      .from('essay_versions')
+      .update({ has_ai_feedback: hasAI, updated_at: new Date().toISOString() })
+      .eq('id', versionId);
+
+    if (error) {
+      console.error('Error updating has_ai_feedback on version:', error);
+      throw error;
+    }
   }
 
   /**
