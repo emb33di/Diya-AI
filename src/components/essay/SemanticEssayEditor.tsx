@@ -160,17 +160,14 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
         if (activeVersion) {
           // Load the document associated with the active version
           existingDocument = await semanticDocumentService.loadDocument(activeVersion.semantic_document_id);
-          console.log('Found active version document for essay:', essayId, 'document ID:', existingDocument?.id);
         } else {
           // Fallback to the old method for backward compatibility
           existingDocument = await semanticDocumentService.loadDocumentByEssayId(essayId);
-          console.log('Found existing document for essay:', essayId, 'document ID:', existingDocument?.id);
         }
         
         if (existingDocument) {
           setDocument(existingDocument);
         } else {
-          console.log('No existing document found for essay:', essayId, 'creating new one');
           
           // Check if there's any localStorage backup we should preserve
           const localStorageKeys = Object.keys(localStorage).filter(key => key.startsWith('semantic-doc-'));
@@ -184,7 +181,6 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
               if (backup) {
                 const parsedBackup = JSON.parse(backup);
                 if (parsedBackup.metadata?.essayId === essayId && parsedBackup.blocks?.length > 0) {
-                  console.log('Found localStorage backup with content for essay:', essayId);
                   recoveredDocument = parsedBackup;
                   break;
                 }
@@ -282,12 +278,6 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
 
   // Handle annotation selection
   const handleAnnotationSelect = (annotation: Annotation | null) => {
-    console.log('SemanticEssayEditor: handleAnnotationSelect called with:', {
-      annotation,
-      annotationId: annotation?.id,
-      annotationType: typeof annotation?.id,
-      previousSelectedId: selectedAnnotation?.id
-    });
     setSelectedAnnotation(annotation);
   };
 
@@ -491,15 +481,6 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
     setLoadingStep(0);
 
     try {
-      // Debug: log request payload summary
-      try {
-        console.log('[ESSAY_DEBUG] generateAIComments request', {
-          documentId: document.id,
-          blocksCount: document.blocks?.length,
-          promptLength: document.metadata?.prompt ? String(document.metadata?.prompt).length : 0,
-          wordLimit: document.metadata?.wordLimit
-        });
-      } catch (_) {}
 
       // Start AI generation in parallel with loading animation
       const aiGenerationPromise = semanticDocumentService.generateAIComments({
@@ -523,15 +504,6 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
       // Wait for AI generation to complete
       const response = await aiGenerationPromise;
 
-      // Debug: log response shape
-      try {
-        console.log('[ESSAY_DEBUG] generateAIComments response', {
-          success: response.success,
-          message: response.message,
-          commentsCount: Array.isArray(response.comments) ? response.comments.length : undefined,
-          meta: response.metadata
-        });
-      } catch (_) {}
 
       if (response.success) {
         // Add a small delay to ensure database insert is complete
@@ -754,14 +726,9 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
     setShowDeleteDialog(false);
   };
 
-  // Debug logging for loading states (only log when there are issues)
-  if (isLoading || migrationStatus.isMigrating) {
-    console.log('SemanticEssayEditor render - isLoading:', isLoading, 'isMigrating:', migrationStatus.isMigrating, 'document:', !!document);
-  }
   
 
   if (isLoading || migrationStatus.isMigrating) {
-    console.log('Showing loading screen due to:', { isLoading, isMigrating: migrationStatus.isMigrating, message: migrationStatus.message });
     return (
       <div className={`semantic-essay-editor ${className}`}>
         <Card style={{ backgroundColor: '#F4EDE2' }}>

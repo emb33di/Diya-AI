@@ -126,13 +126,6 @@ export class LORService {
         })) || []
       }));
 
-      // Debug logging to check what's being retrieved
-      console.log('[LOR_SERVICE_DEBUG] Retrieved recommenders:', recommenders.map(r => ({
-        name: r.name,
-        internalDeadline1: r.internalDeadline1,
-        internalDeadline2: r.internalDeadline2,
-        internalDeadline3: r.internalDeadline3
-      })));
 
       return recommenders;
     } catch (error) {

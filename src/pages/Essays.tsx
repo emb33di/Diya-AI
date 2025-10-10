@@ -762,14 +762,6 @@ const Essays = () => {
     const prompt = essayPrompts.find(p => p.id === promptId);
     if (!prompt) return;
 
-    // Debug: log prompt selection
-    try {
-      console.log('[ESSAY_DEBUG] handlePromptChange', {
-        promptId,
-        selectedSchool,
-        promptNumber: prompt.prompt_number
-      });
-    } catch (_) {}
 
     // If a new-format essay already exists for this prompt, select it
     const existingNewEssay = newEssays.find(e => e.prompt_id === prompt.id && !e.prompt_text);
@@ -1363,9 +1355,6 @@ const Essays = () => {
                           return 650; // Default word limit
                         })()}
                         onPromptChange={async (promptId) => {
-                          try {
-                            console.log('[ESSAY_DEBUG] In-editor onPromptChange (mobile)', { promptId });
-                          } catch (_) {}
                           // Handle prompt change - support custom essays and preloaded prompts
                           if (promptId.startsWith('custom-')) {
                             const essayId = promptId.replace('custom-', '');
@@ -1615,9 +1604,6 @@ const Essays = () => {
                     return 650; // Default word limit
                   })()}
                   onPromptChange={async (promptId) => {
-                    try {
-                      console.log('[ESSAY_DEBUG] In-editor onPromptChange (desktop)', { promptId });
-                    } catch (_) {}
                     // Handle prompt change - support custom essays and preloaded prompts
                     if (promptId.startsWith('custom-')) {
                       const essayId = promptId.replace('custom-', '');

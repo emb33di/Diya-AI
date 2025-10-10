@@ -906,15 +906,6 @@ export class SemanticDocumentService {
         throw new Error('User not authenticated');
       }
 
-      // Debug: log request shape before invoking edge function
-      try {
-        console.log('[AI_DEBUG] Invoking generate-semantic-comments', {
-          documentId: request.documentId,
-          blocksCount: request.blocks?.length,
-          promptLength: request.context?.prompt ? String(request.context?.prompt).length : 0,
-          wordLimit: request.context?.wordLimit
-        });
-      } catch (_) {}
 
       // Call the Supabase edge function for semantic comments
       const { data, error } = await supabase.functions.invoke('generate-semantic-comments', {

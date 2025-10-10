@@ -105,9 +105,7 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
   const groupedComments = useMemo(() => {
     const allComments: GroupedComment[] = [];
     
-    console.log('CommentSidebar: Processing blocks:', blocks.length);
     blocks.forEach((block, blockIndex) => {
-      console.log(`Block ${blockIndex} (${block.id}) has ${block.annotations?.length || 0} annotations:`, block.annotations);
       block.annotations?.forEach(annotation => {
         // Skip resolved comments if we're only showing unresolved
         if (activeTab === 'unresolved' && annotation.resolved) return;
@@ -120,7 +118,6 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
       });
     });
     
-    console.log('CommentSidebar: Total comments found:', allComments.length);
 
     // Group by category
     const grouped: Record<CommentCategory, GroupedComment[]> = {

@@ -168,7 +168,7 @@ const SemanticEditorDemo: React.FC = () => {
               initialContent={currentEssay.content}
               onTitleChange={setEssayTitle}
               onContentChange={(content) => {
-                console.log('Content changed:', content);
+                // Content change handler
               }}
             />
           </div>

@@ -85,7 +85,6 @@ export class EssayPromptService {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      console.log('Fetching selections for school:', schoolName, 'user:', user.id);
 
       const { data, error } = await supabase
         .from('essay_prompt_selections')
@@ -105,7 +104,6 @@ export class EssayPromptService {
         throw error;
       }
 
-      console.log('Fetched selections:', data);
       return (data || []) as EssayPromptSelection[];
     } catch (error) {
       console.error('Error in getUserSelectionsForSchool:', error);
