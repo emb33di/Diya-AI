@@ -144,6 +144,12 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
       // Find the comment element with the selected annotation ID
       const commentElement = scrollAreaRef.current.querySelector(`[data-annotation-id="${selectedAnnotationId}"]`);
       
+      console.log('CommentSidebar: Scroll effect triggered', {
+        selectedAnnotationId,
+        commentElementFound: !!commentElement,
+        scrollAreaRef: !!scrollAreaRef.current
+      });
+      
       if (commentElement) {
         // Ensure the category is expanded
         const category = determineCommentCategory(
@@ -153,13 +159,26 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
           { type: 'suggestion', metadata: {} } as Annotation
         );
         
+        console.log('CommentSidebar: Category determined', {
+          category,
+          isExpanded: expandedCategories.has(category),
+          selectedAnnotationId
+        });
+        
         if (!expandedCategories.has(category)) {
+          console.log('CommentSidebar: Expanding category', category);
           setExpandedCategories(prev => new Set([...prev, category]));
         }
         
         // Scroll within the ScrollArea only, not the entire page
         setTimeout(() => {
           const scrollContainer = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+          console.log('CommentSidebar: Attempting to scroll', {
+            scrollContainer: !!scrollContainer,
+            commentElement: !!commentElement,
+            selectedAnnotationId
+          });
+          
           if (scrollContainer && commentElement) {
             const containerRect = scrollContainer.getBoundingClientRect();
             const elementRect = commentElement.getBoundingClientRect();
@@ -167,12 +186,18 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
             // Calculate the scroll position to bring the element to the top of the container
             const scrollTop = scrollContainer.scrollTop + (elementRect.top - containerRect.top);
             
+            console.log('CommentSidebar: Scrolling to position', {
+              scrollTop,
+              elementTop: elementRect.top,
+              containerTop: containerRect.top
+            });
+            
             scrollContainer.scrollTo({
               top: scrollTop,
               behavior: 'smooth'
             });
           }
-        }, 100);
+        }, 200); // Increased timeout to allow for category expansion
       }
     }
   }, [selectedAnnotationId, expandedCategories, groupedComments]);
@@ -417,7 +442,7 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
 
           {/* Other Categories */}
           {Object.entries(groupedComments).map(([category, comments]) => {
-            if (comments.length === 0 || category === 'overall-analysis') return null;
+            if (comments.length === 0 && category !== 'grammar' || category === 'overall-analysis') return null;
             
             const isExpanded = expandedCategories.has(category as CommentCategory);
             const categoryKey = category as CommentCategory;
@@ -447,6 +472,15 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
                 {isExpanded && (
                   <CardContent className="p-0">
                     <div className="space-y-2 p-3 pt-0">
+                      {/* Show congratulations message for empty grammar category */}
+                      {category === 'grammar' && comments.length === 0 && (
+                        <div className="text-center py-4 text-green-600">
+                          <CheckCircle className="h-8 w-8 mx-auto mb-2 opacity-70" />
+                          <p className="font-medium text-sm">Congratulations!</p>
+                          <p className="text-xs">No grammar errors found! 🎉</p>
+                        </div>
+                      )}
+                      
                       {comments.map(({ annotation, blockIndex, blockContent }) => (
                         <div
                           key={annotation.id}
