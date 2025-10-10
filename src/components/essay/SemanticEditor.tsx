@@ -163,6 +163,13 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
             ...prev,
             document: existingDoc
           }));
+          // Seed undo stack with the loaded document so Cmd+Z with no edits is a no-op
+          try {
+            undoStackRef.current = [deepCloneDocument(existingDoc)];
+            redoStackRef.current = [];
+          } catch (_e) {
+            // If deep clone fails for any reason, skip seeding safely
+          }
           
           // If the document has only empty blocks, start editing the first one
           const hasContent = existingDoc.blocks.some(block => block.content.trim().length > 0);
@@ -559,13 +566,17 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
 
     // Undo / Redo at document scope
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
-      e.preventDefault();
-      undo();
+      if (undoStackRef.current.length > 0) {
+        e.preventDefault();
+        undo();
+      }
       return;
     }
     if ((e.metaKey && e.shiftKey && e.key.toLowerCase() === 'z') || (e.ctrlKey && e.key.toLowerCase() === 'y')) {
-      e.preventDefault();
-      redo();
+      if (redoStackRef.current.length > 0) {
+        e.preventDefault();
+        redo();
+      }
       return;
     }
 
@@ -707,14 +718,18 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     const onKeyDown = (e: KeyboardEvent) => {
       // Undo
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
-        e.preventDefault();
-        undo();
+        if (undoStackRef.current.length > 0) {
+          e.preventDefault();
+          undo();
+        }
         return;
       }
       // Redo: Cmd+Shift+Z (Mac) or Ctrl+Y
       if ((e.metaKey && e.shiftKey && e.key.toLowerCase() === 'z') || (e.ctrlKey && e.key.toLowerCase() === 'y')) {
-        e.preventDefault();
-        redo();
+        if (redoStackRef.current.length > 0) {
+          e.preventDefault();
+          redo();
+        }
         return;
       }
 
@@ -1038,38 +1053,6 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
         key={block.id}
         className="group relative mb-2"
       >
-        {/* Block Actions - Show on hover */}
-        <div className="absolute -left-12 top-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 w-6 p-0"
-            onClick={() => deleteBlock(block.id)}
-            title={isReadOnly() ? "Read-only version" : "Delete block"}
-            disabled={isReadOnly()}
-          >
-            <Trash2 className="h-3 w-3" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 w-6 p-0"
-            onClick={() => copyBlock(block.id)}
-            title="Copy block"
-          >
-            <Copy className="h-3 w-3" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 w-6 p-0"
-            onClick={() => addNewBlock(block.position + 1)}
-            title={isReadOnly() ? "Read-only version" : "Add block below"}
-            disabled={isReadOnly()}
-          >
-            <Plus className="h-3 w-3" />
-          </Button>
-        </div>
 
         {/* Block Content */}
         {isEditing ? (
