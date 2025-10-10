@@ -548,4 +548,33 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
   );
 };
 
-export default CommentSidebar;
+// Memoize to prevent unnecessary re-renders when switching versions rapidly.
+// Compare a compact signature of blocks and annotations rather than deep objects.
+const areEqual = (
+  prevProps: Readonly<CommentSidebarProps>,
+  nextProps: Readonly<CommentSidebarProps>
+) => {
+  if (prevProps.selectedAnnotationId !== nextProps.selectedAnnotationId) return false;
+  if (prevProps.className !== nextProps.className) return false;
+
+  const prevBlocks = prevProps.blocks;
+  const nextBlocks = nextProps.blocks;
+  if (prevBlocks.length !== nextBlocks.length) return false;
+
+  for (let i = 0; i < prevBlocks.length; i++) {
+    const pb = prevBlocks[i];
+    const nb = nextBlocks[i];
+    if (pb.id !== nb.id) return false;
+    if (pb.position !== nb.position) return false;
+    const pa = pb.annotations || [];
+    const na = nb.annotations || [];
+    if (pa.length !== na.length) return false;
+    for (let j = 0; j < pa.length; j++) {
+      if (pa[j].id !== na[j].id || pa[j].resolved !== na[j].resolved) return false;
+    }
+  }
+
+  return true;
+};
+
+export default React.memo(CommentSidebar, areEqual);

@@ -8,7 +8,7 @@
  * - No complex selection states or confusing interactions
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { 
   SemanticDocument, 
   DocumentBlock, 
@@ -231,7 +231,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
   }, [state.document, deepCloneDocument]);
 
   const getDocumentPlainText = useCallback(() => {
-    return state.document.blocks
+    return [...state.document.blocks]
       .sort((a, b) => a.position - b.position)
       .map(b => b.content)
       .join('\n\n');
@@ -1165,26 +1165,25 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
         {/* Editor Content */}
         <div className="relative pl-4 lg:pl-12 w-full overflow-hidden" ref={contentContainerRef}>
           {/* Render all blocks */}
-          {state.document.blocks
-            .sort((a, b) => a.position - b.position)
-            .map(renderBlock)}
+          {useMemo(() => {
+            const sortedBlocks = [...state.document.blocks].sort((a, b) => a.position - b.position);
+            return sortedBlocks.map(renderBlock);
+          }, [state.document.blocks, renderBlock])}
 
         </div>
       </div>
 
       {/* Comment Sidebar */}
-      {showCommentSidebar && (
-        <div className="hidden lg:block">
-          <CommentSidebar
-            blocks={state.document.blocks}
-            onAnnotationResolve={resolveAnnotation}
-            onAnnotationDelete={deleteAnnotation}
-            onAnnotationSelect={onAnnotationSelect}
-            selectedAnnotationId={selectedAnnotationId}
-            onHideSidebar={onHideSidebar}
-          />
-        </div>
-      )}
+      <div className={showCommentSidebar ? 'hidden lg:block' : 'hidden lg:hidden'}>
+        <CommentSidebar
+          blocks={useMemo(() => [...state.document.blocks].sort((a, b) => a.position - b.position), [state.document.blocks])}
+          onAnnotationResolve={resolveAnnotation}
+          onAnnotationDelete={deleteAnnotation}
+          onAnnotationSelect={onAnnotationSelect}
+          selectedAnnotationId={selectedAnnotationId}
+          onHideSidebar={onHideSidebar}
+        />
+      </div>
 
       {/* AI Comments Loading Pane */}
       <AICommentsLoadingPane

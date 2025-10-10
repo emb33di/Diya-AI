@@ -5,7 +5,7 @@
  * Provides Google Docs-like commenting experience with stable AI integration.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, startTransition } from 'react';
 import { SemanticDocument, Annotation } from '@/types/semanticDocument';
 import { semanticDocumentService } from '@/services/semanticDocumentService';
 import { ExportService } from '@/services/exportService';
@@ -452,8 +452,10 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
       if (activeVersion) {
         const newDocument = await semanticDocumentService.loadDocument(activeVersion.semantic_document_id);
         if (newDocument) {
-          setDocument(newDocument);
-          setCurrentVersion(activeVersion);
+          startTransition(() => {
+            setDocument(newDocument);
+            setCurrentVersion(activeVersion);
+          });
           
           toast({
             title: "Version Switched",
