@@ -461,6 +461,9 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
             title: "Version Switched",
             description: `Now viewing ${activeVersion.version_name || `Version ${activeVersion.version_number}`}`,
           });
+
+          // Force a full reload to ensure comments and sidebar state are fresh for the new version
+          window.location.reload();
         }
       }
 
@@ -1235,6 +1238,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
             <div className={`lg:hidden ${mobileView === 'essay' ? 'hidden' : 'block'}`}>
               <div className="bg-white rounded-lg shadow-lg border border-gray-200 h-full min-h-[600px] mx-4">
                 <CommentSidebar
+                  key={document.id}
                   blocks={document.blocks}
                   onAnnotationResolve={handleAnnotationResolve}
                   onAnnotationDelete={handleAnnotationDelete}

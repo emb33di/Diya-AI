@@ -1176,6 +1176,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
       {/* Comment Sidebar */}
       <div className={showCommentSidebar ? 'hidden lg:block' : 'hidden lg:hidden'}>
         <CommentSidebar
+          key={state.document.id}
           blocks={useMemo(() => [...state.document.blocks].sort((a, b) => a.position - b.position), [state.document.blocks])}
           onAnnotationResolve={resolveAnnotation}
           onAnnotationDelete={deleteAnnotation}
