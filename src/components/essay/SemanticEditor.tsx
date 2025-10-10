@@ -99,11 +99,17 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
 
   // Refs for textarea management
   const textareaRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
+  const contentContainerRef = useRef<HTMLDivElement | null>(null);
+  const undoStackRef = useRef<SemanticDocument[]>([]);
+  const redoStackRef = useRef<SemanticDocument[]>([]);
+  const lastInputAtRef = useRef<number>(0);
 
   // All versions are editable; remove read-only gating
   const isReadOnly = useCallback(() => {
     return false;
   }, []);
+
+  
 
   // Initialize document from initial content
   useEffect(() => {
@@ -192,10 +198,107 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     textarea.style.height = `${textarea.scrollHeight}px`;
   };
 
+  const deepCloneDocument = useCallback((doc: SemanticDocument): SemanticDocument => {
+    return JSON.parse(JSON.stringify(doc));
+  }, []);
+
+  const saveToUndoStack = useCallback(() => {
+    const snapshot = deepCloneDocument(state.document);
+    undoStackRef.current = [...undoStackRef.current, snapshot].slice(-100);
+    redoStackRef.current = [];
+  }, [state.document, deepCloneDocument]);
+
+  const undo = useCallback(() => {
+    const undoStack = undoStackRef.current;
+    if (undoStack.length === 0) return;
+    const previous = undoStack[undoStack.length - 1];
+    redoStackRef.current = [...redoStackRef.current, deepCloneDocument(state.document)].slice(-100);
+    undoStackRef.current = undoStack.slice(0, -1);
+    setState(prev => ({ ...prev, document: previous, pendingChanges: true }));
+    setEditingBlockId(null);
+  }, [state.document, deepCloneDocument]);
+
+  const redo = useCallback(() => {
+    const redoStack = redoStackRef.current;
+    if (redoStack.length === 0) return;
+    const next = redoStack[redoStack.length - 1];
+    undoStackRef.current = [...undoStackRef.current, deepCloneDocument(state.document)].slice(-100);
+    redoStackRef.current = redoStack.slice(0, -1);
+    setState(prev => ({ ...prev, document: next, pendingChanges: true }));
+    setEditingBlockId(null);
+  }, [state.document, deepCloneDocument]);
+
+  const getDocumentPlainText = useCallback(() => {
+    return state.document.blocks
+      .sort((a, b) => a.position - b.position)
+      .map(b => b.content)
+      .join('\n\n');
+  }, [state.document.blocks]);
+
+  const normalizeText = (text: string) => text.replace(/\s+/g, ' ').trim();
+
+  // Select all text across all blocks in the editor content
+  const selectAllEssayText = useCallback(() => {
+    // Exit editing mode so visible content is selectable
+    setEditingBlockId(null);
+
+    // Next tick: select the full contents of the content container
+    setTimeout(() => {
+      const container = contentContainerRef.current;
+      if (!container) return;
+
+      const selection = window.getSelection();
+      if (!selection) return;
+
+      selection.removeAllRanges();
+      const range = document.createRange();
+      range.selectNodeContents(container);
+      selection.addRange(range);
+    }, 0);
+  }, []);
+
+  const handleFullEssayCut = useCallback(async () => {
+    try {
+      const text = getDocumentPlainText();
+      await navigator.clipboard.writeText(text);
+    } catch (_e) {
+      // Continue even if clipboard fails
+    }
+
+    saveToUndoStack();
+
+    const emptyBlock: DocumentBlock = {
+      id: crypto.randomUUID(),
+      type: 'paragraph',
+      content: '',
+      position: 0,
+      annotations: [],
+      isImmutable: false,
+      createdAt: new Date(),
+      lastUserEdit: undefined
+    };
+
+    setState(prev => ({
+      ...prev,
+      document: {
+        ...prev.document,
+        blocks: [emptyBlock],
+        updatedAt: new Date()
+      },
+      pendingChanges: true
+    }));
+
+    setTimeout(() => {
+      setEditingBlockId(emptyBlock.id);
+      const textarea = textareaRefs.current[emptyBlock.id];
+      if (textarea) textarea.focus();
+    }, 50);
+  }, [getDocumentPlainText, saveToUndoStack]);
+
   // Add a new block
   const addNewBlock = useCallback((position?: number) => {
     // Editing always allowed
-
+    saveToUndoStack();
     const newPosition = position !== undefined ? position : state.document.blocks.length;
     
     const newBlock: DocumentBlock = {
@@ -239,7 +342,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     }, 50);
 
     return newBlock;
-  }, [state.document.blocks, isReadOnly, toast]);
+  }, [state.document.blocks, isReadOnly, toast, saveToUndoStack]);
 
   // Ensure there's always at least one block for editing
   useEffect(() => {
@@ -259,7 +362,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
   // Delete a block
   const deleteBlock = useCallback((blockId: string) => {
     // Editing always allowed
-
+    saveToUndoStack();
     setState(prev => {
       // Don't allow deleting all blocks
       if (prev.document.blocks.length <= 1) {
@@ -288,7 +391,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     if (editingBlockId === blockId) {
       setEditingBlockId(null);
     }
-  }, [editingBlockId, isReadOnly, toast]);
+  }, [editingBlockId, isReadOnly, toast, saveToUndoStack]);
 
   // Start editing a block
   const startEditingBlock = useCallback((blockId: string) => {
@@ -314,7 +417,11 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
   // Update block content
   const updateBlockContent = useCallback((blockId: string, content: string) => {
     // Editing always allowed
-
+    const now = Date.now();
+    if (now - lastInputAtRef.current > 1000) {
+      saveToUndoStack();
+    }
+    lastInputAtRef.current = now;
     setState(prev => ({
       ...prev,
       document: {
@@ -328,7 +435,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
       },
       pendingChanges: true
     }));
-  }, [isReadOnly]);
+  }, [isReadOnly, saveToUndoStack]);
 
   // Copy block content
   const copyBlock = useCallback((blockId: string) => {
@@ -379,6 +486,8 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
   const insertMultipleBlocks = useCallback((currentBlockId: string, paragraphs: string[]) => {
     const currentBlock = state.document.blocks.find(b => b.id === currentBlockId);
     if (!currentBlock) return;
+
+    saveToUndoStack();
 
     const insertPosition = currentBlock.position;
     const cursorPosition = textareaRefs.current[currentBlockId]?.selectionStart || 0;
@@ -446,9 +555,29 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     const block = state.document.blocks.find(b => b.id === blockId);
     if (!block) return;
 
+    // Undo / Redo at document scope
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+      e.preventDefault();
+      undo();
+      return;
+    }
+    if ((e.metaKey && e.shiftKey && e.key.toLowerCase() === 'z') || (e.ctrlKey && e.key.toLowerCase() === 'y')) {
+      e.preventDefault();
+      redo();
+      return;
+    }
+
+    // Cmd/Ctrl + A: select all text across all blocks
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'a') {
+      e.preventDefault();
+      selectAllEssayText();
+      return;
+    }
+
     // Enter key: split text at cursor position or create new block
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
+      saveToUndoStack();
       
       const textarea = textareaRefs.current[blockId];
       if (textarea) {
@@ -493,6 +622,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     // Backspace on empty block: delete block
     if (e.key === 'Backspace' && block.content === '' && state.document.blocks.length > 1) {
       e.preventDefault();
+      saveToUndoStack();
       deleteBlock(blockId);
       
       // Focus on previous block
@@ -521,7 +651,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
         setTimeout(() => startEditingBlock(nextBlock.id), 50);
       }
     }
-  }, [state.document.blocks, addNewBlock, deleteBlock, startEditingBlock, finishEditingBlock]);
+  }, [state.document.blocks, addNewBlock, deleteBlock, startEditingBlock, finishEditingBlock, selectAllEssayText, undo, redo, saveToUndoStack]);
 
   // Generate AI comments for all blocks
   const generateAIComments = useCallback(async () => {
@@ -569,6 +699,41 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     }
     // Note: Don't auto-close the loading pane - let user click "See AI Comments" button
   }, [state.document]);
+
+  // Global key handling for undo/redo and full-essay cut
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      // Undo
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+        return;
+      }
+      // Redo: Cmd+Shift+Z (Mac) or Ctrl+Y
+      if ((e.metaKey && e.shiftKey && e.key.toLowerCase() === 'z') || (e.ctrlKey && e.key.toLowerCase() === 'y')) {
+        e.preventDefault();
+        redo();
+        return;
+      }
+
+      // Cut entire essay after select-all
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'x') {
+        const selection = window.getSelection();
+        const container = contentContainerRef.current;
+        if (!selection || !container || selection.toString().trim().length === 0) return;
+        // Compare normalized selection to full document text
+        const selectionText = normalizeText(selection.toString());
+        const docText = normalizeText(getDocumentPlainText());
+        if (selectionText && docText && selectionText === docText) {
+          e.preventDefault();
+          handleFullEssayCut();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [undo, redo, getDocumentPlainText, handleFullEssayCut]);
 
   // Handle "See AI Comments" button click
   const handleSeeAIComments = () => {
@@ -1032,7 +1197,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
       {/* Main Editor Area */}
       <div className={`${showCommentSidebar ? 'flex-1 min-w-0 pr-4 lg:pr-4 pr-0' : 'w-full'} overflow-hidden`}>
         {/* Editor Content */}
-        <div className="relative pl-4 lg:pl-12 w-full overflow-hidden">
+        <div className="relative pl-4 lg:pl-12 w-full overflow-hidden" ref={contentContainerRef}>
           {/* Render all blocks */}
           {state.document.blocks
             .sort((a, b) => a.position - b.position)
