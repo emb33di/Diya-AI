@@ -823,8 +823,11 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     // Note: Don't auto-close the loading pane - let user click "See Grammar Comments" button
   }, [state.document]);
 
-  // Resolve annotation
+  // Resolve annotation (optimistic update + persist to Supabase)
   const resolveAnnotation = useCallback((annotationId: string) => {
+    const previousDocument = deepCloneDocument(state.document);
+
+    // Optimistic UI update
     setState(prev => ({
       ...prev,
       document: {
@@ -841,7 +844,24 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
       },
       pendingChanges: true
     }));
-  }, []);
+
+    // Persist to backend
+    semanticDocumentService
+      .persistAnnotationResolution(annotationId)
+      .catch((error) => {
+        // Revert optimistic change on failure
+        setState(prev => ({
+          ...prev,
+          document: previousDocument,
+          pendingChanges: prev.pendingChanges
+        }));
+        toast({
+          title: 'Failed to resolve comment',
+          description: error instanceof Error ? error.message : 'Please try again.',
+          variant: 'destructive'
+        });
+      });
+  }, [state.document, deepCloneDocument, toast]);
 
   // Delete annotation
   const deleteAnnotation = useCallback((annotationId: string) => {

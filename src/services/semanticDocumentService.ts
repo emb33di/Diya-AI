@@ -605,6 +605,30 @@ export class SemanticDocumentService {
   }
 
   /**
+   * Persist resolved state for an annotation to Supabase
+   */
+  async persistAnnotationResolution(annotationId: string): Promise<void> {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const resolvedAtIso = new Date().toISOString();
+
+      const { error } = await (supabase.from as any)('semantic_annotations')
+        .update({
+          resolved: true,
+          resolved_at: resolvedAtIso,
+          resolved_by: user?.id || null
+        } as any)
+        .eq('id' as any, annotationId as any);
+
+      if (error) {
+        throw new Error(error.message);
+      }
+    } catch (err) {
+      throw err instanceof Error ? err : new Error('Failed to persist annotation resolution');
+    }
+  }
+
+  /**
    * Find an annotation by ID
    */
   findAnnotation(document: SemanticDocument, annotationId: string): Annotation | null {
