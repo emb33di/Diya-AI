@@ -4,11 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-import { Calendar, Clock, CheckCircle2, AlertCircle, Star, Target, Shield, Filter, Loader2, Edit3 } from "lucide-react";
+import { Calendar, CheckCircle2, AlertCircle, Star, Target, Shield, Filter, Loader2, Edit3 } from "lucide-react";
 import OnboardingGuard from "@/components/OnboardingGuard";
 import GradientBackground from "@/components/GradientBackground";
 import { supabase } from "@/integrations/supabase/client";
@@ -109,40 +108,6 @@ const Deadlines = () => {
   };
 
 
-  // Update application status
-  const handleStatusUpdate = async (schoolId: string, newStatus: 'not_started' | 'in_progress' | 'completed' | 'overdue') => {
-    try {
-      const success = await DeadlineService.updateApplicationStatus(schoolId, newStatus);
-      
-      if (success) {
-        // Update local state
-        setDeadlines(prev => prev.map(d => 
-          d.id === schoolId ? { ...d, applicationStatus: newStatus } : d
-        ));
-        
-        // Refresh stats by recalculating from current deadlines
-        const updatedDeadlines = deadlines.map(d => 
-          d.id === schoolId ? { ...d, applicationStatus: newStatus } : d
-        );
-        const deadlineStats = {
-          total: updatedDeadlines.length,
-          critical: updatedDeadlines.filter(d => d.urgencyLevel === 'critical').length,
-          high: updatedDeadlines.filter(d => d.urgencyLevel === 'high').length,
-          medium: updatedDeadlines.filter(d => d.urgencyLevel === 'medium').length,
-          low: updatedDeadlines.filter(d => d.urgencyLevel === 'low').length,
-          completed: updatedDeadlines.filter(d => d.applicationStatus === 'completed').length,
-          inProgress: updatedDeadlines.filter(d => d.applicationStatus === 'in_progress').length,
-          notStarted: updatedDeadlines.filter(d => d.applicationStatus === 'not_started').length
-        };
-        setStats(deadlineStats);
-      } else {
-        setError("Failed to update application status");
-      }
-    } catch (err) {
-      console.error('Error updating status:', err);
-      setError("Failed to update application status");
-    }
-  };
 
   // Handle task completion toggle
   const handleTaskToggle = async (schoolId: string, taskType: string, completed: boolean) => {
@@ -168,25 +133,6 @@ const Deadlines = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed': return 'bg-green-500 text-white';
-      case 'in_progress': return 'bg-blue-500 text-white';
-      case 'not_started': return 'bg-gray-500 text-white';
-      case 'overdue': return 'bg-red-500 text-white';
-      default: return 'bg-gray-500 text-white';
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed': return <CheckCircle2 className="h-4 w-4" />;
-      case 'in_progress': return <Clock className="h-4 w-4" />;
-      case 'not_started': return <AlertCircle className="h-4 w-4" />;
-      case 'overdue': return <AlertCircle className="h-4 w-4" />;
-      default: return <Clock className="h-4 w-4" />;
-    }
-  };
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
@@ -328,14 +274,6 @@ const Deadlines = () => {
                     All
                   </Button>
                   <Button 
-                    variant={filter === 'urgent' ? 'default' : 'outline'} 
-                    size="sm"
-                    onClick={() => setFilter('urgent')}
-                    className="text-xs sm:text-sm"
-                  >
-                    Urgent
-                  </Button>
-                  <Button 
                     variant={filter === 'reach' ? 'default' : 'outline'} 
                     size="sm"
                     onClick={() => setFilter('reach')}
@@ -366,14 +304,10 @@ const Deadlines = () => {
 
           {/* Stats Overview */}
           {stats && (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-8">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4 mb-8">
               <Card className="text-center p-3 lg:p-4">
                 <div className="text-xl lg:text-2xl font-bold text-blue-600">{stats.total}</div>
                 <div className="text-xs lg:text-sm text-muted-foreground">Total Schools</div>
-              </Card>
-              <Card className="text-center p-3 lg:p-4">
-                <div className="text-xl lg:text-2xl font-bold text-red-600">{stats.critical + stats.high}</div>
-                <div className="text-xs lg:text-sm text-muted-foreground">Urgent</div>
               </Card>
               <Card className="text-center p-3 lg:p-4">
                 <div className="text-xl lg:text-2xl font-bold text-green-600">{stats.completed}</div>
@@ -472,24 +406,11 @@ const Deadlines = () => {
                     </div>
                     
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end space-y-2 sm:space-y-0 sm:space-x-2">
-                      <Badge className={getUrgencyBadgeColor(deadline.urgencyLevel)}>
-                        {deadline.urgencyLevel.toUpperCase()}
-                      </Badge>
-                      
-                      <Select
-                        value={deadline.applicationStatus}
-                        onValueChange={(value: any) => handleStatusUpdate(deadline.id, value)}
-                      >
-                        <SelectTrigger className="w-28 sm:w-32">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="not_started">Not Started</SelectItem>
-                          <SelectItem value="in_progress">In Progress</SelectItem>
-                          <SelectItem value="completed">Completed</SelectItem>
-                          <SelectItem value="overdue">Overdue</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      {deadline.urgencyLevel !== 'low' && (
+                        <Badge className={getUrgencyBadgeColor(deadline.urgencyLevel)}>
+                          {deadline.urgencyLevel.toUpperCase()}
+                        </Badge>
+                      )}
                     </div>
                   </div>
                   
