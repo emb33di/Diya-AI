@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { DatePicker } from "@/components/ui/date-picker";
+import { InlineDatePicker } from "@/components/ui/inline-date-picker";
 import { Calendar, Clock, CheckCircle2, AlertCircle, Star, Target, Shield, Filter, RefreshCw, Loader2, Plus, Edit, Trash2, Mail, Phone, User } from "lucide-react";
 import OnboardingGuard from "@/components/OnboardingGuard";
 import GradientBackground from "@/components/GradientBackground";
@@ -482,11 +482,11 @@ const LOR = () => {
                                     <span className="text-red-500">*</span>
                                   </div>
                                 </Label>
-                                <DatePicker
+                                <InlineDatePicker
                                   value={formData.internalDeadline1}
                                   onChange={(date) => setFormData({ ...formData, internalDeadline1: date })}
                                   placeholder="Select date to reach out"
-                                  className="h-12 border-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                                  showSelectedDate={true}
                                 />
                                 <p className="text-xs text-muted-foreground">
                                   When to contact them
@@ -503,11 +503,11 @@ const LOR = () => {
                                     <span className="text-red-500">*</span>
                                   </div>
                                 </Label>
-                                <DatePicker
+                                <InlineDatePicker
                                   value={formData.internalDeadline2}
                                   onChange={(date) => setFormData({ ...formData, internalDeadline2: date })}
                                   placeholder="Select date to check-in"
-                                  className="h-12 border-2 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition-all"
+                                  showSelectedDate={true}
                                 />
                                 <p className="text-xs text-muted-foreground">
                                   Follow up on progress
@@ -524,11 +524,11 @@ const LOR = () => {
                                     <span className="text-red-500">*</span>
                                   </div>
                                 </Label>
-                                <DatePicker
+                                <InlineDatePicker
                                   value={formData.internalDeadline3}
                                   onChange={(date) => setFormData({ ...formData, internalDeadline3: date })}
                                   placeholder="Select date to submit LOR"
-                                  className="h-12 border-2 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all"
+                                  showSelectedDate={true}
                                 />
                                 <p className="text-xs text-muted-foreground">
                                   When they should submit
@@ -921,11 +921,11 @@ const LOR = () => {
                                 <span className="text-red-500">*</span>
                               </div>
                             </Label>
-                            <DatePicker
+                            <InlineDatePicker
                               value={formData.internalDeadline1}
                               onChange={(date) => setFormData({ ...formData, internalDeadline1: date })}
                               placeholder="Select date to reach out"
-                              className="h-12 border-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                              showSelectedDate={true}
                             />
                             <p className="text-xs text-muted-foreground">
                               When to contact them
@@ -942,11 +942,11 @@ const LOR = () => {
                                 <span className="text-red-500">*</span>
                               </div>
                             </Label>
-                            <DatePicker
+                            <InlineDatePicker
                               value={formData.internalDeadline2}
                               onChange={(date) => setFormData({ ...formData, internalDeadline2: date })}
                               placeholder="Select date to check-in"
-                              className="h-12 border-2 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition-all"
+                              showSelectedDate={true}
                             />
                             <p className="text-xs text-muted-foreground">
                               Follow up on progress
@@ -963,11 +963,11 @@ const LOR = () => {
                                 <span className="text-red-500">*</span>
                               </div>
                             </Label>
-                            <DatePicker
+                            <InlineDatePicker
                               value={formData.internalDeadline3}
                               onChange={(date) => setFormData({ ...formData, internalDeadline3: date })}
                               placeholder="Select date to submit LOR"
-                              className="h-12 border-2 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all"
+                              showSelectedDate={true}
                             />
                             <p className="text-xs text-muted-foreground">
                               When they should submit
