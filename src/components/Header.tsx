@@ -383,26 +383,12 @@ const Header = () => {
             >
               FAQs
             </button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="h-12 px-4 text-base font-medium text-white hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/10 flex items-center gap-1">
-                  Resources
-                  <ChevronDown className="h-4 w-4" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-48">
-                <DropdownMenuItem asChild>
-                  <Link to="/blog" className="flex items-center">
-                    Blog
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/successful-examples" className="flex items-center">
-                    Successful Examples
-                  </Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Link 
+              to="/blog" 
+              className="h-12 px-4 text-base font-medium text-white hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/10"
+            >
+              Blog
+            </Link>
           </div>
         )}
         
