@@ -5,6 +5,17 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Plus, Trash2, Edit3, Clock, CheckCircle, AlertTriangle } from "lucide-react";
 
 interface ActivityData {
@@ -36,6 +47,9 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
   // Undo state management
   const [undoStack, setUndoStack] = useState<ActivityData[]>([]);
   const [redoStack, setRedoStack] = useState<ActivityData[]>([]);
+  
+  // Delete confirmation dialog state
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Sync local state with prop changes
   useEffect(() => {
@@ -78,6 +92,12 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
       setUndoStack(prev => prev.slice(0, -1));
     }
   }, [undoStack, localActivity]);
+
+  // Handle delete confirmation
+  const handleDeleteConfirm = useCallback(() => {
+    onRemove(activity.id);
+    setShowDeleteDialog(false);
+  }, [onRemove, activity.id]);
 
   // Redo function
   const redo = useCallback(() => {
@@ -387,15 +407,41 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
               )}
             </div>
             
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onRemove(activity.id)}
-              className="text-red-600 hover:text-red-700 hover:bg-red-50 w-full sm:w-auto touch-manipulation"
-            >
-              <Trash2 className="h-4 w-4" />
-              <span className="ml-2 hidden sm:inline">Remove</span>
-            </Button>
+            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50 w-full sm:w-auto touch-manipulation"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span className="ml-2 hidden sm:inline">Remove</span>
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+                    <AlertTriangle className="h-5 w-5" />
+                    Delete Activity
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete <strong>"{localActivity.title}"</strong>? This action cannot be undone.
+                    <br /><br />
+                    This will permanently remove the activity and all its bullet points from your resume.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDeleteConfirm}
+                    className="bg-red-600 hover:bg-red-700 text-white"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Activity
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
       </CardHeader>
