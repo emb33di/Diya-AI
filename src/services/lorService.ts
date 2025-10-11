@@ -415,8 +415,8 @@ export class LORService {
       const deadlines: LORDeadlineInfo[] = [];
 
       recommenders.forEach(recommender => {
-        // Add deadline 1 (reach out)
-        if (recommender.internalDeadline1) {
+        // Add deadline 1 (reach out) - only if not already completed
+        if (recommender.internalDeadline1 && !recommender.reachedOut) {
           deadlines.push({
             id: `${recommender.id}-deadline1`,
             recommenderName: recommender.name,
@@ -427,8 +427,8 @@ export class LORService {
           });
         }
 
-        // Add deadline 2 (check-in)
-        if (recommender.internalDeadline2) {
+        // Add deadline 2 (check-in) - only if not already completed
+        if (recommender.internalDeadline2 && !recommender.checkedIn) {
           deadlines.push({
             id: `${recommender.id}-deadline2`,
             recommenderName: recommender.name,
@@ -439,8 +439,8 @@ export class LORService {
           });
         }
 
-        // Add deadline 3 (submit)
-        if (recommender.internalDeadline3) {
+        // Add deadline 3 (submit) - only if not already completed
+        if (recommender.internalDeadline3 && !recommender.submittedRecommendation) {
           deadlines.push({
             id: `${recommender.id}-deadline3`,
             recommenderName: recommender.name,

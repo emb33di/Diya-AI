@@ -94,7 +94,8 @@ const Dashboard = () => {
       title,
       due: dueText,
       urgent: daysRemaining <= 3,
-      overdue: false
+      overdue: false,
+      linkTo: '/deadlines'
     };
   });
 
@@ -119,7 +120,8 @@ const Dashboard = () => {
       title,
       due: dueText,
       urgent: daysRemaining <= 3,
-      overdue: false
+      overdue: false,
+      linkTo: '/lor'
     };
   });
 
@@ -270,7 +272,7 @@ const Dashboard = () => {
                         </div>
                       </div>
                       <Button size="sm" variant="ghost" asChild>
-                        <Link to="/deadlines">View</Link>
+                        <Link to={task.linkTo}>View</Link>
                       </Button>
                     </div>
                   ))
