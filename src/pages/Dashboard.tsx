@@ -211,7 +211,7 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4 mb-6">
           {/* Left Side - Progress Ring */}
           <div className="flex flex-col items-center">
-            <Card className="bg-gradient-card shadow-lg w-full">
+            <Card className="bg-gradient-card shadow-lg w-full h-[400px]">
               <CardHeader className="text-center pb-4">
                 <CardTitle className="text-xl font-semibold">
                   Application Progress
@@ -244,8 +244,8 @@ const Dashboard = () => {
 
           {/* Right Side - Due This Week */}
           <div>
-            <Card className="shadow-lg h-full">
-              <CardHeader>
+            <Card className="shadow-lg h-[400px] flex flex-col">
+              <CardHeader className="flex-shrink-0">
                 <div className="flex items-center space-x-2">
                   <Calendar className="h-5 w-5 text-primary" />
                   <CardTitle>Due This Week</CardTitle>
@@ -254,7 +254,7 @@ const Dashboard = () => {
                   Deadlines and tasks due in the next 7 days
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-3 overflow-y-auto flex-1">
                 {combinedThisWeekTasks.length > 0 ? (
                   combinedThisWeekTasks.map((task, index) => (
                     <div key={index} className="flex items-center justify-between p-2 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
