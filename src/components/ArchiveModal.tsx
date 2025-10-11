@@ -198,7 +198,7 @@ const ArchiveModal = ({ isOpen, onClose, onSchoolRestored }: ArchiveModalProps) 
                   <CardContent className="space-y-3">
                     <div className="flex items-center space-x-2 text-sm">
                       <GraduationCap className="h-3 w-3 text-muted-foreground" />
-                      <span>Rank: #{school.school_ranking || 'N/A'}</span>
+                      <span>Rank: {school.school_ranking || 'N/A'}</span>
                     </div>
                     
                     <div className="text-xs text-muted-foreground">
