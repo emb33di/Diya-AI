@@ -51,6 +51,7 @@ interface CleanSemanticEditorProps {
   onHideSidebar?: () => void;
   className?: string;
   readOnly?: boolean;
+  hasGrammarCheckRun?: boolean;
 }
 
 const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
@@ -66,7 +67,8 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
   selectedAnnotationId,
   onHideSidebar,
   className = '',
-  readOnly = false
+  readOnly = false,
+  hasGrammarCheckRun = false
 }) => {
   // Simple, clean state management
   const [state, setState] = useState<SemanticEditorState>({
@@ -1184,6 +1186,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
           onAnnotationResolve={resolveAnnotation}
           onAnnotationDelete={deleteAnnotation}
           onAnnotationSelect={onAnnotationSelect}
+          hasGrammarCheckRun={hasGrammarCheckRun}
           selectedAnnotationId={selectedAnnotationId}
           onHideSidebar={onHideSidebar}
         />

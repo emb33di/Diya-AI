@@ -36,6 +36,7 @@ interface CommentSidebarProps {
   selectedAnnotationId?: string;
   onHideSidebar?: () => void;
   className?: string;
+  hasGrammarCheckRun?: boolean;
 }
 
 interface GroupedComment {
@@ -51,7 +52,8 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
   onAnnotationSelect,
   selectedAnnotationId,
   onHideSidebar,
-  className
+  className,
+  hasGrammarCheckRun = false
 }) => {
   const [expandedCategories, setExpandedCategories] = useState<Set<CommentCategory>>(
     new Set(['overall-analysis', 'tone', 'clarity', 'strengths', 'areas-for-improvement', 'paragraph-quality', 'grammar'])
@@ -472,12 +474,22 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
                 {isExpanded && (
                   <CardContent className="p-0">
                     <div className="space-y-2 p-3 pt-0">
-                      {/* Show congratulations message for empty grammar category */}
+                      {/* Show different messages for empty grammar category based on check state */}
                       {category === 'grammar' && comments.length === 0 && (
-                        <div className="text-center py-4 text-green-600">
-                          <CheckCircle className="h-8 w-8 mx-auto mb-2 opacity-70" />
-                          <p className="font-medium text-sm">Congratulations!</p>
-                          <p className="text-xs">No grammar errors found! 🎉</p>
+                        <div className="text-center py-4">
+                          {hasGrammarCheckRun ? (
+                            <div className="text-green-600">
+                              <CheckCircle className="h-8 w-8 mx-auto mb-2 opacity-70" />
+                              <p className="font-medium text-sm">Congratulations!</p>
+                              <p className="text-xs">No grammar errors found! 🎉</p>
+                            </div>
+                          ) : (
+                            <div className="text-gray-500">
+                              <CheckSquare className="h-8 w-8 mx-auto mb-2 opacity-70" />
+                              <p className="font-medium text-sm">Grammar Check</p>
+                              <p className="text-xs">Run grammar check to find any grammar mistakes</p>
+                            </div>
+                          )}
                         </div>
                       )}
                       

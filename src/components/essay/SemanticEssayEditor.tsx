@@ -96,6 +96,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
   const [isGeneratingGrammar, setIsGeneratingGrammar] = useState(false);
   const [grammarLoadingStep, setGrammarLoadingStep] = useState(0);
   const [noGrammarErrorsFound, setNoGrammarErrorsFound] = useState(false);
+  const [hasGrammarCheckRun, setHasGrammarCheckRun] = useState(false);
   const [migrationStatus, setMigrationStatus] = useState<{
     isMigrating: boolean;
     progress: number;
@@ -146,6 +147,19 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
   };
 
   usePageVisibility(handlePageVisible);
+
+  // Check for existing grammar comments when document loads
+  useEffect(() => {
+    if (document) {
+      const hasGrammarComments = document.blocks.some(block => 
+        block.annotations.some(annotation => 
+          annotation.metadata?.agentType === 'grammar' || 
+          annotation.metadata?.commentCategory === 'grammar'
+        )
+      );
+      setHasGrammarCheckRun(hasGrammarComments);
+    }
+  }, [document]);
 
   // Load or create document on mount
   useEffect(() => {
@@ -609,6 +623,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
         // Check if no grammar comments were generated
         const hasGrammarComments = response.comments && response.comments.length > 0;
         setNoGrammarErrorsFound(!hasGrammarComments);
+        setHasGrammarCheckRun(true);
         
         // Add a small delay to ensure database insert is complete
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -1230,6 +1245,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                   selectedAnnotationId={selectedAnnotation?.id}
                   onHideSidebar={() => setShowCommentSidebar(false)}
                   readOnly={Boolean(currentVersion?.has_ai_feedback)}
+                  hasGrammarCheckRun={hasGrammarCheckRun}
                 />
               </div>
             </div>
@@ -1245,6 +1261,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                   onAnnotationSelect={handleAnnotationSelect}
                   selectedAnnotationId={selectedAnnotation?.id}
                   className="h-full border-0 rounded-lg"
+                  hasGrammarCheckRun={hasGrammarCheckRun}
                 />
               </div>
             </div>
