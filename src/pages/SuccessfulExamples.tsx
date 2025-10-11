@@ -372,18 +372,6 @@ const SuccessfulExamples = () => {
         </div>
       </div>
 
-      {/* CTA Section */}
-      <div className="py-12 sm:py-16" style={{ backgroundColor: '#F4EDE2' }}>
-        <div className="container mx-auto px-4 sm:px-6 text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold mb-4 text-gray-900">Need Personalized Help?</h2>
-          <p className="text-lg sm:text-xl mb-6 sm:mb-8 text-gray-600 px-4">
-            Get custom examples and expert guidance tailored to your specific goals
-          </p>
-          <Button size="lg" className="hover:shadow-lg transition-all w-full sm:w-auto" style={{ backgroundColor: '#D07D00', color: 'white' }}>
-            Get Personalized Examples
-          </Button>
-        </div>
-      </div>
     </div>
   );
 };
