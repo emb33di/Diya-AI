@@ -383,12 +383,12 @@ const Header = () => {
             >
               FAQs
             </button>
-            <Link 
-              to="/blog" 
+            <button 
+              onClick={() => navigate('/blog')} 
               className="h-12 px-4 text-base font-medium text-white hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/10"
             >
               Blog
-            </Link>
+            </button>
           </div>
         )}
         
