@@ -508,25 +508,19 @@ const Deadlines = () => {
                     {deadline.tasks.map((task) => (
                       <div 
                         key={task.id} 
-                        className="flex items-center justify-between p-2 rounded-lg bg-muted/30 hover:bg-muted/50 cursor-pointer transition-colors min-h-[44px]"
+                        className="flex items-center space-x-3 flex-1 p-2 rounded-lg bg-muted/30 hover:bg-muted/50 cursor-pointer transition-colors min-h-[44px]"
                         onClick={() => handleTaskToggle(deadline.id, task.type, !task.completed)}
                       >
-                        <div className="flex items-center space-x-3 flex-1 min-w-0">
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                            task.completed 
-                              ? 'bg-green-500 border-green-500' 
-                              : 'border-muted-foreground hover:border-green-500'
-                          }`}>
-                            {task.completed && <CheckCircle2 className="h-3 w-3 text-white" />}
-                          </div>
-                          <span className={`text-sm ${task.completed ? 'line-through text-muted-foreground' : ''} truncate`}>
-                            {task.title}
-                          </span>
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                          task.completed 
+                            ? 'bg-green-500 border-green-500' 
+                            : 'border-muted-foreground hover:border-green-500'
+                        }`}>
+                          {task.completed && <CheckCircle2 className="h-3 w-3 text-white" />}
                         </div>
-                        
-                        <Badge variant="outline" className="text-xs flex-shrink-0 ml-2">
-                          {task.priority}
-                        </Badge>
+                        <span className={`text-sm ${task.completed ? 'line-through text-muted-foreground' : ''} truncate`}>
+                          {task.title}
+                        </span>
                       </div>
                     ))}
                   </div>
