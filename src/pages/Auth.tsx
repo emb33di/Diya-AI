@@ -41,6 +41,7 @@ const Auth = () => {
   const [lastName, setLastName] = useState("");
   const [countryCode, setCountryCode] = useState("+91");
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [phoneNumberError, setPhoneNumberError] = useState("");
   const [applyingTo, setApplyingTo] = useState("");
   const [loading, setLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -68,6 +69,30 @@ const Auth = () => {
 
     return () => subscription.unsubscribe();
   }, [navigate]);
+
+  const validatePhoneNumber = (phone: string): boolean => {
+    // Remove any non-digit characters for validation
+    const digitsOnly = phone.replace(/\D/g, '');
+    
+    if (digitsOnly.length === 0) {
+      setPhoneNumberError("");
+      return true; // Empty is OK, required attribute will handle it
+    }
+    
+    if (digitsOnly.length !== 10) {
+      setPhoneNumberError("Phone number must be exactly 10 digits");
+      return false;
+    }
+    
+    setPhoneNumberError("");
+    return true;
+  };
+
+  const handlePhoneNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setPhoneNumber(value);
+    validatePhoneNumber(value);
+  };
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,6 +138,19 @@ const Auth = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate phone number for signup
+    if (!isSignIn) {
+      if (!validatePhoneNumber(phoneNumber)) {
+        toast({
+          title: "Invalid Phone Number",
+          description: "Phone number must be exactly 10 digits",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    
     setLoading(true);
     
     // Create a unique ID for this signup attempt for easier log correlation
@@ -441,12 +479,15 @@ const Auth = () => {
                         id="phoneNumber" 
                         type="tel" 
                         placeholder="Phone number"
-                        className="h-12 text-base flex-1"
+                        className={`h-12 text-base flex-1 ${phoneNumberError ? 'border-red-500 focus:border-red-500' : ''}`}
                         value={phoneNumber}
-                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        onChange={handlePhoneNumberChange}
                         required
                       />
                     </div>
+                    {phoneNumberError && (
+                      <p className="text-sm text-red-500">{phoneNumberError}</p>
+                    )}
                   </div>
                 )}
                 
