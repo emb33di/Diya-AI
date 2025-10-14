@@ -82,3 +82,4 @@ echo ""
 echo -e "${BLUE}To view edge function logs:${NC}"
 echo "  supabase functions logs send-admin-signup-notification --tail"
 
+

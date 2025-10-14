@@ -229,7 +229,27 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { userId, email, fullName, applyingTo, createdAt } = await req.json();
+    const payload = await req.json();
+    
+    // Handle both Supabase webhook format and direct calls
+    let userId, email, fullName, applyingTo, createdAt;
+    
+    if (payload.type === 'INSERT' && payload.record) {
+      // Supabase webhook format
+      const record = payload.record;
+      userId = record.id;
+      email = record.email;
+      fullName = record.raw_user_meta_data?.full_name;
+      applyingTo = record.raw_user_meta_data?.applying_to;
+      createdAt = record.created_at;
+    } else {
+      // Direct call format
+      userId = payload.userId;
+      email = payload.email;
+      fullName = payload.fullName;
+      applyingTo = payload.applyingTo;
+      createdAt = payload.createdAt;
+    }
 
     if (!userId || !email) {
       console.error("Missing required fields: userId, email");

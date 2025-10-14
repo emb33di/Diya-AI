@@ -39,3 +39,4 @@ FROM pg_trigger
 WHERE tgrelid = 'auth.users'::regclass
 ORDER BY tgname;
 
+

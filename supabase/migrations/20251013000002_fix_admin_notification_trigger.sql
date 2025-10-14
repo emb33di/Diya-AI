@@ -66,3 +66,4 @@ EXECUTE FUNCTION public.notify_admin_of_new_user();
 COMMENT ON FUNCTION public.notify_admin_of_new_user IS 
 'Sends an email notification to mihir@meetdiya.com when a new user signs up. Uses the send-admin-signup-notification edge function via pg_net.';
 
+
