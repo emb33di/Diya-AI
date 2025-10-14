@@ -341,17 +341,17 @@ const Header = () => {
             <button 
               onClick={() => {
                 if (location.pathname === '/') {
-                  const element = document.getElementById('pricing');
+                  const element = document.getElementById('plans');
                   if (element) {
                     element.scrollIntoView({ behavior: 'smooth' });
                   }
                 } else {
-                  navigate('/#pricing');
+                  navigate('/#plans');
                 }
               }} 
               className="h-12 px-4 text-base font-medium text-white hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/10"
             >
-              Pricing
+              Plans
             </button>
             <button 
               onClick={() => {

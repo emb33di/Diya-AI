@@ -1,6 +1,6 @@
 import { useScrollAnimation } from "@/hooks/use-scroll-animation";
 import { Button } from "@/components/ui/button";
-import { Check } from "lucide-react";
+import { Check, Crown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const PricingSection = () => {
@@ -11,12 +11,12 @@ const PricingSection = () => {
   const { elementRef: cardRef3, isVisible: card3Visible } = useScrollAnimation();
 
   return (
-    <section id="pricing" className="py-8 sm:py-12 md:py-16 px-4 sm:px-6">
+    <section id="plans" className="py-8 sm:py-12 md:py-16 px-4 sm:px-6">
       <div className="max-w-6xl mx-auto">
         {/* Section Header */}
         <div ref={headerRef} className={`text-center mb-8 sm:mb-12 scroll-fade-in ${headerVisible ? 'animate' : ''}`}>
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold mb-4 leading-tight" style={{color: '#D07D00'}}>
-            The Best Admissions Guidance, At An Affordable Price
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold mb-4 leading-tight" style={{color: '#D07D00'}}>
+            Do it all in one place! No more juggling Docs, Sheets, and Emails.
           </h2>
           <p className="text-sm sm:text-base md:text-lg text-white max-w-2xl mx-auto leading-relaxed">
             Start your journey to top universities with our affordable, expert-designed plans
@@ -28,12 +28,11 @@ const PricingSection = () => {
           {/* Free Plan */}
           <div ref={cardRef1} className={`rounded-2xl sm:rounded-3xl border border-primary/20 p-6 sm:p-8 hover:border-primary/40 hover:shadow-[0_0_40px_hsl(var(--primary)/0.2)] transition-all duration-300 scroll-scale-in ${card1Visible ? 'animate' : ''} flex flex-col`}>
             <div className="text-center mb-6">
-              <h3 className="text-xl sm:text-2xl font-bold text-brand-orange mb-2">
+              <h3 className="text-3xl sm:text-4xl md:text-5xl font-bold text-brand-orange mb-2">
                 Free
               </h3>
               <div className="mb-4">
-                <span className="text-3xl sm:text-4xl font-extrabold text-primary">₹0</span>
-                <p className="text-sm text-white mt-1">Manage your entire application</p>
+                <p className="text-base text-white mt-1">Manage your entire application</p>
               </div>
             </div>
 
@@ -42,23 +41,23 @@ const PricingSection = () => {
               <ul className="space-y-3">
                 <li className="flex items-start gap-3">
                   <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  <span className="text-sm sm:text-base text-white">Voice onboarding call with Diya</span>
+                  <span className="text-base sm:text-lg text-white">Voice onboarding call with Diya</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  <span className="text-sm sm:text-base text-white">Deadline and progress tracking</span>
+                  <span className="text-base sm:text-lg text-white">Deadline and progress tracking</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  <span className="text-sm sm:text-base text-white">Manage all your essays in one place</span>
+                  <span className="text-base sm:text-lg text-white">Manage all your essays in one place</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  <span className="text-sm sm:text-base text-white">Resume management and formatting</span>
+                  <span className="text-base sm:text-lg text-white">Resume management and formatting</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  <span className="text-sm sm:text-base text-white">Limited access to LOR templates, successful essays, and sample resumes</span>
+                  <span className="text-base sm:text-lg text-white">Limited access to LOR templates, successful essays, and sample resumes</span>
                 </li>
               </ul>
             </div>
@@ -75,12 +74,12 @@ const PricingSection = () => {
             </div>
 
             <div className="text-center mb-6">
-              <h3 className="text-xl sm:text-2xl font-bold text-brand-orange mb-2">
+              <h3 className="text-3xl sm:text-4xl md:text-5xl font-bold text-brand-orange mb-2 flex items-center justify-center gap-3">
+                <Crown className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-brand-orange" />
                 Pro
               </h3>
               <div className="mb-4">
-                <span className="text-3xl sm:text-4xl font-extrabold text-primary">₹9,999</span>
-                <p className="text-sm text-white mt-1">AI-powered counseling and feedback</p>
+                <p className="text-base text-white mt-1">AI-powered counseling and feedback</p>
               </div>
             </div>
 
@@ -89,23 +88,23 @@ const PricingSection = () => {
               <ul className="space-y-3">
                 <li className="flex items-start gap-3">
                   <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  <span className="text-sm sm:text-base text-white font-medium">All features in Free, plus:</span>
+                  <span className="text-base sm:text-lg text-white font-medium">All features in Free, plus:</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  <span className="text-sm sm:text-base text-white">Unlimited access to Diya essay feedback and scoring</span>
+                  <span className="text-base sm:text-lg text-white">Unlimited access to Diya essay feedback and scoring</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  <span className="text-sm sm:text-base text-white">Unlimited access to Diya resume formatting and downloads</span>
+                  <span className="text-base sm:text-lg text-white">Unlimited access to Diya resume formatting and downloads</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  <span className="text-sm sm:text-base text-white">Access to the entire library of successful LORs, resumes, and essays</span>
+                  <span className="text-base sm:text-lg text-white">Access to the entire library of successful LORs, resumes, and essays</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  <span className="text-sm sm:text-base text-white">Access to weekly webinars and college guidance videos</span>
+                  <span className="text-base sm:text-lg text-white">Access to weekly webinars and college guidance videos</span>
                 </li>
               </ul>
             </div>

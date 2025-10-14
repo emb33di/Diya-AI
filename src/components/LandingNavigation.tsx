@@ -40,10 +40,10 @@ const Navigation = () => {
               Students
             </button>
             <button 
-              onClick={() => handleScrollTo('pricing')} 
+              onClick={() => handleScrollTo('plans')} 
               className="text-sm font-medium text-white/90 hover:text-white transition-colors duration-200"
             >
-              Pricing
+              Plans
             </button>
             <button 
               onClick={() => handleScrollTo('founder')} 
