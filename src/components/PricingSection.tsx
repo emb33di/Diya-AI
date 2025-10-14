@@ -16,11 +16,8 @@ const PricingSection = () => {
         {/* Section Header */}
         <div ref={headerRef} className={`text-center mb-8 sm:mb-12 scroll-fade-in ${headerVisible ? 'animate' : ''}`}>
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold mb-4 leading-tight" style={{color: '#D07D00'}}>
-            Do it all in one place! No more juggling Docs, Sheets, and Emails.
+           No more juggling Docs, Sheets, and Emails!
           </h2>
-          <p className="text-sm sm:text-base md:text-lg text-white max-w-2xl mx-auto leading-relaxed">
-            Start your journey to top universities with our affordable, expert-designed plans
-          </p>
         </div>
 
         {/* Pricing Cards */}
@@ -28,11 +25,11 @@ const PricingSection = () => {
           {/* Free Plan */}
           <div ref={cardRef1} className={`rounded-2xl sm:rounded-3xl border border-primary/20 p-6 sm:p-8 hover:border-primary/40 hover:shadow-[0_0_40px_hsl(var(--primary)/0.2)] transition-all duration-300 scroll-scale-in ${card1Visible ? 'animate' : ''} flex flex-col`}>
             <div className="text-center mb-6">
-              <h3 className="text-3xl sm:text-4xl md:text-5xl font-bold text-brand-orange mb-2">
+              <h3 className="text-xl sm:text-2xl md:text-3xl font-bold text-brand-orange mb-2">
                 Free
               </h3>
               <div className="mb-4">
-                <p className="text-base text-white mt-1">Manage your entire application</p>
+                <p className="text-base text-white mt-1">Manage your entire application in one place</p>
               </div>
             </div>
 
@@ -74,12 +71,12 @@ const PricingSection = () => {
             </div>
 
             <div className="text-center mb-6">
-              <h3 className="text-3xl sm:text-4xl md:text-5xl font-bold text-brand-orange mb-2 flex items-center justify-center gap-3">
-                <Crown className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-brand-orange" />
+              <h3 className="text-xl sm:text-2xl md:text-3xl font-bold text-brand-orange mb-2 flex items-center justify-center gap-3">
+                <Crown className="w-8 h-8 sm:w-6 sm:h-6 md:w-8 md:h-8 text-brand-orange" />
                 Pro
               </h3>
               <div className="mb-4">
-                <p className="text-base text-white mt-1">AI-powered counseling and feedback</p>
+                <p className="text-base text-white mt-1">Unlock all AI features</p>
               </div>
             </div>
 

@@ -11,7 +11,7 @@ const FounderProfile = () => {
         <div ref={profileRef} className={`rounded-2xl sm:rounded-3xl border border-primary/20 p-6 sm:p-8 hover:border-primary/40 hover:shadow-[0_0_40px_hsl(var(--primary)/0.2)] transition-all duration-300 scroll-scale-in ${profileVisible ? 'animate' : ''}`}>
           {/* Section Header */}
           <div ref={headerRef} className={`text-left mb-6 scroll-fade-in ${headerVisible ? 'animate' : ''}`}>
-            <h2 className="text-lg sm:text-xl md:text-2xl text-center font-extrabold font-medium font-inter mb-4 leading-tight" style={{color: '#D07D00'}}>
+            <h2 className="text-xl sm:text-2xl md:text-3xl text-center font-extrabold font-medium font-inter mb-4 leading-tight" style={{color: '#D07D00'}}>
               Meet Our Founder
             </h2>
           </div>

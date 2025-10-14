@@ -61,49 +61,45 @@ const MBASection = () => {
   ];
 
   return (
-    <section id="programs" className="py-16 sm:py-20 md:py-24 lg:py-28 px-4 sm:px-6 bg-gradient-to-b from-background via-muted/5 to-background">
+    <section id="programs" className="py-12 sm:py-16 md:py-20 lg:py-16 xl:py-20 2xl:py-24 px-4 sm:px-6 bg-gradient-to-b from-background via-muted/5 to-background">
       <div className="max-w-7xl mx-auto">
         {/* Section Header */}
-        <div ref={headerRef} className={`text-center mb-16 sm:mb-20 md:mb-24 scroll-fade-in ${headerVisible ? 'animate' : ''}`}>
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-brand-orange font-inter mb-6 sm:mb-8 leading-tight">
+        <div ref={headerRef} className={`text-center mb-8 sm:mb-12 md:mb-14 lg:mb-10 xl:mb-12 2xl:mb-16 scroll-fade-in ${headerVisible ? 'animate' : ''}`}>
+          <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-4xl xl:text-5xl 2xl:text-6xl font-bold text-brand-orange font-inter mb-4 sm:mb-6 lg:mb-4 xl:mb-6 leading-tight">
             Who Can Use Diya?
             <span className="block leading-relaxed text-brand-orange">
               Every Student, Every Program
             </span>
           </h2>
-          <p className="text-lg sm:text-xl md:text-2xl text-white max-w-4xl mx-auto leading-relaxed">
-            From high school students to working professionals, Diya serves students across all academic levels and program types. 
-            Whether you're pursuing undergraduate studies or advanced degrees, Diya adapts to your specific needs and goals.
-          </p>
         </div>
 
         {/* Program Types Table */}
         <div ref={contentRef} className={`scroll-scale-in ${contentVisible ? 'animate' : ''}`}>
           <div className="max-w-2xl mx-auto">
-            <div className="bg-card/20 backdrop-blur-sm rounded-2xl border border-primary/20 p-8">
-              <div className="space-y-4">
+            <div className="bg-card/20 backdrop-blur-sm rounded-2xl border border-primary/20 p-6 lg:p-6 xl:p-8">
+              <div className="space-y-3 lg:space-y-3 xl:space-y-4">
                 {programTypes.map((program, index) => (
                   <button
                     key={index} 
                     onClick={() => navigate('/auth')}
-                    className={`w-full flex items-center space-x-4 p-4 rounded-xl hover:bg-primary/10 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer scroll-fade-in ${contentVisible ? 'animate' : ''} group`} 
+                    className={`w-full flex items-center space-x-4 p-3 lg:p-3 xl:p-4 rounded-xl hover:bg-primary/10 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer scroll-fade-in ${contentVisible ? 'animate' : ''} group`} 
                     style={{ transitionDelay: `${index * 0.1}s` }}
                   >
                     {/* Checkmark */}
-                    <div className="flex-shrink-0 w-8 h-8 bg-[#D07D00] rounded-full flex items-center justify-center group-hover:shadow-[0_0_15px_hsl(25,100%,50%)] transition-all duration-200">
-                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="flex-shrink-0 w-7 h-7 lg:w-7 lg:h-7 xl:w-8 xl:h-8 bg-[#D07D00] rounded-full flex items-center justify-center group-hover:shadow-[0_0_15px_hsl(25,100%,50%)] transition-all duration-200">
+                      <svg className="w-4 h-4 lg:w-4 lg:h-4 xl:w-5 xl:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                       </svg>
                     </div>
 
                     {/* Program Name */}
-                    <h3 className="text-lg sm:text-xl font-semibold text-foreground font-inter group-hover:text-primary transition-colors duration-200">
+                    <h3 className="text-base sm:text-lg lg:text-base xl:text-lg 2xl:text-xl font-semibold text-foreground font-inter group-hover:text-primary transition-colors duration-200">
                       {program.title}
                     </h3>
 
                     {/* Arrow Icon */}
                     <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                      <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 lg:w-4 lg:h-4 xl:w-5 xl:h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
                     </div>
@@ -112,13 +108,6 @@ const MBASection = () => {
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Call to Action */}
-        <div className={`mt-12 sm:mt-16 text-center scroll-fade-in ${contentVisible ? 'animate' : ''}`}>
-          <p className="text-lg sm:text-xl text-white max-w-2xl mx-auto">
-            Diya provides personalized guidance for all these program types, adapting to your specific needs and goals.
-          </p>
         </div>
       </div>
     </section>

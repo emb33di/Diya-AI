@@ -6,7 +6,6 @@ import StarryBackground from "@/components/StarryBackground";
 import FeaturesSection from "@/components/FeaturesSection";
 import MBASection from "@/components/MBASection";
 import FAQSection from "@/components/FAQSection";
-import BenefitsSection from "@/components/BenefitsSection";
 import PricingSection from "@/components/PricingSection";
 import FounderProfile from "@/components/FounderProfile";
 import CTASection from "@/components/CTASection";
@@ -57,7 +56,6 @@ const Index = () => {
         <HeroSection />
         <FeaturesSection />
         <MBASection />
-        <BenefitsSection />
         <PricingSection />
         <FounderProfile />
         <FAQSection />
