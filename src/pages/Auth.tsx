@@ -13,6 +13,22 @@ import { getValidApplyingToValues } from "@/utils/userProfileUtils";
 import "@/styles/landing.css";
 import { getProgramOptions } from "@/utils/programTypes";
 
+// Country codes for phone number dropdown
+const countryCodes = [
+  { code: "+91", country: "India", flag: "🇮🇳" },
+  { code: "+1", country: "United States/Canada", flag: "🇺🇸" },
+  { code: "+44", country: "United Kingdom", flag: "🇬🇧" },
+  { code: "+61", country: "Australia", flag: "🇦🇺" },
+  { code: "+49", country: "Germany", flag: "🇩🇪" },
+  { code: "+33", country: "France", flag: "🇫🇷" },
+  { code: "+81", country: "Japan", flag: "🇯🇵" },
+  { code: "+86", country: "China", flag: "🇨🇳" },
+  { code: "+82", country: "South Korea", flag: "🇰🇷" },
+  { code: "+65", country: "Singapore", flag: "🇸🇬" },
+  { code: "+971", country: "UAE", flag: "🇦🇪" },
+  { code: "+966", country: "Saudi Arabia", flag: "🇸🇦" },
+];
+
 const Auth = () => {
   const [searchParams] = useSearchParams();
   const mode = searchParams.get('mode');
@@ -23,6 +39,8 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [countryCode, setCountryCode] = useState("+91");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [applyingTo, setApplyingTo] = useState("");
   const [loading, setLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -171,6 +189,8 @@ const Auth = () => {
               first_name: firstName,
               last_name: lastName,
               applying_to: applyingTo,
+              country_code: countryCode,
+              phone_number: phoneNumber,
               // Add debug info
               _debug: {
                 signupId,
@@ -400,6 +420,35 @@ const Auth = () => {
                     required
                   />
                 </div>
+
+                {!isSignIn && (
+                  <div className="space-y-2">
+                    <Label htmlFor="phoneNumber">Phone Number</Label>
+                    <div className="flex gap-2">
+                      <Select value={countryCode} onValueChange={setCountryCode}>
+                        <SelectTrigger className="h-12 w-[140px] text-base">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {countryCodes.map(({ code, country, flag }) => (
+                            <SelectItem key={code} value={code}>
+                              {flag} {code}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Input 
+                        id="phoneNumber" 
+                        type="tel" 
+                        placeholder="Phone number"
+                        className="h-12 text-base flex-1"
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+                )}
                 
                 <div className="space-y-2">
                   <Label htmlFor="password">Password</Label>

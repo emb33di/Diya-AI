@@ -12,8 +12,26 @@ import StarryBackground from "@/components/StarryBackground";
 import { useToast } from "@/hooks/use-toast";
 import "@/styles/landing.css";
 
+// Country codes for phone number dropdown
+const countryCodes = [
+  { code: "+91", country: "India", flag: "🇮🇳" },
+  { code: "+1", country: "United States/Canada", flag: "🇺🇸" },
+  { code: "+44", country: "United Kingdom", flag: "🇬🇧" },
+  { code: "+61", country: "Australia", flag: "🇦🇺" },
+  { code: "+49", country: "Germany", flag: "🇩🇪" },
+  { code: "+33", country: "France", flag: "🇫🇷" },
+  { code: "+81", country: "Japan", flag: "🇯🇵" },
+  { code: "+86", country: "China", flag: "🇨🇳" },
+  { code: "+82", country: "South Korea", flag: "🇰🇷" },
+  { code: "+65", country: "Singapore", flag: "🇸🇬" },
+  { code: "+971", country: "UAE", flag: "🇦🇪" },
+  { code: "+966", country: "Saudi Arabia", flag: "🇸🇦" },
+];
+
 const Signup = () => {
   const [email, setEmail] = useState("");
+  const [countryCode, setCountryCode] = useState("+91");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [userType, setUserType] = useState("");
   const [yearOfStudy, setYearOfStudy] = useState("");
   const [selectedSchool, setSelectedSchool] = useState<any>(null);
@@ -26,7 +44,7 @@ const Signup = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !userType) {
+    if (!email || !userType || !phoneNumber) {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields.",
@@ -42,6 +60,8 @@ const Signup = () => {
       // TODO: Integrate with actual waitlist/authentication system
       console.log('Waitlist signup:', {
         email,
+        countryCode,
+        phoneNumber,
         userType,
         yearOfStudy,
         selectedSchool,
@@ -215,6 +235,33 @@ const Signup = () => {
                 </div>
 
                 <div className="space-y-2">
+                  <Label htmlFor="phoneNumber" className="text-sm font-medium text-white">Phone Number *</Label>
+                  <div className="flex gap-2">
+                    <Select value={countryCode} onValueChange={setCountryCode}>
+                      <SelectTrigger className="h-12 w-[140px] border-border !bg-black text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="!bg-black border-border">
+                        {countryCodes.map(({ code, country, flag }) => (
+                          <SelectItem key={code} value={code} className="text-white hover:!bg-gray-800">
+                            {flag} {code}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input 
+                      id="phoneNumber" 
+                      type="tel" 
+                      placeholder="Phone number"
+                      value={phoneNumber}
+                      onChange={e => setPhoneNumber(e.target.value)}
+                      required
+                      className="h-12 border-border focus:border-primary !bg-black text-white placeholder:text-gray-400 flex-1"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="userType" className="text-sm font-medium text-white">I am a...</Label>
                   <Select value={userType} onValueChange={setUserType}>
                     <SelectTrigger className="h-12 border-border !bg-black text-white">
@@ -254,7 +301,7 @@ const Signup = () => {
                 <Button 
                   type="submit" 
                   className="w-full h-12 text-white shadow-lg hover:shadow-[0_0_50px_hsl(var(--primary)/0.6)] transition-all duration-200" 
-                  disabled={!email || !userType || isLoading}
+                  disabled={!email || !phoneNumber || !userType || isLoading}
                 >
                   {isLoading ? "Joining..." : "Join the Waitlist"}
                 </Button>
