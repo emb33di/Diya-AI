@@ -82,6 +82,24 @@ function findBestTextMatch(originalText: string, content: string): string | null
     }
   }
   
+  // For filler word removal, try to find partial matches
+  // If originalText is a sentence with filler words, try to find the sentence in content
+  const words = originalText.split(/\s+/);
+  if (words.length > 3) { // Only for longer phrases
+    // Try to find a sentence that contains most of these words
+    const sentences = content.split(/[.!?]+/);
+    for (const sentence of sentences) {
+      const sentenceWords = sentence.trim().split(/\s+/);
+      const matchingWords = words.filter(word => 
+        sentenceWords.some(sWord => sWord.toLowerCase() === word.toLowerCase())
+      );
+      // If more than 70% of words match, consider it a match
+      if (matchingWords.length / words.length > 0.7) {
+        return sentence.trim();
+      }
+    }
+  }
+  
   return null;
 }
 
@@ -412,17 +430,50 @@ async function analyzeGrammarSpelling(
           };
 
       // Validate and process edit action fields with enhanced validation
-      const rawOriginalText = comment.original_text || comment.anchor_text;
-      const suggestedReplacement = comment.suggested_replacement;
+      let rawOriginalText = comment.original_text || comment.anchor_text;
+      let suggestedReplacement = comment.suggested_replacement;
       const anchorText = comment.anchor_text || rawOriginalText;
 
       // Use enhanced text matching to find the best match
       const originalText = rawOriginalText ? findBestTextMatch(rawOriginalText, essayContent) : null;
 
-      // Enhanced validation for edit action fields
-      const hasValidEditFields = originalText && suggestedReplacement && 
-                                originalText !== suggestedReplacement &&
-                                originalText.length > 0;
+      // Fallback generator for filler word removals when suggested_replacement is missing
+      const fillerWords = ["like", "you know", "um", "uh", "basically", "so", "yeah", "kinda", "sort of"];
+      const lowerComment = (comment.comment_text || '').toLowerCase();
+      const isFillerRemoval = lowerComment.startsWith('remove unnecessary filler word') || lowerComment.includes('filler word');
+      const candidateFiller = (rawOriginalText || '').trim();
+
+      if (isFillerRemoval && (suggestedReplacement === undefined || suggestedReplacement === null)) {
+        // Try to locate a containing sentence for the filler
+        const filler = candidateFiller.replace(/^["']|["']$/g, '');
+        const lcContent = essayContent.toLowerCase();
+        const idx = lcContent.indexOf(filler.toLowerCase());
+        if (idx !== -1) {
+          // Expand to sentence boundaries
+          let start = idx;
+          let end = idx + filler.length;
+          while (start > 0 && !/[.!?]/.test(essayContent[start - 1])) start--;
+          while (end < essayContent.length && !/[.!?]/.test(essayContent[end])) end++;
+          const sentence = essayContent.substring(start, Math.min(end + 1, essayContent.length)).trim();
+          if (sentence.length > 0) {
+            // Remove common filler tokens from the sentence (preserve spacing/punctuation around)
+            const fillerPattern = new RegExp(`\\b(${fillerWords.map(w => w.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')).join('|')})\\b[, ]*`, 'gi');
+            const cleaned = sentence.replace(fillerPattern, '').replace(/\s{2,}/g, ' ').replace(/\s+([,.;!?])/g, '$1').trim();
+            // Only adopt if it results in a non-empty improvement
+            if (cleaned && cleaned !== sentence) {
+              suggestedReplacement = cleaned;
+              rawOriginalText = sentence; // operate at sentence level for reliable replacement
+            }
+          }
+        }
+      }
+
+      // Enhanced validation for edit action fields - be more lenient
+      // If AI provided both original_text and suggested_replacement, trust it even if text matching fails
+      const hasValidEditFields = rawOriginalText && suggestedReplacement && 
+                                rawOriginalText !== suggestedReplacement &&
+                                rawOriginalText.length > 0 &&
+                                suggestedReplacement.length >= 0; // Allow empty string for word removals
 
       // Log validation results for debugging
       if (!hasValidEditFields && rawOriginalText) {
@@ -433,7 +484,7 @@ async function analyzeGrammarSpelling(
         console.warn(`- text exists in content: ${essayContent.includes(rawOriginalText)}`);
       }
 
-      return {
+      const result = {
         comment_text: comment.comment_text || 'No comment text provided',
         comment_nature: 'weakness',
         comment_category: 'inline',
@@ -441,12 +492,26 @@ async function analyzeGrammarSpelling(
         text_selection: textSelection,
         confidence_score: confidenceScore,
         // ENHANCED EDIT ACTION FIELDS WITH VALIDATION
-        original_text: hasValidEditFields ? originalText : undefined,
+        // Use matched text if available, otherwise fall back to raw text
+        original_text: hasValidEditFields ? (originalText || rawOriginalText) : undefined,
         suggested_replacement: hasValidEditFields ? suggestedReplacement : undefined,
         anchor_text: anchorText || originalText || rawOriginalText,
         // Add validation flag for debugging
         _hasValidEditFields: hasValidEditFields
-      };
+      } as GrammarSpellingComment & { _hasValidEditFields?: boolean };
+
+      if (!hasValidEditFields) {
+        console.warn('Grammar agent: Finalized invalid comment context', {
+          comment_text: result.comment_text,
+          anchor_text: result.anchor_text,
+          rawOriginalText,
+          originalText,
+          suggestedReplacement,
+          isFillerRemoval,
+        });
+      }
+
+      return result;
     });
 
     // Log summary of validation results

@@ -1000,6 +1000,7 @@ export class SemanticDocumentService {
     blocks: DocumentBlock[]
   ): SemanticComment[] {
     const semanticComments: SemanticComment[] = [];
+    let filteredOutInvalidCount = 0;
 
     for (const grammarComment of grammarComments) {
       // Find the best matching block for this grammar comment
@@ -1010,14 +1011,17 @@ export class SemanticDocumentService {
       }
 
       // Extract target text from the comment with enhanced validation
-      const targetText = grammarComment.anchor_text || grammarComment.target_text || 
+      // Prefer original_text for precise highlighting if present
+      const targetText = grammarComment.original_text || grammarComment.anchor_text || grammarComment.target_text || 
                         this.extractTargetTextFromGrammarComment(grammarComment, targetBlock.content);
 
-      // Validate edit fields for grammar comments
+      // Validate edit fields for grammar comments - be more lenient
       // Allow empty suggested_replacement for word removals
       const hasValidEditFields = grammarComment.original_text && 
                                 grammarComment.suggested_replacement !== undefined && 
-                                grammarComment.original_text !== grammarComment.suggested_replacement;
+                                grammarComment.original_text !== grammarComment.suggested_replacement &&
+                                grammarComment.original_text.length > 0 &&
+                                grammarComment.suggested_replacement.length >= 0; // Allow empty string for word removals
 
       if (!hasValidEditFields && grammarComment.original_text) {
         console.warn(`SemanticDocumentService: Grammar comment missing valid edit fields:`, {
@@ -1026,6 +1030,12 @@ export class SemanticDocumentService {
           suggested: grammarComment.suggested_replacement,
           blockContent: targetBlock.content.substring(0, 100) + '...'
         });
+      }
+
+      // Filter out invalid grammar comments from UI (skip adding to semanticComments)
+      if (!hasValidEditFields) {
+        filteredOutInvalidCount++;
+        continue;
       }
 
       const semanticComment: SemanticComment = {
@@ -1053,9 +1063,8 @@ export class SemanticDocumentService {
 
     // Log summary of conversion results
     const validEditComments = semanticComments.filter(c => c.metadata?.hasValidEditFields);
-    console.log(`SemanticDocumentService: Converted ${semanticComments.length} grammar comments`);
+    console.log(`SemanticDocumentService: Converted ${semanticComments.length} grammar comments (skipped ${filteredOutInvalidCount} invalid edit comments)`);
     console.log(`- ${validEditComments.length} comments with valid edit fields`);
-    console.log(`- ${semanticComments.length - validEditComments.length} comments without valid edit fields`);
 
     return semanticComments;
   }
@@ -1091,11 +1100,11 @@ export class SemanticDocumentService {
       }
     }
 
-    // Strategy 4: Find block containing the target text
-    if (grammarComment.anchor_text || grammarComment.target_text) {
-      const targetText = grammarComment.anchor_text || grammarComment.target_text;
+    // Strategy 4: Find block containing the target text (case-insensitive)
+    if (grammarComment.anchor_text || grammarComment.target_text || grammarComment.original_text) {
+      const targetText = (grammarComment.original_text || grammarComment.anchor_text || grammarComment.target_text || '').toLowerCase();
       for (const block of blocks) {
-        if (block.content.includes(targetText)) {
+        if (block.content.toLowerCase().includes(targetText)) {
           return block;
         }
       }
