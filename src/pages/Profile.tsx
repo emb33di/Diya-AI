@@ -363,11 +363,6 @@ export default function Profile() {
         return;
       }
 
-      // Combine country code and phone number into a single field
-      const combinedPhoneNumber = data.country_code && data.phone_number 
-        ? `${data.country_code}${data.phone_number}` 
-        : data.phone_number;
-
       // Convert Date to string for database
       const { geographic_preference, ...dataWithoutGeographicPreference } = data;
       
@@ -392,7 +387,6 @@ export default function Profile() {
       
       const profileData = {
         ...processedData,
-        phone_number: combinedPhoneNumber,
         user_id: user.id,
         // Don't set profile_saved here - only set it during initial onboarding completion
       };

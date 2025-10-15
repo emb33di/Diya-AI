@@ -169,119 +169,34 @@ export const useProfileData = () => {
           formData.test_score = Number(combinedProfile.test_score);
         }
 
-        // Handle country code mapping
-        if (combinedProfile.country_code) {
-          // Check if it's a valid country code format
-          const countryCodes = [
-            { code: "US", name: "United States" },
-            { code: "IN", name: "India" },
-            { code: "CA", name: "Canada" },
-            { code: "GB", name: "United Kingdom" },
-            { code: "AU", name: "Australia" },
-            { code: "DE", name: "Germany" },
-            { code: "FR", name: "France" },
-            { code: "SG", name: "Singapore" },
-            { code: "JP", name: "Japan" },
-            { code: "KR", name: "South Korea" },
-            { code: "CN", name: "China" },
-            { code: "BR", name: "Brazil" },
-            { code: "MX", name: "Mexico" },
-            { code: "RU", name: "Russia" },
-            { code: "IT", name: "Italy" },
-            { code: "ES", name: "Spain" },
-            { code: "NL", name: "Netherlands" },
-            { code: "SE", name: "Sweden" },
-            { code: "NO", name: "Norway" },
-            { code: "DK", name: "Denmark" },
-            { code: "FI", name: "Finland" },
-            { code: "CH", name: "Switzerland" },
-            { code: "AT", name: "Austria" },
-            { code: "BE", name: "Belgium" },
-            { code: "IE", name: "Ireland" },
-            { code: "NZ", name: "New Zealand" },
-            { code: "ZA", name: "South Africa" },
-            { code: "AE", name: "United Arab Emirates" },
-            { code: "SA", name: "Saudi Arabia" },
-            { code: "IL", name: "Israel" },
-            { code: "TR", name: "Turkey" },
-            { code: "EG", name: "Egypt" },
-            { code: "NG", name: "Nigeria" },
-            { code: "KE", name: "Kenya" },
-            { code: "GH", name: "Ghana" },
-            { code: "MA", name: "Morocco" },
-            { code: "TN", name: "Tunisia" },
-            { code: "DZ", name: "Algeria" },
-            { code: "LY", name: "Libya" },
-            { code: "SD", name: "Sudan" },
-            { code: "ET", name: "Ethiopia" },
-            { code: "UG", name: "Uganda" },
-            { code: "TZ", name: "Tanzania" },
-            { code: "ZW", name: "Zimbabwe" },
-            { code: "BW", name: "Botswana" },
-            { code: "NA", name: "Namibia" },
-            { code: "ZM", name: "Zambia" },
-            { code: "MW", name: "Malawi" },
-            { code: "MZ", name: "Mozambique" },
-            { code: "MG", name: "Madagascar" },
-            { code: "MU", name: "Mauritius" },
-            { code: "SC", name: "Seychelles" },
-            { code: "KM", name: "Comoros" },
-            { code: "DJ", name: "Djibouti" },
-            { code: "SO", name: "Somalia" },
-            { code: "ER", name: "Eritrea" },
-            { code: "SS", name: "South Sudan" },
-            { code: "CF", name: "Central African Republic" },
-            { code: "TD", name: "Chad" },
-            { code: "NE", name: "Niger" },
-            { code: "ML", name: "Mali" },
-            { code: "BF", name: "Burkina Faso" },
-            { code: "CI", name: "Côte d'Ivoire" },
-            { code: "LR", name: "Liberia" },
-            { code: "SL", name: "Sierra Leone" },
-            { code: "GN", name: "Guinea" },
-            { code: "GW", name: "Guinea-Bissau" },
-            { code: "GM", name: "Gambia" },
-            { code: "SN", name: "Senegal" },
-            { code: "MR", name: "Mauritania" },
-            { code: "CV", name: "Cape Verde" },
-            { code: "ST", name: "São Tomé and Príncipe" },
-            { code: "GQ", name: "Equatorial Guinea" },
-            { code: "GA", name: "Gabon" },
-            { code: "CG", name: "Republic of the Congo" },
-            { code: "CD", name: "Democratic Republic of the Congo" },
-            { code: "AO", name: "Angola" },
-            { code: "CM", name: "Cameroon" },
-            { code: "CF", name: "Central African Republic" },
-            { code: "TD", name: "Chad" },
-            { code: "NE", name: "Niger" },
-            { code: "ML", name: "Mali" },
-            { code: "BF", name: "Burkina Faso" },
-            { code: "CI", name: "Côte d'Ivoire" },
-            { code: "LR", name: "Liberia" },
-            { code: "SL", name: "Sierra Leone" },
-            { code: "GN", name: "Guinea" },
-            { code: "GW", name: "Guinea-Bissau" },
-            { code: "GM", name: "Gambia" },
-            { code: "SN", name: "Senegal" },
-            { code: "MR", name: "Mauritania" },
-            { code: "CV", name: "Cape Verde" },
-            { code: "ST", name: "São Tomé and Príncipe" },
-            { code: "GQ", name: "Equatorial Guinea" },
-            { code: "GA", name: "Gabon" },
-            { code: "CG", name: "Republic of the Congo" },
-            { code: "CD", name: "Democratic Republic of the Congo" },
-            { code: "AO", name: "Angola" },
-            { code: "CM", name: "Cameroon" }
-          ];
-
-          const matchingCountry = countryCodes.find(country => 
-            country.code === combinedProfile.country_code || 
-            country.name === combinedProfile.country_code
-          );
+        // Handle phone number and country code separation
+        // If phone_number contains a country code (starts with +), split it
+        if (combinedProfile.phone_number && combinedProfile.phone_number.startsWith('+')) {
+          // Common country codes to match against
+          const countryCodes = ['+1', '+91', '+44', '+61', '+49', '+33', '+81', '+86', '+82', '+65', '+971', '+966', '+974', '+973', '+965', '+968', '+60', '+66', '+63', '+62', '+84', '+880', '+92', '+94', '+977', '+975'];
           
-          if (matchingCountry) {
-            formData.country_code = matchingCountry.code;
+          // Find the longest matching country code
+          let matchedCountryCode = '';
+          for (const code of countryCodes.sort((a, b) => b.length - a.length)) {
+            if (combinedProfile.phone_number.startsWith(code)) {
+              matchedCountryCode = code;
+              break;
+            }
           }
+          
+          if (matchedCountryCode) {
+            // Split the phone number
+            formData.country_code = matchedCountryCode;
+            formData.phone_number = combinedProfile.phone_number.substring(matchedCountryCode.length);
+          } else {
+            // If no country code match, use the stored country_code or default
+            formData.country_code = combinedProfile.country_code || '+91';
+            formData.phone_number = combinedProfile.phone_number;
+          }
+        } else {
+          // If phone_number doesn't start with +, use the stored country_code
+          formData.country_code = combinedProfile.country_code || '+91';
+          formData.phone_number = combinedProfile.phone_number || '';
         }
 
         // Sanitize null values to prevent React warnings
