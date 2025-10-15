@@ -517,7 +517,9 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
           }).filter(Boolean).join(', ')}</p>
         ` : ''}
         ${interests && interests.length > 0 ? `
-          <p><strong>Interests:</strong> ${interests.map((item: any) => item.title || '').join(', ')}</p>
+          <p><strong>Interests:</strong> ${interests.map((item: any) => 
+            item.bullets && item.bullets.length > 0 ? item.bullets.join(', ') : (item.title || '')
+          ).filter(Boolean).join(', ')}</p>
         ` : ''}
       </section>
     ` : '';

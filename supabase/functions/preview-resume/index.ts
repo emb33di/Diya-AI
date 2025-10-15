@@ -323,7 +323,7 @@ function generateResumeHtml(data: ResumeData, userProfile: UserProfile): string 
   const interestsHtml = interests && interests.length > 0 ? `
     <section class="section simple-list-section">
       <h2 class="section-title">Interests</h2>
-      <p>${interests.map(item => item.title).join(', ')}</p>
+      <p>${interests.map(item => item.bullets && item.bullets.length > 0 ? item.bullets.map(bullet => bullet.bullet_text).join(', ') : '').filter(Boolean).join(', ')}</p>
     </section>
   ` : ''
 
@@ -331,7 +331,7 @@ function generateResumeHtml(data: ResumeData, userProfile: UserProfile): string 
   const languagesHtml = languages && languages.length > 0 ? `
     <section class="section simple-list-section">
       <h2 class="section-title">Languages</h2>
-      <p>${languages.map(item => item.title).join(', ')}</p>
+      <p>${languages.map(item => item.bullets && item.bullets.length > 0 ? item.bullets.map(bullet => bullet.bullet_text).join(', ') : '').filter(Boolean).join(', ')}</p>
     </section>
   ` : ''
 

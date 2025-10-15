@@ -184,6 +184,20 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
     saveChanges({ [field]: value });
   }, [saveChanges]);
 
+  // Generate title for languages from bullet points
+  const generateLanguageTitle = useCallback((bullets: string[]) => {
+    if (category !== 'languages' || !bullets || bullets.length === 0) {
+      return '';
+    }
+    
+    const validBullets = bullets.filter(bullet => bullet && bullet.trim() !== '');
+    if (validBullets.length === 0) {
+      return '';
+    }
+    
+    return `Languages: ${validBullets.join(', ')}`;
+  }, [category]);
+
   // Handle bullet point changes - update local state immediately
   const handleBulletChange = useCallback((index: number, value: string) => {
     saveToUndoStack();
@@ -204,24 +218,44 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
       bullet.trim() !== '' || i !== index
     );
     
-    saveChanges({ bullets: cleanedBullets });
-  }, [localActivity.bullets, saveChanges]);
+    // For languages, auto-generate title from bullets
+    const updatedData: any = { bullets: cleanedBullets };
+    if (category === 'languages') {
+      updatedData.title = generateLanguageTitle(cleanedBullets);
+    }
+    
+    saveChanges(updatedData);
+  }, [localActivity.bullets, saveChanges, category, generateLanguageTitle]);
 
   // Add new bullet point - save immediately since it's a user action
   const addBullet = useCallback(() => {
     const newBullets = [...localActivity.bullets, ''];
     setLocalActivity(prev => ({ ...prev, bullets: newBullets }));
-    saveChanges({ bullets: newBullets });
-  }, [localActivity.bullets, saveChanges]);
+    
+    // For languages, auto-generate title from bullets
+    const updatedData: any = { bullets: newBullets };
+    if (category === 'languages') {
+      updatedData.title = generateLanguageTitle(newBullets);
+    }
+    
+    saveChanges(updatedData);
+  }, [localActivity.bullets, saveChanges, category, generateLanguageTitle]);
 
   // Remove bullet point - save immediately since it's a user action
   const removeBullet = useCallback((index: number) => {
     if (localActivity.bullets.length > 1) {
       const newBullets = localActivity.bullets.filter((_, i) => i !== index);
       setLocalActivity(prev => ({ ...prev, bullets: newBullets }));
-      saveChanges({ bullets: newBullets });
+      
+      // For languages, auto-generate title from bullets
+      const updatedData: any = { bullets: newBullets };
+      if (category === 'languages') {
+        updatedData.title = generateLanguageTitle(newBullets);
+      }
+      
+      saveChanges(updatedData);
     }
-  }, [localActivity.bullets, saveChanges]);
+  }, [localActivity.bullets, saveChanges, category, generateLanguageTitle]);
 
   // Title editing handlers
   const handleTitleChange = useCallback((value: string) => {
@@ -261,9 +295,14 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
       experience: 'Company Name',
       projects: 'Project Name',
       extracurricular: 'Organization Name',
-      volunteering: 'Organization Name'
+      volunteering: 'Organization Name',
+      skills: '', // No title field for simple categories
+      interests: '', // No title field for simple categories
+      languages: '' // No title field for simple categories
     };
-    return fieldLabels[category] || 'Title';
+    const result = fieldLabels.hasOwnProperty(category) ? fieldLabels[category] : 'Title';
+    console.log(`getFieldLabel for ${category}: "${result}"`);
+    return result;
   }, []);
 
   // Get field-specific placeholders for academic entries
@@ -273,7 +312,10 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
       experience: 'e.g., Google Inc.',
       projects: 'e.g., E-commerce Website',
       extracurricular: 'e.g., Debate Team',
-      volunteering: 'e.g., Red Cross'
+      volunteering: 'e.g., Red Cross',
+      skills: '', // No title field for simple categories
+      interests: '', // No title field for simple categories
+      languages: '' // No title field for simple categories
     };
     return fieldPlaceholders[category] || 'e.g., Enter name...';
   }, []);
@@ -350,32 +392,44 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
       <CardHeader className="pb-3 px-4 lg:px-6">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-3 lg:space-y-0">
           <div className="flex-1 min-w-0">
-            {/* Field Label - Uneditable */}
-            <div 
-              className="text-base lg:text-lg font-semibold capitalize mb-2"
-              style={{ 
-                fontFamily: 'inherit',
-                fontSize: '1rem',
-                lineHeight: '1.5',
-                fontWeight: '600'
-              }}
-            >
-              {getFieldLabel(category)}
-            </div>
+            {/* Field Label - Only show for categories that need titles */}
+            {(() => {
+              const fieldLabel = getFieldLabel(category);
+              console.log(`Rendering field label for ${category}: "${fieldLabel}", should show: ${!!fieldLabel}`);
+              return fieldLabel && (
+                <div 
+                  className="text-base lg:text-lg font-semibold capitalize mb-2"
+                  style={{ 
+                    fontFamily: 'inherit',
+                    fontSize: '1rem',
+                    lineHeight: '1.5',
+                    fontWeight: '600'
+                  }}
+                >
+                  {fieldLabel}
+                </div>
+              );
+            })()}
             
-            {/* Text Input Field */}
-            <div className="space-y-2">
-              <Input
-                value={localActivity.title}
-                onChange={(e) => handleTitleChange(e.target.value)}
-                onBlur={(e) => {
-                  handleTitleBlur(e.target.value);
-                }}
-                onKeyDown={(e) => handleKeyDown(e, 'title')}
-                placeholder={getFieldPlaceholder(category)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm lg:text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              />
-            </div>
+            {/* Text Input Field - Only show for categories that need titles */}
+            {(() => {
+              const fieldLabel = getFieldLabel(category);
+              console.log(`Rendering input field for ${category}: "${fieldLabel}", should show: ${!!fieldLabel}`);
+              return fieldLabel && (
+                <div className="space-y-2">
+                  <Input
+                    value={localActivity.title}
+                    onChange={(e) => handleTitleChange(e.target.value)}
+                    onBlur={(e) => {
+                      handleTitleBlur(e.target.value);
+                    }}
+                    onKeyDown={(e) => handleKeyDown(e, 'title')}
+                    placeholder={getFieldPlaceholder(category)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm lg:text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  />
+                </div>
+              );
+            })()}
           </div>
           
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-2 lg:space-x-2">
@@ -415,7 +469,6 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
                   className="text-red-600 hover:text-red-700 hover:bg-red-50 w-full sm:w-auto touch-manipulation"
                 >
                   <Trash2 className="h-4 w-4" />
-                  <span className="ml-2 hidden sm:inline">Remove</span>
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
@@ -425,7 +478,7 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
                     Delete Activity
                   </AlertDialogTitle>
                   <AlertDialogDescription>
-                    Are you sure you want to delete <strong>"{localActivity.title}"</strong>? This action cannot be undone.
+                    Are you sure you want to delete this activity? This action cannot be undone.
                     <br /><br />
                     This will permanently remove the activity and all its bullet points from your resume.
                   </AlertDialogDescription>
@@ -549,7 +602,6 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
                       className="text-red-600 hover:text-red-700 hover:bg-red-50 w-full sm:w-auto touch-manipulation"
                     >
                       <Trash2 className="h-4 w-4" />
-                      <span className="ml-2 hidden sm:inline">Remove</span>
                     </Button>
                   )}
                 </div>
@@ -569,7 +621,6 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
         {/* Simple List for skills, interests, languages */}
         {showsSimpleList && (
           <div className="space-y-3">
-            <Label>{getCategoryLabel(category)}</Label>
             {localActivity.bullets.map((item, index) => (
               <div key={index} className="space-y-2">
                 <Label className="text-sm font-medium">
@@ -592,7 +643,6 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
                       className="text-red-600 hover:text-red-700 hover:bg-red-50 w-full sm:w-auto touch-manipulation"
                     >
                       <Trash2 className="h-4 w-4" />
-                      <span className="ml-2 hidden sm:inline">Remove</span>
                     </Button>
                   )}
                 </div>
