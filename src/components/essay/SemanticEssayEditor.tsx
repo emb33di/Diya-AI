@@ -430,19 +430,26 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
         essayId,
         document,
         `Version ${nextVersionNumber}`,
-        'Cloned with existing comments and highlights'
+        undefined // Remove the descriptive text
       );
 
-      // Reload versions to get updated list
-      await loadEssayVersions();
+      // Batch all updates together to minimize re-renders
+      const [updatedVersions, activeVersion] = await Promise.all([
+        EssayVersionService.getEssayVersions(essayId),
+        EssayVersionService.getActiveVersion(essayId)
+      ]);
 
-      // Switch to the new semantic document by loading the active version's document
-      const activeVersion = await EssayVersionService.getActiveVersion(essayId);
+      // Load the new document
+      let newDocument = null;
       if (activeVersion) {
-        const newDocument = await semanticDocumentService.loadDocument(activeVersion.semantic_document_id);
-        if (newDocument) {
-          setDocument(newDocument);
-        }
+        newDocument = await semanticDocumentService.loadDocument(activeVersion.semantic_document_id);
+      }
+
+      // Update all state at once to prevent intermediate re-renders
+      if (newDocument) {
+        setEssayVersions(updatedVersions);
+        setCurrentVersion(activeVersion);
+        setDocument(newDocument);
       }
 
       toast({

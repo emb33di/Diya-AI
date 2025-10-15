@@ -1194,7 +1194,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
           {useMemo(() => {
             const sortedBlocks = [...state.document.blocks].sort((a, b) => a.position - b.position);
             return sortedBlocks.map(renderBlock);
-          }, [state.document.blocks, renderBlock])}
+          }, [state.document.blocks, editingBlockId, showCommentSidebar])}
 
         </div>
       </div>

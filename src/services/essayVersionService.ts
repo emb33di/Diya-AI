@@ -124,7 +124,7 @@ export class EssayVersionService {
       semantic_document_uuid: newSemanticDocument.id,
       version_content: versionContent,
       version_name_param: versionName,
-      version_description_param: versionDescription ?? 'Cloned with existing comments and highlights'
+      version_description_param: versionDescription
     });
 
     if (error) {

@@ -1308,7 +1308,7 @@ export class SemanticDocumentService {
             metadata: document.metadata
           },
           version_name: 'Version 1',
-          version_description: 'Initial version',
+          version_description: undefined,
           is_active: true,
           semantic_document_id: document.id,
           is_fresh_draft: true
