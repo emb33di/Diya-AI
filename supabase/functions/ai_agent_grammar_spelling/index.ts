@@ -21,6 +21,12 @@ interface GrammarSpellingComment {
     end: { pos: number; path: number[] };
   };
   confidence_score: number;
+  // NEW FIELDS FOR EDIT ACTIONS
+  original_text?: string;
+  suggested_replacement?: string;
+  anchor_text?: string;
+  // Debug field for validation
+  _hasValidEditFields?: boolean;
 }
 
 interface GrammarSpellingAgentResponse {
@@ -33,6 +39,51 @@ interface GrammarSpellingAgentResponse {
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+/**
+ * Enhanced text matching function to find the best match for original text
+ * Handles cases where AI might provide slightly different text than what's in the content
+ */
+function findBestTextMatch(originalText: string, content: string): string | null {
+  if (!originalText || !content) return null;
+  
+  // Direct match (most common case)
+  if (content.includes(originalText)) {
+    return originalText;
+  }
+  
+  // Try case-insensitive match
+  const lowerOriginal = originalText.toLowerCase();
+  const lowerContent = content.toLowerCase();
+  if (lowerContent.includes(lowerOriginal)) {
+    // Find the actual case version in the content
+    const startIndex = lowerContent.indexOf(lowerOriginal);
+    const endIndex = startIndex + originalText.length;
+    return content.substring(startIndex, endIndex);
+  }
+  
+  // Try removing extra whitespace
+  const normalizedOriginal = originalText.replace(/\s+/g, ' ').trim();
+  const normalizedContent = content.replace(/\s+/g, ' ').trim();
+  if (normalizedContent.includes(normalizedOriginal)) {
+    return normalizedOriginal;
+  }
+  
+  // Try fuzzy matching for common variations
+  const variations = [
+    originalText.replace(/['"]/g, ''), // Remove quotes
+    originalText.replace(/[.,;:!?]/g, ''), // Remove punctuation
+    originalText.replace(/\s+/g, ''), // Remove all spaces
+  ];
+  
+  for (const variation of variations) {
+    if (content.includes(variation)) {
+      return variation;
+    }
+  }
+  
+  return null;
+}
 
 // Google Gemini API configuration
 const GEMINI_API_KEY = Deno.env.get('GOOGLE_API_KEY')
@@ -81,24 +132,54 @@ NEEDED vs NICE-TO-HAVE CRITERIA:
 INSTRUCTIONS:
 Generate comments ONLY for NEEDED mechanical errors. Do not generate comments for nice-to-have suggestions. If no significant errors exist, return an empty comments array. Each comment should identify a specific error and provide the correction.
 
+CRITICAL REQUIREMENTS FOR EDIT ACTIONS:
+- For each error, provide the exact text that needs to be fixed (original_text)
+- Provide the corrected version (suggested_replacement)
+- original_text must be EXACTLY as it appears in the essay (character-for-character match)
+- suggested_replacement must be the corrected version
+- Be precise with text matching - copy text exactly as written, including punctuation
+- Focus on clear, obvious errors that have definitive corrections
+- Ensure original_text exists in the essay content before suggesting replacement
+- Use anchor_text to highlight the specific problematic text in the UI
+
 IMPORTANT: For each comment, you MUST:
 1. Quote the exact text containing the error in your comment_text
 2. Provide accurate text_selection positions for the specific text with the error
 3. Be specific about what needs to be changed
+4. Include original_text (exact text with error)
+5. Include suggested_replacement (corrected version)
+6. Include anchor_text (text to highlight in UI)
 
 RESPONSE FORMAT (JSON only):
 {
   "comments": [
     {
-      "comment_text": "Change \"their going\" to \"they're going\" - this is a contraction error.",
+      "comment_text": "Fix subject-verb disagreement: 'team' is singular",
       "comment_nature": "weakness",
       "comment_category": "inline",
       "agent_type": "grammar_spelling",
+      "anchor_text": "The team are working hard",
+      "original_text": "The team are working hard",
+      "suggested_replacement": "The team is working hard",
       "text_selection": {
         "start": { "pos": 150, "path": [0] },
-        "end": { "pos": 162, "path": [0] }
+        "end": { "pos": 175, "path": [0] }
       },
-      "confidence_score": 0.90
+      "confidence_score": 0.95
+    },
+    {
+      "comment_text": "Fix apostrophe: 'its' should be 'it's' (contraction for 'it is')",
+      "comment_nature": "weakness", 
+      "comment_category": "inline",
+      "agent_type": "grammar_spelling",
+      "anchor_text": "its important to",
+      "original_text": "its important to",
+      "suggested_replacement": "it's important to",
+      "text_selection": {
+        "start": { "pos": 200, "path": [0] },
+        "end": { "pos": 220, "path": [0] }
+      },
+      "confidence_score": 0.98
     }
   ]
 }
@@ -241,8 +322,20 @@ async function analyzeGrammarSpelling(
       throw new Error('Invalid comment structure in AI response')
     }
 
-    // Validate and format comments
-    const comments: GrammarSpellingComment[] = parsedResponse.comments.map((comment: any) => {
+    // Validate and format comments with enhanced error handling
+    const comments: GrammarSpellingComment[] = parsedResponse.comments
+      .filter((comment: any) => {
+        // Pre-filter comments to ensure they have required fields
+        const hasRequiredFields = comment.comment_text && 
+                                 (comment.original_text || comment.anchor_text);
+        
+        if (!hasRequiredFields) {
+          console.warn(`Grammar agent: Skipping comment with missing required fields:`, comment);
+        }
+        
+        return hasRequiredFields;
+      })
+      .map((comment: any) => {
       // Validate confidence score
       const confidenceScore = typeof comment.confidence_score === 'number' 
         ? Math.max(0, Math.min(1, comment.confidence_score))
@@ -269,19 +362,69 @@ async function analyzeGrammarSpelling(
             end: { pos: 0, path: [0] } 
           };
 
+      // Validate and process edit action fields with enhanced validation
+      const rawOriginalText = comment.original_text || comment.anchor_text;
+      const suggestedReplacement = comment.suggested_replacement;
+      const anchorText = comment.anchor_text || rawOriginalText;
+
+      // Use enhanced text matching to find the best match
+      const originalText = rawOriginalText ? findBestTextMatch(rawOriginalText, essayContent) : null;
+
+      // Enhanced validation for edit action fields
+      const hasValidEditFields = originalText && suggestedReplacement && 
+                                originalText !== suggestedReplacement &&
+                                originalText.length > 0;
+
+      // Log validation results for debugging
+      if (!hasValidEditFields && rawOriginalText) {
+        console.warn(`Grammar agent: Invalid edit fields for comment "${comment.comment_text}"`);
+        console.warn(`- raw original_text: "${rawOriginalText}"`);
+        console.warn(`- matched original_text: "${originalText}"`);
+        console.warn(`- suggested_replacement: "${suggestedReplacement}"`);
+        console.warn(`- text exists in content: ${essayContent.includes(rawOriginalText)}`);
+      }
+
       return {
         comment_text: comment.comment_text || 'No comment text provided',
         comment_nature: 'weakness',
         comment_category: 'inline',
         agent_type: 'grammar_spelling',
         text_selection: textSelection,
-        confidence_score: confidenceScore
+        confidence_score: confidenceScore,
+        // ENHANCED EDIT ACTION FIELDS WITH VALIDATION
+        original_text: hasValidEditFields ? originalText : undefined,
+        suggested_replacement: hasValidEditFields ? suggestedReplacement : undefined,
+        anchor_text: anchorText || originalText || rawOriginalText,
+        // Add validation flag for debugging
+        _hasValidEditFields: hasValidEditFields
       };
-    })
+    });
+
+    // Log summary of validation results
+    const validEditComments = comments.filter(c => c._hasValidEditFields);
+    const invalidEditComments = comments.filter(c => !c._hasValidEditFields);
+    
+    console.log(`Grammar agent: Processed ${comments.length} comments`);
+    console.log(`- ${validEditComments.length} comments with valid edit fields`);
+    console.log(`- ${invalidEditComments.length} comments with invalid edit fields`);
+    
+    if (invalidEditComments.length > 0) {
+      console.warn(`Grammar agent: Comments with invalid edit fields:`, 
+        invalidEditComments.map(c => ({
+          comment: c.comment_text,
+          original: c.original_text,
+          suggested: c.suggested_replacement
+        }))
+      );
+    }
 
     return {
       success: true,
-      comments
+      comments: comments.map(c => {
+        // Remove debug field before returning
+        const { _hasValidEditFields, ...cleanComment } = c;
+        return cleanComment;
+      })
     }
 
   } catch (error) {
@@ -335,7 +478,7 @@ serve(async (req) => {
     }
 
     console.log(`Analyzing grammar and spelling for essay content (${essayContent.length} characters)`)
-    if (blockId) {
+    if (blockId && blockIndex !== undefined && totalBlocks !== undefined) {
       console.log(`Block-specific analysis for block ${blockIndex + 1} of ${totalBlocks}`)
     }
     

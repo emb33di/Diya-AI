@@ -16,6 +16,7 @@ import {
   SemanticComment
 } from '@/types/semanticDocument';
 import { supabase } from '@/integrations/supabase/client';
+import { CommentEditService } from '@/services/commentEditService';
 
 export class SemanticDocumentService {
   private static instance: SemanticDocumentService;
@@ -874,6 +875,10 @@ export class SemanticDocumentService {
           resolved: false,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
+          // NEW FIELDS FOR EDIT ACTIONS
+          action_type: 'none',
+          suggested_replacement: comment.metadata?.suggestedReplacement,
+          original_text: comment.metadata?.originalText,
           metadata: {
             confidence: comment.confidence,
             agentType: 'grammar',
@@ -988,7 +993,7 @@ export class SemanticDocumentService {
   }
 
   /**
-   * Convert grammar agent comments to semantic format
+   * Convert grammar agent comments to semantic format with enhanced validation
    */
   private convertGrammarCommentsToSemantic(
     grammarComments: any[], 
@@ -999,11 +1004,28 @@ export class SemanticDocumentService {
     for (const grammarComment of grammarComments) {
       // Find the best matching block for this grammar comment
       const targetBlock = this.findBestMatchingBlockForGrammar(grammarComment, blocks);
-      if (!targetBlock) continue;
+      if (!targetBlock) {
+        console.warn(`SemanticDocumentService: Could not find target block for grammar comment: ${grammarComment.comment_text}`);
+        continue;
+      }
 
-      // Extract target text from the comment
+      // Extract target text from the comment with enhanced validation
       const targetText = grammarComment.anchor_text || grammarComment.target_text || 
                         this.extractTargetTextFromGrammarComment(grammarComment, targetBlock.content);
+
+      // Validate edit fields for grammar comments
+      const hasValidEditFields = grammarComment.original_text && 
+                                grammarComment.suggested_replacement &&
+                                grammarComment.original_text !== grammarComment.suggested_replacement;
+
+      if (!hasValidEditFields && grammarComment.original_text) {
+        console.warn(`SemanticDocumentService: Grammar comment missing valid edit fields:`, {
+          comment: grammarComment.comment_text,
+          original: grammarComment.original_text,
+          suggested: grammarComment.suggested_replacement,
+          blockContent: targetBlock.content.substring(0, 100) + '...'
+        });
+      }
 
       const semanticComment: SemanticComment = {
         targetBlockId: targetBlock.id,
@@ -1016,12 +1038,23 @@ export class SemanticDocumentService {
           category: grammarComment.comment_category || 'inline',
           subcategory: grammarComment.comment_subcategory || 'grammar',
           commentNature: 'improvement',
-          commentCategory: 'grammar'
+          commentCategory: 'grammar',
+          // ENHANCED EDIT ACTION FIELDS WITH VALIDATION
+          originalText: hasValidEditFields ? grammarComment.original_text : undefined,
+          suggestedReplacement: hasValidEditFields ? grammarComment.suggested_replacement : undefined,
+          // Add validation metadata for debugging
+          hasValidEditFields: hasValidEditFields
         }
       };
 
       semanticComments.push(semanticComment);
     }
+
+    // Log summary of conversion results
+    const validEditComments = semanticComments.filter(c => c.metadata?.hasValidEditFields);
+    console.log(`SemanticDocumentService: Converted ${semanticComments.length} grammar comments`);
+    console.log(`- ${validEditComments.length} comments with valid edit fields`);
+    console.log(`- ${semanticComments.length - validEditComments.length} comments without valid edit fields`);
 
     return semanticComments;
   }
@@ -1124,6 +1157,82 @@ export class SemanticDocumentService {
    */
   private hasTextContent(document: SemanticDocument): boolean {
     return document.blocks.some(block => block.content.trim().length > 0);
+  }
+
+  /**
+   * Apply a comment edit action (accept or reject)
+   */
+  async applyCommentEdit(
+    document: SemanticDocument,
+    annotationId: string,
+    action: 'accept' | 'reject'
+  ): Promise<boolean> {
+    try {
+      console.log(`SemanticDocumentService: Applying ${action} edit for annotation ${annotationId}`);
+      
+      const result = await CommentEditService.applyEdit({
+        documentId: document.id,
+        annotationId,
+        action
+      });
+
+      if (result.success && action === 'accept') {
+        // Update local document state optimistically
+        const updatedBlocks = document.blocks.map(block => ({
+          ...block,
+          annotations: block.annotations.map(annotation =>
+            annotation.id === annotationId
+              ? {
+                  ...annotation,
+                  resolved: true,
+                  actionType: 'accepted' as const,
+                  replacementAppliedAt: new Date(),
+                  resolvedAt: new Date(),
+                  updatedAt: new Date()
+                }
+              : annotation
+          )
+        }));
+
+        document.blocks = updatedBlocks;
+        document.updatedAt = new Date();
+        
+        console.log(`SemanticDocumentService: Successfully applied ${action} edit for annotation ${annotationId}`);
+      } else if (result.success && action === 'reject') {
+        // Update local document state for rejection
+        const updatedBlocks = document.blocks.map(block => ({
+          ...block,
+          annotations: block.annotations.map(annotation =>
+            annotation.id === annotationId
+              ? {
+                  ...annotation,
+                  resolved: true,
+                  actionType: 'rejected' as const,
+                  resolvedAt: new Date(),
+                  updatedAt: new Date()
+                }
+              : annotation
+          )
+        }));
+
+        document.blocks = updatedBlocks;
+        document.updatedAt = new Date();
+        
+        console.log(`SemanticDocumentService: Successfully applied ${action} edit for annotation ${annotationId}`);
+      }
+
+      return result.success;
+    } catch (error) {
+      console.error(`SemanticDocumentService: Error applying comment edit for annotation ${annotationId}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Check if an annotation can be edited
+   */
+  canEditAnnotation(annotation: Annotation): boolean {
+    return CommentEditService.canEditComment(annotation);
   }
 
   /**
