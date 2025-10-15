@@ -60,6 +60,12 @@ export interface Annotation {
   resolvedAt?: Date;
   resolvedBy?: string;
   metadata?: AnnotationMetadata;
+  
+  // NEW FIELDS FOR COMMENT EDIT ACTIONS
+  actionType?: 'none' | 'accepted' | 'rejected';
+  suggestedReplacement?: string;
+  originalText?: string;
+  replacementAppliedAt?: Date;
 }
 
 /**
@@ -118,6 +124,11 @@ export interface AnnotationMetadata {
   commentNature?: 'strength' | 'weakness' | 'suggestion' | 'improvement';
   commentCategory?: CommentCategory; // New field for sidebar categorization
   qualityScore?: number; // Quality score for big-picture agent (1-100)
+  
+  // NEW FIELDS FOR EDIT ACTIONS (stored in metadata for AI-generated comments)
+  originalText?: string;
+  suggestedReplacement?: string;
+  hasValidEditFields?: boolean; // Debug flag for validation
 }
 
 /**

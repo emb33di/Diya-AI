@@ -715,7 +715,118 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     // Note: Don't auto-close the loading pane - let user click "See AI Comments" button
   }, [state.document]);
 
-  // Global key handling for undo/redo and full-essay cut
+  // Handle full essay paste (replace all selected content)
+  const handleFullEssayPaste = useCallback(async (pastedText: string) => {
+    if (!pastedText.trim()) return;
+
+    saveToUndoStack();
+
+    // Detect if content has multiple paragraphs
+    const paragraphs = detectParagraphs(pastedText);
+    
+    if (paragraphs.length > 1) {
+      // Create multiple blocks from pasted content
+      const newBlocks: DocumentBlock[] = paragraphs.map((paragraph, index) => ({
+        id: crypto.randomUUID(),
+        type: 'paragraph',
+        content: paragraph,
+        position: index,
+        annotations: [],
+        isImmutable: index > 0, // First block (position 0) is editable, others are immutable
+        createdAt: new Date(),
+        lastUserEdit: index === 0 ? undefined : new Date() // First block hasn't been edited yet
+      }));
+
+      setState(prev => ({
+        ...prev,
+        document: {
+          ...prev.document,
+          blocks: newBlocks,
+          updatedAt: new Date()
+        },
+        pendingChanges: true
+      }));
+
+      // Focus on the first block
+      setTimeout(() => {
+        setEditingBlockId(newBlocks[0].id);
+        const textarea = textareaRefs.current[newBlocks[0].id];
+        if (textarea) {
+          textarea.focus();
+          // Set cursor to end of content
+          const endPosition = newBlocks[0].content.length;
+          textarea.setSelectionRange(endPosition, endPosition);
+        }
+      }, 50);
+    } else {
+      // Single paragraph - replace with one block
+      const newBlock: DocumentBlock = {
+        id: crypto.randomUUID(),
+        type: 'paragraph',
+        content: pastedText,
+        position: 0,
+        annotations: [],
+        isImmutable: false,
+        createdAt: new Date(),
+        lastUserEdit: undefined
+      };
+
+      setState(prev => ({
+        ...prev,
+        document: {
+          ...prev.document,
+          blocks: [newBlock],
+          updatedAt: new Date()
+        },
+        pendingChanges: true
+      }));
+
+      setTimeout(() => {
+        setEditingBlockId(newBlock.id);
+        const textarea = textareaRefs.current[newBlock.id];
+        if (textarea) {
+          textarea.focus();
+          // Set cursor to end of content
+          const endPosition = newBlock.content.length;
+          textarea.setSelectionRange(endPosition, endPosition);
+        }
+      }, 50);
+    }
+  }, [detectParagraphs, saveToUndoStack]);
+
+  // Handle full essay delete (backspace when all text is selected)
+  const handleFullEssayDelete = useCallback(() => {
+    saveToUndoStack();
+
+    const emptyBlock: DocumentBlock = {
+      id: crypto.randomUUID(),
+      type: 'paragraph',
+      content: '',
+      position: 0,
+      annotations: [],
+      isImmutable: false,
+      createdAt: new Date(),
+      lastUserEdit: undefined
+    };
+
+    setState(prev => ({
+      ...prev,
+      document: {
+        ...prev.document,
+        blocks: [emptyBlock],
+        updatedAt: new Date()
+      },
+      pendingChanges: true
+    }));
+
+    setTimeout(() => {
+      setEditingBlockId(emptyBlock.id);
+      const textarea = textareaRefs.current[emptyBlock.id];
+      if (textarea) textarea.focus();
+    }, 50);
+  }, [saveToUndoStack]);
+
+  // Global key handling for undo/redo, full-essay cut, paste, and delete
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       // Undo
@@ -735,24 +846,46 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
         return;
       }
 
+      // Check if all text is selected
+      const selection = window.getSelection();
+      const container = contentContainerRef.current;
+      const isAllTextSelected = selection && container && selection.toString().trim().length > 0 && 
+        normalizeText(selection.toString()) === normalizeText(getDocumentPlainText());
+
       // Cut entire essay after select-all
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'x') {
-        const selection = window.getSelection();
-        const container = contentContainerRef.current;
-        if (!selection || !container || selection.toString().trim().length === 0) return;
-        // Compare normalized selection to full document text
-        const selectionText = normalizeText(selection.toString());
-        const docText = normalizeText(getDocumentPlainText());
-        if (selectionText && docText && selectionText === docText) {
+        if (isAllTextSelected) {
           e.preventDefault();
           handleFullEssayCut();
         }
+        return;
+      }
+
+      // Paste entire essay after select-all
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'v') {
+        if (isAllTextSelected) {
+          e.preventDefault();
+          // Get pasted text from clipboard
+          navigator.clipboard.readText().then(pastedText => {
+            handleFullEssayPaste(pastedText);
+          }).catch(() => {
+            // If clipboard access fails, just proceed with normal paste behavior
+          });
+        }
+        return;
+      }
+
+      // Delete entire essay after select-all (backspace)
+      if (e.key === 'Backspace' && isAllTextSelected) {
+        e.preventDefault();
+        handleFullEssayDelete();
+        return;
       }
     };
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [undo, redo, getDocumentPlainText, handleFullEssayCut]);
+  }, [undo, redo, getDocumentPlainText, handleFullEssayCut, handleFullEssayPaste, handleFullEssayDelete]);
 
   // Handle "See AI Comments" button click
   const handleSeeAIComments = () => {
@@ -880,6 +1013,27 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
       pendingChanges: true
     }));
   }, []);
+
+  // Reload document from database
+  const reloadDocument = useCallback(async () => {
+    try {
+      const reloadedDocument = await semanticDocumentService.loadDocument(state.document.id);
+      if (reloadedDocument) {
+        setState(prev => ({
+          ...prev,
+          document: reloadedDocument,
+          pendingChanges: false
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to reload document:', error);
+      toast({
+        title: "Error",
+        description: "Failed to reload document. Please try again.",
+        variant: "destructive"
+      });
+    }
+  }, [state.document.id, toast]);
 
   // Render highlighted text with annotations
   const renderHighlightedText = (text: string, annotations: Annotation[]) => {
@@ -1073,7 +1227,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     return (
       <div
         key={block.id}
-        className="group relative mb-2"
+        className="relative mb-2"
       >
 
         {/* Block Content */}
@@ -1116,15 +1270,15 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
         ) : (
           <div className="relative">
             <div
-              className={`min-h-[2.5rem] p-2 rounded transition-colors text-base w-full overflow-wrap-anywhere break-words ${
+              className={`min-h-[2.5rem] p-2 text-base w-full overflow-wrap-anywhere break-words focus:outline-none focus:ring-0 ${
                 isReadOnly()
                   ? 'cursor-not-allowed bg-gray-50 text-gray-500'
-                  : 'cursor-text hover:bg-gray-50'
+                  : ''
               }`}
               onClick={() => {
                 if (!isReadOnly()) startEditingBlock(block.id);
               }}
-              title={isReadOnly() ? 'Editor text is read-only. Create a new version to edit.' : 'Click to edit'}
+              title={isReadOnly() ? 'Editor text is read-only. Create a new version to edit.' : ''}
               style={{
                 fontFamily: 'Arial, sans-serif',
                 lineHeight: '1.6',
@@ -1137,12 +1291,12 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
                 renderHighlightedText(block.content, block.annotations)
               ) : (
                 <span className="text-gray-400 italic">
-                  {block.position === 0 ? 'Start writing here...' : 'Click to add content...'}
+                  {block.position === 0 ? 'Start writing here...' : ''}
                 </span>
               )}
             </div>
             {isReadOnly() && (
-              <div className="pointer-events-none absolute inset-0 flex items-start opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              <div className="pointer-events-none absolute inset-0 flex items-start">
                 <div className="ml-2 mt-1 text-[11px] text-gray-600 bg-gray-100/80 border border-gray-300 rounded px-2 py-0.5">
                   Editor is read-only. Click "New Version" to edit.
                 </div>
@@ -1173,7 +1327,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
           {useMemo(() => {
             const sortedBlocks = [...state.document.blocks].sort((a, b) => a.position - b.position);
             return sortedBlocks.map(renderBlock);
-          }, [state.document.blocks, renderBlock])}
+          }, [state.document.blocks, editingBlockId, showCommentSidebar])}
 
         </div>
       </div>
@@ -1183,9 +1337,11 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
         <CommentSidebar
           key={state.document.id}
           blocks={useMemo(() => [...state.document.blocks].sort((a, b) => a.position - b.position), [state.document.blocks])}
+          documentId={state.document.id}
           onAnnotationResolve={resolveAnnotation}
           onAnnotationDelete={deleteAnnotation}
           onAnnotationSelect={onAnnotationSelect}
+          onDocumentReload={reloadDocument}
           hasGrammarCheckRun={hasGrammarCheckRun}
           selectedAnnotationId={selectedAnnotationId}
           onHideSidebar={onHideSidebar}

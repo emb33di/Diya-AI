@@ -5,7 +5,7 @@
  * Handles comment interactions and positioning.
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Annotation, DocumentBlock } from '@/types/semanticDocument';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -43,7 +43,7 @@ interface CommentBubbleProps {
   onSelect: () => void;
 }
 
-const CommentBubble: React.FC<CommentBubbleProps> = ({
+const CommentBubble: React.FC<CommentBubbleProps> = React.memo(({
   annotation,
   position,
   isExpanded,
@@ -62,7 +62,7 @@ const CommentBubble: React.FC<CommentBubbleProps> = ({
     }
   }, [position]);
 
-  const getBubbleColor = (type: string) => {
+  const getBubbleColor = useCallback((type: string) => {
     switch (type) {
       case 'suggestion':
         return 'bg-green-100 border-green-300 text-green-800';
@@ -75,7 +75,7 @@ const CommentBubble: React.FC<CommentBubbleProps> = ({
       default:
         return 'bg-blue-100 border-blue-300 text-blue-800';
     }
-  };
+  }, []);
 
   return (
     <div
@@ -172,9 +172,9 @@ const CommentBubble: React.FC<CommentBubbleProps> = ({
       )}
     </div>
   );
-};
+});
 
-const CommentOverlay: React.FC<CommentOverlayProps> = ({
+const CommentOverlay: React.FC<CommentOverlayProps> = React.memo(({
   block,
   annotations,
   onAnnotationSelect,
@@ -368,6 +368,6 @@ const CommentOverlay: React.FC<CommentOverlayProps> = ({
       )}
     </div>
   );
-};
+});
 
 export default CommentOverlay;

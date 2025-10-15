@@ -16,6 +16,7 @@ import {
   SemanticComment
 } from '@/types/semanticDocument';
 import { supabase } from '@/integrations/supabase/client';
+import { CommentEditService } from '@/services/commentEditService';
 
 export class SemanticDocumentService {
   private static instance: SemanticDocumentService;
@@ -874,6 +875,10 @@ export class SemanticDocumentService {
           resolved: false,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
+          // NEW FIELDS FOR EDIT ACTIONS
+          action_type: 'none',
+          suggested_replacement: comment.metadata?.suggestedReplacement,
+          original_text: comment.metadata?.originalText,
           metadata: {
             confidence: comment.confidence,
             agentType: 'grammar',
@@ -988,22 +993,50 @@ export class SemanticDocumentService {
   }
 
   /**
-   * Convert grammar agent comments to semantic format
+   * Convert grammar agent comments to semantic format with enhanced validation
    */
   private convertGrammarCommentsToSemantic(
     grammarComments: any[], 
     blocks: DocumentBlock[]
   ): SemanticComment[] {
     const semanticComments: SemanticComment[] = [];
+    let filteredOutInvalidCount = 0;
 
     for (const grammarComment of grammarComments) {
       // Find the best matching block for this grammar comment
       const targetBlock = this.findBestMatchingBlockForGrammar(grammarComment, blocks);
-      if (!targetBlock) continue;
+      if (!targetBlock) {
+        console.warn(`SemanticDocumentService: Could not find target block for grammar comment: ${grammarComment.comment_text}`);
+        continue;
+      }
 
-      // Extract target text from the comment
-      const targetText = grammarComment.anchor_text || grammarComment.target_text || 
+      // Extract target text from the comment with enhanced validation
+      // Prefer original_text for precise highlighting if present
+      const targetText = grammarComment.original_text || grammarComment.anchor_text || grammarComment.target_text || 
                         this.extractTargetTextFromGrammarComment(grammarComment, targetBlock.content);
+
+      // Validate edit fields for grammar comments - be more lenient
+      // Allow empty suggested_replacement for word removals
+      const hasValidEditFields = grammarComment.original_text && 
+                                grammarComment.suggested_replacement !== undefined && 
+                                grammarComment.original_text !== grammarComment.suggested_replacement &&
+                                grammarComment.original_text.length > 0 &&
+                                grammarComment.suggested_replacement.length >= 0; // Allow empty string for word removals
+
+      if (!hasValidEditFields && grammarComment.original_text) {
+        console.warn(`SemanticDocumentService: Grammar comment missing valid edit fields:`, {
+          comment: grammarComment.comment_text,
+          original: grammarComment.original_text,
+          suggested: grammarComment.suggested_replacement,
+          blockContent: targetBlock.content.substring(0, 100) + '...'
+        });
+      }
+
+      // Filter out invalid grammar comments from UI (skip adding to semanticComments)
+      if (!hasValidEditFields) {
+        filteredOutInvalidCount++;
+        continue;
+      }
 
       const semanticComment: SemanticComment = {
         targetBlockId: targetBlock.id,
@@ -1016,12 +1049,22 @@ export class SemanticDocumentService {
           category: grammarComment.comment_category || 'inline',
           subcategory: grammarComment.comment_subcategory || 'grammar',
           commentNature: 'improvement',
-          commentCategory: 'grammar'
+          commentCategory: 'grammar',
+          // ENHANCED EDIT ACTION FIELDS WITH VALIDATION
+          originalText: hasValidEditFields ? grammarComment.original_text : undefined,
+          suggestedReplacement: hasValidEditFields ? grammarComment.suggested_replacement : undefined,
+          // Add validation metadata for debugging
+          hasValidEditFields: hasValidEditFields
         }
       };
 
       semanticComments.push(semanticComment);
     }
+
+    // Log summary of conversion results
+    const validEditComments = semanticComments.filter(c => c.metadata?.hasValidEditFields);
+    console.log(`SemanticDocumentService: Converted ${semanticComments.length} grammar comments (skipped ${filteredOutInvalidCount} invalid edit comments)`);
+    console.log(`- ${validEditComments.length} comments with valid edit fields`);
 
     return semanticComments;
   }
@@ -1057,11 +1100,11 @@ export class SemanticDocumentService {
       }
     }
 
-    // Strategy 4: Find block containing the target text
-    if (grammarComment.anchor_text || grammarComment.target_text) {
-      const targetText = grammarComment.anchor_text || grammarComment.target_text;
+    // Strategy 4: Find block containing the target text (case-insensitive)
+    if (grammarComment.anchor_text || grammarComment.target_text || grammarComment.original_text) {
+      const targetText = (grammarComment.original_text || grammarComment.anchor_text || grammarComment.target_text || '').toLowerCase();
       for (const block of blocks) {
-        if (block.content.includes(targetText)) {
+        if (block.content.toLowerCase().includes(targetText)) {
           return block;
         }
       }
@@ -1127,6 +1170,82 @@ export class SemanticDocumentService {
   }
 
   /**
+   * Apply a comment edit action (accept or reject)
+   */
+  async applyCommentEdit(
+    document: SemanticDocument,
+    annotationId: string,
+    action: 'accept' | 'reject'
+  ): Promise<boolean> {
+    try {
+      console.log(`SemanticDocumentService: Applying ${action} edit for annotation ${annotationId}`);
+      
+      const result = await CommentEditService.applyEdit({
+        documentId: document.id,
+        annotationId,
+        action
+      });
+
+      if (result.success && action === 'accept') {
+        // Update local document state optimistically
+        const updatedBlocks = document.blocks.map(block => ({
+          ...block,
+          annotations: block.annotations.map(annotation =>
+            annotation.id === annotationId
+              ? {
+                  ...annotation,
+                  resolved: true,
+                  actionType: 'accepted' as const,
+                  replacementAppliedAt: new Date(),
+                  resolvedAt: new Date(),
+                  updatedAt: new Date()
+                }
+              : annotation
+          )
+        }));
+
+        document.blocks = updatedBlocks;
+        document.updatedAt = new Date();
+        
+        console.log(`SemanticDocumentService: Successfully applied ${action} edit for annotation ${annotationId}`);
+      } else if (result.success && action === 'reject') {
+        // Update local document state for rejection
+        const updatedBlocks = document.blocks.map(block => ({
+          ...block,
+          annotations: block.annotations.map(annotation =>
+            annotation.id === annotationId
+              ? {
+                  ...annotation,
+                  resolved: true,
+                  actionType: 'rejected' as const,
+                  resolvedAt: new Date(),
+                  updatedAt: new Date()
+                }
+              : annotation
+          )
+        }));
+
+        document.blocks = updatedBlocks;
+        document.updatedAt = new Date();
+        
+        console.log(`SemanticDocumentService: Successfully applied ${action} edit for annotation ${annotationId}`);
+      }
+
+      return result.success;
+    } catch (error) {
+      console.error(`SemanticDocumentService: Error applying comment edit for annotation ${annotationId}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Check if an annotation can be edited
+   */
+  canEditAnnotation(annotation: Annotation): boolean {
+    return CommentEditService.canEditComment(annotation);
+  }
+
+  /**
    * Check if essay version already exists for this essay
    */
   private async checkVersionExists(essayId: string): Promise<boolean> {
@@ -1189,7 +1308,7 @@ export class SemanticDocumentService {
             metadata: document.metadata
           },
           version_name: 'Version 1',
-          version_description: 'Initial version',
+          version_description: undefined,
           is_active: true,
           semantic_document_id: document.id,
           is_fresh_draft: true

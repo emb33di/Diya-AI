@@ -1,5 +1,55 @@
 /* Semantic Editor Inline Highlighting Styles */
 
+/* Remove all focus and active states from blocks */
+.clean-semantic-editor .block-content,
+.clean-semantic-editor div[role="button"],
+.clean-semantic-editor div[tabindex] {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+  background-color: transparent !important;
+}
+
+.clean-semantic-editor .block-content:focus,
+.clean-semantic-editor .block-content:active,
+.clean-semantic-editor div[role="button"]:focus,
+.clean-semantic-editor div[role="button"]:active,
+.clean-semantic-editor div[tabindex]:focus,
+.clean-semantic-editor div[tabindex]:active {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+  background-color: transparent !important;
+  transform: none !important;
+}
+
+/* Specifically target clickable divs in blocks */
+.clean-semantic-editor > div > div > div {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+  background-color: transparent !important;
+}
+
+.clean-semantic-editor > div > div > div:focus,
+.clean-semantic-editor > div > div > div:active {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+  background-color: transparent !important;
+  transform: none !important;
+}
+
+/* Universal rule to remove all focus/active states from any clickable element */
+.clean-semantic-editor *:focus,
+.clean-semantic-editor *:active {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+  background-color: transparent !important;
+  transform: none !important;
+}
+
 /* Mobile Text Wrapping */
 .clean-semantic-editor textarea,
 .clean-semantic-editor div[contenteditable],

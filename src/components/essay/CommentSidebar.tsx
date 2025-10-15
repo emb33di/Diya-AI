@@ -24,17 +24,23 @@ import {
   FileText,
   CheckSquare,
   Target,
-  SidebarClose
+  SidebarClose,
+  XCircle,
+  Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CommentEditService } from '@/services/commentEditService';
+import { useToast } from '@/components/ui/use-toast';
 
 interface CommentSidebarProps {
   blocks: DocumentBlock[];
+  documentId?: string;
   onAnnotationResolve?: (annotationId: string) => void;
   onAnnotationDelete?: (annotationId: string) => void;
   onAnnotationSelect?: (annotation: Annotation | null) => void;
   selectedAnnotationId?: string;
   onHideSidebar?: () => void;
+  onDocumentReload?: () => Promise<void>;
   className?: string;
   hasGrammarCheckRun?: boolean;
 }
@@ -47,11 +53,13 @@ interface GroupedComment {
 
 const CommentSidebar: React.FC<CommentSidebarProps> = ({
   blocks,
+  documentId,
   onAnnotationResolve,
   onAnnotationDelete,
   onAnnotationSelect,
   selectedAnnotationId,
   onHideSidebar,
+  onDocumentReload,
   className,
   hasGrammarCheckRun = false
 }) => {
@@ -59,7 +67,9 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
     new Set(['overall-analysis', 'tone', 'clarity', 'strengths', 'areas-for-improvement', 'paragraph-quality', 'grammar'])
   );
   const [activeTab, setActiveTab] = useState<'all' | 'unresolved'>('unresolved');
+  const [editingAnnotations, setEditingAnnotations] = useState<Set<string>>(new Set());
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   // Determine comment category based on annotation metadata and type
   const determineCommentCategory = (annotation: Annotation): CommentCategory => {
@@ -212,6 +222,103 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
       newExpanded.add(category);
     }
     setExpandedCategories(newExpanded);
+  };
+
+  // Handler functions for edit actions
+  const handleAcceptEdit = async (annotation: Annotation) => {
+    if (!documentId) {
+      toast({
+        title: "Error",
+        description: "Document ID is required for editing comments",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setEditingAnnotations(prev => new Set(prev).add(annotation.id));
+    
+    try {
+      const result = await CommentEditService.acceptEdit(documentId, annotation.id);
+
+      if (result.success) {
+        toast({
+          title: "Edit Applied",
+          description: result.message || "Grammar correction applied successfully",
+        });
+        
+        // Reload the document to show updated content
+        if (onDocumentReload) {
+          await onDocumentReload();
+        }
+        
+        // Mark annotation as resolved
+        onAnnotationResolve?.(annotation.id);
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to apply edit",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error accepting edit:', error);
+      toast({
+        title: "Error",
+        description: "Failed to apply edit",
+        variant: "destructive"
+      });
+    } finally {
+      setEditingAnnotations(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(annotation.id);
+        return newSet;
+      });
+    }
+  };
+
+  const handleRejectEdit = async (annotation: Annotation) => {
+    if (!documentId) {
+      toast({
+        title: "Error",
+        description: "Document ID is required for editing comments",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setEditingAnnotations(prev => new Set(prev).add(annotation.id));
+    
+    try {
+      const result = await CommentEditService.rejectEdit(documentId, annotation.id);
+
+      if (result.success) {
+        toast({
+          title: "Edit Rejected",
+          description: "Grammar suggestion rejected",
+        });
+        
+        onAnnotationResolve?.(annotation.id);
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to reject edit",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error rejecting edit:', error);
+      toast({
+        title: "Error",
+        description: "Failed to reject edit",
+        variant: "destructive"
+      });
+    } finally {
+      setEditingAnnotations(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(annotation.id);
+        return newSet;
+      });
+    }
   };
 
   const getCategoryIcon = (category: CommentCategory) => {
@@ -570,6 +677,53 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
                           {annotation.targetText && (
                             <div className="mt-2 p-2 bg-white rounded border text-sm text-gray-600 leading-relaxed break-words overflow-wrap-anywhere" style={{ fontFamily: 'Arial, sans-serif' }}>
                               <strong>{annotation.metadata?.agentType === 'grammar' ? 'Need to fix:' : 'Context:'}</strong> "{annotation.targetText}"
+                              
+                              {/* Show suggested replacement for grammar comments */}
+                              {annotation.metadata?.agentType === 'grammar' && annotation.metadata?.suggestedReplacement && (
+                                <div className="mt-1 text-green-600">
+                                  <strong>Suggested:</strong> "{annotation.metadata.suggestedReplacement}"
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Add Accept/Reject buttons for grammar comments */}
+                          {CommentEditService.canEditComment(annotation) && (
+                            <div className="mt-3 flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleAcceptEdit(annotation);
+                                }}
+                                disabled={editingAnnotations.has(annotation.id)}
+                                className="flex items-center gap-1"
+                              >
+                                {editingAnnotations.has(annotation.id) ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <CheckCircle className="h-3 w-3" />
+                                )}
+                                Accept
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRejectEdit(annotation);
+                                }}
+                                disabled={editingAnnotations.has(annotation.id)}
+                                className="flex items-center gap-1"
+                              >
+                                {editingAnnotations.has(annotation.id) ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <XCircle className="h-3 w-3" />
+                                )}
+                                Reject
+                              </Button>
                             </div>
                           )}
                         </div>
@@ -602,6 +756,7 @@ const areEqual = (
 ) => {
   if (prevProps.selectedAnnotationId !== nextProps.selectedAnnotationId) return false;
   if (prevProps.className !== nextProps.className) return false;
+  if (prevProps.documentId !== nextProps.documentId) return false;
 
   const prevBlocks = prevProps.blocks;
   const nextBlocks = nextProps.blocks;
