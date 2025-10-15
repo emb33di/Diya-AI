@@ -189,10 +189,13 @@ const GrammarLoadingPane: React.FC<GrammarLoadingPaneProps> = ({
               className="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white font-semibold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
             >
               <Eye className="h-5 w-5 mr-2" />
-              See Grammar Comments
+              {noErrorsFound ? "Continue Editing" : "See Grammar Comments"}
             </Button>
             <p className="text-sm text-gray-500 mt-3">
-              Click to refresh and view your grammar suggestions
+              {noErrorsFound 
+                ? "Click to continue editing your essay" 
+                : "Click to refresh and view your grammar suggestions"
+              }
             </p>
           </div>
         )}
