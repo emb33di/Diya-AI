@@ -140,9 +140,9 @@ serve(async (req) => {
         );
       }
 
-      // Find the block containing the annotation
+      // Find the block containing the annotation using block_id
       const targetBlock = document.blocks.find((block: any) => 
-        block.annotations?.some((ann: any) => ann.id === annotationId)
+        block.id === annotation.block_id
       );
 
       if (!targetBlock) {

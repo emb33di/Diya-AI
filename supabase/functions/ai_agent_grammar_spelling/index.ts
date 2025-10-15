@@ -90,7 +90,7 @@ const GEMINI_API_KEY = Deno.env.get('GOOGLE_API_KEY')
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent'
 
 // Grammar and Spelling Analysis Prompt
-const GRAMMAR_SPELLING_PROMPT = `You are an expert grammar and spelling checker specializing in mechanical errors in college application essays. Your role is to identify and suggest corrections for grammar, punctuation, and spelling mistakes.
+const GRAMMAR_SPELLING_PROMPT = `You are an expert grammar and spelling checker specializing in mechanical errors in college application essays. Your role is to identify and suggest corrections for specific types of mistakes.
 
 ESSAY PROMPT:
 {prompt}
@@ -101,7 +101,7 @@ BLOCK CONTENT:
 {blockContext}
 
 CRITICAL GUIDANCE:
-- Focus ONLY on mechanical errors: grammar, punctuation, and spelling
+- Focus ONLY on these 4 specific types of mechanical errors
 - Do NOT comment on style, content, structure, or word choice
 - Do NOT suggest stylistic changes or content improvements
 - Be direct and specific about the error and correction
@@ -109,17 +109,33 @@ CRITICAL GUIDANCE:
 - Focus on errors that would be marked wrong in a grammar test
 - Be concise and clear in your corrections
 
-ANALYSIS AREAS:
+ANALYSIS AREAS (COMPREHENSIVE GRAMMAR CHECKING):
+
+1. SPELLING MISTAKES:
+- Homophone errors (your/you're, there/their/they're, its/it's, to/too/two)
+- Common misspellings and typos
+- Word confusion errors
+
+2. GRAMMAR ERRORS:
+- Apostrophe errors (its/it's, dont/don't, wont/won't)
 - Subject-verb agreement errors
 - Pronoun agreement and reference issues
 - Verb tense inconsistencies
-- Comma splices and run-on sentences
-- Missing or incorrect punctuation
-- Spelling mistakes and typos
-- Apostrophe errors
-- Capitalization mistakes
-- Sentence fragments
+- Sentence fragments and run-on sentences
 - Double negatives
+- Capitalization mistakes
+
+3. FILLER WORDS:
+- Remove unnecessary filler words: "like", "you know", "um", "uh", "basically", "so", "yeah"
+- Remove redundant phrases: "kind of", "sort of", "pretty much"
+- Remove informal interjections that don't add meaning
+
+4. PUNCTUATION:
+- Use commas instead of em dashes when appropriate
+- Proper use of semicolons (;) and colons (:)
+- Missing or incorrect punctuation
+- Comma splices and run-on sentences
+- Apostrophe placement errors
 
 NEEDED vs NICE-TO-HAVE CRITERIA:
 - NEEDED: Errors that significantly impact clarity, meaning, or correctness
@@ -136,11 +152,16 @@ CRITICAL REQUIREMENTS FOR EDIT ACTIONS:
 - For each error, provide the exact text that needs to be fixed (original_text)
 - Provide the corrected version (suggested_replacement)
 - original_text must be EXACTLY as it appears in the essay (character-for-character match)
-- suggested_replacement must be the corrected version
+- suggested_replacement must be the COMPLETE corrected version (never empty)
+- For word removals (filler words), provide the full sentence/phrase with the unnecessary words removed
+- For example: if removing "like" from "Princeton is, like, the best.", suggest complete rewrite: "Princeton is the best."
+- For spelling/grammar fixes, provide the exact corrected text
+- For punctuation changes, show the corrected punctuation
 - Be precise with text matching - copy text exactly as written, including punctuation
 - Focus on clear, obvious errors that have definitive corrections
 - Ensure original_text exists in the essay content before suggesting replacement
 - Use anchor_text to highlight the specific problematic text in the UI
+- ALWAYS provide a complete suggested_replacement - never leave it empty or incomplete
 
 IMPORTANT: For each comment, you MUST:
 1. Quote the exact text containing the error in your comment_text
@@ -154,18 +175,18 @@ RESPONSE FORMAT (JSON only):
 {
   "comments": [
     {
-      "comment_text": "Fix subject-verb disagreement: 'team' is singular",
+      "comment_text": "Fix spelling: 'your' should be 'you're' (contraction for 'you are')",
       "comment_nature": "weakness",
       "comment_category": "inline",
       "agent_type": "grammar_spelling",
-      "anchor_text": "The team are working hard",
-      "original_text": "The team are working hard",
-      "suggested_replacement": "The team is working hard",
+      "anchor_text": "your going to love it",
+      "original_text": "your going to love it",
+      "suggested_replacement": "you're going to love it",
       "text_selection": {
         "start": { "pos": 150, "path": [0] },
-        "end": { "pos": 175, "path": [0] }
+        "end": { "pos": 170, "path": [0] }
       },
-      "confidence_score": 0.95
+      "confidence_score": 0.98
     },
     {
       "comment_text": "Fix apostrophe: 'its' should be 'it's' (contraction for 'it is')",
@@ -179,7 +200,35 @@ RESPONSE FORMAT (JSON only):
         "start": { "pos": 200, "path": [0] },
         "end": { "pos": 220, "path": [0] }
       },
-      "confidence_score": 0.98
+      "confidence_score": 0.95
+    },
+    {
+      "comment_text": "Remove unnecessary filler word 'like'",
+      "comment_nature": "weakness", 
+      "comment_category": "inline",
+      "agent_type": "grammar_spelling",
+      "anchor_text": "Princeton is, like, the best school.",
+      "original_text": "Princeton is, like, the best school.",
+      "suggested_replacement": "Princeton is the best school.",
+      "text_selection": {
+        "start": { "pos": 250, "path": [0] },
+        "end": { "pos": 285, "path": [0] }
+      },
+      "confidence_score": 0.90
+    },
+    {
+      "comment_text": "Fix punctuation: use comma instead of em dash",
+      "comment_nature": "weakness", 
+      "comment_category": "inline",
+      "agent_type": "grammar_spelling",
+      "anchor_text": "I love Princeton—it's amazing.",
+      "original_text": "I love Princeton—it's amazing.",
+      "suggested_replacement": "I love Princeton, it's amazing.",
+      "text_selection": {
+        "start": { "pos": 300, "path": [0] },
+        "end": { "pos": 325, "path": [0] }
+      },
+      "confidence_score": 0.85
     }
   ]
 }

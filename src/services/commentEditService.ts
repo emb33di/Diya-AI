@@ -58,7 +58,8 @@ export class CommentEditService {
   static canEditComment(annotation: any): boolean {
     const isGrammarComment = annotation.metadata?.agentType === 'grammar';
     const hasOriginalText = annotation.original_text || annotation.metadata?.originalText;
-    const hasSuggestedReplacement = annotation.suggested_replacement || annotation.metadata?.suggestedReplacement;
+    const suggestedReplacement = annotation.suggested_replacement || annotation.metadata?.suggestedReplacement;
+    const hasSuggestedReplacement = suggestedReplacement !== undefined; // Allow empty string for word removals
     const isNotResolved = !annotation.resolved;
     const hasValidEditFields = annotation.metadata?.hasValidEditFields !== false; // Default to true if not specified
     
@@ -76,7 +77,7 @@ export class CommentEditService {
         isNotResolved,
         hasValidEditFields,
         originalText: hasOriginalText,
-        suggestedReplacement: hasSuggestedReplacement
+        suggestedReplacement: suggestedReplacement
       });
     }
     

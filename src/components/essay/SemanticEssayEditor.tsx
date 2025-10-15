@@ -373,6 +373,25 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
     }
   };
 
+  // Reload document from database
+  const handleDocumentReload = async () => {
+    if (!document) return;
+    
+    try {
+      const reloadedDocument = await semanticDocumentService.loadDocument(document.id);
+      if (reloadedDocument) {
+        setDocument(reloadedDocument);
+      }
+    } catch (error) {
+      console.error('Failed to reload document:', error);
+      toast({
+        title: "Error",
+        description: "Failed to reload document. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   // Handle save status changes
   const handleSaveStatusChange = (isAutoSaving: boolean, lastSaved: Date | null) => {
     setIsAutoSaving(isAutoSaving);
@@ -1256,10 +1275,12 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                 <CommentSidebar
                   key={document.id}
                   blocks={document.blocks}
+                  documentId={document.id}
                   onAnnotationResolve={handleAnnotationResolve}
                   onAnnotationDelete={handleAnnotationDelete}
                   onAnnotationSelect={handleAnnotationSelect}
                   selectedAnnotationId={selectedAnnotation?.id}
+                  onDocumentReload={handleDocumentReload}
                   className="h-full border-0 rounded-lg"
                   hasGrammarCheckRun={hasGrammarCheckRun}
                 />

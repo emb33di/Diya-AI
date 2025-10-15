@@ -1014,8 +1014,9 @@ export class SemanticDocumentService {
                         this.extractTargetTextFromGrammarComment(grammarComment, targetBlock.content);
 
       // Validate edit fields for grammar comments
+      // Allow empty suggested_replacement for word removals
       const hasValidEditFields = grammarComment.original_text && 
-                                grammarComment.suggested_replacement &&
+                                grammarComment.suggested_replacement !== undefined && 
                                 grammarComment.original_text !== grammarComment.suggested_replacement;
 
       if (!hasValidEditFields && grammarComment.original_text) {

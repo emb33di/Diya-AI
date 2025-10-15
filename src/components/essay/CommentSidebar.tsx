@@ -40,6 +40,7 @@ interface CommentSidebarProps {
   onAnnotationSelect?: (annotation: Annotation | null) => void;
   selectedAnnotationId?: string;
   onHideSidebar?: () => void;
+  onDocumentReload?: () => Promise<void>;
   className?: string;
   hasGrammarCheckRun?: boolean;
 }
@@ -58,6 +59,7 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
   onAnnotationSelect,
   selectedAnnotationId,
   onHideSidebar,
+  onDocumentReload,
   className,
   hasGrammarCheckRun = false
 }) => {
@@ -244,7 +246,12 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
           description: result.message || "Grammar correction applied successfully",
         });
         
-        // Refresh the document to show updated content
+        // Reload the document to show updated content
+        if (onDocumentReload) {
+          await onDocumentReload();
+        }
+        
+        // Mark annotation as resolved
         onAnnotationResolve?.(annotation.id);
       } else {
         toast({

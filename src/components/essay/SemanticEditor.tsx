@@ -881,6 +881,27 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     }));
   }, []);
 
+  // Reload document from database
+  const reloadDocument = useCallback(async () => {
+    try {
+      const reloadedDocument = await semanticDocumentService.loadDocument(state.document.id);
+      if (reloadedDocument) {
+        setState(prev => ({
+          ...prev,
+          document: reloadedDocument,
+          pendingChanges: false
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to reload document:', error);
+      toast({
+        title: "Error",
+        description: "Failed to reload document. Please try again.",
+        variant: "destructive"
+      });
+    }
+  }, [state.document.id, toast]);
+
   // Render highlighted text with annotations
   const renderHighlightedText = (text: string, annotations: Annotation[]) => {
     if (!text || annotations.length === 0) {
@@ -1183,9 +1204,11 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
         <CommentSidebar
           key={state.document.id}
           blocks={useMemo(() => [...state.document.blocks].sort((a, b) => a.position - b.position), [state.document.blocks])}
+          documentId={state.document.id}
           onAnnotationResolve={resolveAnnotation}
           onAnnotationDelete={deleteAnnotation}
           onAnnotationSelect={onAnnotationSelect}
+          onDocumentReload={reloadDocument}
           hasGrammarCheckRun={hasGrammarCheckRun}
           selectedAnnotationId={selectedAnnotationId}
           onHideSidebar={onHideSidebar}
