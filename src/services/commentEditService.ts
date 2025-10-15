@@ -36,7 +36,7 @@ export class CommentEditService {
         console.error('Error calling apply-comment-edit:', error);
         return {
           success: false,
-          error: error.message || 'Failed to apply edit'
+          error: 'Action failed.'
         };
       }
 
@@ -46,7 +46,7 @@ export class CommentEditService {
       console.error('Error in CommentEditService.applyEdit:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: 'Action failed.'
       };
     }
   }

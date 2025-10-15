@@ -147,6 +147,9 @@ ANALYSIS AREAS (COMPREHENSIVE GRAMMAR CHECKING):
 - Remove unnecessary filler words: "like", "you know", "um", "uh", "basically", "so", "yeah"
 - Remove redundant phrases: "kind of", "sort of", "pretty much"
 - Remove informal interjections that don't add meaning
+- IMPORTANT: If multiple filler words appear in the same sentence, combine them into ONE comment
+- For example: "So, yeah, that's why Princeton." should become ONE comment suggesting "That's why Princeton."
+- Do NOT create separate comments for each filler word in the same sentence
 
 4. PUNCTUATION:
 - Use commas instead of em dashes when appropriate
@@ -166,13 +169,21 @@ NEEDED vs NICE-TO-HAVE CRITERIA:
 INSTRUCTIONS:
 Generate comments ONLY for NEEDED mechanical errors. Do not generate comments for nice-to-have suggestions. If no significant errors exist, return an empty comments array. Each comment should identify a specific error and provide the correction.
 
+CRITICAL: If multiple errors exist in the same sentence, combine them into ONE comment. For example:
+- Instead of separate comments for "Fix spelling: 'your'" and "Remove filler word 'so'" in "So, your going to love it"
+- Create ONE comment: "Fix spelling 'your' and remove filler word 'so'" with suggested replacement "You're going to love it"
+- This prevents comment flow issues and provides a better user experience
+
 CRITICAL REQUIREMENTS FOR EDIT ACTIONS:
 - For each error, provide the exact text that needs to be fixed (original_text)
 - Provide the corrected version (suggested_replacement)
 - original_text must be EXACTLY as it appears in the essay (character-for-character match)
 - suggested_replacement must be the COMPLETE corrected version (never empty)
-- For word removals (filler words), provide the full sentence/phrase with the unnecessary words removed
-- For example: if removing "like" from "Princeton is, like, the best.", suggest complete rewrite: "Princeton is the best."
+- For filler word removals: ALWAYS provide the FULL SENTENCE containing the filler word as original_text
+- For example: if removing "like" from "Princeton is, like, the best.", use:
+  - original_text: "Princeton is, like, the best."
+  - suggested_replacement: "Princeton is the best."
+- NEVER use just the filler word (e.g., "like") as original_text - always use the complete sentence
 - For spelling/grammar fixes, provide the exact corrected text
 - For punctuation changes, show the corrected punctuation
 - Be precise with text matching - copy text exactly as written, including punctuation
@@ -181,13 +192,20 @@ CRITICAL REQUIREMENTS FOR EDIT ACTIONS:
 - Use anchor_text to highlight the specific problematic text in the UI
 - ALWAYS provide a complete suggested_replacement - never leave it empty or incomplete
 
+CRITICAL FOR PUNCTUATION ERRORS (comma splices, run-on sentences, missing punctuation):
+- When fixing punctuation errors, capture the ENTIRE sentence that contains the error
+- For comma splices: "The student organizations athletic programs and cultural events ensure there is something for everyone it create a balanced and fulfilling university experience."
+- Should become: "The student organizations, athletic programs, and cultural events ensure there is something for everyone; they create a balanced and fulfilling university experience."
+- For run-on sentences: capture the complete sentence and provide the properly punctuated version
+- For missing punctuation: include the full sentence context, not just the problematic fragment
+- ALWAYS work at the sentence level for punctuation fixes to ensure proper context
+
 IMPORTANT: For each comment, you MUST:
 1. Quote the exact text containing the error in your comment_text
-2. Provide accurate text_selection positions for the specific text with the error
-3. Be specific about what needs to be changed
-4. Include original_text (exact text with error)
-5. Include suggested_replacement (corrected version)
-6. Include anchor_text (text to highlight in UI)
+2. Be specific about what needs to be changed
+3. Include original_text (exact text with error)
+4. Include suggested_replacement (corrected version)
+5. Include anchor_text (text to highlight in UI)
 
 RESPONSE FORMAT (JSON only):
 {
@@ -200,10 +218,6 @@ RESPONSE FORMAT (JSON only):
       "anchor_text": "your going to love it",
       "original_text": "your going to love it",
       "suggested_replacement": "you're going to love it",
-      "text_selection": {
-        "start": { "pos": 150, "path": [0] },
-        "end": { "pos": 170, "path": [0] }
-      },
       "confidence_score": 0.98
     },
     {
@@ -214,44 +228,191 @@ RESPONSE FORMAT (JSON only):
       "anchor_text": "its important to",
       "original_text": "its important to",
       "suggested_replacement": "it's important to",
-      "text_selection": {
-        "start": { "pos": 200, "path": [0] },
-        "end": { "pos": 220, "path": [0] }
-      },
       "confidence_score": 0.95
     },
     {
-      "comment_text": "Remove unnecessary filler word 'like'",
+      "comment_text": "Remove filler word 'like'",
       "comment_nature": "weakness", 
       "comment_category": "inline",
       "agent_type": "grammar_spelling",
-      "anchor_text": "Princeton is, like, the best school.",
-      "original_text": "Princeton is, like, the best school.",
-      "suggested_replacement": "Princeton is the best school.",
-      "text_selection": {
-        "start": { "pos": 250, "path": [0] },
-        "end": { "pos": 285, "path": [0] }
-      },
+      "anchor_text": "Princeton is, like, the best.",
+      "original_text": "Princeton is, like, the best.",
+      "suggested_replacement": "Princeton is the best.",
       "confidence_score": 0.90
     },
     {
-      "comment_text": "Fix punctuation: use comma instead of em dash",
+      "comment_text": "Fix spelling 'your' and remove filler words 'so' and 'yeah'",
       "comment_nature": "weakness", 
       "comment_category": "inline",
       "agent_type": "grammar_spelling",
-      "anchor_text": "I love Princeton—it's amazing.",
-      "original_text": "I love Princeton—it's amazing.",
-      "suggested_replacement": "I love Princeton, it's amazing.",
-      "text_selection": {
-        "start": { "pos": 300, "path": [0] },
-        "end": { "pos": 325, "path": [0] }
-      },
-      "confidence_score": 0.85
+      "anchor_text": "So, yeah, your going to love Princeton.",
+      "original_text": "So, yeah, your going to love Princeton.",
+      "suggested_replacement": "You're going to love Princeton.",
+      "confidence_score": 0.90
+    },
+    {
+      "comment_text": "Fix punctuation: A comma is needed to separate the independent clauses 'The student organizations athletic programs and cultural events ensure there is something for everyone' and 'it create a balanced and fulfilling university experience'",
+      "comment_nature": "weakness", 
+      "comment_category": "inline",
+      "agent_type": "grammar_spelling",
+      "anchor_text": "The student organizations athletic programs and cultural events ensure there is something for everyone it create a balanced and fulfilling university experience.",
+      "original_text": "The student organizations athletic programs and cultural events ensure there is something for everyone it create a balanced and fulfilling university experience.",
+      "suggested_replacement": "The student organizations, athletic programs, and cultural events ensure there is something for everyone; they create a balanced and fulfilling university experience.",
+      "confidence_score": 0.90
     }
   ]
 }
 
 Remember: Focus ONLY on NEEDED mechanical errors - grammar, punctuation, and spelling. Do NOT address style, content, structure, or word choice. Do NOT generate comments for nice-to-have suggestions.`
+
+/**
+ * Merge comments that target the same sentence to prevent comment flow issues
+ */
+function mergeCommentsBySentence(comments: (GrammarSpellingComment & { _hasValidEditFields?: boolean })[], essayContent: string): (GrammarSpellingComment & { _hasValidEditFields?: boolean })[] {
+  if (comments.length <= 1) {
+    return comments;
+  }
+  
+  // Group comments by sentence
+  const sentenceGroups = new Map<string, (GrammarSpellingComment & { _hasValidEditFields?: boolean })[]>();
+  
+  comments.forEach(comment => {
+    if (comment.original_text) {
+      // Find the sentence containing this text
+      const sentence = findSentenceContaining(comment.original_text, essayContent);
+      if (sentence) {
+        if (!sentenceGroups.has(sentence)) {
+          sentenceGroups.set(sentence, []);
+        }
+        sentenceGroups.get(sentence)!.push(comment);
+      } else {
+        // If we can't find the sentence, treat as individual comment
+        sentenceGroups.set(comment.original_text, [comment]);
+      }
+    } else {
+      // Comments without original_text are kept as-is
+      sentenceGroups.set(`individual_${Math.random()}`, [comment]);
+    }
+  });
+  
+  // Merge comments in each sentence group
+  const mergedComments: (GrammarSpellingComment & { _hasValidEditFields?: boolean })[] = [];
+  
+  sentenceGroups.forEach((groupComments, sentence) => {
+    if (groupComments.length === 1) {
+      // Single comment, keep as is
+      mergedComments.push(groupComments[0]);
+    } else {
+      // Multiple comments for same sentence, merge them
+      const mergedComment = mergeCommentsInSentence(groupComments, sentence);
+      mergedComments.push(mergedComment);
+    }
+  });
+  
+  return mergedComments;
+}
+
+/**
+ * Find the sentence containing the given text
+ */
+function findSentenceContaining(text: string, content: string): string | null {
+  const index = content.indexOf(text);
+  if (index === -1) return null;
+  
+  // Find sentence boundaries
+  let start = index;
+  let end = index + text.length;
+  
+  // Expand backwards to sentence start
+  while (start > 0 && !/[.!?]/.test(content[start - 1])) {
+    start--;
+  }
+  
+  // Expand forwards to sentence end
+  while (end < content.length && !/[.!?]/.test(content[end])) {
+    end++;
+  }
+  
+  return content.substring(start, end).trim();
+}
+
+/**
+ * Merge multiple comments for the same sentence
+ */
+function mergeCommentsInSentence(comments: (GrammarSpellingComment & { _hasValidEditFields?: boolean })[], sentence: string): GrammarSpellingComment & { _hasValidEditFields?: boolean } {
+  // Extract error descriptions from comment texts
+  const errorDescriptions: string[] = [];
+  comments.forEach(comment => {
+    if (comment.comment_text) {
+      // Extract the main error description (remove "Fix", "Remove", etc.)
+      const cleanText = comment.comment_text
+        .replace(/^(Fix|Remove|Correct|Change)\s*/i, '')
+        .replace(/^unnecessary\s*/i, '')
+        .replace(/^filler\s*word\s*/i, 'filler word ')
+        .trim();
+      errorDescriptions.push(cleanText);
+    }
+  });
+  
+  // Create merged comment text
+  let mergedCommentText: string;
+  if (errorDescriptions.length === 1) {
+    mergedCommentText = errorDescriptions[0];
+  } else if (errorDescriptions.length === 2) {
+    mergedCommentText = `${errorDescriptions[0]} and ${errorDescriptions[1]}`;
+  } else {
+    const lastError = errorDescriptions.pop();
+    mergedCommentText = `${errorDescriptions.join(', ')}, and ${lastError}`;
+  }
+  
+  // Use the first comment as base and update with merged content
+  const baseComment = comments[0];
+  
+  // Generate the corrected sentence by applying all fixes
+  const correctedSentence = generateCorrectedSentence(sentence, comments);
+  
+  return {
+    ...baseComment,
+    comment_text: mergedCommentText,
+    original_text: sentence,
+    suggested_replacement: correctedSentence,
+    anchor_text: sentence,
+    _hasValidEditFields: true
+  };
+}
+
+/**
+ * Generate a corrected sentence by applying all suggested replacements
+ */
+function generateCorrectedSentence(sentence: string, comments: (GrammarSpellingComment & { _hasValidEditFields?: boolean })[]): string {
+  let correctedSentence = sentence;
+  
+  // Apply corrections in order of specificity (longer replacements first)
+  const sortedComments = comments
+    .filter(c => c.suggested_replacement)
+    .sort((a, b) => (b.suggested_replacement?.length || 0) - (a.suggested_replacement?.length || 0));
+  
+  sortedComments.forEach(comment => {
+    if (comment.original_text && comment.suggested_replacement) {
+      // Replace the original text with the suggested replacement
+      correctedSentence = correctedSentence.replace(comment.original_text, comment.suggested_replacement);
+    }
+  });
+  
+  // Clean up any remaining filler words
+  correctedSentence = removeFillerWordsFromSentence(correctedSentence);
+  
+  return correctedSentence;
+}
+
+/**
+ * Remove filler words from a sentence (fallback cleanup)
+ */
+function removeFillerWordsFromSentence(sentence: string): string {
+  const fillerWords = ["like", "you know", "um", "uh", "basically", "so", "yeah", "kinda", "sort of", "super", "really"];
+  const fillerPattern = new RegExp(`\\b(${fillerWords.map(w => w.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')).join('|')})\\b[, ]*`, 'gi');
+  return sentence.replace(fillerPattern, '').replace(/\s{2,}/g, ' ').replace(/\s+([,.;!?])/g, '$1').trim();
+}
 
 async function analyzeGrammarSpelling(
   essayContent: string, 
@@ -408,27 +569,6 @@ async function analyzeGrammarSpelling(
         ? Math.max(0, Math.min(1, comment.confidence_score))
         : 0.85;
 
-      // Validate text selection
-      const textSelection = comment.text_selection && 
-        comment.text_selection.start && 
-        comment.text_selection.end &&
-        typeof comment.text_selection.start.pos === 'number' && 
-        typeof comment.text_selection.end.pos === 'number'
-        ? {
-            start: { 
-              pos: Math.max(0, comment.text_selection.start.pos),
-              path: comment.text_selection.start.path || [0]
-            },
-            end: { 
-              pos: Math.min(essayContent.length, comment.text_selection.end.pos),
-              path: comment.text_selection.end.path || [0]
-            }
-          }
-        : { 
-            start: { pos: 0, path: [0] }, 
-            end: { pos: 0, path: [0] } 
-          };
-
       // Validate and process edit action fields with enhanced validation
       let rawOriginalText = comment.original_text || comment.anchor_text;
       let suggestedReplacement = comment.suggested_replacement;
@@ -437,32 +577,55 @@ async function analyzeGrammarSpelling(
       // Use enhanced text matching to find the best match
       const originalText = rawOriginalText ? findBestTextMatch(rawOriginalText, essayContent) : null;
 
-      // Fallback generator for filler word removals when suggested_replacement is missing
-      const fillerWords = ["like", "you know", "um", "uh", "basically", "so", "yeah", "kinda", "sort of"];
+      // Calculate text selection positions server-side using validated text match
+      let textSelection = { 
+        start: { pos: 0, path: [0] }, 
+        end: { pos: 0, path: [0] } 
+      };
+
+      // Use the matched original text to calculate accurate positions
+      if (originalText) {
+        const startPos = essayContent.indexOf(originalText);
+        if (startPos !== -1) {
+          const endPos = startPos + originalText.length;
+          textSelection = {
+            start: { pos: Math.max(0, startPos), path: [0] },
+            end: { pos: Math.max(0, endPos), path: [0] }
+          };
+        }
+      }
+
+      // Enhanced filler word handling - ensure we work with full sentences, not just single words
+      const fillerWords = ["like", "you know", "um", "uh", "basically", "so", "yeah", "kinda", "sort of", "super", "really"];
       const lowerComment = (comment.comment_text || '').toLowerCase();
-      const isFillerRemoval = lowerComment.startsWith('remove unnecessary filler word') || lowerComment.includes('filler word');
+      const isFillerRemoval = lowerComment.startsWith('remove unnecessary filler word') || 
+                              lowerComment.includes('filler word') ||
+                              lowerComment.includes('remove filler');
       const candidateFiller = (rawOriginalText || '').trim();
 
-      if (isFillerRemoval && (suggestedReplacement === undefined || suggestedReplacement === null)) {
-        // Try to locate a containing sentence for the filler
-        const filler = candidateFiller.replace(/^["']|["']$/g, '');
-        const lcContent = essayContent.toLowerCase();
-        const idx = lcContent.indexOf(filler.toLowerCase());
-        if (idx !== -1) {
-          // Expand to sentence boundaries
-          let start = idx;
-          let end = idx + filler.length;
-          while (start > 0 && !/[.!?]/.test(essayContent[start - 1])) start--;
-          while (end < essayContent.length && !/[.!?]/.test(essayContent[end])) end++;
-          const sentence = essayContent.substring(start, Math.min(end + 1, essayContent.length)).trim();
-          if (sentence.length > 0) {
-            // Remove common filler tokens from the sentence (preserve spacing/punctuation around)
-            const fillerPattern = new RegExp(`\\b(${fillerWords.map(w => w.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')).join('|')})\\b[, ]*`, 'gi');
-            const cleaned = sentence.replace(fillerPattern, '').replace(/\s{2,}/g, ' ').replace(/\s+([,.;!?])/g, '$1').trim();
-            // Only adopt if it results in a non-empty improvement
-            if (cleaned && cleaned !== sentence) {
-              suggestedReplacement = cleaned;
-              rawOriginalText = sentence; // operate at sentence level for reliable replacement
+      // If this is a filler word removal and we only have a single word, expand to full sentence
+      if (isFillerRemoval && candidateFiller && candidateFiller.split(/\s+/).length <= 2) {
+        const filler = candidateFiller.replace(/^["']|["']$/g, '').toLowerCase();
+        
+        // Check if this is indeed a filler word
+        if (fillerWords.includes(filler)) {
+          // Use a more robust approach: find sentences that contain the filler word
+          const sentences = essayContent.split(/(?<=[.!?])\s+/);
+          
+          for (const sentence of sentences) {
+            const trimmedSentence = sentence.trim();
+            if (trimmedSentence.toLowerCase().includes(filler)) {
+              // Remove the filler word from this sentence
+              const fillerPattern = new RegExp(`\\b${filler.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}\\b[, ]*`, 'gi');
+              const cleaned = trimmedSentence.replace(fillerPattern, '').replace(/\s{2,}/g, ' ').replace(/\s+([,.;!?])/g, '$1').trim();
+              
+              // Only use this if it results in a meaningful change
+              if (cleaned && cleaned !== trimmedSentence && cleaned.length > 0) {
+                suggestedReplacement = cleaned;
+                rawOriginalText = trimmedSentence; // Use the full sentence for reliable replacement
+                console.log(`Enhanced filler word handling: "${filler}" in sentence "${trimmedSentence}" → "${cleaned}"`);
+                break; // Use the first valid match
+              }
             }
           }
         }
@@ -514,11 +677,14 @@ async function analyzeGrammarSpelling(
       return result;
     });
 
-    // Log summary of validation results
-    const validEditComments = comments.filter(c => c._hasValidEditFields);
-    const invalidEditComments = comments.filter(c => !c._hasValidEditFields);
+    // Post-process comments to merge any comments targeting the same sentence
+    const mergedComments = mergeCommentsBySentence(comments, essayContent);
     
-    console.log(`Grammar agent: Processed ${comments.length} comments`);
+    // Log summary of validation results
+    const validEditComments = mergedComments.filter(c => c._hasValidEditFields);
+    const invalidEditComments = mergedComments.filter(c => !c._hasValidEditFields);
+    
+    console.log(`Grammar agent: Processed ${comments.length} comments, merged to ${mergedComments.length} comments`);
     console.log(`- ${validEditComments.length} comments with valid edit fields`);
     console.log(`- ${invalidEditComments.length} comments with invalid edit fields`);
     
@@ -534,7 +700,7 @@ async function analyzeGrammarSpelling(
 
     return {
       success: true,
-      comments: comments.map(c => {
+      comments: mergedComments.map(c => {
         // Remove debug field before returning
         const { _hasValidEditFields, ...cleanComment } = c;
         return cleanComment;

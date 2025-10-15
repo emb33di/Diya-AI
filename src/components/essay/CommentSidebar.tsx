@@ -236,6 +236,9 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
     }
     
     setEditingAnnotations(prev => new Set(prev).add(annotation.id));
+
+    // Add 1-second delay to prevent rapid clicking
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
     try {
       const result = await CommentEditService.acceptEdit(documentId, annotation.id);
@@ -287,6 +290,9 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
     }
     
     setEditingAnnotations(prev => new Set(prev).add(annotation.id));
+
+    // Add 1-second delay to prevent rapid clicking
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
     try {
       const result = await CommentEditService.rejectEdit(documentId, annotation.id);
