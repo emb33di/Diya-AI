@@ -275,7 +275,7 @@ export interface Database {
         Row: {
           id: string
           user_id: string
-          category: 'academic' | 'experience' | 'projects' | 'extracurricular' | 'volunteering' | 'skills' | 'interests' | 'languages'
+          category: 'academic' | 'experience' | 'projects' | 'extracurricular' | 'volunteering' | 'skills' | 'interests' | 'languages' | 'leadership'
           title: string
           position: string | null
           location: string | null
@@ -289,7 +289,7 @@ export interface Database {
         Insert: {
           id?: string
           user_id: string
-          category: 'academic' | 'experience' | 'projects' | 'extracurricular' | 'volunteering' | 'skills' | 'interests' | 'languages'
+          category: 'academic' | 'experience' | 'projects' | 'extracurricular' | 'volunteering' | 'skills' | 'interests' | 'languages' | 'leadership'
           title: string
           position?: string | null
           location?: string | null
@@ -363,7 +363,7 @@ export interface Database {
         Row: {
           id: string
           user_id: string
-          category: 'academic' | 'experience' | 'projects' | 'extracurricular' | 'volunteering' | 'skills' | 'interests' | 'languages'
+          category: 'academic' | 'experience' | 'projects' | 'extracurricular' | 'volunteering' | 'skills' | 'interests' | 'languages' | 'leadership'
           title: string
           position: string | null
           location: string | null

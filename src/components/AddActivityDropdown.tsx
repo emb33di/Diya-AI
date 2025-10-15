@@ -12,6 +12,7 @@ const AddActivityDropdown = ({ onActivitySelect }: AddActivityDropdownProps) => 
   const activityCategories = [
     "Academic",
     "Experience",
+    "Leadership",
     "Projects",
     "Extracurricular", 
     "Volunteering",

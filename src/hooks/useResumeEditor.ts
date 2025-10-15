@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { resumeActivitiesService } from '@/services/resumeActivitiesService';
+import { supabase } from '@/integrations/supabase/client';
 
 // Define the activity data structure
 interface ActivityData {
@@ -18,6 +19,7 @@ interface ActivityData {
 interface ResumeData {
   academic: ActivityData[];
   experience: ActivityData[];
+  leadership: ActivityData[];
   projects: ActivityData[];
   extracurricular: ActivityData[];
   volunteering: ActivityData[];
@@ -30,6 +32,7 @@ export const useResumeEditor = () => {
   const [resumeData, setResumeData] = useState<ResumeData>({
     academic: [],
     experience: [],
+    leadership: [],
     projects: [],
     extracurricular: [],
     volunteering: [],
@@ -53,6 +56,7 @@ export const useResumeEditor = () => {
     id: backendActivity.id,
     title: backendActivity.title,
     position: backendActivity.position || '',
+    location: backendActivity.location || '',
     fromDate: backendActivity.from_date || '',
     toDate: backendActivity.to_date || '',
     isCurrent: backendActivity.is_current || false,
@@ -69,6 +73,7 @@ export const useResumeEditor = () => {
       const frontendData: ResumeData = {
         academic: backendData.academic.map(convertBackendToFrontend),
         experience: backendData.experience.map(convertBackendToFrontend),
+        leadership: backendData.leadership?.map(convertBackendToFrontend) || [],
         projects: backendData.projects.map(convertBackendToFrontend),
         extracurricular: backendData.extracurricular.map(convertBackendToFrontend),
         volunteering: backendData.volunteering.map(convertBackendToFrontend),
@@ -80,6 +85,7 @@ export const useResumeEditor = () => {
       setResumeData(frontendData);
       isInitialLoad.current = false; // Mark initial load as complete
     } catch (error) {
+      const { data: { user } } = await supabase.auth.getUser();
       console.error('[RESUME_ERROR] Failed to load resume data:', {
         userId: user?.id || 'unknown',
         userEmail: user?.email || 'unknown',
@@ -107,6 +113,7 @@ export const useResumeEditor = () => {
       const backendData: any = {
         academic: [],
         experience: [],
+        leadership: [],
         projects: [],
         extracurricular: [],
         volunteering: [],
@@ -133,6 +140,7 @@ export const useResumeEditor = () => {
       await resumeActivitiesService.saveResumeData(backendData);
       setLastSaved(new Date());
     } catch (error) {
+      const { data: { user } } = await supabase.auth.getUser();
       console.error('[RESUME_ERROR] Failed to save resume data:', {
         userId: user?.id || 'unknown',
         userEmail: user?.email || 'unknown',

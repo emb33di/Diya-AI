@@ -70,6 +70,7 @@ const Resume = () => {
         setUserProfile(profileData as any);
       }
     } catch (error) {
+      const { data: { user } } = await supabase.auth.getUser();
       console.error('[RESUME_ERROR] Failed to load user profile:', {
         userId: user?.id || 'unknown',
         userEmail: user?.email || 'unknown',
@@ -136,6 +137,7 @@ const Resume = () => {
                     <h3 className="text-lg lg:text-xl font-semibold capitalize">
                       {category === 'academic' ? 'Academic Experience' :
                        category === 'experience' ? 'Work Experience' :
+                       category === 'leadership' ? 'Leadership Experience' :
                        category === 'projects' ? 'Projects' :
                        category === 'extracurricular' ? 'Extracurriculars' :
                        category === 'volunteering' ? 'Volunteer Experience' :

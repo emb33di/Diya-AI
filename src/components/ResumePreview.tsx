@@ -342,7 +342,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
 
   // Generate HTML from local resume data
   const generateResumeHtmlFromData = (data: any) => {
-    const { academic, experience, projects, extracurricular, volunteering, skills, interests, languages } = data;
+    const { academic, experience, leadership, projects, extracurricular, volunteering, skills, interests, languages } = data;
 
     // Format date range
     const formatDateRange = (fromDate: string, toDate: string, isCurrent: boolean) => {
@@ -396,6 +396,31 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
       <section class="section">
         <h2 class="section-title">Experience</h2>
         ${experience.map((item: any) => `
+          <div class="entry">
+            <div class="entry-title">${item.title || ''}${item.location ? ` <span class="entry-location">| ${item.location}</span>` : ''}</div>
+            ${item.position ? `
+              <div class="entry-position-header">
+                <span class="entry-position">${item.position}</span>
+                ${formatDateRange(item.fromDate || '', item.toDate || '', item.isCurrent || false) ? `
+                  <span class="entry-dates">${formatDateRange(item.fromDate || '', item.toDate || '', item.isCurrent || false)}</span>
+                ` : ''}
+              </div>
+            ` : ''}
+            ${item.bullets && item.bullets.length > 0 ? `
+              <ul class="entry-bullets">
+                ${item.bullets.map((bullet: string) => `<li>${bullet}</li>`).join('')}
+              </ul>
+            ` : ''}
+          </div>
+        `).join('')}
+      </section>
+    ` : '';
+
+    // Generate leadership section
+    const leadershipHtml = leadership && leadership.length > 0 ? `
+      <section class="section">
+        <h2 class="section-title">Leadership Experience</h2>
+        ${leadership.map((item: any) => `
           <div class="entry">
             <div class="entry-title">${item.title || ''}${item.location ? ` <span class="entry-location">| ${item.location}</span>` : ''}</div>
             ${item.position ? `
@@ -525,7 +550,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
     ` : '';
 
     // Check if there's any data to display
-    const hasAnyData = academic.length > 0 || experience.length > 0 || projects.length > 0 || 
+    const hasAnyData = academic.length > 0 || experience.length > 0 || leadership.length > 0 || projects.length > 0 || 
                        extracurricular.length > 0 || volunteering.length > 0 || skills.length > 0 || 
                        interests.length > 0 || languages.length > 0;
 
@@ -535,6 +560,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
         ${hasAnyData ? `
           ${academicHtml}
           ${experienceHtml}
+          ${leadershipHtml}
           ${projectsHtml}
           ${extracurricularHtml}
           ${volunteeringHtml}

@@ -278,6 +278,7 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
     const labels: Record<string, string> = {
       academic: 'Academic',
       experience: 'Experience',
+      leadership: 'Leadership',
       projects: 'Projects',
       extracurricular: 'Extracurricular',
       volunteering: 'Volunteering',
@@ -293,6 +294,7 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
     const fieldLabels: Record<string, string> = {
       academic: 'Institution Name',
       experience: 'Company Name',
+      leadership: 'Organization Name',
       projects: 'Project Name',
       extracurricular: 'Organization Name',
       volunteering: 'Organization Name',
@@ -310,6 +312,7 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
     const fieldPlaceholders: Record<string, string> = {
       academic: 'e.g., The University of Chicago',
       experience: 'e.g., Google Inc.',
+      leadership: 'e.g., Student Government Association',
       projects: 'e.g., E-commerce Website',
       extracurricular: 'e.g., Debate Team',
       volunteering: 'e.g., Red Cross',
@@ -321,13 +324,13 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
   }, []);
 
   // Check if category shows dates
-  const showsDates = ['academic', 'experience', 'volunteering', 'extracurricular'].includes(category);
+  const showsDates = ['academic', 'experience', 'leadership', 'volunteering', 'extracurricular'].includes(category);
   
   // Check if category shows position
   const showsPosition = !['skills', 'interests', 'languages'].includes(category);
   
   // Check if category shows bullets
-  const showsBullets = ['academic', 'experience', 'volunteering', 'extracurricular', 'projects'].includes(category);
+  const showsBullets = ['academic', 'experience', 'leadership', 'volunteering', 'extracurricular', 'projects'].includes(category);
   
   // Check if category shows simple list (skills, interests, languages)
   const showsSimpleList = ['skills', 'interests', 'languages'].includes(category);
@@ -368,6 +371,7 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
     const labels: Record<string, string> = {
       academic: 'Degree/Program',
       experience: 'Position',
+      leadership: 'Position',
       projects: 'Role',
       volunteering: 'Role',
       extracurricular: 'Role'
@@ -380,6 +384,7 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
     const placeholders: Record<string, string> = {
       academic: 'e.g., Bachelor of Computer Science',
       experience: 'e.g., Software Engineer Intern',
+      leadership: 'e.g., President',
       projects: 'e.g., Full-Stack Developer',
       volunteering: 'e.g., Volunteer Coordinator',
       extracurricular: 'e.g., President'
@@ -561,8 +566,8 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
           </div>
         )}
 
-        {/* Current Role Checkbox - Only for experience */}
-        {category === 'experience' && (
+        {/* Current Role Checkbox - Only for experience and leadership */}
+        {(category === 'experience' || category === 'leadership') && (
           <div className="flex items-center space-x-2">
             <Checkbox
               id={`isCurrent-${localActivity.id}`}
