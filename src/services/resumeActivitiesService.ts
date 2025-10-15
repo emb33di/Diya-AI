@@ -19,6 +19,7 @@ export class ResumeActivitiesService {
       return {
         academic: [],
         experience: [],
+        leadership: [],
         projects: [],
         extracurricular: [],
         volunteering: [],
@@ -32,6 +33,7 @@ export class ResumeActivitiesService {
     const resumeData: any = {
       academic: [],
       experience: [],
+      leadership: [],
       projects: [],
       extracurricular: [],
       volunteering: [],
