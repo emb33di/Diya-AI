@@ -547,7 +547,7 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
                 value={localActivity.fromDate}
                 onChange={(e) => handleFieldChange('fromDate', e.target.value)}
                 onBlur={(e) => handleFieldBlur('fromDate', e.target.value)}
-                placeholder="MM/YYYY"
+                placeholder="e.g., October 2024"
                 className="touch-manipulation"
               />
             </div>
@@ -558,7 +558,7 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
                 value={localActivity.toDate}
                 onChange={(e) => handleFieldChange('toDate', e.target.value)}
                 onBlur={(e) => handleFieldBlur('toDate', e.target.value)}
-                placeholder="MM/YYYY"
+                placeholder="e.g., October 2024"
                 disabled={localActivity.isCurrent}
                 className="touch-manipulation"
               />
