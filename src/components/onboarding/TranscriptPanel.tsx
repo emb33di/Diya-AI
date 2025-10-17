@@ -15,6 +15,7 @@ export interface TranscriptPanelProps {
   messages: TranscriptMessage[];
   onClear?: () => void;
   onClose?: () => void; // only used by expanded variant
+  onToggle?: () => void; // for toggling visibility
   endRef?: RefObject<HTMLDivElement>;
   containerRef?: RefObject<HTMLDivElement>; // used by expanded variant
   conversationCompleted?: boolean; // used by compact header text
@@ -25,6 +26,7 @@ const TranscriptPanel: React.FC<TranscriptPanelProps> = ({
   messages,
   onClear,
   onClose,
+  onToggle,
   endRef,
   containerRef,
   conversationCompleted,
@@ -41,37 +43,38 @@ const TranscriptPanel: React.FC<TranscriptPanelProps> = ({
   if (variant === 'expanded') {
     return (
       <div className="lg:col-span-1 h-full min-h-0">
-        <div className="h-full bg-background/60 border rounded-xl p-3 md:p-4 flex flex-col min-h-0">
-          <div className="mb-3 flex-shrink-0 flex items-center justify-between">
-            <h4 className="text-sm font-medium text-muted-foreground">Live Conversation ({messages.length} messages)</h4>
+        <div className="h-full bg-background/60 border rounded-xl p-2 md:p-3 flex flex-col min-h-0">
+          <div className="mb-2 flex-shrink-0 flex items-center justify-between">
+            <h4 className="text-xs font-medium text-muted-foreground">Live Conversation ({messages.length} messages)</h4>
             <div className="flex items-center gap-2">
-              <Button 
-                onClick={onClear} 
-                variant="ghost" 
-                size="sm"
-                className="h-6 px-2 text-xs"
-                disabled={messages.length === 0}
-              >
-                Clear
-              </Button>
+              {onToggle && (
+                <Button 
+                  onClick={onToggle} 
+                  variant="ghost" 
+                  size="sm"
+                  className="h-5 px-2 text-xs"
+                >
+                  Hide
+                </Button>
+              )}
               {onClose && (
                 <Button 
                   onClick={onClose} 
                   variant="ghost" 
                   size="sm"
-                  className="h-6 w-6 p-0"
+                  className="h-5 w-5 p-0"
                 >
                   <X className="h-3 w-3" />
                 </Button>
               )}
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto space-y-2 p-2 rounded-lg border min-h-0" ref={containerRef}>
+          <div className="flex-1 overflow-y-auto space-y-1 p-1 rounded-lg border min-h-0" ref={containerRef}>
             {messages.map((msg, index) => (
               <div key={index} className={`flex ${msg.source === 'ai' ? 'justify-start' : 'justify-end'}`}>
-                <div className={`max-w-[90%] p-2 md:p-3 rounded-lg ${msg.source === 'ai' ? 'bg-[#D07D00] text-white border border-[#D07D00]/20' : 'bg-secondary text-secondary-foreground'}`}>
-                  <div className="flex items-center gap-2 mb-1">
-                    {msg.source === 'ai' ? <Sparkles className="w-3 h-3" /> : <User className="w-3 h-3" />}
+                <div className={`max-w-[90%] p-1.5 md:p-2 rounded-lg ${msg.source === 'ai' ? 'bg-[#D07D00] text-white border border-[#D07D00]/20' : 'bg-secondary text-secondary-foreground'}`}>
+                  <div className="flex items-center gap-1 mb-0.5">
+                    {msg.source === 'ai' ? <Sparkles className="w-2.5 h-2.5" /> : <User className="w-2.5 h-2.5" />}
                     <span className="text-xs font-medium">{msg.source === 'ai' ? 'Diya' : 'You'}</span>
                     <span className="text-xs text-muted-foreground">{msg.timestamp.toLocaleTimeString()}</span>
                   </div>

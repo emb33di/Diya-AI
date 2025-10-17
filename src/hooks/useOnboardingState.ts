@@ -87,7 +87,7 @@ export const useOnboardingState = (): OnboardingState => {
   
   // UI state
   const [expandedView, setExpandedView] = useState(false);
-  const [showTranscript, setShowTranscript] = useState(false);
+  const [showTranscript, setShowTranscript] = useState(true); // Start with transcript visible
   const [voiceOrbSize, setVoiceOrbSize] = useState(256);
   const [landingOrbSize, setLandingOrbSize] = useState(160);
   

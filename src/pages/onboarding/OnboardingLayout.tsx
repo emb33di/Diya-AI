@@ -90,7 +90,7 @@ export const ExpandedViewLayout: React.FC<Pick<OnboardingLayoutProps,
   return (
     <div className="h-screen flex flex-col p-2 md:p-4">
       {(sessionStarted || cumulativeSessionTime > 0) && (
-        <div className="mb-4 space-y-2 flex-shrink-0">
+        <div className="mb-2 space-y-1 flex-shrink-0">
           <div className="flex justify-between items-center text-sm">
             <span className="flex items-center gap-2">
               <Clock className="w-4 h-4" />
@@ -100,15 +100,15 @@ export const ExpandedViewLayout: React.FC<Pick<OnboardingLayoutProps,
               {formatTime(remainingTime)}
             </span>
           </div>
-          <Progress value={calculateProgressPercentage()} className={`h-2 ${remainingTime <= 30 ? 'bg-red-100' : remainingTime <= 60 ? 'bg-yellow-100' : ''}`} />
+          <Progress value={calculateProgressPercentage()} className={`h-1 ${remainingTime <= 30 ? 'bg-red-100' : remainingTime <= 60 ? 'bg-yellow-100' : ''}`} />
           <div className="text-xs text-muted-foreground text-center">
             {remainingTime <= 30 ? 'Less than 30 seconds remaining' : remainingTime <= 60 ? 'Less than 1 minute remaining' : '10-minute conversation session'}
           </div>
         </div>
       )}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 min-h-0">
-        {/* Left: AI Circle (2/3 width) */}
-        <div className="lg:col-span-2 bg-background/60 border rounded-xl p-4 md:p-6 flex flex-col items-center justify-center min-h-0">
+      <div className={`flex-1 grid gap-3 min-h-0 ${showTranscript ? 'grid-cols-1 lg:grid-cols-3' : 'grid-cols-1'}`}>
+        {/* Left: AI Circle (2/3 width when transcript shown, full width when hidden) */}
+        <div className={`bg-background/60 border rounded-xl p-3 md:p-4 flex flex-col items-center justify-center min-h-0 ${showTranscript ? 'lg:col-span-2' : 'col-span-1'}`}>
           <div className="flex-1 w-full flex items-center justify-center min-h-0">
             <VoiceSection
               variant="expanded"
@@ -118,33 +118,43 @@ export const ExpandedViewLayout: React.FC<Pick<OnboardingLayoutProps,
               audioOutputLevel={audioOutputLevel}
             />
           </div>
-          <div className="text-center mt-4 md:mt-6 flex-shrink-0">
-            <h3 className="text-lg font-medium">
+          <div className="text-center mt-2 flex-shrink-0">
+            <h3 className="text-base font-medium">
               {isSpeaking ? "Diya is speaking..." : 
                conversationReady ? "Diya is listening..." : "Diya is getting ready..."}
             </h3>
-            <p className="text-sm text-muted-foreground">Share your thoughts and experiences naturally - just like talking to a friend!</p>
-            <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-xs text-muted-foreground">Share your thoughts and experiences naturally - just like talking to a friend!</p>
+            <div className="mt-1 p-2 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-xs text-blue-700 font-medium">
                 ⚠️ Please do not leave this page until your conversation is complete. Diya needs the full conversation to generate your personalized school list and profile.
               </p>
             </div>
-            <div className="flex gap-2 justify-center mt-4">
+            <div className="flex gap-2 justify-center mt-2">
               <Button onClick={onEndConversation} variant="outline" disabled={isProcessingMetadata} size="sm">
                 {isProcessingMetadata ? 'Processing...' : 'End'}
+              </Button>
+              <Button 
+                onClick={() => onSetShowTranscript(!showTranscript)} 
+                variant="ghost" 
+                size="sm"
+                className="text-xs"
+              >
+                {showTranscript ? 'Hide Transcript' : 'Show Transcript'}
               </Button>
             </div>
           </div>
         </div>
 
-        {/* Right: Transcript (1/3 width) - always shown */}
-        <TranscriptPanel
-          variant="expanded"
-          messages={messages}
-          onClear={onClearTranscript}
-          endRef={messagesEndRef}
-          containerRef={transcriptScrollRef}
-        />
+        {/* Right: Transcript (1/3 width) - conditionally shown */}
+        {showTranscript && (
+          <TranscriptPanel
+            variant="expanded"
+            messages={messages}
+            onToggle={() => onSetShowTranscript(false)}
+            endRef={messagesEndRef}
+            containerRef={transcriptScrollRef}
+          />
+        )}
       </div>
     </div>
   );

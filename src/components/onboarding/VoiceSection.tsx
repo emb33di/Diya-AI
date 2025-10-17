@@ -20,7 +20,7 @@ const VoiceSection: React.FC<VoiceSectionProps> = ({
 }) => {
   if (variant === 'expanded') {
     return (
-      <div className="w-80 h-80 max-w-full max-h-full aspect-square">
+      <div className="w-56 h-56 max-w-full max-h-full aspect-square">
         <VoiceOrb
           isListening={isListening}
           isSpeaking={isSpeaking}
