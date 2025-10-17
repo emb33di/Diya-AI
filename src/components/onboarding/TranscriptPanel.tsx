@@ -42,7 +42,7 @@ const TranscriptPanel: React.FC<TranscriptPanelProps> = ({
 
   if (variant === 'expanded') {
     return (
-      <div className="lg:col-span-1 h-full min-h-0">
+      <div className="lg:col-span-1 min-h-0" style={{ height: '80vh' }}>
         <div className="h-full bg-background/60 border rounded-xl p-2 md:p-3 flex flex-col min-h-0">
           <div className="mb-2 flex-shrink-0 flex items-center justify-between">
             <h4 className="text-xs font-medium text-muted-foreground">Live Conversation ({messages.length} messages)</h4>

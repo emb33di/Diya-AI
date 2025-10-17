@@ -108,8 +108,8 @@ export const ExpandedViewLayout: React.FC<Pick<OnboardingLayoutProps,
       )}
       <div className={`flex-1 grid gap-3 min-h-0 ${showTranscript ? 'grid-cols-1 lg:grid-cols-3' : 'grid-cols-1'}`}>
         {/* Left: AI Circle (2/3 width when transcript shown, full width when hidden) */}
-        <div className={`bg-background/60 border rounded-xl p-3 md:p-4 flex flex-col items-center justify-center min-h-0 ${showTranscript ? 'lg:col-span-2' : 'col-span-1'}`}>
-          <div className="flex-1 w-full flex items-center justify-center min-h-0">
+        <div className={`bg-background/60 border rounded-xl p-3 md:p-4 flex flex-col items-center justify-center ${showTranscript ? 'lg:col-span-2' : 'col-span-1'}`} style={{ height: '80vh' }}>
+          <div className="w-full flex items-center justify-center flex-1">
             <VoiceSection
               variant="expanded"
               isListening={sessionStarted && conversationReady}
@@ -361,24 +361,5 @@ export const LandingViewLayout: React.FC<Pick<OnboardingLayoutProps,
 };
 
 export const FooterLayout: React.FC = () => {
-  return (
-    <div className="mt-16 mb-8 text-center">
-      <div className="flex justify-center items-center gap-4">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Clock className="w-4 h-4" />
-          <span>15-minute conversation</span>
-        </div>
-        <div className="w-1 h-1 rounded-full bg-muted-foreground"></div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Heart className="w-4 h-4" />
-          <span>Completely personalized</span>
-        </div>
-        <div className="w-1 h-1 rounded-full bg-muted-foreground"></div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Lock className="w-4 h-4" />
-          <span>Private & Secure</span>
-        </div>
-      </div>
-    </div>
-  );
+  return null;
 };
