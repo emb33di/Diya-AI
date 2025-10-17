@@ -17,6 +17,7 @@ import {
 } from '@/types/semanticDocument';
 import { supabase } from '@/integrations/supabase/client';
 import { CommentEditService } from '@/services/commentEditService';
+import { EssayVersionService } from '@/services/essayVersionService';
 
 export class SemanticDocumentService {
   private static instance: SemanticDocumentService;
@@ -913,6 +914,27 @@ export class SemanticDocumentService {
           console.error(`SemanticDocumentService: Failed to store ${grammarComments.length} grammar comments for document ${request.documentId} - ${insertError.message}`);
           throw new Error('Failed to store grammar comments');
         }
+      }
+
+      // Mark grammar check as completed for the current version
+      try {
+        // Find the version associated with this document
+        const { data: versionData, error: versionError } = await supabase
+          .from('essay_versions')
+          .select('id')
+          .eq('semantic_document_id', request.documentId)
+          .eq('is_active', true)
+          .single();
+
+        if (!versionError && versionData) {
+          await EssayVersionService.markGrammarCheckCompleted(versionData.id);
+          console.log(`SemanticDocumentService: Marked grammar check as completed for version ${versionData.id}`);
+        } else {
+          console.warn(`SemanticDocumentService: Could not find active version for document ${request.documentId}`);
+        }
+      } catch (versionError) {
+        console.error(`SemanticDocumentService: Error marking grammar check as completed - ${versionError.message}`);
+        // Don't throw error here as grammar comments were successfully generated
       }
 
       return {

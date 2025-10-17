@@ -97,6 +97,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
   const [grammarLoadingStep, setGrammarLoadingStep] = useState(0);
   const [noGrammarErrorsFound, setNoGrammarErrorsFound] = useState(false);
   const [hasGrammarCheckRun, setHasGrammarCheckRun] = useState(false);
+  const [hasGrammarCheckCompleted, setHasGrammarCheckCompleted] = useState(false);
   const [migrationStatus, setMigrationStatus] = useState<{
     isMigrating: boolean;
     progress: number;
@@ -413,6 +414,14 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
       // Find the active version
       const activeVersion = versions.find(v => v.is_active);
       setCurrentVersion(activeVersion || null);
+      
+      // Check grammar check completion status for the active version
+      if (activeVersion) {
+        const grammarCompleted = await EssayVersionService.hasGrammarCheckCompleted(activeVersion.id);
+        setHasGrammarCheckCompleted(grammarCompleted);
+      } else {
+        setHasGrammarCheckCompleted(false);
+      }
     } catch (error) {
       console.error('Failed to load essay versions:', error);
     }
@@ -664,6 +673,12 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
         const updatedDocument = await semanticDocumentService.loadDocument(document.id);
         if (updatedDocument) {
           setDocument(updatedDocument);
+        }
+        
+        // Refresh grammar check completion status
+        if (currentVersion) {
+          const grammarCompleted = await EssayVersionService.hasGrammarCheckCompleted(currentVersion.id);
+          setHasGrammarCheckCompleted(grammarCompleted);
         }
       }
 
@@ -1202,28 +1217,28 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                           fallback={
                             <Button 
                               onClick={() => setShowUpgrade(true)} 
-                              disabled={isGeneratingGrammar}
+                              disabled={isGeneratingGrammar || hasGrammarCheckCompleted}
                               variant="outline"
                               size="sm"
                               className="border-blue-200 text-blue-700 hover:bg-blue-50"
-                              title="Pro users only"
+                              title={hasGrammarCheckCompleted ? "Please create a new version to check grammar again" : "Pro users only"}
                             >
                               <CheckSquare className="h-4 w-4 mr-2" />
-                              Grammar Check
+                              {hasGrammarCheckCompleted ? "Grammar Checked ✓" : "Grammar Check"}
                               {isPro ? <Crown className="h-3 w-3 ml-2 text-primary" /> : <Lock className="h-3 w-3 ml-2 text-primary" />}
                             </Button>
                           }
                         >
                           <Button 
                             onClick={generateGrammarComments} 
-                            disabled={isGeneratingGrammar}
+                            disabled={isGeneratingGrammar || hasGrammarCheckCompleted}
                             variant="outline"
                             size="sm"
                             className="border-blue-200 text-blue-700 hover:bg-blue-50"
-                            title="Pro users only"
+                            title={hasGrammarCheckCompleted ? "Please create a new version to check grammar again" : "Pro users only"}
                           >
                             <CheckSquare className="h-4 w-4 mr-2" />
-                            Grammar Check
+                            {hasGrammarCheckCompleted ? "Grammar Checked ✓" : "Grammar Check"}
                             {isPro ? <Crown className="h-3 w-3 ml-2 text-primary" /> : <Lock className="h-3 w-3 ml-2 text-primary" />}
                           </Button>
                         </PaywallGuard>

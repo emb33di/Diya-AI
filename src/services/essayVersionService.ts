@@ -14,6 +14,7 @@ export interface EssayVersion {
   semantic_document_id: string; // Links to semantic document
   is_fresh_draft: boolean;
   has_ai_feedback: boolean;
+  grammar_check_completed: boolean; // Tracks if grammar check has been completed for this version
   created_at: string;
   updated_at: string;
 }
@@ -366,6 +367,60 @@ export class EssayVersionService {
 
     if (error) {
       console.error('Error deleting version:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Mark grammar check as completed for a version
+   */
+  static async markGrammarCheckCompleted(versionId: string): Promise<void> {
+    const { error } = await (supabase as any)
+      .from('essay_versions')
+      .update({ 
+        grammar_check_completed: true, 
+        updated_at: new Date().toISOString() 
+      })
+      .eq('id', versionId);
+
+    if (error) {
+      console.error('Error marking grammar check as completed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Check if grammar check has been completed for a version
+   */
+  static async hasGrammarCheckCompleted(versionId: string): Promise<boolean> {
+    const { data, error } = await (supabase as any)
+      .from('essay_versions')
+      .select('grammar_check_completed')
+      .eq('id', versionId)
+      .single();
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
+      console.error('Error checking grammar check completion:', error);
+      throw error;
+    }
+
+    return data?.grammar_check_completed || false;
+  }
+
+  /**
+   * Reset grammar check completion flag for a version (useful for testing or manual reset)
+   */
+  static async resetGrammarCheckCompletion(versionId: string): Promise<void> {
+    const { error } = await (supabase as any)
+      .from('essay_versions')
+      .update({ 
+        grammar_check_completed: false, 
+        updated_at: new Date().toISOString() 
+      })
+      .eq('id', versionId);
+
+    if (error) {
+      console.error('Error resetting grammar check completion:', error);
       throw error;
     }
   }
