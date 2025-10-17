@@ -1000,6 +1000,9 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
 
   // Delete annotation
   const deleteAnnotation = useCallback((annotationId: string) => {
+    const previousDocument = deepCloneDocument(state.document);
+
+    // Optimistic UI update
     setState(prev => ({
       ...prev,
       document: {
@@ -1012,7 +1015,24 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
       },
       pendingChanges: true
     }));
-  }, []);
+
+    // Persist to backend
+    semanticDocumentService
+      .persistAnnotationDeletion(annotationId)
+      .catch((error) => {
+        // Revert optimistic change on failure
+        setState(prev => ({
+          ...prev,
+          document: previousDocument,
+          pendingChanges: prev.pendingChanges
+        }));
+        toast({
+          title: 'Failed to delete comment',
+          description: error instanceof Error ? error.message : 'Please try again.',
+          variant: 'destructive'
+        });
+      });
+  }, [state.document, deepCloneDocument, toast]);
 
   // Reload document from database
   const reloadDocument = useCallback(async () => {

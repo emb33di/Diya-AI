@@ -630,6 +630,25 @@ export class SemanticDocumentService {
   }
 
   /**
+   * Persist deletion of an annotation to Supabase
+   */
+  async persistAnnotationDeletion(annotationId: string): Promise<void> {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const { error } = await (supabase.from as any)('semantic_annotations')
+        .delete()
+        .eq('id' as any, annotationId as any);
+
+      if (error) {
+        throw new Error(error.message);
+      }
+    } catch (err) {
+      throw err instanceof Error ? err : new Error('Failed to persist annotation deletion');
+    }
+  }
+
+  /**
    * Find an annotation by ID
    */
   findAnnotation(document: SemanticDocument, annotationId: string): Annotation | null {

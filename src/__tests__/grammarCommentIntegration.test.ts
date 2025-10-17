@@ -340,4 +340,65 @@ describe('Grammar Comment Accept/Reject Integration', () => {
       expect(canEdit).toBe(false);
     });
   });
+
+  describe('Annotation Deletion Persistence', () => {
+    it('should persist annotation deletion to database', async () => {
+      const mockSupabase = require('@/integrations/supabase/client').supabase;
+      
+      // Mock successful deletion
+      mockSupabase.from.mockReturnValue({
+        delete: jest.fn().mockReturnValue({
+          eq: jest.fn().mockResolvedValue({ error: null })
+        })
+      });
+
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: { id: 'test-user-id' } }
+      });
+
+      // Test deletion persistence
+      await semanticService.persistAnnotationDeletion('test-annotation-id');
+
+      // Verify database call was made
+      expect(mockSupabase.from).toHaveBeenCalledWith('semantic_annotations');
+      expect(mockSupabase.from().delete).toHaveBeenCalled();
+      expect(mockSupabase.from().delete().eq).toHaveBeenCalledWith('id', 'test-annotation-id');
+    });
+
+    it('should handle deletion persistence errors gracefully', async () => {
+      const mockSupabase = require('@/integrations/supabase/client').supabase;
+      
+      // Mock deletion error
+      mockSupabase.from.mockReturnValue({
+        delete: jest.fn().mockReturnValue({
+          eq: jest.fn().mockResolvedValue({ 
+            error: { message: 'Database error' } 
+          })
+        })
+      });
+
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: { id: 'test-user-id' } }
+      });
+
+      // Test error handling
+      await expect(
+        semanticService.persistAnnotationDeletion('test-annotation-id')
+      ).rejects.toThrow('Failed to persist annotation deletion');
+    });
+
+    it('should handle authentication errors during deletion', async () => {
+      const mockSupabase = require('@/integrations/supabase/client').supabase;
+      
+      // Mock authentication error
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: null }
+      });
+
+      // Test authentication error handling
+      await expect(
+        semanticService.persistAnnotationDeletion('test-annotation-id')
+      ).rejects.toThrow();
+    });
+  });
 });

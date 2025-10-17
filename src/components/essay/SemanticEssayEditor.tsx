@@ -341,30 +341,36 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
     if (!document) return;
     
     try {
-      const success = semanticDocumentService.deleteAnnotation(document, annotationId);
+      // Optimistic UI update - remove from local state immediately
+      const updatedBlocks = document.blocks.map(block => ({
+        ...block,
+        annotations: block.annotations?.filter(annotation => annotation.id !== annotationId) || []
+      }));
       
-      if (success) {
-        // Update local state
-        const updatedBlocks = document.blocks.map(block => ({
-          ...block,
-          annotations: block.annotations?.filter(annotation => annotation.id !== annotationId) || []
-        }));
-        
-        const updatedDocument = { ...document, blocks: updatedBlocks };
-        setDocument(updatedDocument);
-        
-        // Clear selection if this was the selected annotation
-        if (selectedAnnotation?.id === annotationId) {
-          setSelectedAnnotation(null);
-        }
-        
-        toast({
-          title: "Comment Deleted",
-          description: "The comment has been deleted.",
-        });
+      const updatedDocument = { ...document, blocks: updatedBlocks };
+      setDocument(updatedDocument);
+      
+      // Clear selection if this was the selected annotation
+      if (selectedAnnotation?.id === annotationId) {
+        setSelectedAnnotation(null);
       }
+      
+      // Persist deletion to database
+      await semanticDocumentService.persistAnnotationDeletion(annotationId);
+      
+      toast({
+        title: "Comment Deleted",
+        description: "The comment has been deleted.",
+      });
     } catch (error) {
       console.error('Failed to delete annotation:', error);
+      
+      // Reload document to revert optimistic changes
+      const reloadedDocument = await semanticDocumentService.loadDocument(document.id);
+      if (reloadedDocument) {
+        setDocument(reloadedDocument);
+      }
+      
       toast({
         title: "Error",
         description: "Failed to delete comment. Please try again.",
