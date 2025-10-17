@@ -1217,15 +1217,15 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                           fallback={
                             <Button 
                               onClick={() => setShowUpgrade(true)} 
-                              disabled={isGeneratingGrammar || hasGrammarCheckCompleted}
+                              disabled={isGeneratingGrammar}
                               variant="outline"
                               size="sm"
                               className="border-blue-200 text-blue-700 hover:bg-blue-50"
-                              title={hasGrammarCheckCompleted ? "Please create a new version to check grammar again" : "Pro users only"}
+                              title="Pro users only"
                             >
                               <CheckSquare className="h-4 w-4 mr-2" />
-                              {hasGrammarCheckCompleted ? "Grammar Checked ✓" : "Grammar Check"}
-                              {isPro ? <Crown className="h-3 w-3 ml-2 text-primary" /> : <Lock className="h-3 w-3 ml-2 text-primary" />}
+                              Grammar Check
+                              <Lock className="h-3 w-3 ml-2 text-primary" />
                             </Button>
                           }
                         >
@@ -1239,7 +1239,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                           >
                             <CheckSquare className="h-4 w-4 mr-2" />
                             {hasGrammarCheckCompleted ? "Grammar Checked ✓" : "Grammar Check"}
-                            {isPro ? <Crown className="h-3 w-3 ml-2 text-primary" /> : <Lock className="h-3 w-3 ml-2 text-primary" />}
+                            <Crown className="h-3 w-3 ml-2 text-primary" />
                           </Button>
                         </PaywallGuard>
                         {!showCommentSidebar && (
