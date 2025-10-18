@@ -429,7 +429,7 @@ const Auth = () => {
                         id="firstName" 
                         type="text" 
                         placeholder="First name"
-                        className="h-12 text-base"
+                        className="h-12 text-base bg-gray-800 border-gray-600 focus:border-primary text-white autofill:bg-gray-800 autofill:text-white"
                         value={firstName}
                         onChange={(e) => setFirstName(e.target.value)}
                         required
@@ -441,7 +441,7 @@ const Auth = () => {
                         id="lastName" 
                         type="text" 
                         placeholder="Last name"
-                        className="h-12 text-base"
+                        className="h-12 text-base bg-gray-800 border-gray-600 focus:border-primary text-white autofill:bg-gray-800 autofill:text-white"
                         value={lastName}
                         onChange={(e) => setLastName(e.target.value)}
                         required
@@ -456,7 +456,7 @@ const Auth = () => {
                     id="email" 
                     type="email" 
                     placeholder="Enter your email"
-                    className="h-12 text-base"
+                    className="h-12 text-base bg-gray-800 border-gray-600 focus:border-primary text-white autofill:bg-gray-800 autofill:text-white"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -483,7 +483,7 @@ const Auth = () => {
                         id="phoneNumber" 
                         type="tel" 
                         placeholder="Phone number"
-                        className={`h-12 text-base flex-1 ${phoneNumberError ? 'border-red-500 focus:border-red-500' : ''}`}
+                        className={`h-12 text-base bg-gray-800 border-gray-600 focus:border-primary text-white autofill:bg-gray-800 autofill:text-white flex-1 ${phoneNumberError ? 'border-red-500 focus:border-red-500' : ''}`}
                         value={phoneNumber}
                         onChange={handlePhoneNumberChange}
                         required
@@ -501,7 +501,7 @@ const Auth = () => {
                     id="password" 
                     type="password" 
                     placeholder="Enter your password"
-                    className="h-12 text-base"
+                    className="h-12 text-base bg-gray-100 border-gray-300 focus:bg-gray-50 focus:border-primary"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -551,7 +551,7 @@ const Auth = () => {
                         placeholder="Please specify..."
                         value={hearAboutOther}
                         onChange={(e) => setHearAboutOther(e.target.value)}
-                        className="h-12 text-base"
+                        className="h-12 text-base bg-gray-800 border-gray-600 focus:border-primary text-white autofill:bg-gray-800 autofill:text-white"
                       />
                     )}
                   </div>
