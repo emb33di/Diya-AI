@@ -205,7 +205,7 @@ const PromptDropdown: React.FC<PromptDropdownProps> = ({
               <div className="mt-4 pt-4 border-t border-gray-100">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-600">
-                    Word Limit: {selectedPrompt.word_limit || 'No limit'}
+                    Word Limit: {selectedPrompt.word_limit || 'Not specified'}
                   </span>
                 </div>
               </div>

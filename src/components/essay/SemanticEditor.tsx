@@ -1298,7 +1298,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
               onClick={() => {
                 if (!isReadOnly()) startEditingBlock(block.id);
               }}
-              title={isReadOnly() ? 'Editor text is read-only. Create a new version to edit.' : ''}
+              title={isReadOnly() ? 'Editor is read-only. Click "New Version" to edit.' : ''}
               style={{
                 fontFamily: 'Arial, sans-serif',
                 lineHeight: '1.6',
@@ -1315,13 +1315,6 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
                 </span>
               )}
             </div>
-            {isReadOnly() && (
-              <div className="pointer-events-none absolute inset-0 flex items-start">
-                <div className="ml-2 mt-1 text-[11px] text-gray-600 bg-gray-100/80 border border-gray-300 rounded px-2 py-0.5">
-                  Editor is read-only. Click "New Version" to edit.
-                </div>
-              </div>
-            )}
           </div>
         )}
 

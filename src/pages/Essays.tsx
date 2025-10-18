@@ -53,7 +53,7 @@ const Essays = () => {
 
   // Helper function to parse word limits safely
   const parseWordLimit = (wordLimit: string): number => {
-    if (!wordLimit || wordLimit.trim() === '') return 650; // Default fallback
+    if (!wordLimit || wordLimit.trim() === '') return 650; // Default fallback for common app
     
     const cleanLimit = wordLimit.trim();
     
@@ -72,13 +72,13 @@ const Essays = () => {
     switch (cleanLimit.toLowerCase()) {
       case 'not specified':
       case 'no limit':
-        return 650; // Default fallback
+        return 650; // Default fallback for common app
       case 'one page':
         return 500; // Approximate for one page
       case 'three words':
         return 3;
       default:
-        return 650; // Default fallback
+        return 650; // Default fallback for common app
     }
   };
 
@@ -1346,13 +1346,13 @@ const Essays = () => {
                           const selectedPrompt = essayPrompts.find(p => p.id === essay?.prompt_id);
                           
                           // Use prompt's word limit first, then essay's, then default
-                          if (selectedPrompt?.word_limit && selectedPrompt.word_limit !== 'No limit') {
-                            return parseInt(selectedPrompt.word_limit);
+                          if (selectedPrompt?.word_limit && selectedPrompt.word_limit !== 'Not specified' && selectedPrompt.word_limit !== 'No limit') {
+                            return parseWordLimit(selectedPrompt.word_limit);
                           }
-                          if (essay?.word_limit && essay.word_limit !== 'No limit') {
-                            return parseInt(essay.word_limit);
+                          if (essay?.word_limit && essay.word_limit !== 'Not specified' && essay.word_limit !== 'No limit') {
+                            return parseWordLimit(essay.word_limit);
                           }
-                          return 650; // Default word limit
+                          return 650; // Default word limit for common app
                         })()}
                         onPromptChange={async (promptId) => {
                           // Handle prompt change - support custom essays and preloaded prompts
@@ -1732,8 +1732,17 @@ const Essays = () => {
                         </div>
                         
                         <div className="flex items-center space-x-2">
-                          <div className={`text-sm px-2 py-1 rounded-full ${getWordCount(essayContent) > selectedEssay.wordLimit ? 'bg-destructive/10 text-destructive' : getWordCount(essayContent) > selectedEssay.wordLimit * 0.9 ? 'bg-warning/10 text-warning' : 'bg-muted text-muted-foreground'}`}>
-                            {getWordCount(essayContent)}/{selectedEssay.wordLimit} words
+                          <div className={`text-sm px-2 py-1 rounded-full ${(() => {
+                            const wordLimit = selectedEssay.wordLimit;
+                            const currentCount = getWordCount(essayContent);
+                            if (!wordLimit || wordLimit === 'Not specified' || wordLimit === 'No limit') return 'bg-muted text-muted-foreground';
+                            const limitNum = typeof wordLimit === 'number' ? wordLimit : parseInt(wordLimit);
+                            if (isNaN(limitNum)) return 'bg-muted text-muted-foreground';
+                            if (currentCount > limitNum) return 'bg-destructive/10 text-destructive';
+                            if (currentCount > limitNum * 0.9) return 'bg-warning/10 text-warning';
+                            return 'bg-muted text-muted-foreground';
+                          })()}`}>
+                            {getWordCount(essayContent)}/{selectedEssay.wordLimit || 'Not specified'} words
                           </div>
                         </div>
                       </div>

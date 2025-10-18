@@ -71,7 +71,7 @@ export const CreateEssayModal: React.FC<CreateEssayModalProps> = ({
         title: essayName.trim(),
         school_name: selectedSchool,
         prompt_text: prompt.trim(),
-        word_limit: wordLimit.trim() || 'No limit',
+        word_limit: wordLimit.trim() || 'Not specified',
         initial_content: ''
       };
 
@@ -157,7 +157,7 @@ export const CreateEssayModal: React.FC<CreateEssayModalProps> = ({
             <Label htmlFor="word-limit">Word Limit (Optional)</Label>
             <Input
               id="word-limit"
-              placeholder="e.g., 500, 650, No limit"
+              placeholder="e.g., 500, 650, Not specified"
               value={wordLimit}
               onChange={(e) => setWordLimit(e.target.value)}
               disabled={isCreating}

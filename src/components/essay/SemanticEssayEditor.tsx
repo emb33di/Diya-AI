@@ -1115,10 +1115,27 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                   <div className="mt-4 md:mt-6 pt-4 border-t border-gray-100">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className={`text-sm ${getCurrentWordCount() > (wordLimit || document.metadata.wordLimit || 650) ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
-                          Word Limit: {getCurrentWordCount()}/{wordLimit || document.metadata.wordLimit || 650}
+                        <span className={`text-sm ${(() => {
+                          const limit = wordLimit || document.metadata.wordLimit;
+                          if (!limit || limit === 'Not specified' || limit === 'No limit') return 'text-gray-600';
+                          const limitNum = typeof limit === 'number' ? limit : parseInt(limit);
+                          if (isNaN(limitNum)) return 'text-gray-600';
+                          return getCurrentWordCount() > limitNum ? 'text-red-600 font-medium' : 'text-gray-600';
+                        })()}`}>
+                          Word Limit: {getCurrentWordCount()}/{wordLimit || document.metadata.wordLimit || 'Not specified'}
                         </span>
-                        {getCurrentWordCount() > (wordLimit || document.metadata.wordLimit || 650) && (
+                        {Boolean(currentVersion?.has_ai_feedback) && (
+                          <span className="text-xs text-green-600 font-medium bg-green-50 px-2 py-1 rounded border border-green-200">
+                            read-only
+                          </span>
+                        )}
+                        {(() => {
+                          const limit = wordLimit || document.metadata.wordLimit;
+                          if (!limit || limit === 'Not specified' || limit === 'No limit') return null;
+                          const limitNum = typeof limit === 'number' ? limit : parseInt(limit);
+                          if (isNaN(limitNum)) return null;
+                          return getCurrentWordCount() > limitNum;
+                        })() && (
                           <span className="text-xs text-red-500 font-medium bg-red-50 px-2 py-1 rounded">
                             Needs cutting!
                           </span>
