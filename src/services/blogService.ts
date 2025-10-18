@@ -30,7 +30,7 @@ function extractMetadataFromHTML(htmlContent: string): Partial<BlogPostMetadata>
   }
   
   // Extract excerpt from meta description or first paragraph
-  const excerptMatch = htmlContent.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i) ||
+  const excerptMatch = htmlContent.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"]+)["']/i) ||
                       htmlContent.match(/<p[^>]*>([^<]+)<\/p>/i);
   if (excerptMatch) {
     metadata.excerpt = excerptMatch[1].trim();

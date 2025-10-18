@@ -102,7 +102,8 @@ const Header = () => {
   const isActive = (path: string) => location.pathname === path;
   const isLandingPage = location.pathname === '/';
   const isPublicInfoPage = location.pathname === '/pricing' || location.pathname === '/about';
-  const isLoggedIn = !isLandingPage && !isPublicInfoPage && location.pathname !== '/auth';
+  const isBlogPage = location.pathname === '/blog' || location.pathname.startsWith('/blog/');
+  const isLoggedIn = !isLandingPage && !isPublicInfoPage && !isBlogPage && location.pathname !== '/auth';
 
   // Create a simple name initials circle with blue-to-orange gradient
   const getInitialsAvatar = (firstName: string) => {
@@ -398,7 +399,11 @@ const Header = () => {
             <>
               <Link 
                 to="/auth?mode=signin" 
-                className="text-sm font-medium text-white hover:text-white/80 transition-colors duration-200 cursor-pointer"
+                className={`text-sm font-medium transition-colors duration-200 cursor-pointer ${
+                  isBlogPage 
+                    ? 'text-black hover:text-gray-700' 
+                    : 'text-white hover:text-white/80'
+                }`}
               >
                 Sign In
               </Link>
