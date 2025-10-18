@@ -43,6 +43,8 @@ const Auth = () => {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [phoneNumberError, setPhoneNumberError] = useState("");
   const [applyingTo, setApplyingTo] = useState("");
+  const [hearAboutUs, setHearAboutUs] = useState("");
+  const [hearAboutOther, setHearAboutOther] = useState("");
   const [loading, setLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
@@ -229,6 +231,8 @@ const Auth = () => {
               applying_to: applyingTo,
               country_code: countryCode,
               phone_number: phoneNumber,
+              hear_about_us: hearAboutUs,
+              hear_about_other: hearAboutOther,
               // Add debug info
               _debug: {
                 signupId,
@@ -520,6 +524,36 @@ const Auth = () => {
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+                )}
+
+                {!isSignIn && (
+                  <div className="space-y-2">
+                    <Label htmlFor="hearAboutUs">How did you hear about us? (Optional)</Label>
+                    <Select value={hearAboutUs} onValueChange={setHearAboutUs}>
+                      <SelectTrigger className="h-12 text-base">
+                        <SelectValue placeholder="Select an option" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="linkedin">LinkedIn</SelectItem>
+                        <SelectItem value="instagram">Instagram</SelectItem>
+                        <SelectItem value="friend_suggested">Friend suggested</SelectItem>
+                        <SelectItem value="reddit">Reddit</SelectItem>
+                        <SelectItem value="school_session">School session</SelectItem>
+                        <SelectItem value="tiktok">TikTok</SelectItem>
+                        <SelectItem value="youtube">YouTube</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    
+                    {hearAboutUs === "other" && (
+                      <Input 
+                        placeholder="Please specify..."
+                        value={hearAboutOther}
+                        onChange={(e) => setHearAboutOther(e.target.value)}
+                        className="h-12 text-base"
+                      />
+                    )}
                   </div>
                 )}
 
