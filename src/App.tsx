@@ -84,6 +84,7 @@ const App = () => {
             <Route path="/settings" element={<AuthenticationGuard><Settings /></AuthenticationGuard>} />
             <Route path="/subscription" element={<AuthenticationGuard><Subscription /></AuthenticationGuard>} />
             <Route path="/payments" element={<AuthenticationGuard><Payments /></AuthenticationGuard>} />
+            <Route path="/checkout" element={<AuthenticationGuard><Payments /></AuthenticationGuard>} />
             <Route path="/onboarding" element={<AuthenticationGuard><Onboarding /></AuthenticationGuard>} />
             <Route path="/resume" element={<AuthenticationGuard><Resume /></AuthenticationGuard>} />
             <Route path="/lor" element={<AuthenticationGuard><LOR /></AuthenticationGuard>} />

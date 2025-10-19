@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CreditCard, ArrowLeft, Loader2, CheckCircle2 } from 'lucide-react';
+import RazorpayButton from '@/components/RazorpayButton';
 import { useNavigate } from 'react-router-dom';
 import GradientBackground from '@/components/GradientBackground';
 import AuthenticationGuard from '@/components/AuthenticationGuard';
-import { RazorpayService } from '@/services/razorpayService';
+import { RazorpayService, RazorpayPaymentResponse } from '@/services/razorpayService';
 import { useToast } from '@/hooks/use-toast';
 
 const Payments = () => {
@@ -15,6 +16,10 @@ const Payments = () => {
   const [paymentStatus, setPaymentStatus] = useState<{
     hasCustomerId: boolean;
     customerId: string | null;
+    hasOrderId: boolean;
+    orderId: string | null;
+    hasPaymentId: boolean;
+    paymentStatus: string | null;
   } | null>(null);
 
   // Check payment status on mount
@@ -24,7 +29,11 @@ const Payments = () => {
         const status = await RazorpayService.getPaymentStatus();
         setPaymentStatus({
           hasCustomerId: status.hasCustomerId,
-          customerId: status.customerId
+          customerId: status.customerId,
+          hasOrderId: status.hasOrderId,
+          orderId: status.customerId, // This will be updated when order is created
+          hasPaymentId: status.hasPaymentId,
+          paymentStatus: status.paymentStatus
         });
       } catch (error) {
         console.error('Error checking payment status:', error);
@@ -50,17 +59,39 @@ const Payments = () => {
       });
 
       // Update status
-      setPaymentStatus({
+      setPaymentStatus(prev => ({
+        ...prev,
         hasCustomerId: true,
         customerId: customer_id
-      });
+      }));
 
-      // Step 1.2: Create order (will be implemented next)
+      // Step 1.2: Create order
+      const orderData = await RazorpayService.createOrder(9999, 'INR');
+      
+      console.log('Razorpay Order ID:', orderData.order_id);
+      
       toast({
-        title: "Ready for Payment",
-        description: "Payment integration is being set up...",
+        title: "Order Created",
+        description: `Order ${orderData.order_id} created successfully`,
         variant: "default"
       });
+
+      // Update status to show order creation
+      setPaymentStatus(prev => ({
+        ...prev,
+        hasOrderId: true,
+        orderId: orderData.order_id
+      }));
+
+      // Step 1.3: Open Razorpay checkout
+      await RazorpayService.openCheckout(
+        orderData.order_id,
+        customer_id,
+        9999, // Amount in rupees
+        'INR',
+        handlePaymentSuccess,
+        handlePaymentFailure
+      );
       
     } catch (error: any) {
       console.error('Payment initiation failed:', error);
@@ -72,6 +103,60 @@ const Payments = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Handle successful payment
+  const handlePaymentSuccess = async (response: RazorpayPaymentResponse) => {
+    try {
+      console.log('Payment successful:', response);
+      
+      toast({
+        title: "Payment Successful! 🎉",
+        description: "Your Pro subscription is now active",
+        variant: "default"
+      });
+
+      // Update payment status
+      setPaymentStatus(prev => ({
+        ...prev,
+        hasPaymentId: true,
+        paymentStatus: 'completed'
+      }));
+
+      // TODO: In Step 1.5, we'll store payment details to database
+      // TODO: In Step 1.6, we'll verify payment signature
+      // TODO: In Step 1.7, we'll verify payment status and update user tier
+
+      // For now, redirect to success page or dashboard
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 2000);
+
+    } catch (error) {
+      console.error('Error handling payment success:', error);
+      toast({
+        title: "Payment Processing Error",
+        description: "Payment was successful but there was an error processing it. Please contact support.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Handle payment failure
+  const handlePaymentFailure = (error: any) => {
+    console.error('Payment failed:', error);
+    
+    toast({
+      title: "Payment Failed",
+      description: error.description || "Payment could not be completed. Please try again.",
+      variant: "destructive"
+    });
+
+    // Update payment status
+    setPaymentStatus(prev => ({
+      ...prev,
+      paymentStatus: 'failed'
+    }));
   };
 
   return (
@@ -137,24 +222,62 @@ const Payments = () => {
                 </div>
               )}
               
-              <Button 
+              {paymentStatus?.hasOrderId && (
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
+                  <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span className="text-sm font-medium">Order created</span>
+                  </div>
+                  <p className="text-xs text-blue-600 dark:text-blue-500 mt-1">
+                    Order ID: {paymentStatus.orderId?.substring(0, 20)}...
+                  </p>
+                  <p className="text-xs text-blue-600 dark:text-blue-500 mt-1">
+                    Amount: ₹9,999
+                  </p>
+                </div>
+              )}
+
+              {paymentStatus?.paymentStatus === 'completed' && (
+                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3 mb-4">
+                  <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span className="text-sm font-medium">Payment Successful!</span>
+                  </div>
+                  <p className="text-xs text-green-600 dark:text-green-500 mt-1">
+                    Your Pro subscription is now active
+                  </p>
+                </div>
+              )}
+
+              {paymentStatus?.paymentStatus === 'failed' && (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 mb-4">
+                  <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span className="text-sm font-medium">Payment Failed</span>
+                  </div>
+                  <p className="text-xs text-red-600 dark:text-red-500 mt-1">
+                    Please try again or contact support
+                  </p>
+                </div>
+              )}
+              
+              <RazorpayButton 
                 className="w-full" 
-                size="lg"
                 onClick={handlePaymentInitiation}
-                disabled={loading}
+                loading={loading}
+                disabled={paymentStatus?.paymentStatus === 'completed'}
               >
-                {loading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <CreditCard className="h-4 w-4 mr-2" />
-                    {paymentStatus?.hasCustomerId ? 'Proceed to Payment' : 'Initialize Payment'}
-                  </>
-                )}
-              </Button>
+                {paymentStatus?.paymentStatus === 'completed' 
+                  ? 'Payment Complete' 
+                  : paymentStatus?.paymentStatus === 'failed'
+                  ? 'Retry Payment'
+                  : paymentStatus?.hasCustomerId && paymentStatus?.hasOrderId
+                  ? 'Pay with Razorpay'
+                  : paymentStatus?.hasCustomerId 
+                  ? 'Create Order & Pay'
+                  : 'Initialize Payment'
+                }
+              </RazorpayButton>
               <p className="text-xs text-center text-muted-foreground">
                 Secure payment processing • Your payment information is encrypted
               </p>

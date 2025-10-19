@@ -937,7 +937,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
         featureKey="unlimited_resume_formatting" 
         title="Upgrade to Pro to Download PDF" 
         description="Downloading your resume as a PDF is a Pro feature. Preview remains free."
-        checkoutPath="/checkout" 
+        checkoutPath="/payments" 
       />
     </>
   );

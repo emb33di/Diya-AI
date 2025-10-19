@@ -1397,7 +1397,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
         featureKey={isGeneratingGrammar ? 'grammar_check' : 'unlimited_essay_feedback'}
         title="Upgrade to Pro"
         description="AI Comments and Grammar Check are Pro features."
-        checkoutPath="/checkout"
+        checkoutPath="/payments"
       />
 
     </div>

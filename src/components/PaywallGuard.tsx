@@ -46,7 +46,7 @@ const PaywallGuard: React.FC<PaywallGuardProps> = ({
   const upgradeMessage = getUpgradeMessage(featureKey);
 
   const handleUpgrade = () => {
-    navigate('/pricing');
+    navigate('/payments');
   };
 
   return (
