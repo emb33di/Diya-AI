@@ -2,12 +2,22 @@ import { useScrollAnimation } from "@/hooks/use-scroll-animation";
 import { Button } from "@/components/ui/button";
 import { Check, Crown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { trackEvent } from "@/utils/analytics";
 
 const PricingSection = () => {
   const navigate = useNavigate();
   const { elementRef: headerRef, isVisible: headerVisible } = useScrollAnimation();
   const { elementRef: cardRef1, isVisible: card1Visible } = useScrollAnimation();
   const { elementRef: cardRef2, isVisible: card2Visible } = useScrollAnimation();
+
+  const handleGetStartedClick = () => {
+    trackEvent('cta_click', {
+      cta_type: 'get_started_for_free',
+      page: 'pricing',
+      button_text: 'Get Started Today for Free'
+    });
+    navigate('/auth?mode=signup');
+  };
   const { elementRef: cardRef3, isVisible: card3Visible } = useScrollAnimation();
 
   return (
@@ -154,7 +164,7 @@ const PricingSection = () => {
         {/* Centered Button */}
         <div className="text-center mt-8 sm:mt-12">
           <Button 
-            onClick={() => navigate('/auth?mode=signup')}
+            onClick={handleGetStartedClick}
             className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-8 py-3 text-lg"
           >
             Get Started Today for Free

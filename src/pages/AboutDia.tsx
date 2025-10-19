@@ -2,9 +2,21 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Sparkles, Brain, MessageCircle, Clock, Users, BookOpen, Target, Heart, Lightbulb, Shield } from "lucide-react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { trackEvent } from "@/utils/analytics";
 import "@/styles/landing.css";
 const AboutDiya = () => {
+  const navigate = useNavigate();
+  
+  const handleGetStartedClick = () => {
+    trackEvent('cta_click', {
+      cta_type: 'get_started_for_free',
+      page: 'about',
+      button_text: 'Get Started For Free'
+    });
+    navigate('/auth?mode=signup');
+  };
+
   return <div className="landing-page min-h-screen bg-black">
     <div className="bg-gradient-to-br from-background via-primary/5 to-secondary/10 p-4 min-h-screen">
 
@@ -180,11 +192,14 @@ const AboutDiya = () => {
           <p className="text-xl mb-8 opacity-90">
             Join thousands of students who have found their perfect college match with Diya's guidance.
           </p>
-          <Link to="/auth">
-            <Button size="lg" variant="secondary" className="bg-white text-primary hover:bg-white/90">
-              Get Started For Free
-            </Button>
-          </Link>
+          <Button 
+            size="lg" 
+            variant="secondary" 
+            className="bg-white text-primary hover:bg-white/90"
+            onClick={handleGetStartedClick}
+          >
+            Get Started For Free
+          </Button>
         </section>
       </div>
     </div>

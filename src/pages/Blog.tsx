@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Calendar, Clock, ArrowRight, Search, Tag } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -7,14 +7,25 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import BlogSEO from "@/components/BlogSEO";
 import { loadAllBlogPosts, BlogPostMetadata } from "@/services/blogService";
+import { trackEvent } from "@/utils/analytics";
 
 const Blog = () => {
+  const navigate = useNavigate();
   const [posts, setPosts] = useState<BlogPostMetadata[]>([]);
   const [filteredPosts, setFilteredPosts] = useState<BlogPostMetadata[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedTag, setSelectedTag] = useState("");
+
+  const handleGetStartedClick = () => {
+    trackEvent('cta_click', {
+      cta_type: 'get_started_for_free',
+      page: 'blog',
+      button_text: 'Get Started For Free'
+    });
+    navigate('/auth?mode=signup');
+  };
 
   // Load blog posts on component mount
   useEffect(() => {
@@ -245,11 +256,14 @@ const Blog = () => {
           <p className="text-lg sm:text-xl mb-6 sm:mb-8 text-gray-600 px-4">
             Get personalized guidance and AI-powered essay assistance with Diya AI
           </p>
-          <Link to="/auth?mode=signup">
-            <Button size="lg" className="hover:shadow-lg transition-all w-full sm:w-auto" style={{ backgroundColor: '#D07D00', color: 'white' }}>
-              Get Started For Free
-            </Button>
-          </Link>
+          <Button 
+            size="lg" 
+            className="hover:shadow-lg transition-all w-full sm:w-auto" 
+            style={{ backgroundColor: '#D07D00', color: 'white' }}
+            onClick={handleGetStartedClick}
+          >
+            Get Started For Free
+          </Button>
         </div>
       </div>
     </div>

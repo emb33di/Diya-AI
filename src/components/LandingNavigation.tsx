@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import Logo from "@/components/LandingLogo";
 import { useNavigate } from "react-router-dom";
 import { useScrollAnimation } from "@/hooks/use-scroll-animation";
+import { trackEvent } from "@/utils/analytics";
 
 const Navigation = () => {
   const navigate = useNavigate();
@@ -16,6 +17,15 @@ const Navigation = () => {
   };
   const handleLogoClick = () => {
     navigate('/');
+  };
+
+  const handleGetStartedClick = () => {
+    trackEvent('cta_click', {
+      cta_type: 'get_started_for_free',
+      page: 'landing_navigation',
+      button_text: 'Get Started For Free'
+    });
+    navigate('/auth?mode=signup');
   };
   return <nav ref={navRef} className={`fixed top-0 left-0 right-0 z-50 scroll-fade-in backdrop-blur-lg bg-black/30 border-b border-white/20 ${navVisible ? 'animate' : ''}`}>
       <div className="container mx-auto px-4 sm:px-6 py-0.5">
@@ -68,7 +78,7 @@ const Navigation = () => {
               Sign In
             </button>
             <Button 
-              onClick={() => navigate('/auth?mode=signup')} 
+              onClick={handleGetStartedClick} 
               className="text-sm sm:text-base rounded-lg sm:rounded-xl font-semibold text-white shadow-lg hover:shadow-[0_0_30px_hsl(var(--primary)/0.6)] transition-all duration-200 my-0 mx-1 sm:mx-2 px-2 sm:px-3 py-2 sm:py-[10px] touch-manipulation"
             >
               Get Started For Free
