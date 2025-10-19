@@ -52,6 +52,14 @@ export interface RazorpayPaymentResponse {
   razorpay_signature: string;
 }
 
+export interface StorePaymentResponse {
+  success: boolean;
+  message: string;
+  payment_id: string;
+  order_id: string;
+  stored_at: string;
+}
+
 export class RazorpayService {
   /**
    * Create or retrieve Razorpay customer ID for the current user
@@ -259,6 +267,60 @@ export class RazorpayService {
   }
 
   /**
+   * Store payment details in database after successful payment
+   * This is Step 1.5 of Razorpay integration
+   */
+  static async storePayment(
+    razorpay_payment_id: string,
+    razorpay_order_id: string,
+    razorpay_signature: string,
+    payment_amount: number = 9999,
+    payment_currency: string = 'INR'
+  ): Promise<StorePaymentResponse> {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('No active session. Please log in to continue.');
+      }
+
+      console.log('Storing payment details...');
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/razorpay-store-payment`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ 
+            razorpay_payment_id,
+            razorpay_order_id,
+            razorpay_signature,
+            payment_amount,
+            payment_currency
+          })
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to store payment details');
+      }
+
+      const data: StorePaymentResponse = await response.json();
+      console.log('Payment details stored successfully:', data);
+      
+      return data;
+      
+    } catch (error) {
+      console.error('Error storing payment details:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Verify payment signature after successful payment
    * This will be implemented in Step 1.6
    */
@@ -317,6 +379,9 @@ export class RazorpayService {
     hasPaymentId: boolean;
     paymentStatus: string | null;
     customerId: string | null;
+    paymentAmount: number | null;
+    paymentCurrency: string | null;
+    paymentCompletedAt: string | null;
   }> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -328,7 +393,7 @@ export class RazorpayService {
       // Type assertion needed until Supabase types are regenerated after migration
       const { data: profile, error } = await supabase
         .from('user_profiles')
-        .select('razorpay_customer_id, razorpay_order_id, razorpay_payment_id, payment_status')
+        .select('razorpay_customer_id, razorpay_order_id, razorpay_payment_id, payment_status, payment_amount, payment_currency, payment_completed_at')
         .eq('user_id', user.id as any)
         .maybeSingle() as any;
 
@@ -342,7 +407,10 @@ export class RazorpayService {
         hasOrderId: !!profile?.razorpay_order_id,
         hasPaymentId: !!profile?.razorpay_payment_id,
         paymentStatus: profile?.payment_status || null,
-        customerId: profile?.razorpay_customer_id || null
+        customerId: profile?.razorpay_customer_id || null,
+        paymentAmount: profile?.payment_amount || null,
+        paymentCurrency: profile?.payment_currency || null,
+        paymentCompletedAt: profile?.payment_completed_at || null
       };
       
     } catch (error) {

@@ -110,6 +110,17 @@ const Payments = () => {
     try {
       console.log('Payment successful:', response);
       
+      // Step 1.5: Store payment details in database
+      const storeResult = await RazorpayService.storePayment(
+        response.razorpay_payment_id,
+        response.razorpay_order_id,
+        response.razorpay_signature,
+        9999, // Amount in rupees
+        'INR'
+      );
+
+      console.log('Payment details stored:', storeResult);
+      
       toast({
         title: "Payment Successful! 🎉",
         description: "Your Pro subscription is now active",
@@ -123,11 +134,10 @@ const Payments = () => {
         paymentStatus: 'completed'
       }));
 
-      // TODO: In Step 1.5, we'll store payment details to database
       // TODO: In Step 1.6, we'll verify payment signature
       // TODO: In Step 1.7, we'll verify payment status and update user tier
 
-      // For now, redirect to success page or dashboard
+      // Redirect to success page or dashboard
       setTimeout(() => {
         navigate('/dashboard');
       }, 2000);
@@ -136,7 +146,7 @@ const Payments = () => {
       console.error('Error handling payment success:', error);
       toast({
         title: "Payment Processing Error",
-        description: "Payment was successful but there was an error processing it. Please contact support.",
+        description: "Payment was successful but there was an error storing the details. Please contact support.",
         variant: "destructive"
       });
     }
