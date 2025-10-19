@@ -41,6 +41,20 @@ export interface RazorpayCheckoutOptions {
   modal?: {
     ondismiss?: () => void;
   };
+  method?: {
+    netbanking?: boolean;
+    wallet?: boolean;
+    emi?: boolean;
+    upi?: boolean;
+    card?: boolean;
+  };
+  config?: {
+    display?: {
+      blocks?: any;
+      sequence?: string[];
+      preferences?: any;
+    };
+  };
   handler?: (response: RazorpayPaymentResponse) => void;
   onPaymentSuccess?: (response: RazorpayPaymentResponse) => void;
   onPaymentFailure?: (error: any) => void;
@@ -188,13 +202,20 @@ export class RazorpayService {
         currency: currency,
         name: 'Diya AI',
         description: 'Pro Subscription - Unlimited Access',
-        image: '/DiyaLogo.svg', // Your logo
+        image: `${window.location.origin}/DiyaLogo.svg`, // Your logo with proper protocol
         order_id: orderId,
         customer_id: customerId,
         prefill: {
           name: profileData?.full_name || 'User',
           email: profileData?.email_address || user.email || '',
           contact: phoneNumber
+        },
+        method: {
+          netbanking: true,
+          wallet: true,
+          emi: true,
+          upi: true,
+          card: true
         },
         notes: {
           user_id: user.id,
@@ -209,10 +230,80 @@ export class RazorpayService {
             console.log('Payment modal dismissed');
           }
         },
-        handler: (response: RazorpayPaymentResponse) => {
+        config: {
+          display: {
+            blocks: {
+              banks: {
+                name: 'Pay using Banks',
+                instruments: [
+                  {
+                    method: 'netbanking',
+                    banks: ['HDFC', 'ICICI', 'SBI', 'AXIS', 'KOTAK']
+                  }
+                ]
+              },
+              wallets: {
+                name: 'Pay using Wallets',
+                instruments: [
+                  {
+                    method: 'wallet',
+                    wallets: ['paytm', 'phonepe', 'gpay']
+                  }
+                ]
+              },
+              upi: {
+                name: 'Pay using UPI',
+                instruments: [
+                  {
+                    method: 'upi'
+                  }
+                ]
+              },
+              cards: {
+                name: 'Pay using Cards',
+                instruments: [
+                  {
+                    method: 'card',
+                    issuers: ['HDFC', 'ICICI', 'SBI']
+                  }
+                ]
+              }
+            },
+            sequence: ['block.banks', 'block.wallets', 'block.upi', 'block.cards'],
+            preferences: {
+              show_default_blocks: true
+            }
+          }
+        },
+        handler: async (response: RazorpayPaymentResponse) => {
           console.log('Payment successful:', response);
-          if (onSuccess) {
-            onSuccess(response);
+          
+          try {
+            // Complete payment flow with signature verification
+            const result = await RazorpayService.completePayment(
+              response.razorpay_payment_id,
+              response.razorpay_order_id,
+              response.razorpay_signature,
+              amount,
+              currency
+            );
+
+            if (result.success && result.verified) {
+              console.log('Payment completed and verified successfully');
+              if (onSuccess) {
+                onSuccess(response);
+              }
+            } else {
+              console.error('Payment verification failed:', result.message);
+              if (onFailure) {
+                onFailure(new Error(result.message));
+              }
+            }
+          } catch (error) {
+            console.error('Error in payment completion:', error);
+            if (onFailure) {
+              onFailure(error);
+            }
           }
         }
       };
@@ -225,6 +316,15 @@ export class RazorpayService {
         if (onFailure) {
           onFailure(error);
         }
+      });
+      
+      // Add additional event listeners for debugging
+      razorpay.on('payment.authorized', (response: any) => {
+        console.log('Payment authorized:', response);
+      });
+      
+      razorpay.on('payment.captured', (response: any) => {
+        console.log('Payment captured:', response);
       });
 
       razorpay.open();
@@ -322,13 +422,13 @@ export class RazorpayService {
 
   /**
    * Verify payment signature after successful payment
-   * This will be implemented in Step 1.6
+   * This is Step 1.6 of Razorpay integration
    */
   static async verifyPayment(
     orderId: string,
     paymentId: string,
     signature: string
-  ): Promise<{ verified: boolean; message: string }> {
+  ): Promise<{ verified: boolean; message: string; order_id?: string; payment_id?: string; verified_at?: string }> {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -336,7 +436,7 @@ export class RazorpayService {
         throw new Error('No active session. Please log in to continue.');
       }
 
-      console.log('Verifying payment...');
+      console.log('Verifying payment signature...');
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/razorpay-verify-payment`,
@@ -367,6 +467,222 @@ export class RazorpayService {
     } catch (error) {
       console.error('Error verifying payment:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Update user tier to Pro after successful payment verification
+   * This is Step 1.7 of Razorpay integration
+   */
+  static async updateUserTierToPro(): Promise<{ success: boolean; message: string }> {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('No active session. Please log in to continue.');
+      }
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('No authenticated user');
+      }
+
+      console.log('Updating user tier to Pro...');
+
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({ 
+          user_tier: 'Pro' as any,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id as any);
+
+      if (error) {
+        console.error('Failed to update user tier:', error);
+        return {
+          success: false,
+          message: `Failed to update user tier: ${error.message}`
+        };
+      }
+
+      console.log('User tier updated to Pro successfully');
+      return {
+        success: true,
+        message: 'User tier updated to Pro successfully'
+      };
+
+    } catch (error) {
+      console.error('Error updating user tier:', error);
+      return {
+        success: false,
+        message: `Error updating user tier: ${error.message}`
+      };
+    }
+  }
+
+  /**
+   * Complete payment flow with signature verification and Pro upgrade
+   * This combines Steps 1.5, 1.6, and 1.7 of Razorpay integration
+   */
+  static async completePayment(
+    razorpay_payment_id: string,
+    razorpay_order_id: string,
+    razorpay_signature: string,
+    payment_amount: number = 9999,
+    payment_currency: string = 'INR'
+  ): Promise<{
+    success: boolean;
+    verified: boolean;
+    message: string;
+    payment_id: string;
+    order_id: string;
+    stored_at?: string;
+    verified_at?: string;
+    user_tier_updated?: boolean;
+  }> {
+    try {
+      console.log('Starting complete payment flow...');
+
+      // Step 1: Verify payment signature first (Step 1.6)
+      console.log('Step 1: Verifying payment signature...');
+      const verificationResult = await this.verifyPayment(
+        razorpay_order_id,
+        razorpay_payment_id,
+        razorpay_signature
+      );
+
+      if (!verificationResult.verified) {
+        return {
+          success: false,
+          verified: false,
+          message: verificationResult.message,
+          payment_id: razorpay_payment_id,
+          order_id: razorpay_order_id
+        };
+      }
+
+      console.log('Payment signature verified successfully');
+
+      // Step 2: Store payment details (Step 1.5)
+      console.log('Step 2: Storing payment details...');
+      const storeResult = await this.storePayment(
+        razorpay_payment_id,
+        razorpay_order_id,
+        razorpay_signature,
+        payment_amount,
+        payment_currency
+      );
+
+      if (!storeResult.success) {
+        return {
+          success: false,
+          verified: true,
+          message: `Signature verified but failed to store payment: ${storeResult.message}`,
+          payment_id: razorpay_payment_id,
+          order_id: razorpay_order_id
+        };
+      }
+
+      console.log('Payment details stored successfully');
+
+      // Step 3: Update user tier to Pro (Step 1.7)
+      console.log('Step 3: Updating user tier to Pro...');
+      const tierUpdateResult = await this.updateUserTierToPro();
+
+      if (!tierUpdateResult.success) {
+        console.warn('Payment completed but failed to update user tier:', tierUpdateResult.message);
+        // Don't fail the entire flow, but log the warning
+      }
+
+      console.log('Complete payment flow finished successfully');
+
+      return {
+        success: true,
+        verified: true,
+        message: 'Payment completed, verified, and Pro subscription activated',
+        payment_id: razorpay_payment_id,
+        order_id: razorpay_order_id,
+        stored_at: storeResult.stored_at,
+        verified_at: verificationResult.verified_at,
+        user_tier_updated: tierUpdateResult.success
+      };
+
+    } catch (error) {
+      console.error('Error in complete payment flow:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Manually upgrade user to Pro if they have a completed payment
+   * This is a utility function to fix cases where payment was successful but tier wasn't updated
+   */
+  static async manualProUpgrade(): Promise<{ success: boolean; message: string }> {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('No active session. Please log in to continue.');
+      }
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('No authenticated user');
+      }
+
+      console.log('Checking if user has completed payment for manual Pro upgrade...');
+
+      // Check if user has a completed payment
+      const { data: profile, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('razorpay_payment_id, payment_status, user_tier')
+        .eq('user_id', user.id as any)
+        .single();
+
+      if (profileError) {
+        console.error('Failed to fetch user profile:', profileError);
+        return {
+          success: false,
+          message: `Failed to fetch user profile: ${profileError.message}`
+        };
+      }
+
+      // Type assertion for Supabase response
+      const profileData = profile as any;
+
+      if (!profileData?.razorpay_payment_id || profileData?.payment_status !== 'completed') {
+        return {
+          success: false,
+          message: 'No completed payment found. Please complete a payment first.'
+        };
+      }
+
+      if (profileData?.user_tier === 'Pro') {
+        return {
+          success: true,
+          message: 'User is already Pro tier'
+        };
+      }
+
+      // Update user tier to Pro
+      const tierUpdateResult = await this.updateUserTierToPro();
+      
+      if (tierUpdateResult.success) {
+        console.log('Manual Pro upgrade completed successfully');
+        return {
+          success: true,
+          message: 'Successfully upgraded to Pro tier based on completed payment'
+        };
+      } else {
+        return tierUpdateResult;
+      }
+
+    } catch (error) {
+      console.error('Error in manual Pro upgrade:', error);
+      return {
+        success: false,
+        message: `Error in manual Pro upgrade: ${error.message}`
+      };
     }
   }
 

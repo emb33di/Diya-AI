@@ -110,8 +110,8 @@ const Payments = () => {
     try {
       console.log('Payment successful:', response);
       
-      // Step 1.5: Store payment details in database
-      const storeResult = await RazorpayService.storePayment(
+      // Use the complete payment flow (Steps 1.5 + 1.6 + 1.7)
+      const completeResult = await RazorpayService.completePayment(
         response.razorpay_payment_id,
         response.razorpay_order_id,
         response.razorpay_signature,
@@ -119,34 +119,46 @@ const Payments = () => {
         'INR'
       );
 
-      console.log('Payment details stored:', storeResult);
+      console.log('Complete payment flow result:', completeResult);
       
-      toast({
-        title: "Payment Successful! 🎉",
-        description: "Your Pro subscription is now active",
-        variant: "default"
-      });
+      if (completeResult.success && completeResult.verified) {
+        toast({
+          title: "Payment Successful! 🎉",
+          description: "Your Pro subscription is now active and verified",
+          variant: "default"
+        });
 
-      // Update payment status
-      setPaymentStatus(prev => ({
-        ...prev,
-        hasPaymentId: true,
-        paymentStatus: 'completed'
-      }));
+        // Update payment status
+        setPaymentStatus(prev => ({
+          ...prev,
+          hasPaymentId: true,
+          paymentStatus: 'completed'
+        }));
 
-      // TODO: In Step 1.6, we'll verify payment signature
-      // TODO: In Step 1.7, we'll verify payment status and update user tier
+        // Redirect to success page or dashboard
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 2000);
+      } else {
+        // Payment verification failed
+        toast({
+          title: "Payment Verification Failed",
+          description: completeResult.message || "Payment could not be verified. Please contact support.",
+          variant: "destructive"
+        });
 
-      // Redirect to success page or dashboard
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 2000);
+        // Update payment status
+        setPaymentStatus(prev => ({
+          ...prev,
+          paymentStatus: 'failed'
+        }));
+      }
 
     } catch (error) {
       console.error('Error handling payment success:', error);
       toast({
         title: "Payment Processing Error",
-        description: "Payment was successful but there was an error storing the details. Please contact support.",
+        description: "Payment was successful but there was an error processing it. Please contact support.",
         variant: "destructive"
       });
     }
@@ -168,6 +180,7 @@ const Payments = () => {
       paymentStatus: 'failed'
     }));
   };
+
 
   return (
     <GradientBackground>
