@@ -561,10 +561,22 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     }
   }, [detectParagraphs, insertMultipleBlocks]);
 
+  // Helper functions for cursor position detection
+  const isAtStartOfBlock = useCallback((textarea: HTMLTextAreaElement) => {
+    return textarea.selectionStart === 0;
+  }, []);
+
+  const isAtEndOfBlock = useCallback((textarea: HTMLTextAreaElement) => {
+    return textarea.selectionStart === textarea.value.length;
+  }, []);
+
   // Handle keyboard shortcuts
   const handleKeyDown = useCallback((e: React.KeyboardEvent, blockId: string) => {
     const block = state.document.blocks.find(b => b.id === blockId);
     if (!block) return;
+
+    const textarea = textareaRefs.current[blockId];
+    if (!textarea) return;
 
     // Undo / Redo at document scope
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
@@ -647,23 +659,41 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
       }
     }
 
-    // Arrow Up: move to previous block
-    if (e.key === 'ArrowUp' && e.ctrlKey) {
+    // Arrow Up: move to previous block (with smart cursor positioning)
+    if (e.key === 'ArrowUp' && (e.ctrlKey || isAtStartOfBlock(textarea))) {
       e.preventDefault();
       const prevBlock = state.document.blocks.find(b => b.position === block.position - 1);
       if (prevBlock) {
+        const currentCursorPos = textarea.selectionStart;
         finishEditingBlock(blockId);
-        setTimeout(() => startEditingBlock(prevBlock.id), 50);
+        setTimeout(() => {
+          startEditingBlock(prevBlock.id);
+          // Set cursor to end of previous block or preserve relative position
+          const textarea = textareaRefs.current[prevBlock.id];
+          if (textarea) {
+            const targetPosition = Math.min(currentCursorPos, prevBlock.content.length);
+            textarea.setSelectionRange(targetPosition, targetPosition);
+          }
+        }, 50);
       }
     }
 
-    // Arrow Down: move to next block
-    if (e.key === 'ArrowDown' && e.ctrlKey) {
+    // Arrow Down: move to next block (with smart cursor positioning)
+    if (e.key === 'ArrowDown' && (e.ctrlKey || isAtEndOfBlock(textarea))) {
       e.preventDefault();
       const nextBlock = state.document.blocks.find(b => b.position === block.position + 1);
       if (nextBlock) {
+        const currentCursorPos = textarea.selectionStart;
         finishEditingBlock(blockId);
-        setTimeout(() => startEditingBlock(nextBlock.id), 50);
+        setTimeout(() => {
+          startEditingBlock(nextBlock.id);
+          // Set cursor to beginning of next block or preserve relative position
+          const textarea = textareaRefs.current[nextBlock.id];
+          if (textarea) {
+            const targetPosition = Math.min(currentCursorPos, nextBlock.content.length);
+            textarea.setSelectionRange(targetPosition, targetPosition);
+          }
+        }, 50);
       }
     }
   }, [state.document.blocks, addNewBlock, deleteBlock, startEditingBlock, finishEditingBlock, selectAllEssayText, undo, redo, saveToUndoStack]);
