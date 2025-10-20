@@ -1307,35 +1307,37 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
                 }, 0);
               }
             }}
-            className="min-h-[2.5rem] resize-none border-none shadow-none focus-visible:ring-0 text-base w-full overflow-wrap-anywhere break-words"
+            className="min-h-[2.5rem] resize-none border-none shadow-none focus-visible:ring-0 text-base w-full"
             style={{
               fontFamily: 'Arial, sans-serif',
               lineHeight: '1.6',
-              wordWrap: 'break-word',
-              overflowWrap: 'anywhere',
-              hyphens: 'auto',
+              wordWrap: 'normal',
+              overflowWrap: 'normal',
+              wordBreak: 'normal',
+              hyphens: 'none',
             }}
             placeholder={block.position === 0 ? "Start writing here..." : ""}
           />
         ) : (
           <div className="relative">
             <div
-              className={`min-h-[2.5rem] p-2 text-base w-full overflow-wrap-anywhere break-words focus:outline-none focus:ring-0 ${
+              className={`min-h-[2.5rem] p-2 text-base w-full focus:outline-none focus:ring-0 ${
                 isReadOnly()
                   ? 'cursor-not-allowed bg-gray-50 text-gray-500'
                   : ''
               }`}
+              style={{
+                fontFamily: 'Arial, sans-serif',
+                lineHeight: '1.6',
+                wordWrap: 'normal',
+                overflowWrap: 'normal',
+                wordBreak: 'normal',
+                hyphens: 'none',
+              }}
               onClick={() => {
                 if (!isReadOnly()) startEditingBlock(block.id);
               }}
               title={isReadOnly() ? 'Editor is read-only. Click "New Version" to edit.' : ''}
-              style={{
-                fontFamily: 'Arial, sans-serif',
-                lineHeight: '1.6',
-                wordWrap: 'break-word',
-                overflowWrap: 'anywhere',
-                hyphens: 'auto',
-              }}
             >
               {block.content ? (
                 renderHighlightedText(block.content, block.annotations)

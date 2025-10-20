@@ -54,9 +54,10 @@
 .clean-semantic-editor textarea,
 .clean-semantic-editor div[contenteditable],
 .clean-semantic-editor .block-content {
-  word-wrap: break-word !important;
-  overflow-wrap: anywhere !important;
-  hyphens: auto !important;
+  word-wrap: normal !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+  hyphens: none !important;
   max-width: 100% !important;
   box-sizing: border-box !important;
 }
