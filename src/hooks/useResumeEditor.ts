@@ -127,6 +127,7 @@ export const useResumeEditor = () => {
           id: activity.id.startsWith('temp-') ? null : activity.id,
           title: activity.title,
           position: activity.position,
+          location: activity.location,
           from_date: activity.fromDate,
           to_date: activity.toDate,
           is_current: activity.isCurrent,
