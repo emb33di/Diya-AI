@@ -659,6 +659,32 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
       }
     }
 
+    // Backspace at beginning of non-empty block: move text to previous block
+    if (e.key === 'Backspace' && isAtStartOfBlock(textarea) && block.content !== '' && state.document.blocks.length > 1) {
+      e.preventDefault();
+      saveToUndoStack();
+      
+      const prevBlock = state.document.blocks.find(b => b.position === block.position - 1);
+      if (prevBlock) {
+        // Move current block's content to the end of previous block
+        const newPrevContent = prevBlock.content + block.content;
+        updateBlockContent(prevBlock.id, newPrevContent);
+        
+        // Delete current block
+        deleteBlock(blockId);
+        
+        // Focus on previous block and set cursor to where the text was appended
+        setTimeout(() => {
+          startEditingBlock(prevBlock.id);
+          const textarea = textareaRefs.current[prevBlock.id];
+          if (textarea) {
+            const cursorPosition = prevBlock.content.length; // Position at the end of original previous content
+            textarea.setSelectionRange(cursorPosition, cursorPosition);
+          }
+        }, 50);
+      }
+    }
+
     // Arrow Up: move to previous block (with smart cursor positioning)
     if (e.key === 'ArrowUp' && (e.ctrlKey || isAtStartOfBlock(textarea))) {
       e.preventDefault();
