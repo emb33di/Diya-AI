@@ -53,7 +53,8 @@
 /* Mobile Text Wrapping */
 .clean-semantic-editor textarea,
 .clean-semantic-editor div[contenteditable],
-.clean-semantic-editor .block-content {
+.clean-semantic-editor .block-content,
+.clean-semantic-editor .ProseMirror {
   word-wrap: normal !important;
   overflow-wrap: normal !important;
   word-break: normal !important;
@@ -72,6 +73,40 @@
   margin: 0 !important;
   font-family: Arial, sans-serif !important;
   line-height: 1.6 !important;
+}
+
+/* Tiptap Editor Styling */
+.clean-semantic-editor .ProseMirror {
+  background-color: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  padding: 0.5rem !important;
+  min-height: 2.5rem !important;
+  font-family: Arial, sans-serif !important;
+  line-height: 1.6 !important;
+  font-size: 1rem !important;
+  margin: 0 !important;
+}
+
+.clean-semantic-editor .ProseMirror:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+  background-color: transparent !important;
+}
+
+.clean-semantic-editor .ProseMirror p {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.clean-semantic-editor .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #adb5bd;
+  pointer-events: none;
+  height: 0;
 }
 
 /* Comment Sidebar Text Handling */

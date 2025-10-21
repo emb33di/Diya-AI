@@ -19,7 +19,7 @@ import {
 import { semanticDocumentService } from '@/services/semanticDocumentService';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
+import TiptapEditor, { TiptapEditorRef } from './TiptapEditor';
 import { 
   MessageSquare, 
   CheckCircle, 
@@ -101,8 +101,8 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
   // Toast for user feedback
   const { toast } = useToast();
 
-  // Refs for textarea management
-  const textareaRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
+  // Refs for Tiptap editor management
+  const tiptapRefs = useRef<Record<string, TiptapEditorRef | null>>({});
   const contentContainerRef = useRef<HTMLDivElement | null>(null);
   const undoStackRef = useRef<SemanticDocument[]>([]);
   const redoStackRef = useRef<SemanticDocument[]>([]);
@@ -178,9 +178,9 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
           if (!hasContent && existingDoc.blocks.length > 0) {
             setTimeout(() => {
               setEditingBlockId(existingDoc.blocks[0].id);
-              const textarea = textareaRefs.current[existingDoc.blocks[0].id];
-              if (textarea) {
-                textarea.focus();
+              const tiptapEditor = tiptapRefs.current[existingDoc.blocks[0].id];
+              if (tiptapEditor) {
+                tiptapEditor.focus();
               }
             }, 100);
           }
@@ -203,10 +203,12 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     onDocumentChange?.(state.document);
   }, [state.document, onDocumentChange]);
 
-  // Auto-resize textarea
-  const autoResizeTextarea = (textarea: HTMLTextAreaElement) => {
-    textarea.style.height = 'auto';
-    textarea.style.height = `${textarea.scrollHeight}px`;
+  // Auto-resize Tiptap editor (minimal implementation for now)
+  const autoResizeTiptap = (editorRef: TiptapEditorRef | null) => {
+    // Tiptap handles sizing automatically, this is a placeholder for future enhancements
+    if (editorRef) {
+      // Future: implement custom sizing logic if needed
+    }
   };
 
   const deepCloneDocument = useCallback((doc: SemanticDocument): SemanticDocument => {
@@ -301,8 +303,8 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
 
     setTimeout(() => {
       setEditingBlockId(emptyBlock.id);
-      const textarea = textareaRefs.current[emptyBlock.id];
-      if (textarea) textarea.focus();
+      const tiptapEditor = tiptapRefs.current[emptyBlock.id];
+      if (tiptapEditor) tiptapEditor.focus();
     }, 50);
   }, [getDocumentPlainText, saveToUndoStack]);
 
@@ -346,9 +348,9 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     // Start editing the new block
     setTimeout(() => {
       setEditingBlockId(newBlock.id);
-      const textarea = textareaRefs.current[newBlock.id];
-      if (textarea) {
-        textarea.focus();
+      const tiptapEditor = tiptapRefs.current[newBlock.id];
+      if (tiptapEditor) {
+        tiptapEditor.focus();
       }
     }, 50);
 
@@ -362,9 +364,9 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
       // Automatically start editing the first block
       setTimeout(() => {
         setEditingBlockId(newBlock.id);
-        const textarea = textareaRefs.current[newBlock.id];
-        if (textarea) {
-          textarea.focus();
+        const tiptapEditor = tiptapRefs.current[newBlock.id];
+        if (tiptapEditor) {
+          tiptapEditor.focus();
         }
       }, 100);
     }
@@ -405,19 +407,23 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
   }, [editingBlockId, isReadOnly, toast, saveToUndoStack]);
 
   // Start editing a block
-  const startEditingBlock = useCallback((blockId: string) => {
+  const startEditingBlock = useCallback((blockId: string, clickPosition?: number) => {
     // Editing always allowed
-
     setEditingBlockId(blockId);
     setState(prev => ({ ...prev, isEditing: true }));
     setTimeout(() => {
-      const textarea = textareaRefs.current[blockId];
-      if (textarea) {
-        textarea.focus();
-        autoResizeTextarea(textarea);
+      const tiptapEditor = tiptapRefs.current[blockId];
+      if (tiptapEditor) {
+        tiptapEditor.focus();
+        autoResizeTiptap(tiptapEditor);
+        
+        // If we have a click position, set the cursor there
+        if (clickPosition !== undefined) {
+          tiptapEditor.setCursorAtPosition(clickPosition);
+        }
       }
     }, 50);
-  }, [isReadOnly, toast]);
+  }, []);
 
   // Finish editing a block
   const finishEditingBlock = useCallback((blockId: string) => {
@@ -446,7 +452,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
       },
       pendingChanges: true
     }));
-  }, [isReadOnly, saveToUndoStack]);
+  }, [saveToUndoStack]);
 
   // Copy block content
   const copyBlock = useCallback((blockId: string) => {
@@ -501,7 +507,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     saveToUndoStack();
 
     const insertPosition = currentBlock.position;
-    const cursorPosition = textareaRefs.current[currentBlockId]?.selectionStart || 0;
+    const cursorPosition = tiptapRefs.current[currentBlockId]?.getSelectionStart() || 0;
     const currentContent = currentBlock.content;
     
     // Split current content at cursor position
@@ -531,23 +537,23 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     const lastBlock = state.document.blocks.find(b => b.position === insertPosition + remainingParagraphs.length);
     if (lastBlock) {
       setTimeout(() => {
-        startEditingBlock(lastBlock.id);
-        const textarea = textareaRefs.current[lastBlock.id];
-        if (textarea) {
+        startEditingBlock(lastBlock.id, undefined);
+        const tiptapEditor = tiptapRefs.current[lastBlock.id];
+        if (tiptapEditor) {
           // Set cursor to end of content
           const endPosition = lastBlock.content.length;
-          textarea.setSelectionRange(endPosition, endPosition);
-          textarea.focus();
+          tiptapEditor.setSelectionRange(endPosition, endPosition);
+          tiptapEditor.focus();
         }
       }, 50);
     }
   }, [state.document.blocks, addNewBlock, updateBlockContent, startEditingBlock]);
 
   // Handle paste events
-  const handlePaste = useCallback((e: React.ClipboardEvent, blockId: string) => {
+  const handlePaste = useCallback((e: React.ClipboardEvent, blockId: string): boolean => {
     const pastedText = e.clipboardData.getData('text/plain');
     
-    if (!pastedText.trim()) return;
+    if (!pastedText.trim()) return false;
     
     // Detect if content has multiple paragraphs
     const paragraphs = detectParagraphs(pastedText);
@@ -555,19 +561,275 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     if (paragraphs.length > 1) {
       e.preventDefault(); // Prevent default paste behavior
       insertMultipleBlocks(blockId, paragraphs);
-      
-      // Show user feedback
-      // Content auto-split
+      return true; // Indicate we handled the paste
+    } else {
+      return false; // Let Tiptap handle it normally
     }
   }, [detectParagraphs, insertMultipleBlocks]);
 
-  // Helper functions for cursor position detection
-  const isAtStartOfBlock = useCallback((textarea: HTMLTextAreaElement) => {
-    return textarea.selectionStart === 0;
+  // Helper function to get text nodes within a container
+  const getTextNodesIn = useCallback((container: HTMLElement): Text[] => {
+    const textNodes: Text[] = [];
+    const walker = document.createTreeWalker(
+      container,
+      NodeFilter.SHOW_TEXT,
+      {
+        acceptNode: (node) => {
+          // Skip hidden nodes
+          const element = node.parentElement;
+          if (!element) return NodeFilter.FILTER_REJECT;
+          const style = window.getComputedStyle(element);
+          if (style.display === 'none' || style.visibility === 'hidden') {
+            return NodeFilter.FILTER_REJECT;
+          }
+          return NodeFilter.FILTER_ACCEPT;
+        }
+      }
+    );
+    
+    let node;
+    while (node = walker.nextNode()) {
+      if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) {
+        textNodes.push(node as Text);
+      }
+    }
+    return textNodes;
   }, []);
 
-  const isAtEndOfBlock = useCallback((textarea: HTMLTextAreaElement) => {
-    return textarea.selectionStart === textarea.value.length;
+  // Helper function to get wrapped line rects for a text node
+  const getWrappedLineRectsForNode = useCallback((textNode: Text): DOMRect[] => {
+    const lines: { top: number; bottom: number; left: number; right: number }[] = [];
+    const text = textNode.textContent || '';
+    
+    if (!text.trim()) return [];
+    
+    // Create ranges for each character to get line information
+    for (let i = 0; i < text.length; i++) {
+      const range = document.createRange();
+      range.setStart(textNode, i);
+      range.setEnd(textNode, i + 1);
+      
+      const rect = range.getBoundingClientRect();
+      if (rect.width > 0 || rect.height > 0) { // Valid rect
+        // Check if this rect belongs to an existing line
+        let foundLine = false;
+        for (const line of lines) {
+          // Same line if top/bottom are close (within 1px tolerance)
+          if (Math.abs(rect.top - line.top) < 1 && Math.abs(rect.bottom - line.bottom) < 1) {
+            // Extend the line rect to include this character
+            line.left = Math.min(line.left, rect.left);
+            line.right = Math.max(line.right, rect.right);
+            foundLine = true;
+            break;
+          }
+        }
+        
+        if (!foundLine) {
+          lines.push({
+            top: rect.top,
+            bottom: rect.bottom,
+            left: rect.left,
+            right: rect.right
+          });
+        }
+      }
+    }
+    
+    // Convert back to DOMRect-like objects
+    return lines.map(line => ({
+      top: line.top,
+      bottom: line.bottom,
+      left: line.left,
+      right: line.right,
+      width: line.right - line.left,
+      height: line.bottom - line.top,
+      x: line.left,
+      y: line.top,
+      toJSON: () => ({})
+    })) as DOMRect[];
+  }, []);
+
+  // Helper function to find caret offset in a text node on a specific line
+  const caretOffsetInNodeOnLine = useCallback((textNode: Text, clientX: number, lineIndex: number): number => {
+    const text = textNode.textContent || '';
+    const lines = getWrappedLineRectsForNode(textNode);
+    
+    if (lineIndex >= lines.length) {
+      return text.length; // Beyond last line
+    }
+    
+    const lineRect = lines[lineIndex];
+    
+    // Handle empty lines or lines with no visible characters
+    if (lineRect.width === 0) {
+      // If click is on the left half of the line, go to start
+      // If click is on the right half, go to end
+      const lineMidpoint = lineRect.left + lineRect.width / 2;
+      return clientX < lineMidpoint ? 0 : text.length;
+    }
+    
+    // Binary search by glyph using Range rects
+    let left = 0;
+    let right = text.length;
+    let bestOffset = 0;
+    
+    while (left <= right) {
+      const mid = Math.floor((left + right) / 2);
+      
+      // Create range for this character
+      const range = document.createRange();
+      range.setStart(textNode, mid);
+      range.setEnd(textNode, Math.min(mid + 1, text.length));
+      
+      const rect = range.getBoundingClientRect();
+      
+      // Check if this character is on the target line
+      const isOnTargetLine = Math.abs(rect.top - lineRect.top) < 1 && 
+                            Math.abs(rect.bottom - lineRect.bottom) < 1;
+      
+      if (isOnTargetLine) {
+        // Handle RTL text by checking both left and right boundaries
+        const charMidpoint = rect.left + rect.width / 2;
+        const isRTL = rect.right < rect.left; // Simple RTL detection
+        
+        if (isRTL) {
+          // For RTL text, reverse the comparison logic
+          if (charMidpoint > clientX) {
+            bestOffset = mid + 1;
+            left = mid + 1;
+          } else {
+            right = mid - 1;
+          }
+        } else {
+          // Normal LTR logic
+          if (charMidpoint < clientX) {
+            bestOffset = mid + 1;
+            left = mid + 1;
+          } else {
+            right = mid - 1;
+          }
+        }
+      } else if (rect.top < lineRect.top) {
+        // Character is above target line
+        left = mid + 1;
+      } else {
+        // Character is below target line
+        right = mid - 1;
+      }
+    }
+    
+    return Math.min(bestOffset, text.length);
+  }, [getWrappedLineRectsForNode]);
+
+  // Main function to get caret position at point using DOM hit-testing
+  const getCaretAtPoint = useCallback((container: HTMLElement, clientX: number, clientY: number): { node: Text; offset: number } | null => {
+    const anyDoc: any = document;
+
+    // 1) Native fast path - try browser's built-in hit-testing
+    let r: Range | null = null;
+    if (anyDoc.caretRangeFromPoint) {
+      r = anyDoc.caretRangeFromPoint(clientX, clientY);
+    } else if (anyDoc.caretPositionFromPoint) {
+      const pos = anyDoc.caretPositionFromPoint(clientX, clientY);
+      if (pos) {
+        r = document.createRange();
+        r.setStart(pos.offsetNode, pos.offset);
+        r.collapse(true);
+      }
+    }
+    
+    if (r && r.startContainer?.nodeType === Node.TEXT_NODE) {
+      const node = r.startContainer as Text;
+      const offset = r.startOffset ?? 0;
+      return { node, offset };
+    }
+
+    // 2) Fallback: find line at Y, then glyph binary search
+    const textNodes = getTextNodesIn(container);
+    let hit: { node: Text; lineRect: DOMRect; lineIndex: number } | null = null;
+
+    for (const node of textNodes) {
+      const lines = getWrappedLineRectsForNode(node);
+      for (let i = 0; i < lines.length; i++) {
+        const rect = lines[i];
+        // Use a small tolerance for line detection to handle sub-pixel rendering
+        const tolerance = 2;
+        const inside = clientY >= (rect.top - tolerance) && clientY <= (rect.bottom + tolerance);
+        if (inside) { 
+          hit = { node, lineRect: rect, lineIndex: i }; 
+          break; 
+        }
+      }
+      if (hit) break;
+    }
+    
+    // If no exact line match, find the closest line
+    if (!hit && textNodes.length > 0) {
+      let closestDistance = Infinity;
+      for (const node of textNodes) {
+        const lines = getWrappedLineRectsForNode(node);
+        for (let i = 0; i < lines.length; i++) {
+          const rect = lines[i];
+          const distance = Math.min(
+            Math.abs(clientY - rect.top),
+            Math.abs(clientY - rect.bottom),
+            Math.abs(clientY - (rect.top + rect.bottom) / 2)
+          );
+          if (distance < closestDistance) {
+            closestDistance = distance;
+            hit = { node, lineRect: rect, lineIndex: i };
+          }
+        }
+      }
+    }
+    
+    if (!hit) return null;
+
+    const offset = caretOffsetInNodeOnLine(hit.node, clientX, hit.lineIndex);
+    return { node: hit.node, offset };
+  }, [getTextNodesIn, getWrappedLineRectsForNode, caretOffsetInNodeOnLine]);
+
+  // Helper function to calculate click position within text using DOM hit-testing
+  const calculateClickPosition = useCallback((event: React.MouseEvent, text: string): number => {
+    if (!text) return 0;
+    
+    const target = event.currentTarget as HTMLElement;
+    const clientX = event.clientX;
+    const clientY = event.clientY;
+    
+    // Use DOM hit-testing to find the exact caret position
+    const caretResult = getCaretAtPoint(target, clientX, clientY);
+    
+    if (caretResult) {
+      const { node, offset } = caretResult;
+      
+      // Convert node offset to block-relative index
+      // For now, assume we're dealing with a single text node (the block content)
+      // In a more complex scenario, we'd need to sum text lengths of prior nodes
+      const blockRelativeOffset = offset;
+      
+      return Math.min(blockRelativeOffset, text.length);
+    }
+    
+    // Fallback: if DOM hit-testing fails, estimate based on click position
+    const rect = target.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const avgCharWidth = 8;
+    const estimatedPosition = Math.floor(x / avgCharWidth);
+    return Math.max(0, Math.min(estimatedPosition, text.length));
+  }, [getCaretAtPoint]);
+
+  // Helper functions for cursor position detection
+  const isAtStartOfBlock = useCallback((tiptapEditor: TiptapEditorRef) => {
+    return tiptapEditor.getSelectionStart() === 0;
+  }, []);
+
+  const isAtEndOfBlock = useCallback((tiptapEditor: TiptapEditorRef) => {
+    const selectionStart = tiptapEditor.getSelectionStart();
+    const selectionEnd = tiptapEditor.getSelectionEnd();
+    // For Tiptap, we'll need to get the content length differently
+    // This is a simplified implementation
+    return selectionStart === selectionEnd; // Simplified check
   }, []);
 
   // Handle keyboard shortcuts
@@ -575,8 +837,8 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     const block = state.document.blocks.find(b => b.id === blockId);
     if (!block) return;
 
-    const textarea = textareaRefs.current[blockId];
-    if (!textarea) return;
+    const tiptapEditor = tiptapRefs.current[blockId];
+    if (!tiptapEditor) return;
 
     // Undo / Redo at document scope
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
@@ -606,9 +868,9 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
       e.preventDefault();
       saveToUndoStack();
       
-      const textarea = textareaRefs.current[blockId];
-      if (textarea) {
-        const cursorPosition = textarea.selectionStart;
+      const tiptapEditor = tiptapRefs.current[blockId];
+      if (tiptapEditor) {
+        const cursorPosition = tiptapEditor.getSelectionStart();
         const currentContent = block.content;
         
         // Split the text at cursor position
@@ -624,25 +886,25 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
           // Update the new block with the text after cursor
           setTimeout(() => {
             updateBlockContent(newBlock.id, textAfterCursor);
-            startEditingBlock(newBlock.id);
+            startEditingBlock(newBlock.id, undefined);
             
             // Set cursor to beginning of new block
-            const newTextarea = textareaRefs.current[newBlock.id];
-            if (newTextarea) {
+            const newTiptapEditor = tiptapRefs.current[newBlock.id];
+            if (newTiptapEditor) {
               setTimeout(() => {
-                newTextarea.setSelectionRange(0, 0);
-                newTextarea.focus();
+                newTiptapEditor.setSelectionRange(0, 0);
+                newTiptapEditor.focus();
               }, 10);
             }
           }, 50);
         } else {
           // If no text after cursor, just start editing the new empty block
-          setTimeout(() => startEditingBlock(newBlock.id), 50);
+          setTimeout(() => startEditingBlock(newBlock.id, undefined), 50);
         }
       } else {
-        // Fallback to original behavior if textarea ref is not available
+        // Fallback to original behavior if tiptap ref is not available
         const newBlock = addNewBlock(block.position + 1);
-        setTimeout(() => startEditingBlock(newBlock.id), 50);
+        setTimeout(() => startEditingBlock(newBlock.id, undefined), 50);
       }
     }
 
@@ -655,12 +917,12 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
       // Focus on previous block
       const prevBlock = state.document.blocks.find(b => b.position === block.position - 1);
       if (prevBlock) {
-        setTimeout(() => startEditingBlock(prevBlock.id), 50);
+        setTimeout(() => startEditingBlock(prevBlock.id, undefined), 50);
       }
     }
 
     // Backspace at beginning of non-empty block: move text to previous block
-    if (e.key === 'Backspace' && isAtStartOfBlock(textarea) && block.content !== '' && state.document.blocks.length > 1) {
+    if (e.key === 'Backspace' && isAtStartOfBlock(tiptapEditor) && block.content !== '' && state.document.blocks.length > 1) {
       e.preventDefault();
       saveToUndoStack();
       
@@ -675,49 +937,49 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
         
         // Focus on previous block and set cursor to where the text was appended
         setTimeout(() => {
-          startEditingBlock(prevBlock.id);
-          const textarea = textareaRefs.current[prevBlock.id];
-          if (textarea) {
+          startEditingBlock(prevBlock.id, undefined);
+          const tiptapEditor = tiptapRefs.current[prevBlock.id];
+          if (tiptapEditor) {
             const cursorPosition = prevBlock.content.length; // Position at the end of original previous content
-            textarea.setSelectionRange(cursorPosition, cursorPosition);
+            tiptapEditor.setSelectionRange(cursorPosition, cursorPosition);
           }
         }, 50);
       }
     }
 
     // Arrow Up: move to previous block (with smart cursor positioning)
-    if (e.key === 'ArrowUp' && (e.ctrlKey || isAtStartOfBlock(textarea))) {
+    if (e.key === 'ArrowUp' && (e.ctrlKey || isAtStartOfBlock(tiptapEditor))) {
       e.preventDefault();
       const prevBlock = state.document.blocks.find(b => b.position === block.position - 1);
       if (prevBlock) {
-        const currentCursorPos = textarea.selectionStart;
+        const currentCursorPos = tiptapEditor.getSelectionStart();
         finishEditingBlock(blockId);
         setTimeout(() => {
-          startEditingBlock(prevBlock.id);
+          startEditingBlock(prevBlock.id, undefined);
           // Set cursor to end of previous block or preserve relative position
-          const textarea = textareaRefs.current[prevBlock.id];
-          if (textarea) {
+          const tiptapEditor = tiptapRefs.current[prevBlock.id];
+          if (tiptapEditor) {
             const targetPosition = Math.min(currentCursorPos, prevBlock.content.length);
-            textarea.setSelectionRange(targetPosition, targetPosition);
+            tiptapEditor.setSelectionRange(targetPosition, targetPosition);
           }
         }, 50);
       }
     }
 
     // Arrow Down: move to next block (with smart cursor positioning)
-    if (e.key === 'ArrowDown' && (e.ctrlKey || isAtEndOfBlock(textarea))) {
+    if (e.key === 'ArrowDown' && (e.ctrlKey || isAtEndOfBlock(tiptapEditor))) {
       e.preventDefault();
       const nextBlock = state.document.blocks.find(b => b.position === block.position + 1);
       if (nextBlock) {
-        const currentCursorPos = textarea.selectionStart;
+        const currentCursorPos = tiptapEditor.getSelectionStart();
         finishEditingBlock(blockId);
         setTimeout(() => {
-          startEditingBlock(nextBlock.id);
+          startEditingBlock(nextBlock.id, undefined);
           // Set cursor to beginning of next block or preserve relative position
-          const textarea = textareaRefs.current[nextBlock.id];
-          if (textarea) {
+          const tiptapEditor = tiptapRefs.current[nextBlock.id];
+          if (tiptapEditor) {
             const targetPosition = Math.min(currentCursorPos, nextBlock.content.length);
-            textarea.setSelectionRange(targetPosition, targetPosition);
+            tiptapEditor.setSelectionRange(targetPosition, targetPosition);
           }
         }, 50);
       }
@@ -806,12 +1068,12 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
       // Focus on the first block
       setTimeout(() => {
         setEditingBlockId(newBlocks[0].id);
-        const textarea = textareaRefs.current[newBlocks[0].id];
-        if (textarea) {
-          textarea.focus();
+        const tiptapEditor = tiptapRefs.current[newBlocks[0].id];
+        if (tiptapEditor) {
+          tiptapEditor.focus();
           // Set cursor to end of content
           const endPosition = newBlocks[0].content.length;
-          textarea.setSelectionRange(endPosition, endPosition);
+          tiptapEditor.setSelectionRange(endPosition, endPosition);
         }
       }, 50);
     } else {
@@ -839,12 +1101,12 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
 
       setTimeout(() => {
         setEditingBlockId(newBlock.id);
-        const textarea = textareaRefs.current[newBlock.id];
-        if (textarea) {
-          textarea.focus();
+        const tiptapEditor = tiptapRefs.current[newBlock.id];
+        if (tiptapEditor) {
+          tiptapEditor.focus();
           // Set cursor to end of content
           const endPosition = newBlock.content.length;
-          textarea.setSelectionRange(endPosition, endPosition);
+          tiptapEditor.setSelectionRange(endPosition, endPosition);
         }
       }, 50);
     }
@@ -877,8 +1139,8 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
 
     setTimeout(() => {
       setEditingBlockId(emptyBlock.id);
-      const textarea = textareaRefs.current[emptyBlock.id];
-      if (textarea) textarea.focus();
+      const tiptapEditor = tiptapRefs.current[emptyBlock.id];
+      if (tiptapEditor) tiptapEditor.focus();
     }, 50);
   }, [saveToUndoStack]);
 
@@ -1308,31 +1570,23 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
 
         {/* Block Content */}
         {isEditing ? (
-          <Textarea
+          <TiptapEditor
             ref={(el) => {
-              textareaRefs.current[block.id] = el;
+              tiptapRefs.current[block.id] = el;
               if (el) {
-                autoResizeTextarea(el);
+                autoResizeTiptap(el);
               }
             }}
-            value={block.content}
-            onChange={(e) => {
-              updateBlockContent(block.id, e.target.value);
-              if (textareaRefs.current[block.id]) {
-                autoResizeTextarea(textareaRefs.current[block.id]!);
+            content={block.content}
+            onUpdate={(content) => {
+              updateBlockContent(block.id, content);
+              if (tiptapRefs.current[block.id]) {
+                autoResizeTiptap(tiptapRefs.current[block.id]!);
               }
             }}
             onBlur={() => finishEditingBlock(block.id)}
             onKeyDown={(e) => handleKeyDown(e, block.id)}
             onPaste={(e) => handlePaste(e, block.id)}
-            onFocus={(e) => {
-              // If the block is empty, set cursor to the beginning
-              if (!block.content || block.content.trim() === '') {
-                setTimeout(() => {
-                  e.target.setSelectionRange(0, 0);
-                }, 0);
-              }
-            }}
             className="min-h-[2.5rem] resize-none border-none shadow-none focus-visible:ring-0 text-base w-full"
             style={{
               fontFamily: 'Arial, sans-serif',
@@ -1360,8 +1614,13 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
                 wordBreak: 'normal',
                 hyphens: 'none',
               }}
-              onClick={() => {
-                if (!isReadOnly()) startEditingBlock(block.id);
+              onClick={(e) => {
+                if (!isReadOnly()) {
+                  // Get the plain text content for position calculation
+                  const plainText = block.content;
+                  const clickPosition = calculateClickPosition(e, plainText);
+                  startEditingBlock(block.id, clickPosition);
+                }
               }}
               title={isReadOnly() ? 'Editor is read-only. Click "New Version" to edit.' : ''}
             >
