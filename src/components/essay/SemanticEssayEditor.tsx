@@ -722,26 +722,136 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
     }
   };
 
-  // Export document as PDF
-  const exportAsPDF = async () => {
+  // Export document as PDF using browser print functionality
+  const exportAsPDF = () => {
     if (!document) return;
 
     try {
       const htmlContent = semanticDocumentService.convertBlocksToHtml(document.blocks);
       
-      await ExportService.exportToDOCX({
-        title: document.title,
-        content: htmlContent,
-        prompt: prompt || document.metadata.prompt,
-        wordLimit: wordLimit || document.metadata.wordLimit
-      });
-      
-      // Export successful
+      // Create a new window with the HTML content and proper essay styling
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(`
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>${document.title}</title>
+            <style>
+              .essay-page {
+                background-color: #ffffff;
+                font-family: "Times New Roman", Times, serif;
+                font-size: 12pt;
+                line-height: 1.5;
+                color: #000000;
+                width: 100%;
+                max-width: 8.5in;
+                min-height: 11in;
+                padding: 1in;
+                margin: 0 auto;
+                box-sizing: border-box;
+              }
+
+              .essay-title {
+                font-size: 18pt;
+                font-weight: bold;
+                text-align: center;
+                margin-bottom: 24px;
+                color: #000000;
+              }
+
+              .essay-prompt {
+                font-size: 11pt;
+                font-style: italic;
+                margin-bottom: 24px;
+                padding: 12px;
+                background-color: #f8f9fa;
+                border-left: 4px solid #007bff;
+                color: #000000;
+              }
+
+              .essay-prompt-label {
+                font-weight: bold;
+                font-style: normal;
+                margin-bottom: 8px;
+                color: #000000;
+              }
+
+              .essay-content {
+                text-align: justify;
+                color: #000000;
+              }
+
+              .essay-content p {
+                margin-bottom: 12px;
+                text-indent: 0.5in;
+              }
+
+              .essay-content p:first-child {
+                text-indent: 0;
+              }
+
+              @media print {
+                body {
+                  margin: 0;
+                  padding: 0;
+                  background: white;
+                }
+                
+                .essay-page {
+                  width: 8.5in;
+                  height: 11in;
+                  margin: 0;
+                  padding: 1in;
+                  box-shadow: none;
+                }
+                
+                .essay-content p {
+                  page-break-inside: avoid;
+                }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="essay-page">
+              <div class="essay-title">${document.title}</div>
+              ${prompt || document.metadata.prompt ? `
+                <div class="essay-prompt">
+                  <div class="essay-prompt-label">Essay Prompt:</div>
+                  ${prompt || document.metadata.prompt}
+                </div>
+              ` : ''}
+              <div class="essay-content">
+                ${htmlContent}
+              </div>
+            </div>
+          </body>
+          </html>
+        `);
+        printWindow.document.close();
+        
+        // Wait for content to load, then trigger print
+        printWindow.onload = () => {
+          setTimeout(() => {
+            printWindow.print();
+            printWindow.close();
+          }, 500);
+        };
+      }
     } catch (error) {
-      console.error('Export error:', error);
+      console.error('[ESSAY_ERROR] Failed to generate PDF document:', {
+        userId: user?.id || 'unknown',
+        userEmail: user?.email || 'unknown',
+        essayId: essayId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User cannot download their essay as PDF - print dialog failed'
+      });
       toast({
-        title: "Export Failed",
-        description: "There was an error exporting your essay. Please try again.",
+        title: "PDF generation failed",
+        description: "Failed to open print dialog. Please try again.",
         variant: "destructive",
       });
     }

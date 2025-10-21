@@ -203,6 +203,22 @@ export class ResumeActivitiesService {
     
     console.log(`ResumeActivitiesService: Processing ${categories.length} categories for user ${user.id} - found ${existingActivities?.length || 0} existing activities`);
     
+    // Debug: Log all activities with location data
+    categories.forEach(category => {
+      const activities = resumeData[category] || [];
+      activities.forEach((activity: any) => {
+        if (activity.location && activity.location.trim() !== '') {
+          console.log(`[RESUME_DEBUG] Backend received activity with location:`, {
+            category,
+            activityId: activity.id,
+            title: activity.title,
+            location: activity.location,
+            userId: user.id
+          });
+        }
+      });
+    });
+    
     for (const category of categories) {
       const activities = resumeData[category];
       
@@ -227,6 +243,17 @@ export class ResumeActivitiesService {
             is_current: activity.is_current,
             display_order: i
           };
+
+          // Debug: Log location update
+          if (activity.location && activity.location.trim() !== '') {
+            console.log(`[RESUME_DEBUG] Updating activity with location in database:`, {
+              activityId: activity.id,
+              title: activity.title,
+              location: activity.location,
+              userId: user.id,
+              updateData: activityUpdate
+            });
+          }
 
           const { error: updateError } = await supabase
             .from('resume_activities')
@@ -261,6 +288,17 @@ export class ResumeActivitiesService {
             is_current: activity.is_current,
             display_order: i
           };
+
+          // Debug: Log location creation
+          if (activity.location && activity.location.trim() !== '') {
+            console.log(`[RESUME_DEBUG] Creating new activity with location in database:`, {
+              category,
+              title: activity.title,
+              location: activity.location,
+              userId: user.id,
+              insertData: activityInsert
+            });
+          }
 
           const { data: createdActivity, error: activityError } = await supabase
             .from('resume_activities')

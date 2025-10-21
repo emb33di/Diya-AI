@@ -123,19 +123,34 @@ export const useResumeEditor = () => {
       };
 
       Object.entries(dataToSave).forEach(([category, activities]) => {
-        backendData[category] = activities.map(activity => ({
-          id: activity.id.startsWith('temp-') ? null : activity.id,
-          title: activity.title,
-          position: activity.position,
-          location: activity.location,
-          from_date: activity.fromDate,
-          to_date: activity.toDate,
-          is_current: activity.isCurrent,
-          bullets: activity.bullets.map((bullet, index) => ({
-            bullet_text: bullet,
-            bullet_order: index
-          }))
-        }));
+        backendData[category] = activities.map(activity => {
+          const backendActivity = {
+            id: activity.id.startsWith('temp-') ? null : activity.id,
+            title: activity.title,
+            position: activity.position,
+            location: activity.location,
+            from_date: activity.fromDate,
+            to_date: activity.toDate,
+            is_current: activity.isCurrent,
+            bullets: activity.bullets.map((bullet, index) => ({
+              bullet_text: bullet,
+              bullet_order: index
+            }))
+          };
+          
+          // Debug log for location field
+          if (activity.location && activity.location.trim() !== '') {
+            console.log(`[RESUME_DEBUG] Location field being saved:`, {
+              category,
+              activityId: activity.id,
+              title: activity.title,
+              location: activity.location,
+              backendActivity: backendActivity
+            });
+          }
+          
+          return backendActivity;
+        });
       });
 
       await resumeActivitiesService.saveResumeData(backendData);
