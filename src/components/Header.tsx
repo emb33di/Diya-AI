@@ -103,6 +103,7 @@ const Header = () => {
   const isLandingPage = location.pathname === '/';
   const isPublicInfoPage = location.pathname === '/pricing' || location.pathname === '/about';
   const isBlogPage = location.pathname === '/blog' || location.pathname.startsWith('/blog/');
+  const isEarlyAccessPage = location.pathname === '/earlyaccess';
   const isLoggedIn = !isLandingPage && !isPublicInfoPage && !isBlogPage && location.pathname !== '/auth';
 
   // Create a simple name initials circle with blue-to-orange gradient
@@ -123,6 +124,11 @@ const Header = () => {
       </div>
     );
   };
+  
+  // Don't render header on early access page
+  if (isEarlyAccessPage) {
+    return null;
+  }
   
   return (
     <header className="sticky top-0 z-50 w-full backdrop-blur-md bg-transparent">

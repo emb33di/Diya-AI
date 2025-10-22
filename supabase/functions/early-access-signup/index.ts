@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient } from "npm:@supabase/supabase-js@2.39.4";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,14 +13,14 @@ serve(async (req) => {
   }
 
   try {
-    // Create Supabase client
+    // Create Supabase client with service role key for admin operations
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       {
-        global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
-        },
+        auth: {
+          persistSession: false
+        }
       }
     )
 
@@ -49,31 +49,7 @@ serve(async (req) => {
       )
     }
 
-    // Check if user already exists
-    const { data: existingUser, error: userCheckError } = await supabaseClient.auth.admin.getUserByEmail(email)
-    
-    if (userCheckError && userCheckError.message !== 'User not found') {
-      console.error('Error checking existing user:', userCheckError)
-      return new Response(
-        JSON.stringify({ error: 'Failed to check existing user' }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
-    }
-
-    if (existingUser.user) {
-      return new Response(
-        JSON.stringify({ error: 'User with this email already exists' }),
-        { 
-          status: 409, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
-    }
-
-    // Create new user account
+    // Try to create user directly - if user exists, we'll handle the error
     const { data: authData, error: authError } = await supabaseClient.auth.admin.createUser({
       email,
       password: Math.random().toString(36).slice(-12), // Generate random password
@@ -89,6 +65,17 @@ serve(async (req) => {
         willing_to_pay_2000: willingToPay === 'yes'
       }
     })
+
+    // Check if user already exists
+    if (authError && authError.message.includes('already registered')) {
+      return new Response(
+        JSON.stringify({ error: 'User with this email already exists' }),
+        { 
+          status: 409, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
 
     if (authError) {
       console.error('Error creating user:', authError)
@@ -111,6 +98,39 @@ serve(async (req) => {
       )
     }
 
+    // Check if user profile already exists
+    const { data: existingProfile, error: profileCheckError } = await supabaseClient
+      .from('user_profiles')
+      .select('id')
+      .eq('user_id', authData.user.id)
+      .limit(1)
+
+    if (profileCheckError) {
+      console.error('Error checking existing profile:', profileCheckError)
+      return new Response(
+        JSON.stringify({ error: 'Failed to check existing profile' }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
+    // If profile already exists, return success (user is already set up)
+    if (existingProfile && existingProfile.length > 0) {
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: 'User profile already exists',
+          userId: authData.user.id
+        }),
+        { 
+          status: 200, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
     // Create user profile with early user settings
     const signupDate = new Date()
     const trialEndDate = new Date(signupDate.getTime() + (14 * 24 * 60 * 60 * 1000)) // 14 days
@@ -127,7 +147,7 @@ serve(async (req) => {
         early_user_trial_end_date: trialEndDate.toISOString(),
         biggest_pain_point: biggestPainPoint || null,
         willing_to_pay_2000: willingToPay === 'yes',
-        user_tier: 'pro', // Give them pro access during trial
+        user_tier: 'Pro', // Give them pro access during trial
         onboarding_complete: false,
         skipped_onboarding: false,
         profile_saved: false
@@ -135,8 +155,21 @@ serve(async (req) => {
 
     if (profileError) {
       console.error('Error creating user profile:', profileError)
-      // Clean up the auth user if profile creation fails
-      await supabaseClient.auth.admin.deleteUser(authData.user.id)
+      
+      // Handle duplicate key error specifically
+      if (profileError.code === '23505') {
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: 'User profile already exists',
+            userId: authData.user.id
+          }),
+          { 
+            status: 200, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        )
+      }
       
       return new Response(
         JSON.stringify({ error: 'Failed to create user profile' }),
