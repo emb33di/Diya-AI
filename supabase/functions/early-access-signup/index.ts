@@ -26,6 +26,18 @@ serve(async (req) => {
 
     const { name, email, programType, biggestPainPoint, willingToPay } = await req.json()
 
+    // Debug logging
+    console.log('Received data:', { name, email, programType, biggestPainPoint, willingToPay })
+    console.log('willingToPay type:', typeof willingToPay)
+    console.log('willingToPay value:', willingToPay)
+
+    // Ensure willingToPay is a string value
+    let willingToPayValue = willingToPay
+    if (typeof willingToPay === 'boolean') {
+      willingToPayValue = willingToPay ? 'yes' : 'no'
+      console.log('Converted boolean to string:', willingToPayValue)
+    }
+
     // Validate required fields
     if (!name || !email || !programType) {
       return new Response(
@@ -62,7 +74,7 @@ serve(async (req) => {
         is_early_user: true,
         early_user_signup_date: new Date().toISOString(),
         biggest_pain_point: biggestPainPoint || null,
-        willing_to_pay_2000: willingToPay === 'yes'
+        willing_to_pay_2000: willingToPayValue
       }
     })
 
@@ -116,12 +128,38 @@ serve(async (req) => {
       )
     }
 
-    // If profile already exists, return success (user is already set up)
+    // If profile already exists, update it with early user fields
     if (existingProfile && existingProfile.length > 0) {
+      const { error: updateError } = await supabaseClient
+        .from('user_profiles')
+        .update({
+          full_name: name,
+          email_address: email,
+          applying_to: programType,
+          is_early_user: true,
+          early_user_signup_date: new Date().toISOString(),
+          early_user_trial_end_date: new Date(Date.now() + (14 * 24 * 60 * 60 * 1000)).toISOString(),
+          biggest_pain_point: biggestPainPoint || null,
+          willing_to_pay_2000: willingToPayValue,
+          user_tier: 'Pro', // Give them pro access during trial
+        })
+        .eq('user_id', authData.user.id)
+
+      if (updateError) {
+        console.error('Error updating existing profile:', updateError)
+        return new Response(
+          JSON.stringify({ error: 'Failed to update user profile' }),
+          { 
+            status: 500, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        )
+      }
+
       return new Response(
         JSON.stringify({ 
           success: true, 
-          message: 'User profile already exists',
+          message: 'Early access signup successful - profile updated',
           userId: authData.user.id
         }),
         { 
@@ -146,7 +184,7 @@ serve(async (req) => {
         early_user_signup_date: signupDate.toISOString(),
         early_user_trial_end_date: trialEndDate.toISOString(),
         biggest_pain_point: biggestPainPoint || null,
-        willing_to_pay_2000: willingToPay === 'yes',
+        willing_to_pay_2000: willingToPayValue,
         user_tier: 'Pro', // Give them pro access during trial
         onboarding_complete: false,
         skipped_onboarding: false,
