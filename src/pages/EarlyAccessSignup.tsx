@@ -15,6 +15,7 @@ import "@/styles/landing.css";
 const EarlyAccessSignup = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [programType, setProgramType] = useState("");
   const [biggestPainPoint, setBiggestPainPoint] = useState("");
   const [willingToPay, setWillingToPay] = useState("");
@@ -27,7 +28,7 @@ const EarlyAccessSignup = () => {
     e.preventDefault();
     
     // Validate required fields
-    if (!name || !email || !programType) {
+    if (!name || !email || !password || !programType) {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields.",
@@ -47,6 +48,16 @@ const EarlyAccessSignup = () => {
       return;
     }
 
+    // Validate password strength
+    if (password.length < 6) {
+      toast({
+        title: "Weak Password",
+        description: "Password must be at least 6 characters long.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
     
     try {
@@ -55,6 +66,7 @@ const EarlyAccessSignup = () => {
         body: {
           name,
           email,
+          password,
           programType,
           biggestPainPoint,
           willingToPay,
@@ -73,7 +85,7 @@ const EarlyAccessSignup = () => {
       
       toast({
         title: "Welcome to Early Access!",
-        description: "You've successfully joined our early access program. Check your email for login instructions.",
+        description: "You've successfully joined our early access program. You can now log in with your email and password.",
       });
       
     } catch (error) {
@@ -219,6 +231,22 @@ const EarlyAccessSignup = () => {
                 />
               </div>
 
+              {/* Password Field */}
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-sm font-medium text-white font-nunito">
+                  Password <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="h-12 border-border !bg-black text-white placeholder:text-gray-400"
+                  placeholder="Create a password (min 6 characters)"
+                  required
+                />
+              </div>
+
               {/* Program Type Field */}
               <div className="space-y-2">
                 <Label htmlFor="programType" className="text-sm font-medium text-white font-nunito">
@@ -273,7 +301,7 @@ const EarlyAccessSignup = () => {
               <Button 
                 type="submit" 
                 className="w-full h-12 text-white shadow-lg hover:shadow-[0_0_50px_hsl(var(--primary)/0.6)] transition-all duration-200" 
-                disabled={!name || !email || !programType || isLoading}
+                disabled={!name || !email || !password || !programType || isLoading}
               >
                 {isLoading ? "Signing Up..." : "Join Early Access"}
               </Button>

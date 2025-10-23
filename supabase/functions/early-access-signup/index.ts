@@ -24,7 +24,7 @@ serve(async (req) => {
       }
     )
 
-    const { name, email, programType, biggestPainPoint, willingToPay } = await req.json()
+    const { name, email, password, programType, biggestPainPoint, willingToPay } = await req.json()
 
     // Debug logging
     console.log('Received data:', { name, email, programType, biggestPainPoint, willingToPay })
@@ -39,7 +39,7 @@ serve(async (req) => {
     }
 
     // Validate required fields
-    if (!name || !email || !programType) {
+    if (!name || !email || !password || !programType) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields' }),
         { 
@@ -61,10 +61,10 @@ serve(async (req) => {
       )
     }
 
-    // Try to create user directly - if user exists, we'll handle the error
+    // Try to create user with provided password - if user exists, we'll handle the error
     const { data: authData, error: authError } = await supabaseClient.auth.admin.createUser({
       email,
-      password: Math.random().toString(36).slice(-12), // Generate random password
+      password: password, // Use the password provided by the user
       email_confirm: true, // Auto-confirm email for early access users
       user_metadata: {
         full_name: name,
@@ -218,8 +218,30 @@ serve(async (req) => {
       )
     }
 
-    // Send welcome email (optional - you can implement this later)
-    // TODO: Send welcome email with login instructions
+    // Send welcome email to early access user
+    try {
+      const emailResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-early-access-welcome`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
+        },
+        body: JSON.stringify({
+          email,
+          firstName: name.split(' ')[0], // Extract first name
+          programType,
+          trialEndDate: trialEndDate.toISOString()
+        })
+      });
+
+      if (emailResponse.ok) {
+        console.log('Early access welcome email sent successfully');
+      } else {
+        console.warn('Failed to send early access welcome email, but user was created');
+      }
+    } catch (emailError) {
+      console.warn('Error sending early access welcome email:', emailError);
+    }
 
     return new Response(
       JSON.stringify({ 
