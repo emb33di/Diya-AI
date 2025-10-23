@@ -170,21 +170,21 @@ function generatePasswordResetEmail(data: PasswordResetData): string {
               Follow these simple steps to create your password and start using Diya AI.
             </div>
             
+            <p><strong>Steps to set your password:</strong></p>
+            <ol style="margin: 15px 0; padding-left: 20px; line-height: 1.8;">
+              <li><strong>Click the button below</strong> to go to our website</li>
+              <li><strong>Click "Forgot Password?"</strong> on the login page</li>
+              <li><strong>Enter your email address:</strong> ${data.email}</li>
+              <li><strong>Check your email</strong> for a password reset link</li>
+              <li><strong>Click the link</strong> and create your new password</li>
+              <li><strong>Sign in</strong> with your email and password</li>
+            </ol>
+            
             <div style="text-align: center; margin: 30px 0;">
               <a href="https://www.meetdiya.com/auth" class="cta-button">
                 Go to Diya AI →
               </a>
             </div>
-            
-            <p><strong>Steps to set your password:</strong></p>
-            <ul style="margin: 15px 0; padding-left: 20px;">
-              <li>Click the button above to go to our website</li>
-              <li>Click "Forgot Password?" on the login page</li>
-              <li>Enter your email address (${data.email})</li>
-              <li>Check your email for a password reset link</li>
-              <li>Click the link and create your new password</li>
-              <li>Sign in with your email and password</li>
-            </ul>
             
             <p>Questions? Reply to this email or reach out to us at <a href="mailto:mihir@meetdiya.com" style="color: #D07D00;">mihir@meetdiya.com</a>.</p>
             
