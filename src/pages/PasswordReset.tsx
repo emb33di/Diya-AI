@@ -193,17 +193,7 @@ export default function PasswordReset() {
       <div className="p-4 min-h-screen flex items-center justify-center relative z-10">
         <div className="w-full max-w-md">
           <Card className="backdrop-blur-xl bg-card/80 border-border/20 shadow-elegant shadow-[0_0_25px_rgba(255,255,255,0.3)] shadow-white/30">
-            <CardHeader className="text-center space-y-2">
-              <CardTitle className="text-2xl font-display flex items-center justify-center gap-2">
-                <Lock className="h-6 w-6" />
-                Reset Password
-              </CardTitle>
-              <CardDescription className="text-base">
-                Enter your new password below
-              </CardDescription>
-            </CardHeader>
-            
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-6 pt-8">
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(handlePasswordReset)} className="space-y-4">
                   <FormField

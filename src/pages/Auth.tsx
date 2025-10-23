@@ -111,33 +111,19 @@ const Auth = () => {
     setForgotPasswordLoading(true);
     
     try {
-      // Use our custom password reset function instead of Supabase's built-in
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-custom-password-reset`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-        },
-        body: JSON.stringify({
-          email: forgotPasswordEmail,
-          redirectTo: 'https://www.meetdiya.com/password-reset'
-        })
+      // Use Supabase's built-in password reset with Resend SMTP
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotPasswordEmail, {
+        redirectTo: 'https://www.meetdiya.com/password-reset'
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to send password reset email');
+      if (error) {
+        throw error;
       }
 
-      const result = await response.json();
-
-      if (result.success) {
-        toast({
-          title: "Password reset email sent",
-          description: "Check your email for instructions to reset your password.",
-        });
-      } else {
-        throw new Error(result.error || 'Failed to send password reset email');
-      }
+      toast({
+        title: "Password reset email sent",
+        description: "Check your email for instructions to reset your password. It may take a few minutes to arrive.",
+      });
       
       setShowForgotPassword(false);
       setForgotPasswordEmail("");
