@@ -16,7 +16,8 @@ const Subscription = () => {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const handleUpgrade = () => {
-    navigate('/payments');
+    // Navigate to Stripe payment link
+    window.location.href = 'https://buy.stripe.com/eVq5kCbyPbAQ5gh5hK93y00';
   };
 
   const freeFeatures = getFreeFeatures();

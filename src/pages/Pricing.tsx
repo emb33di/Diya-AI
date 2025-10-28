@@ -97,7 +97,10 @@ const Pricing = () => {
                   <span>Access to weekly webinars and college guidance videos</span>
                 </div>
               </div>
-              <Button className="w-full mt-6">
+              <Button 
+                className="w-full mt-6"
+                onClick={() => window.location.href = 'https://buy.stripe.com/eVq5kCbyPbAQ5gh5hK93y00'}
+              >
                 Upgrade to Pro
               </Button>
             </CardContent>

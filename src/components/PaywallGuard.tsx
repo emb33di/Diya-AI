@@ -46,7 +46,8 @@ const PaywallGuard: React.FC<PaywallGuardProps> = ({
   const upgradeMessage = getUpgradeMessage(featureKey);
 
   const handleUpgrade = () => {
-    navigate('/payments');
+    // Navigate to Stripe payment link
+    window.location.href = 'https://buy.stripe.com/eVq5kCbyPbAQ5gh5hK93y00';
   };
 
   return (

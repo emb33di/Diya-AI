@@ -43,7 +43,12 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
   ];
 
   const handleUpgrade = () => {
-    navigate(checkoutPath);
+    // If checkoutPath is a full URL, open it directly
+    if (checkoutPath.startsWith('http://') || checkoutPath.startsWith('https://')) {
+      window.location.href = checkoutPath;
+    } else {
+      navigate(checkoutPath);
+    }
     onClose();
   };
 

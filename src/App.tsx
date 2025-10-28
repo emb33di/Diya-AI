@@ -34,6 +34,7 @@ import Subscription from "./pages/Subscription";
 import Payments from "./pages/Payments";
 import Settings from "./pages/Settings";
 import PasswordReset from "./pages/PasswordReset";
+import PaymentSuccess from "./pages/PaymentSuccess";
 import { initAnalytics } from "./lib/ga/init";
 import RouteTracker from "./lib/ga/RouteTracker";
 
@@ -90,6 +91,7 @@ const App = () => {
             <Route path="/onboarding" element={<AuthenticationGuard><Onboarding /></AuthenticationGuard>} />
             <Route path="/resume" element={<AuthenticationGuard><Resume /></AuthenticationGuard>} />
             <Route path="/lor" element={<AuthenticationGuard><LOR /></AuthenticationGuard>} />
+            <Route path="/payment-success" element={<AuthenticationGuard><PaymentSuccess /></AuthenticationGuard>} />
 
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
