@@ -209,7 +209,7 @@ const EarlyAccessSignup = () => {
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="h-12 border-border !bg-black text-white placeholder:text-gray-400"
+                  className="h-12 border-border !bg-black text-white placeholder:text-gray-400 autofill:!bg-black autofill:text-white"
                   placeholder="Enter your full name"
                   required
                 />
@@ -225,7 +225,7 @@ const EarlyAccessSignup = () => {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="h-12 border-border !bg-black text-white placeholder:text-gray-400"
+                  className="h-12 border-border !bg-black text-white placeholder:text-gray-400 autofill:!bg-black autofill:text-white"
                   placeholder="Enter your email address"
                   required
                 />
@@ -241,7 +241,7 @@ const EarlyAccessSignup = () => {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="h-12 border-border !bg-black text-white placeholder:text-gray-400"
+                  className="h-12 border-border !bg-black text-white placeholder:text-gray-400 autofill:!bg-black autofill:text-white"
                   placeholder="Create a password (min 6 characters)"
                   required
                 />

@@ -231,7 +231,7 @@ const Signup = () => {
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-sm font-medium text-white">Email Address *</Label>
-                  <Input id="email" type="email" placeholder="your@email.com" value={email} onChange={e => setEmail(e.target.value)} required className="h-12 border-border focus:border-primary !bg-black text-white placeholder:text-gray-400" />
+                  <Input id="email" type="email" placeholder="your@email.com" value={email} onChange={e => setEmail(e.target.value)} required className="h-12 border-border focus:border-primary !bg-black text-white placeholder:text-gray-400 autofill:!bg-black autofill:text-white" />
                 </div>
 
                 <div className="space-y-2">
@@ -256,7 +256,7 @@ const Signup = () => {
                       value={phoneNumber}
                       onChange={e => setPhoneNumber(e.target.value)}
                       required
-                      className="h-12 border-border focus:border-primary !bg-black text-white placeholder:text-gray-400 flex-1"
+                      className="h-12 border-border focus:border-primary !bg-black text-white placeholder:text-gray-400 flex-1 autofill:!bg-black autofill:text-white"
                     />
                   </div>
                 </div>

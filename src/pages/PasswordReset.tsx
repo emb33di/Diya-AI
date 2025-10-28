@@ -207,7 +207,7 @@ export default function PasswordReset() {
                             <Input
                               type={showPassword ? "text" : "password"}
                               placeholder="Enter your new password"
-                              className="h-12 pr-10"
+                              className="h-12 pr-10 bg-gray-800 border-gray-600 focus:border-primary text-white autofill:bg-gray-800 autofill:text-white"
                               {...field}
                             />
                             <Button
@@ -241,7 +241,7 @@ export default function PasswordReset() {
                             <Input
                               type={showConfirmPassword ? "text" : "password"}
                               placeholder="Confirm your new password"
-                              className="h-12 pr-10"
+                              className="h-12 pr-10 bg-gray-800 border-gray-600 focus:border-primary text-white autofill:bg-gray-800 autofill:text-white"
                               {...field}
                             />
                             <Button
