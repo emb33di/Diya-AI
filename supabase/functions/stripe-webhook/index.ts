@@ -122,7 +122,7 @@ async function upgradeUserToPro(
   customerEmail: string | null
 ): Promise<{ success: boolean; message: string }> {
   try {
-    // Check if user already has Pro tier (idempotency)
+    // IDEMPOTENCY CHECK: Prevent race conditions between webhook and client verification
     const { data: existingProfile } = await supabase
       .from('user_profiles')
       .select('user_tier, stripe_checkout_session_id')
@@ -149,7 +149,7 @@ async function upgradeUserToPro(
       };
     }
 
-    // Update user tier to Pro
+    // Update user tier to Pro with audit fields
     const updateData: any = {
       user_tier: 'Pro',
       updated_at: new Date().toISOString()
@@ -161,6 +161,8 @@ async function upgradeUserToPro(
     if (customerEmail) {
       updateData.stripe_customer_email = customerEmail.toLowerCase();
     }
+    updateData.upgraded_by = 'webhook';
+    updateData.upgraded_at = new Date().toISOString();
 
     const { error } = await supabase
       .from('user_profiles')
@@ -259,10 +261,12 @@ Deno.serve(async (req) => {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object;
-        
+
         console.log('Processing checkout.session.completed:', {
           session_id: session.id,
           payment_status: session.payment_status,
+          client_reference_id: session.client_reference_id,
+          metadata_user_id: session.metadata?.user_id,
           customer_email: session.customer_email || session.customer_details?.email
         });
 
@@ -278,31 +282,22 @@ Deno.serve(async (req) => {
           );
         }
 
-        // Get customer email from session
+        // Capture email if present for storage/analytics
         const customerEmail = session.customer_email || session.customer_details?.email || null;
-        
-        if (!customerEmail) {
-          console.error('No customer email found in session');
-          return new Response(
-            JSON.stringify({ 
-              received: true,
-              error: 'No customer email found in checkout session'
-            }),
-            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
+
+        // Resolve user ID with robust fallbacks
+        let userId = session.client_reference_id || session.metadata?.user_id || null;
+
+        if (!userId && customerEmail) {
+          userId = await findUserByEmail(supabase, customerEmail);
         }
 
-        // Find user by email
-        const userId = await findUserByEmail(supabase, customerEmail);
-        
         if (!userId) {
-          console.warn(`⚠️ No user found with email: ${customerEmail}`);
-          console.warn('Payment completed but user not found - may need manual activation');
+          console.error('❌ Could not identify user from session');
           return new Response(
             JSON.stringify({ 
               received: true,
-              warning: `No user found with email ${customerEmail}. Manual activation may be required.`,
-              session_id: session.id
+              error: 'Cannot identify user - missing client_reference_id, metadata, and email'
             }),
             { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );

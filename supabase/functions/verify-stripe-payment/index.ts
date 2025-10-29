@@ -82,12 +82,33 @@ serve(async (req) => {
       }
     );
 
-    // Update user tier to Pro
+    // IDEMPOTENCY: if already Pro with this session, return success immediately
+    const { data: profile } = await supabaseClient
+      .from('user_profiles')
+      .select('user_tier, stripe_checkout_session_id')
+      .eq('user_id', user_id)
+      .maybeSingle();
+
+    if (profile?.user_tier === 'Pro' && profile?.stripe_checkout_session_id === session_id) {
+      return new Response(
+        JSON.stringify({ 
+          success: true,
+          message: 'Payment already processed',
+          already_activated: true
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Update user tier to Pro, record session and audit fields
     const { error } = await supabaseClient
       .from('user_profiles')
       .update({ 
         user_tier: 'Pro',
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        stripe_checkout_session_id: session_id,
+        upgraded_by: 'client-verification',
+        upgraded_at: new Date().toISOString()
       })
       .eq('user_id', user_id);
 

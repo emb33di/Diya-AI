@@ -8,6 +8,54 @@ interface VerifyPaymentResult {
 }
 
 /**
+ * Create a Stripe Checkout session via Supabase Edge Function and redirect
+ * @param options Optional overrides like price_id, success_url, cancel_url
+ */
+export const createCheckoutSession = async (
+  options?: {
+    price_id?: string;
+    success_url?: string;
+    cancel_url?: string;
+    origin?: string;
+  }
+): Promise<{ success: boolean; url?: string; message?: string }> => {
+  try {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return { success: false, message: 'Please log in to continue.' };
+    }
+
+    const origin = options?.origin || window.location.origin;
+
+    const { data, error } = await supabase.functions.invoke('create-stripe-checkout', {
+      body: {
+        price_id: options?.price_id,
+        success_url: options?.success_url,
+        cancel_url: options?.cancel_url,
+        origin,
+      }
+    });
+
+    if (error) {
+      console.error('Error creating checkout session:', error);
+      return { success: false, message: error.message || 'Failed to create checkout session' };
+    }
+
+    if (!data?.url) {
+      return { success: false, message: 'No checkout URL returned from server' };
+    }
+
+    // Redirect to Stripe Checkout
+    window.location.href = data.url as string;
+    return { success: true, url: data.url };
+  } catch (err) {
+    console.error('Checkout session error:', err);
+    return { success: false, message: err instanceof Error ? err.message : 'Unexpected error' };
+  }
+};
+
+/**
  * Verify a Stripe payment session and update user tier to Pro
  * @param sessionId - The Stripe checkout session ID from the URL
  */

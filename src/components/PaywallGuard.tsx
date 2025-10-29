@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Lock, Crown, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { createCheckoutSession } from '@/services/stripePaymentService';
 
 interface PaywallGuardProps {
   children: React.ReactNode;
@@ -45,9 +46,8 @@ const PaywallGuard: React.FC<PaywallGuardProps> = ({
   const feature = getFeatureInfo(featureKey);
   const upgradeMessage = getUpgradeMessage(featureKey);
 
-  const handleUpgrade = () => {
-    // Navigate to Stripe payment link
-    window.location.href = 'https://buy.stripe.com/test_00w28r60e5mL8EJ10wgMw02';
+  const handleUpgrade = async () => {
+    await createCheckoutSession();
   };
 
   return (

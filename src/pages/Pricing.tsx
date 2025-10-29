@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Check } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import "@/styles/landing.css";
+import { createCheckoutSession } from "@/services/stripePaymentService";
 
 
 const Pricing = () => {
@@ -99,7 +100,7 @@ const Pricing = () => {
               </div>
               <Button 
                 className="w-full mt-6"
-                onClick={() => window.location.href = 'https://buy.stripe.com/test_00w28r60e5mL8EJ10wgMw02'}
+                onClick={async () => { await createCheckoutSession(); }}
               >
                 Upgrade to Pro
               </Button>

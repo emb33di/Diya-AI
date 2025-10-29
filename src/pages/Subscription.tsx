@@ -8,6 +8,7 @@ import { Crown, Sparkles, Check, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import GradientBackground from '@/components/GradientBackground';
 import AuthenticationGuard from '@/components/AuthenticationGuard';
+import { createCheckoutSession } from '@/services/stripePaymentService';
 
 const Subscription = () => {
   const { userTier, isPro, isFree, getProFeatures, getFreeFeatures } = usePaywall();
@@ -15,9 +16,8 @@ const Subscription = () => {
   const navigate = useNavigate();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
-  const handleUpgrade = () => {
-    // Navigate to Stripe payment link
-    window.location.href = 'https://buy.stripe.com/test_00w28r60e5mL8EJ10wgMw02';
+  const handleUpgrade = async () => {
+    await createCheckoutSession();
   };
 
   const freeFeatures = getFreeFeatures();

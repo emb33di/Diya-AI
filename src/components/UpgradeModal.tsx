@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Crown, Sparkles, Check, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { createCheckoutSession } from '@/services/stripePaymentService';
 
 interface UpgradeModalProps {
   isOpen: boolean;
@@ -21,7 +22,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
   featureKey,
   title = "Upgrade to Pro",
   description = "Unlock premium features and take your application to the next level",
-  checkoutPath = "https://buy.stripe.com/test_00w28r60e5mL8EJ10wgMw02",
+  checkoutPath,
 }) => {
   const { getFeatureInfo } = usePaywall();
   const navigate = useNavigate();
@@ -42,13 +43,8 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
     'Access to weekly webinars and college guidance videos',
   ];
 
-  const handleUpgrade = () => {
-    // If checkoutPath is a full URL, open it directly
-    if (checkoutPath.startsWith('http://') || checkoutPath.startsWith('https://')) {
-      window.location.href = checkoutPath;
-    } else {
-      navigate(checkoutPath);
-    }
+  const handleUpgrade = async () => {
+    await createCheckoutSession();
     onClose();
   };
 
