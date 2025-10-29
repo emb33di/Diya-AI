@@ -1047,6 +1047,55 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
       }
       // Otherwise, let TipTap handle normal line navigation within the block
     }
+
+    // Arrow Right: when at end of paragraph, move to start of next paragraph
+    if (e.key === 'ArrowRight') {
+      const isAtEnd = isAtEndOfLastLine(tiptapEditor, block.content);
+      
+      if (isAtEnd) {
+        e.preventDefault();
+        const nextBlock = state.document.blocks.find(b => b.position === block.position + 1);
+        if (nextBlock) {
+          finishEditingBlock(blockId);
+          setTimeout(() => {
+            startEditingBlock(nextBlock.id, undefined);
+            // Set cursor to start of next block
+            const tiptapEditor = tiptapRefs.current[nextBlock.id];
+            if (tiptapEditor) {
+              tiptapEditor.setSelectionRange(1, 1); // Position 1 is start of paragraph (after <p> tag)
+            }
+          }, 50);
+        }
+        // If no next block, allow default behavior (move to end)
+      }
+      // Otherwise, let TipTap handle normal cursor movement within the block
+    }
+
+    // Arrow Left: when at start or end of paragraph, move to end of previous paragraph
+    if (e.key === 'ArrowLeft') {
+      const isAtStart = isAtStartOfFirstLine(tiptapEditor, block.content);
+      const isAtEnd = isAtEndOfLastLine(tiptapEditor, block.content);
+      
+      if (isAtStart || isAtEnd) {
+        e.preventDefault();
+        const prevBlock = state.document.blocks.find(b => b.position === block.position - 1);
+        if (prevBlock) {
+          finishEditingBlock(blockId);
+          setTimeout(() => {
+            startEditingBlock(prevBlock.id, undefined);
+            // Set cursor to end of previous block
+            const tiptapEditor = tiptapRefs.current[prevBlock.id];
+            if (tiptapEditor) {
+              const editorContentLength = tiptapEditor.getContentLength();
+              // Position at the end of the content
+              tiptapEditor.setSelectionRange(editorContentLength - 1, editorContentLength - 1);
+            }
+          }, 50);
+        }
+        // If no previous block, allow default behavior (move left/start)
+      }
+      // Otherwise, let TipTap handle normal cursor movement within the block
+    }
   }, [state.document.blocks, addNewBlock, deleteBlock, startEditingBlock, finishEditingBlock, selectAllEssayText, undo, redo, saveToUndoStack, isAtStartOfBlock, isAtStartOfFirstLine, isAtEndOfLastLine]);
 
   // Generate AI comments for all blocks
