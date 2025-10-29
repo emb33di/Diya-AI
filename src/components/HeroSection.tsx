@@ -100,7 +100,7 @@ const HeroSection = () => {
                 <div className="aspect-video bg-black">
                   <iframe
                     className="w-full h-full rounded-xl sm:rounded-2xl bg-black"
-                    src="https://www.youtube.com/embed/pGkF2Nb4_6A?rel=0&modestbranding=1&showinfo=0"
+                    src="https://www.youtube.com/embed/BqhBe-tqSH4?rel=0&modestbranding=1&showinfo=0"
                     title="Diya AI College Counselor Introduction"
                     frameBorder="0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
