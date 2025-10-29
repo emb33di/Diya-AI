@@ -34,6 +34,8 @@ serve(async (req) => {
     }
 
     // Verify payment with Stripe
+    console.log('Attempting to verify Stripe session:', session_id);
+    
     const response = await fetch(`https://api.stripe.com/v1/checkout/sessions/${session_id}`, {
       method: 'GET',
       headers: {
@@ -43,15 +45,20 @@ serve(async (req) => {
     });
 
     if (!response.ok) {
-      console.error('Failed to verify session with Stripe');
+      const errorText = await response.text();
+      console.error('Stripe API error:', response.status, errorText);
       return new Response(
-        JSON.stringify({ error: 'Failed to verify payment with Stripe' }),
+        JSON.stringify({ 
+          error: 'Failed to verify payment with Stripe',
+          details: `Stripe returned ${response.status}: ${errorText}`,
+          session_id: session_id.substring(0, 20) + '...'
+        }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     const session = await response.json();
-    console.log('Session verified:', session.payment_status);
+    console.log('Session verified:', JSON.stringify(session, null, 2));
 
     // Check if payment was successful
     if (session.payment_status !== 'paid') {
