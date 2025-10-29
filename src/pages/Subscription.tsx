@@ -17,7 +17,7 @@ const Subscription = () => {
 
   const handleUpgrade = () => {
     // Navigate to Stripe payment link
-    window.location.href = 'https://buy.stripe.com/eVq5kCbyPbAQ5gh5hK93y00';
+    window.location.href = 'https://buy.stripe.com/test_00w28r60e5mL8EJ10wgMw02';
   };
 
   const freeFeatures = getFreeFeatures();

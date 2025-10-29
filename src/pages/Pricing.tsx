@@ -99,7 +99,7 @@ const Pricing = () => {
               </div>
               <Button 
                 className="w-full mt-6"
-                onClick={() => window.location.href = 'https://buy.stripe.com/eVq5kCbyPbAQ5gh5hK93y00'}
+                onClick={() => window.location.href = 'https://buy.stripe.com/test_00w28r60e5mL8EJ10wgMw02'}
               >
                 Upgrade to Pro
               </Button>
