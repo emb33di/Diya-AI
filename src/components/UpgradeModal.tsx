@@ -21,7 +21,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
   featureKey,
   title = "Upgrade to Pro",
   description = "Unlock premium features and take your application to the next level",
-  checkoutPath = "/pricing",
+  checkoutPath = "https://buy.stripe.com/eVq5kCbyPbAQ5gh5hK93y00",
 }) => {
   const { getFeatureInfo } = usePaywall();
   const navigate = useNavigate();
