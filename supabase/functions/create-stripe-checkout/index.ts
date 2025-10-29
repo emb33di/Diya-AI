@@ -78,10 +78,14 @@ Deno.serve(async (req) => {
     }
 
     // Get price ID from request body or environment variable
-    const priceId = requestBody.price_id || Deno.env.get('STRIPE_PRICE_ID');
+    const priceId = requestBody?.price_id || Deno.env.get('STRIPE_PRICE_ID');
     if (!priceId) {
+      console.error('Missing price_id: not in request body and STRIPE_PRICE_ID not set in environment');
       return new Response(
-        JSON.stringify({ error: 'Price ID not provided and STRIPE_PRICE_ID not configured' }),
+        JSON.stringify({ 
+          error: 'Price ID not provided and STRIPE_PRICE_ID not configured',
+          details: 'Please set STRIPE_PRICE_ID in Supabase secrets or pass price_id in request body'
+        }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

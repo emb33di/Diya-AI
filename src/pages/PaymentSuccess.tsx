@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { CheckCircle2, ArrowRight, Mail, Shield, Sparkles as StarIcon, Loader2 } from 'lucide-react';
 import GradientBackground from '@/components/GradientBackground';
 import AuthenticationGuard from '@/components/AuthenticationGuard';
-import { verifyAndActivateStripePayment, activateUserProTier } from '@/services/stripePaymentService';
+import { verifyAndActivateStripePayment } from '@/services/stripePaymentService';
 import { useToast } from '@/hooks/use-toast';
 
 const PaymentSuccess = () => {
@@ -51,23 +51,12 @@ const PaymentSuccess = () => {
       } catch (error) {
         console.error('Error verifying payment:', error);
         setVerificationStatus('error');
-        setVerificationMessage('Failed to verify payment. Please contact support.');
-        
-        // Fallback: manually activate Pro tier if verification fails
-        try {
-          console.log('Attempting fallback activation...');
-          const fallbackResult = await activateUserProTier();
-          if (fallbackResult.success) {
-            setVerificationStatus('success');
-            setVerificationMessage('Pro tier activated successfully!');
-            toast({
-              title: "Pro Tier Activated",
-              description: "Your subscription is now active!",
-            });
-          }
-        } catch (fallbackError) {
-          console.error('Fallback activation also failed:', fallbackError);
-        }
+        setVerificationMessage('Failed to verify payment. The webhook will process your payment shortly. If you continue to see this message, please contact support.');
+        toast({
+          title: "Verification Error",
+          description: "Payment verification failed. Your payment will be processed via webhook. Please refresh in a few moments or contact support if the issue persists.",
+          variant: "destructive"
+        });
       } finally {
         setIsVerifying(false);
       }

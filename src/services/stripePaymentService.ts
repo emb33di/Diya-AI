@@ -121,54 +121,10 @@ export const verifyAndActivateStripePayment = async (
 };
 
 /**
- * Simple function to update user tier to Pro (alternative approach)
- * This can be called directly from the frontend if verification is handled on client side
+ * NOTE: Removed activateUserProTier() fallback function for security reasons.
+ * 
+ * The webhook system is reliable and will process payments automatically.
+ * If client verification fails, the webhook will activate Pro tier within minutes.
+ * This prevents unverified upgrades that bypass payment validation.
  */
-export const activateUserProTier = async (): Promise<VerifyPaymentResult> => {
-  try {
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    
-    if (userError || !user) {
-      return {
-        success: false,
-        message: 'No authenticated user found. Please log in.'
-      };
-    }
-
-    console.log('Activating Pro tier for user:', user.id);
-
-    // Update user tier to Pro directly in the database
-    const { error: updateError } = await supabase
-      .from('user_profiles')
-      .update({ 
-        user_tier: 'Pro',
-        updated_at: new Date().toISOString()
-      } as any)
-      .eq('user_id' as any, user.id);
-
-    if (updateError) {
-      console.error('Failed to update user tier:', updateError);
-      return {
-        success: false,
-        message: `Failed to activate Pro tier: ${updateError.message}`
-      };
-    }
-
-    // Clear cached profile to force refresh
-    localStorage.removeItem('user_profile');
-
-    console.log('Pro tier activated successfully');
-    return {
-      success: true,
-      message: 'Pro tier activated successfully!'
-    };
-
-  } catch (error) {
-    console.error('Error activating Pro tier:', error);
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : 'Failed to activate Pro tier'
-    };
-  }
-};
 
