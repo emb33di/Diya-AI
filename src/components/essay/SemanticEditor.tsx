@@ -820,16 +820,63 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
   }, [getCaretAtPoint]);
 
   // Helper functions for cursor position detection
-  const isAtStartOfBlock = useCallback((tiptapEditor: TiptapEditorRef) => {
-    return tiptapEditor.getSelectionStart() === 0;
+  const isAtStartOfBlock = useCallback((tiptapEditor: TiptapEditorRef, blockContent: string) => {
+    const cursorPos = tiptapEditor.getSelectionStart();
+    // Check if cursor is at the very start, or at start of first line (after any leading newlines)
+    return cursorPos === 0;
   }, []);
 
-  const isAtEndOfBlock = useCallback((tiptapEditor: TiptapEditorRef) => {
-    const selectionStart = tiptapEditor.getSelectionStart();
-    const selectionEnd = tiptapEditor.getSelectionEnd();
-    // For Tiptap, we'll need to get the content length differently
-    // This is a simplified implementation
-    return selectionStart === selectionEnd; // Simplified check
+  const isAtEndOfBlock = useCallback((tiptapEditor: TiptapEditorRef, blockContent: string) => {
+    const cursorPos = tiptapEditor.getSelectionStart();
+    const contentLength = blockContent.length;
+    // Check if cursor is at or very close to the end of the content
+    // TipTap might have slight position differences due to paragraph nodes, so we check within 2 characters
+    return cursorPos >= contentLength - 1;
+  }, []);
+
+  // Check if cursor is at the end of the last line (allowing normal down arrow to work within block)
+  // We check if cursor is at the absolute end of the block content
+  const isAtEndOfLastLine = useCallback((tiptapEditor: TiptapEditorRef, blockContent: string) => {
+    if (!blockContent) return true; // Empty block is considered at end
+    
+    const cursorPos = tiptapEditor.getSelectionStart();
+    const editorContentLength = tiptapEditor.getContentLength();
+    
+    // TipTap positions include paragraph nodes. For a paragraph, positions are offset by ~1
+    // The actual text content length in TipTap should be close to blockContent.length + 1 (for <p> tag)
+    // If cursor is at or past the end of the editor's content (accounting for structure), we're at end
+    // Use a small tolerance to account for paragraph node structure
+    const expectedEndPos = blockContent.length + 1; // +1 for paragraph node
+    
+    // If cursor is at the very end of the TipTap document content
+    if (cursorPos >= editorContentLength - 1) {
+      return true;
+    }
+    
+    // Also check if cursor position matches the end of the text content
+    // TipTap stores text positions offset by 1 (for <p> opening tag)
+    if (cursorPos >= expectedEndPos - 1) {
+      return true;
+    }
+    
+    return false;
+  }, []);
+
+  // Check if cursor is at the start of the first line (allowing normal up arrow to work within block)
+  // We check if cursor is at the absolute start of the block content
+  const isAtStartOfFirstLine = useCallback((tiptapEditor: TiptapEditorRef, blockContent: string) => {
+    if (!blockContent) return true; // Empty block is considered at start
+    
+    const cursorPos = tiptapEditor.getSelectionStart();
+    
+    // TipTap positions for start of paragraph are typically 1 (inside <p> tag, after opening tag)
+    // Position 0 might be before the paragraph, position 1 is inside it at the start
+    // If cursor is at position 0 or 1, we're at the start of the first line
+    if (cursorPos <= 1) {
+      return true;
+    }
+    
+    return false;
   }, []);
 
   // Handle keyboard shortcuts
@@ -922,7 +969,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     }
 
     // Backspace at beginning of non-empty block: move text to previous block
-    if (e.key === 'Backspace' && isAtStartOfBlock(tiptapEditor) && block.content !== '' && state.document.blocks.length > 1) {
+    if (e.key === 'Backspace' && isAtStartOfBlock(tiptapEditor, block.content) && block.content !== '' && state.document.blocks.length > 1) {
       e.preventDefault();
       saveToUndoStack();
       
@@ -947,44 +994,60 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
       }
     }
 
-    // Arrow Up: move to previous block (with smart cursor positioning)
-    if (e.key === 'ArrowUp' && (e.ctrlKey || isAtStartOfBlock(tiptapEditor))) {
-      e.preventDefault();
-      const prevBlock = state.document.blocks.find(b => b.position === block.position - 1);
-      if (prevBlock) {
-        const currentCursorPos = tiptapEditor.getSelectionStart();
-        finishEditingBlock(blockId);
-        setTimeout(() => {
-          startEditingBlock(prevBlock.id, undefined);
-          // Set cursor to end of previous block or preserve relative position
-          const tiptapEditor = tiptapRefs.current[prevBlock.id];
-          if (tiptapEditor) {
-            const targetPosition = Math.min(currentCursorPos, prevBlock.content.length);
-            tiptapEditor.setSelectionRange(targetPosition, targetPosition);
-          }
-        }, 50);
+    // Arrow Up: move to previous block only when at start of first line or Ctrl pressed
+    if (e.key === 'ArrowUp') {
+      const shouldNavigateToBlock = e.ctrlKey || e.metaKey || isAtStartOfFirstLine(tiptapEditor, block.content);
+      
+      if (shouldNavigateToBlock) {
+        e.preventDefault();
+        const prevBlock = state.document.blocks.find(b => b.position === block.position - 1);
+        if (prevBlock) {
+          const currentCursorPos = tiptapEditor.getSelectionStart();
+          finishEditingBlock(blockId);
+          setTimeout(() => {
+            startEditingBlock(prevBlock.id, undefined);
+            // Set cursor to end of previous block or preserve relative position
+            const tiptapEditor = tiptapRefs.current[prevBlock.id];
+            if (tiptapEditor) {
+              const targetPosition = Math.min(currentCursorPos, prevBlock.content.length);
+              tiptapEditor.setSelectionRange(targetPosition, targetPosition);
+            }
+          }, 50);
+        } else {
+          // If no previous block, allow default behavior (do nothing or move to start)
+          // Don't prevent default to allow normal editor behavior
+        }
       }
+      // Otherwise, let TipTap handle normal line navigation within the block
     }
 
-    // Arrow Down: move to next block (with smart cursor positioning)
-    if (e.key === 'ArrowDown' && (e.ctrlKey || isAtEndOfBlock(tiptapEditor))) {
-      e.preventDefault();
-      const nextBlock = state.document.blocks.find(b => b.position === block.position + 1);
-      if (nextBlock) {
-        const currentCursorPos = tiptapEditor.getSelectionStart();
-        finishEditingBlock(blockId);
-        setTimeout(() => {
-          startEditingBlock(nextBlock.id, undefined);
-          // Set cursor to beginning of next block or preserve relative position
-          const tiptapEditor = tiptapRefs.current[nextBlock.id];
-          if (tiptapEditor) {
-            const targetPosition = Math.min(currentCursorPos, nextBlock.content.length);
-            tiptapEditor.setSelectionRange(targetPosition, targetPosition);
-          }
-        }, 50);
+    // Arrow Down: move to next block only when at end of last line or Ctrl pressed
+    if (e.key === 'ArrowDown') {
+      const shouldNavigateToBlock = e.ctrlKey || e.metaKey || isAtEndOfLastLine(tiptapEditor, block.content);
+      
+      if (shouldNavigateToBlock) {
+        e.preventDefault();
+        const nextBlock = state.document.blocks.find(b => b.position === block.position + 1);
+        if (nextBlock) {
+          const currentCursorPos = tiptapEditor.getSelectionStart();
+          finishEditingBlock(blockId);
+          setTimeout(() => {
+            startEditingBlock(nextBlock.id, undefined);
+            // Set cursor to beginning of next block or preserve relative position
+            const tiptapEditor = tiptapRefs.current[nextBlock.id];
+            if (tiptapEditor) {
+              const targetPosition = Math.min(currentCursorPos, nextBlock.content.length);
+              tiptapEditor.setSelectionRange(targetPosition, targetPosition);
+            }
+          }, 50);
+        } else {
+          // If no next block, allow default behavior (do nothing or move to end)
+          // Don't prevent default to allow normal editor behavior
+        }
       }
+      // Otherwise, let TipTap handle normal line navigation within the block
     }
-  }, [state.document.blocks, addNewBlock, deleteBlock, startEditingBlock, finishEditingBlock, selectAllEssayText, undo, redo, saveToUndoStack]);
+  }, [state.document.blocks, addNewBlock, deleteBlock, startEditingBlock, finishEditingBlock, selectAllEssayText, undo, redo, saveToUndoStack, isAtStartOfBlock, isAtStartOfFirstLine, isAtEndOfLastLine]);
 
   // Generate AI comments for all blocks
   const generateAIComments = useCallback(async () => {
