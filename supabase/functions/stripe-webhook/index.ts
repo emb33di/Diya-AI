@@ -22,8 +22,18 @@ async function verifyStripeSignature(
       return false;
     }
 
-    const timestamp = timestampMatch.split('=')[1];
+    const timestamp = parseInt(timestampMatch.split('=')[1]);
     const receivedSignature = signatureMatch.split('=')[1];
+
+    // Validate timestamp to prevent replay attacks
+    // Stripe recommends rejecting timestamps older than 5 minutes
+    const currentTime = Math.floor(Date.now() / 1000);
+    const timeDifference = Math.abs(currentTime - timestamp);
+    
+    if (timeDifference > 300) { // 300 seconds = 5 minutes
+      console.error(`Webhook timestamp too old: ${timeDifference}s difference. Possible replay attack.`);
+      return false;
+    }
 
     // Create the signed payload
     const signedPayload = `${timestamp}.${payload}`;
