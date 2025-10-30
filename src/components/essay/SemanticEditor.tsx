@@ -407,7 +407,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
   }, [editingBlockId, isReadOnly, toast, saveToUndoStack]);
 
   // Start editing a block
-  const startEditingBlock = useCallback((blockId: string, clickPosition?: number) => {
+  const startEditingBlock = useCallback((blockId: string, clickPosition?: number, selectionRange?: { start: number; end: number }) => {
     // Editing always allowed
     setEditingBlockId(blockId);
     setState(prev => ({ ...prev, isEditing: true }));
@@ -417,8 +417,15 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
         tiptapEditor.focus();
         autoResizeTiptap(tiptapEditor);
         
-        // If we have a click position, set the cursor there
-        if (clickPosition !== undefined) {
+        // If we have a selection range, restore the selection
+        if (selectionRange !== undefined) {
+          // TipTap paragraph text starts at position 1; adjust by +1 to avoid off-by-one
+          const contentLen = tiptapEditor.getContentLength();
+          const adjustedStart = Math.max(1, Math.min(selectionRange.start + 1, contentLen - 1));
+          const adjustedEnd = Math.max(1, Math.min(selectionRange.end + 1, contentLen - 1));
+          tiptapEditor.setSelectionRange(adjustedStart, adjustedEnd);
+        } else if (clickPosition !== undefined) {
+          // If we have a click position, set the cursor there
           // TipTap paragraph text starts at position 1; adjust by +1 to avoid off-by-one
           const contentLen = tiptapEditor.getContentLength();
           const adjusted = Math.max(1, Math.min(clickPosition + 1, contentLen - 1));
@@ -792,6 +799,98 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     const offset = caretOffsetInNodeOnLine(hit.node, clientX, hit.lineIndex);
     return { node: hit.node, offset };
   }, [getTextNodesIn, getWrappedLineRectsForNode, caretOffsetInNodeOnLine]);
+
+  // Helper function to get selection range within a block element
+  const getSelectionRangeInBlock = useCallback((blockElement: HTMLElement, text: string): { start: number; end: number } | null => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0 || selection.toString().trim().length === 0) {
+      return null;
+    }
+    
+    const range = selection.getRangeAt(0);
+    if (!range) {
+      return null;
+    }
+    
+    // Check if the selection is within this block
+    const startContainer = range.startContainer;
+    const endContainer = range.endContainer;
+    
+    // Check if both containers are within the block element
+    if (!blockElement.contains(startContainer) || !blockElement.contains(endContainer)) {
+      return null;
+    }
+    
+    // Use Range API to calculate positions by creating ranges from block start to selection boundaries
+    const getPositionFromBlockStart = (container: Node, offset: number): number => {
+      // Create a range from the start of the block to the target position
+      const measureRange = document.createRange();
+      
+      // Find the first text node in the block
+      const textNodes = getTextNodesIn(blockElement);
+      if (textNodes.length === 0) {
+        return 0;
+      }
+      
+      // Set range start to beginning of block
+      measureRange.setStart(textNodes[0], 0);
+      
+      // Set range end to the target position
+      // If container is a text node, use it directly
+      if (container.nodeType === Node.TEXT_NODE) {
+        measureRange.setEnd(container, Math.min(offset, (container as Text).textContent?.length || 0));
+      } else if (container.nodeType === Node.ELEMENT_NODE) {
+        // If container is an element, find the text node at the given offset
+        const childNodes = Array.from(container.childNodes);
+        let currentOffset = offset;
+        
+        for (const child of childNodes) {
+          if (child.nodeType === Node.TEXT_NODE) {
+            const textLength = (child as Text).textContent?.length || 0;
+            if (currentOffset === 0) {
+              measureRange.setEnd(child, 0);
+              break;
+            } else if (currentOffset <= textLength) {
+              measureRange.setEnd(child, currentOffset);
+              break;
+            }
+            currentOffset -= textLength;
+          } else {
+            // For element nodes, offset refers to child node index
+            if (currentOffset === 0 && child.nodeType === Node.ELEMENT_NODE) {
+              // Find first text node in this child
+              const childTextNodes = getTextNodesIn(child as HTMLElement);
+              if (childTextNodes.length > 0) {
+                measureRange.setEnd(childTextNodes[0], 0);
+              } else {
+                // No text nodes, set to the element itself
+                measureRange.setEnd(child, 0);
+              }
+              break;
+            }
+            currentOffset--;
+          }
+        }
+      }
+      
+      // The text content length of the range is the position from block start
+      return measureRange.toString().length;
+    };
+    
+    const startPos = getPositionFromBlockStart(startContainer, range.startOffset);
+    const endPos = getPositionFromBlockStart(endContainer, range.endOffset);
+    
+    // Ensure positions are within bounds and ordered correctly
+    const finalStart = Math.max(0, Math.min(Math.min(startPos, endPos), text.length));
+    const finalEnd = Math.max(0, Math.min(Math.max(startPos, endPos), text.length));
+    
+    // Only return range if there's actually a selection (start !== end)
+    if (finalStart === finalEnd) {
+      return null;
+    }
+    
+    return { start: finalStart, end: finalEnd };
+  }, [getTextNodesIn]);
 
   // Helper function to calculate click position within text using DOM hit-testing
   const calculateClickPosition = useCallback((event: React.MouseEvent, text: string): number => {
@@ -1750,10 +1849,21 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
               }}
               onClick={(e) => {
                 if (!isReadOnly()) {
-                  // Get the plain text content for position calculation
+                  const blockElement = e.currentTarget as HTMLElement;
                   const plainText = block.content;
-                  const clickPosition = calculateClickPosition(e, plainText);
-                  startEditingBlock(block.id, clickPosition);
+                  
+                  // First, check if there's an active text selection in this block
+                  // Capture selection synchronously before any state changes
+                  const selectionRange = getSelectionRangeInBlock(blockElement, plainText);
+                  
+                  if (selectionRange) {
+                    // User has selected text - preserve the selection
+                    startEditingBlock(block.id, undefined, selectionRange);
+                  } else {
+                    // Normal click - position cursor at click location
+                    const clickPosition = calculateClickPosition(e, plainText);
+                    startEditingBlock(block.id, clickPosition);
+                  }
                 }
               }}
               title={isReadOnly() ? 'Editor is read-only. Click "New Version" to edit.' : ''}
