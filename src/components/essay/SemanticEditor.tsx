@@ -996,6 +996,10 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
       if (undoStackRef.current.length > 0) {
         e.preventDefault();
+        // If a block is currently active, save current state first to capture any unsaved edits
+        if (editingBlockId !== null) {
+          saveToUndoStack();
+        }
         undo();
       }
       return;
@@ -1204,7 +1208,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
       }
       // Otherwise, let TipTap handle normal cursor movement within the block
     }
-  }, [state.document.blocks, addNewBlock, deleteBlock, startEditingBlock, finishEditingBlock, selectAllEssayText, undo, redo, saveToUndoStack, isAtStartOfBlock, isAtStartOfFirstLine, isAtEndOfLastLine]);
+  }, [state.document.blocks, addNewBlock, deleteBlock, startEditingBlock, finishEditingBlock, selectAllEssayText, undo, redo, saveToUndoStack, isAtStartOfBlock, isAtStartOfFirstLine, isAtEndOfLastLine, editingBlockId]);
 
   // Generate AI comments for all blocks
   const generateAIComments = useCallback(async () => {
@@ -1371,6 +1375,11 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
         if (undoStackRef.current.length > 0) {
           e.preventDefault();
+          // If a block is currently active, save current state first to capture any unsaved edits
+          const isBlockActive = editingBlockId !== null;
+          if (isBlockActive) {
+            saveToUndoStack();
+          }
           undo();
         }
         return;
@@ -1423,7 +1432,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [undo, redo, getDocumentPlainText, handleFullEssayCut, handleFullEssayPaste, handleFullEssayDelete]);
+  }, [undo, redo, getDocumentPlainText, handleFullEssayCut, handleFullEssayPaste, handleFullEssayDelete, editingBlockId, saveToUndoStack]);
 
   // Handle "See AI Comments" button click
   const handleSeeAIComments = () => {
