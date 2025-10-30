@@ -1760,11 +1760,11 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
   };
 
   return (
-    <div className={`clean-semantic-editor ${className} ${showCommentSidebar ? 'flex h-full' : 'h-full'} w-full overflow-hidden`}>
+    <div className={`clean-semantic-editor ${className} ${showCommentSidebar ? 'flex h-full w-full' : 'h-full w-full'} overflow-hidden`}>
       {/* Main Editor Area */}
-      <div className={`${showCommentSidebar ? 'flex-1 min-w-0 pr-4 lg:pr-4 pr-0' : 'w-full'} overflow-hidden`}>
+      <div className={`${showCommentSidebar ? 'flex-1 min-w-0 pr-4 lg:pr-4 pr-0' : 'w-full'} h-full overflow-y-auto`}> 
         {/* Editor Content */}
-        <div className="relative pl-4 lg:pl-12 w-full overflow-hidden" ref={contentContainerRef}>
+        <div className="relative pl-4 lg:pl-12 w-full" ref={contentContainerRef}>
           {/* Render all blocks */}
           {useMemo(() => {
             const sortedBlocks = [...state.document.blocks].sort((a, b) => a.position - b.position);
@@ -1775,7 +1775,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
       </div>
 
       {/* Comment Sidebar */}
-      <div className={showCommentSidebar ? 'hidden lg:block' : 'hidden lg:hidden'}>
+      <div className={showCommentSidebar ? 'hidden lg:block w-96 shrink-0 border-l overflow-y-auto h-full' : 'hidden lg:hidden'}>
         <CommentSidebar
           key={state.document.id}
           blocks={useMemo(() => [...state.document.blocks].sort((a, b) => a.position - b.position), [state.document.blocks])}
@@ -1787,6 +1787,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
           hasGrammarCheckRun={hasGrammarCheckRun}
           selectedAnnotationId={selectedAnnotationId}
           onHideSidebar={onHideSidebar}
+          className="h-full"
         />
       </div>
 

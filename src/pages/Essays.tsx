@@ -1500,6 +1500,41 @@ const Essays = () => {
                       </SelectItem>)}
                   </SelectContent>
                 </Select>
+                <Select 
+                  value={(() => {
+                    if (selectedPromptId) return selectedPromptId;
+                    const currentEssay = newEssays.find(e => e.id === selectedNewEssayId);
+                    if (currentEssay?.prompt_text) return `custom-${currentEssay.id}`;
+                    return currentEssay?.prompt_id || '';
+                  })()}
+                  onValueChange={handlePromptChange} 
+                  disabled={!selectedSchool || (essayPrompts.length === 0 && !newEssays.some(e => e.prompt_text))}
+                >
+                  <SelectTrigger className="w-72 bg-card shadow-sm">
+                    <SelectValue placeholder="Select a prompt" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(() => {
+                      const preloaded = essayPrompts.map(p => (
+                        <SelectItem key={p.id} value={p.id}>
+                          <div className="flex items-center space-x-2 w-full">
+                            <span className="flex-1 truncate">{p.title || (p.prompt_number ? `Prompt ${p.prompt_number}` : (p.prompt?.length > 60 ? `${p.prompt.slice(0,60)}…` : p.prompt))}</span>
+                          </div>
+                        </SelectItem>
+                      ));
+                      const custom = newEssays
+                        .filter(e => e.prompt_text)
+                        .map(e => (
+                          <SelectItem key={`custom-${e.id}`} value={`custom-${e.id}`}>
+                            <div className="flex items-center space-x-2 w-full">
+                              <span className="flex-1 truncate">{e.title || (e.prompt_text.length > 60 ? `${e.prompt_text.slice(0,60)}…` : e.prompt_text)}</span>
+                            </div>
+                          </SelectItem>
+                        ));
+                      return [...preloaded, ...custom];
+                    })()}
+                  </SelectContent>
+                </Select>
                 <Button 
                   className="shadow-sm"
                   onClick={createNewEssay}

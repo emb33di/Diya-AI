@@ -996,169 +996,9 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
           <div className="flex gap-6 lg:gap-6 gap-0">
             {/* Main Content Area */}
             <div className={`flex-1 space-y-4 ${mobileView === 'comments' ? 'hidden lg:block' : ''}`}>
-              {/* Header */}
+              {/* Header (title moved into prompt section) */}
               <div className="flex items-center justify-between px-4 lg:px-0">
-                <div className="flex-1">
-                  {/* Prompt Selection */}
-                  {prompts.length > 0 ? (
-                    <div className="space-y-4">
-                      {/* Categorize prompts */}
-                      {(() => {
-                        const requiredPrompts = prompts.filter(p => p.is_required);
-                        const optionalPrompts = prompts.filter(p => !p.is_required);
-                        
-                        // Get selection text for optional prompts
-                        const getSelectionText = (prompts: EssayPrompt[]) => {
-                          if (prompts.length === 0) return '';
-                          
-                          const promptSelectionType = prompts[0]?.prompt_selection_type || 'choose_one';
-                          const howMany = prompts[0]?.how_many || '1';
-                          
-                          if (promptSelectionType === 'choose_one') {
-                            return `Choose 1 of ${prompts.length}`;
-                          } else if (promptSelectionType.startsWith('choose_')) {
-                            const number = promptSelectionType.split('_')[1];
-                            return `Choose ${number} of ${prompts.length}`;
-                          } else {
-                            return `Choose ${howMany} of ${prompts.length}`;
-                          }
-                        };
-                        
-                        // Get status color for draft status
-                        const getStatusColor = (status?: string) => {
-                          return getDraftStatusColor(status);
-                        };
-                        
-                        return (
-                          <div className="space-y-4">
-                            {/* Headers Row */}
-                            <div className="flex space-x-4">
-                              {requiredPrompts.length > 0 && (
-                                <div className="flex-1">
-                                  <h4 className="text-sm font-medium text-red-600 flex items-center space-x-2">
-                                    <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                                    <span className="whitespace-nowrap">Required ({requiredPrompts.length})</span>
-                                  </h4>
-                                </div>
-                              )}
-                              {optionalPrompts.length > 0 && (
-                                <div className="flex-1">
-                                  <h4 className="text-sm font-medium text-blue-600 flex items-center space-x-2">
-                                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                                    <span className="whitespace-nowrap">{getSelectionText(optionalPrompts)} ({optionalPrompts.length} prompts)</span>
-                                  </h4>
-                                </div>
-                              )}
-                            </div>
-                            
-                            {/* Dropdowns Row */}
-                            <div className="flex space-x-4">
-                              {/* Required Essays Dropdown */}
-                              {requiredPrompts.length > 0 && (
-                                <div className="flex-1">
-                                  <Select 
-                                    value={requiredPrompts.find(p => p.id === selectedPromptId)?.id || ''} 
-                                    onValueChange={onPromptChange || (() => {})}
-                                  >
-                                    <SelectTrigger className="w-auto min-w-[200px] bg-white border-gray-300 shadow-sm">
-                                      <SelectValue placeholder="Select required prompt">
-                                        {(() => {
-                                          const selectedPrompt = requiredPrompts.find(p => p.id === selectedPromptId);
-                                          return selectedPrompt ? (
-                                            <div className="flex items-center space-x-2">
-                                              <span className="truncate font-medium">
-                                                {selectedPrompt.prompt_number ? `Prompt ${selectedPrompt.prompt_number}` : (selectedPrompt as any).title || 'Custom Prompt'}
-                                              </span>
-                                              {selectedPrompt.has_draft && (
-                                                <Badge variant="outline" className={`text-xs ${getStatusColor(selectedPrompt.draft_status)}`}>
-                                                  {getDraftStatusLabel(selectedPrompt.draft_status)}
-                                                </Badge>
-                                              )}
-                                            </div>
-                                          ) : null;
-                                        })()}
-                                      </SelectValue>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {requiredPrompts.map((prompt) => (
-                                        <SelectItem key={prompt.id} value={prompt.id}>
-                                          <div className="flex items-center space-x-2 w-full">
-                                            <span className="flex-1 truncate">
-                                              {prompt.prompt_number ? `Prompt ${prompt.prompt_number}` : (prompt as any).title || 'Custom Prompt'}
-                                            </span>
-                                            <div className="flex items-center space-x-1 ml-2">
-                                              {prompt.has_draft && (
-                                                <Badge variant="outline" className={`text-xs ${getStatusColor(prompt.draft_status)}`}>
-                                                  {getDraftStatusLabel(prompt.draft_status)}
-                                                </Badge>
-                                              )}
-                                            </div>
-                                          </div>
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                              )}
-                              
-                              {/* Optional Essays Dropdown */}
-                              {optionalPrompts.length > 0 && (
-                                <div className="flex-1">
-                                  <Select 
-                                    value={optionalPrompts.find(p => p.id === selectedPromptId)?.id || ''} 
-                                    onValueChange={onPromptChange || (() => {})}
-                                  >
-                                    <SelectTrigger className="w-auto min-w-[200px] bg-white border-gray-300 shadow-sm">
-                                      <SelectValue placeholder={`${getSelectionText(optionalPrompts)}`}>
-                                        {(() => {
-                                          const selectedPrompt = optionalPrompts.find(p => p.id === selectedPromptId);
-                                          return selectedPrompt ? (
-                                            <div className="flex items-center space-x-2">
-                                              <span className="truncate font-medium">
-                                                {selectedPrompt.prompt_number ? `Prompt ${selectedPrompt.prompt_number}` : (selectedPrompt as any).title || 'Custom Prompt'}
-                                              </span>
-                                              {selectedPrompt.has_draft && (
-                                                <Badge variant="outline" className={`text-xs ${getStatusColor(selectedPrompt.draft_status)}`}>
-                                                  {getDraftStatusLabel(selectedPrompt.draft_status)}
-                                                </Badge>
-                                              )}
-                                            </div>
-                                          ) : null;
-                                        })()}
-                                      </SelectValue>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {optionalPrompts.map((prompt) => (
-                                        <SelectItem key={prompt.id} value={prompt.id}>
-                                          <div className="flex items-center space-x-2 w-full">
-                                            <span className="flex-1 truncate">
-                                              {prompt.prompt_number ? `Prompt ${prompt.prompt_number}` : (prompt as any).title || 'Custom Prompt'}
-                                            </span>
-                                            <div className="flex items-center space-x-1 ml-2">
-                                              {prompt.has_draft && (
-                                                <Badge variant="outline" className={`text-xs ${getStatusColor(prompt.draft_status)}`}>
-                                                  {getDraftStatusLabel(prompt.draft_status)}
-                                                </Badge>
-                                              )}
-                                            </div>
-                                          </div>
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  ) : (
-                    <h1 className="text-2xl font-bold">{document.title}</h1>
-                  )}
-                </div>
-                
-                
+                <div className="flex-1"></div>
               </div>
 
               {/* Prompt Section */}
@@ -1192,7 +1032,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                     <div className="flex-1">
                       <h3 className="text-base md:text-lg font-semibold text-gray-800 mb-3 flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0">
                         <div className="flex items-center gap-2">
-                          <span>Essay Prompt</span>
+                          <span>{document.title}</span>
                           {(lastSaved || isAutoSaving) && (
                             <div className="flex items-center gap-1 text-xs text-gray-500">
                               {isAutoSaving ? (
@@ -1406,7 +1246,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
 
 
               {/* Editor */}
-              <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-4 lg:p-8 min-h-[600px] h-full mx-4 lg:mx-0 w-full overflow-hidden">
+              <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-4 lg:p-8 mx-4 lg:mx-0 w-full overflow-hidden h-[calc(100vh-260px)] max-h-[calc(100vh-260px)]">
                 <SemanticEditor
                   documentId={document.id}
                   essayId={essayId}
