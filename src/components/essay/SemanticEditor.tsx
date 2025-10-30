@@ -925,15 +925,22 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
       
       const tiptapEditor = tiptapRefs.current[blockId];
       if (tiptapEditor) {
-        const cursorPosition = tiptapEditor.getSelectionStart();
+        // TipTap includes paragraph node in positions; adjust to text index
+        const cursorPositionTipTap = tiptapEditor.getSelectionStart();
+        const cursorPosition = Math.max(0, cursorPositionTipTap - 1);
         const currentContent = block.content;
         
         // Split the text at cursor position
         const textBeforeCursor = currentContent.substring(0, cursorPosition);
         const textAfterCursor = currentContent.substring(cursorPosition);
         
-        // Update current block with text before cursor
+        // Update current block with text before cursor and force the live editor to reflect it immediately
         updateBlockContent(blockId, textBeforeCursor);
+        try {
+          tiptapEditor.setContent(textBeforeCursor);
+        } catch (_e) {
+          // If imperative update fails, prop-driven update will still sync shortly
+        }
         
         // Create new block with text after cursor
         const newBlock = addNewBlock(block.position + 1);

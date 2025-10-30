@@ -22,6 +22,7 @@ export interface TiptapEditorRef {
   getSelectionEnd: () => number;
   setCursorAtPosition: (position: number) => void; // New method for precise positioning
   getContentLength: () => number; // Get the actual text content length
+  setContent: (text: string) => void; // Programmatically set content
 }
 
 const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
@@ -94,6 +95,11 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
     useImperativeHandle(ref, () => ({
       focus: () => {
         editor?.commands.focus();
+      },
+      setContent: (text: string) => {
+        if (editor) {
+          editor.commands.setContent(text);
+        }
       },
       setSelectionRange: (start: number, end: number) => {
         if (editor) {
