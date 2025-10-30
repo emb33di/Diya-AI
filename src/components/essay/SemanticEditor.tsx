@@ -1817,6 +1817,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
               overflowWrap: 'normal',
               wordBreak: 'normal',
               hyphens: 'none',
+              textAlign: 'justify',
             }}
             placeholder={block.position === 0 ? "Start writing here..." : ""}
           />
@@ -1835,6 +1836,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
                 overflowWrap: 'normal',
                 wordBreak: 'normal',
                 hyphens: 'none',
+                textAlign: 'justify',
               }}
               onClick={(e) => {
                 if (!isReadOnly()) {
