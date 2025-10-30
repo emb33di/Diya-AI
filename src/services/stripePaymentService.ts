@@ -1,5 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 
+const DEFAULT_STRIPE_PRICE_ID = 'price_1SO1k8Cl951Iw04Mg2LoqN97';
+
 interface VerifyPaymentResult {
   success: boolean;
   message: string;
@@ -30,7 +32,7 @@ export const createCheckoutSession = async (
 
     const { data, error } = await supabase.functions.invoke('create-stripe-checkout', {
       body: {
-        price_id: options?.price_id,
+        price_id: options?.price_id || DEFAULT_STRIPE_PRICE_ID,
         success_url: options?.success_url,
         cancel_url: options?.cancel_url,
         origin,
