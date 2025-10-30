@@ -419,7 +419,10 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
         
         // If we have a click position, set the cursor there
         if (clickPosition !== undefined) {
-          tiptapEditor.setCursorAtPosition(clickPosition);
+          // TipTap paragraph text starts at position 1; adjust by +1 to avoid off-by-one
+          const contentLen = tiptapEditor.getContentLength();
+          const adjusted = Math.max(1, Math.min(clickPosition + 1, contentLen - 1));
+          tiptapEditor.setCursorAtPosition(adjusted);
         }
       }
     }, 50);
@@ -582,6 +585,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
           if (style.display === 'none' || style.visibility === 'hidden') {
             return NodeFilter.FILTER_REJECT;
           }
+          // Accept all visible text nodes, including whitespace, to preserve accurate offsets
           return NodeFilter.FILTER_ACCEPT;
         }
       }
@@ -589,7 +593,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     
     let node;
     while (node = walker.nextNode()) {
-      if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) {
+      if (node.nodeType === Node.TEXT_NODE) {
         textNodes.push(node as Text);
       }
     }
@@ -802,13 +806,17 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     
     if (caretResult) {
       const { node, offset } = caretResult;
-      
-      // Convert node offset to block-relative index
-      // For now, assume we're dealing with a single text node (the block content)
-      // In a more complex scenario, we'd need to sum text lengths of prior nodes
-      const blockRelativeOffset = offset;
-      
-      return Math.min(blockRelativeOffset, text.length);
+      // Sum lengths of all prior text nodes within the block container to get block-relative index
+      const textNodes = getTextNodesIn(target);
+      let cumulative = 0;
+      for (const n of textNodes) {
+        if (n === node) {
+          cumulative += Math.min(offset, n.textContent ? n.textContent.length : 0);
+          break;
+        }
+        cumulative += n.textContent ? n.textContent.length : 0;
+      }
+      return Math.max(0, Math.min(cumulative, text.length));
     }
     
     // Fallback: if DOM hit-testing fails, estimate based on click position
@@ -817,7 +825,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     const avgCharWidth = 8;
     const estimatedPosition = Math.floor(x / avgCharWidth);
     return Math.max(0, Math.min(estimatedPosition, text.length));
-  }, [getCaretAtPoint]);
+  }, [getCaretAtPoint, getTextNodesIn]);
 
   // Helper functions for cursor position detection
   const isAtStartOfBlock = useCallback((tiptapEditor: TiptapEditorRef, blockContent: string) => {

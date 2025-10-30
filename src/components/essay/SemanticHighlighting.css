@@ -96,6 +96,10 @@
   background-color: transparent !important;
 }
 
+/* Google Docs-like active state: remove inner padding while editing */
+/* Keep padding consistent on focus to avoid visual jump */
+/* (Previously reduced padding to 0 on focus) */
+
 .clean-semantic-editor .ProseMirror p {
   margin: 0 !important;
   padding: 0 !important;
