@@ -112,6 +112,52 @@ export class EssayVersionService {
     // Save the new semantic document first
     await semanticDocumentService.saveDocument(newSemanticDocument);
 
+    // Also duplicate semantic_annotations from the current document to the new one
+    // This ensures comments persist after refresh (loader pulls from semantic_annotations)
+    try {
+      const { data: existingAnnotations, error: loadAnnoError } = await (supabase as any)
+        .from('semantic_annotations')
+        .select('*')
+        .eq('document_id', currentDocument.id);
+
+      if (!loadAnnoError && Array.isArray(existingAnnotations) && existingAnnotations.length > 0) {
+        // Prepare cloned annotations: new id, new document_id, keep block_id (block IDs are preserved)
+        const cloned = existingAnnotations.map((a: any) => ({
+          id: crypto.randomUUID(),
+          document_id: newSemanticDocument.id,
+          block_id: a.block_id,
+          type: a.type,
+          author: a.author,
+          content: a.content,
+          target_text: a.target_text,
+          resolved: a.resolved ?? false,
+          resolved_at: a.resolved_at ?? null,
+          resolved_by: a.resolved_by ?? null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          // Optional edit-action fields if present in schema
+          action_type: a.action_type ?? 'none',
+          suggested_replacement: a.suggested_replacement ?? null,
+          original_text: a.original_text ?? null,
+          metadata: a.metadata ?? null
+        }));
+
+        if (cloned.length > 0) {
+          const { error: insertAnnoError } = await (supabase as any)
+            .from('semantic_annotations')
+            .insert(cloned);
+
+          if (insertAnnoError) {
+            console.warn('Warning: Failed to clone semantic annotations for new version:', insertAnnoError.message);
+          }
+        }
+      } else if (loadAnnoError) {
+        console.warn('Warning: Could not load existing annotations for cloning:', loadAnnoError.message);
+      }
+    } catch (e: any) {
+      console.warn('Warning: Error cloning semantic annotations for new version:', e?.message || String(e));
+    }
+
     // Prepare version content
     const versionContent = {
       blocks: newSemanticDocument.blocks,

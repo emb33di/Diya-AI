@@ -1227,8 +1227,8 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                       <div className="flex items-center gap-2">
                         <span className={`text-sm ${(() => {
                           const limit = wordLimit || document.metadata.wordLimit;
-                          if (!limit || limit === 'Not specified' || limit === 'No limit') return 'text-gray-600';
-                          const limitNum = typeof limit === 'number' ? limit : parseInt(limit);
+                          if (!limit || (typeof limit === 'string' && (limit === 'Not specified' || limit === 'No limit'))) return 'text-gray-600';
+                          const limitNum = typeof limit === 'number' ? limit : parseInt(limit as any);
                           if (isNaN(limitNum)) return 'text-gray-600';
                           return getCurrentWordCount() > limitNum ? 'text-red-600 font-medium' : 'text-gray-600';
                         })()}`}>
@@ -1241,8 +1241,8 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                         )}
                         {(() => {
                           const limit = wordLimit || document.metadata.wordLimit;
-                          if (!limit || limit === 'Not specified' || limit === 'No limit') return null;
-                          const limitNum = typeof limit === 'number' ? limit : parseInt(limit);
+                          if (!limit || (typeof limit === 'string' && (limit === 'Not specified' || limit === 'No limit'))) return null;
+                          const limitNum = typeof limit === 'number' ? limit : parseInt(limit as any);
                           if (isNaN(limitNum)) return null;
                           return getCurrentWordCount() > limitNum;
                         })() && (
@@ -1290,9 +1290,8 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                                       <div className="font-medium flex items-center space-x-2">
                                         <span>{version.version_name || `Version ${version.version_number}`}</span>
                                       </div>
-                                      <div className="text-xs text-gray-500">
-                                        {version.version_description || 'Essay Version'}
-                                      </div>
+                                      {/* Hide version description to remove 'Fresh draft without previous comments.' */}
+                                      <div className="text-xs text-gray-500"></div>
                                     </div>
                                   </div>
                                 </SelectItem>
