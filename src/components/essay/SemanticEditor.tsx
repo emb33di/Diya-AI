@@ -131,6 +131,27 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
   useEffect(() => {
     if (!state.pendingChanges) return;
 
+    // Critical safeguard: Don't autosave if document appears empty but we're tracking a loaded document
+    // This prevents HMR from saving empty state over existing content
+    const hasContent = state.document.blocks.some(block => 
+      block.content && typeof block.content === 'string' && block.content.trim().length > 0
+    );
+    
+    // If we've previously loaded a document with this ID, but now state is empty, don't save
+    // This indicates a state reset (possibly from HMR) and we should reload instead
+    if (!hasContent && lastLoadedDocumentIdRef.current && lastLoadedDocumentIdRef.current === (documentId || essayId)) {
+      console.warn('[AUTOSAVE] Skipping save: Document appears empty but we had loaded content. This might be from HMR. Reloading...');
+      // Trigger a reload instead of saving empty content
+      if (documentId) {
+        semanticDocumentService.loadDocument(documentId).then(loadedDoc => {
+          if (loadedDoc && loadedDoc.blocks.some(b => b.content?.trim())) {
+            setState(prev => ({ ...prev, document: loadedDoc, pendingChanges: false }));
+          }
+        }).catch(console.error);
+      }
+      return;
+    }
+
     const autoSaveTimer = setTimeout(async () => {
       try {
         setIsAutoSaving(true);
@@ -140,18 +161,65 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
         onSaveStatusChange?.(false, new Date());
       } catch (error) {
         console.error('Auto-save failed:', error);
+        // If save failed due to empty content protection, try to reload from DB
+        if (error instanceof Error && error.message.includes('empty document over existing')) {
+          console.warn('[AUTOSAVE] Save blocked by safety check. Attempting to reload from database...');
+          if (documentId) {
+            try {
+              const reloaded = await semanticDocumentService.loadDocument(documentId);
+              if (reloaded) {
+                setState(prev => ({ ...prev, document: reloaded, pendingChanges: false }));
+              }
+            } catch (reloadError) {
+              console.error('Failed to reload after blocked save:', reloadError);
+            }
+          }
+        }
       } finally {
         setIsAutoSaving(false);
       }
     }, 1000);
 
     return () => clearTimeout(autoSaveTimer);
-  }, [state.document, state.pendingChanges, onSaveStatusChange]);
+  }, [state.document, state.pendingChanges, onSaveStatusChange, documentId, essayId]);
+
+  // Track the last documentId we loaded to prevent unnecessary reloads
+  // Use a stable key to persist across HMR - store in window to survive hot reloads
+  const getStableKey = (id: string | undefined) => `semantic_editor_last_loaded_${id || essayId}`;
+  const lastLoadedDocumentIdRef = useRef<string | undefined>(
+    typeof window !== 'undefined' && documentId 
+      ? window.sessionStorage.getItem(getStableKey(documentId)) || undefined
+      : undefined
+  );
+  const isInitialMountRef = useRef(true);
 
   // Load existing document
   useEffect(() => {
     const loadDocument = async () => {
       try {
+        const targetDocumentId = documentId || essayId;
+        
+        // Critical fix: If documentId hasn't changed AND it's not the initial mount, don't reload (prevents overwriting unsaved edits)
+        if (!isInitialMountRef.current && lastLoadedDocumentIdRef.current === targetDocumentId && state.document.id === targetDocumentId) {
+          // Document ID hasn't changed, skip reload to preserve unsaved edits
+          return;
+        }
+        
+        isInitialMountRef.current = false;
+
+        // If we have pending changes and documentId changed, save them first
+        if (state.pendingChanges && lastLoadedDocumentIdRef.current && lastLoadedDocumentIdRef.current !== targetDocumentId) {
+          try {
+            setIsAutoSaving(true);
+            await semanticDocumentService.saveDocument(state.document);
+            setState(prev => ({ ...prev, pendingChanges: false }));
+          } catch (error) {
+            console.error('Failed to save pending changes before reload:', error);
+          } finally {
+            setIsAutoSaving(false);
+          }
+        }
+
         let existingDoc = null;
         
         if (documentId) {
@@ -161,16 +229,29 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
         }
 
         if (existingDoc) {
-          setState(prev => ({
-            ...prev,
-            document: existingDoc
-          }));
+          // Only update if documentId actually changed
+          if (existingDoc.id !== state.document.id) {
+            setState(prev => ({
+              ...prev,
+              document: existingDoc
+            }));
+          }
           // Seed undo stack with the loaded document so Cmd+Z with no edits is a no-op
           try {
             undoStackRef.current = [deepCloneDocument(existingDoc)];
             redoStackRef.current = [];
           } catch (_e) {
             // If deep clone fails for any reason, skip seeding safely
+          }
+          
+          // Track that we've loaded this document (persist across HMR)
+          lastLoadedDocumentIdRef.current = targetDocumentId;
+          if (typeof window !== 'undefined') {
+            try {
+              window.sessionStorage.setItem(getStableKey(targetDocumentId), targetDocumentId);
+            } catch (e) {
+              // sessionStorage might fail in private browsing, ignore
+            }
           }
           
           // If the document has only empty blocks, start editing the first one
@@ -187,6 +268,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
         } else if (!initialContent) {
           // Create a new document with a single empty block
           addNewBlock();
+          lastLoadedDocumentIdRef.current = targetDocumentId;
         }
       } catch (error) {
         console.error('Failed to load document:', error);
@@ -196,7 +278,8 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     };
 
     loadDocument();
-  }, [documentId, essayId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [documentId, essayId]); // Note: intentionally not including state to prevent unnecessary reloads
 
   // Notify parent of document changes
   useEffect(() => {

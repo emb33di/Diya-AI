@@ -386,6 +386,36 @@ export class SemanticDocumentService {
         await this.ensureEssayExists(essayId, document.title);
       }
 
+      // Check if document exists first - CRITICAL for preventing HMR data loss
+      const { data: existingDocData, error: checkError } = await supabase
+        .from('semantic_documents')
+        .select('*')
+        .eq('id', document.id)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw new Error(`Failed to check existing document: ${checkError.message}`);
+      }
+
+      // Critical safeguard: Never overwrite a document with content using an empty document
+      // This prevents HMR or reload bugs from saving empty state over existing content
+      if (existingDocData && existingDocData.blocks && document.blocks) {
+        const existingHasContent = existingDocData.blocks.some((block: any) => 
+          block.content && typeof block.content === 'string' && block.content.trim().length > 0
+        );
+        const newIsEmpty = !document.blocks.some((block: any) => 
+          block.content && typeof block.content === 'string' && block.content.trim().length > 0
+        );
+
+        if (existingHasContent && newIsEmpty) {
+          const errorMsg = `[SAFETY] Preventing save: Attempted to overwrite document ${document.id} with empty content. Existing document has ${existingDocData.blocks.length} blocks with content.`;
+          console.error(errorMsg);
+          console.error('Existing document blocks:', existingDocData.blocks.map((b: any) => ({ id: b.id, contentLength: b.content?.length || 0 })));
+          console.error('New document blocks:', document.blocks.map((b: any) => ({ id: b.id, contentLength: b.content?.length || 0 })));
+          throw new Error('Cannot save empty document over existing document with content. This prevents data loss during hot reload.');
+        }
+      }
+
       const { data, error } = await supabase
         .from('semantic_documents')
         .upsert({

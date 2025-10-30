@@ -434,16 +434,40 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
     setIsCreatingVersion(true);
     
     try {
+      // Critical fix: Ensure all pending changes are saved before creating new version
+      // Force a save of the current document to ensure we're cloning the latest version
+      try {
+        await semanticDocumentService.saveDocument(document);
+        // Give autosave a moment to complete if it's in progress
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (saveError) {
+        console.warn('Failed to save document before creating new version:', saveError);
+        // Continue anyway - we'll use current state
+      }
+
       // Get the next version number from the database (for naming only)
       const versions = await EssayVersionService.getEssayVersions(essayId);
       const nextVersionNumber = versions.length > 0 
         ? Math.max(...versions.map(v => v.version_number)) + 1 
         : 1;
 
+      // Reload document from DB to ensure we have the absolute latest saved version
+      let latestDocument = document;
+      try {
+        if (document.id) {
+          const dbDocument = await semanticDocumentService.loadDocument(document.id);
+          if (dbDocument) {
+            latestDocument = dbDocument;
+          }
+        }
+      } catch (reloadError) {
+        console.warn('Failed to reload document before creating version, using current state:', reloadError);
+      }
+
       // Create new version cloning text + comments, mark has_ai_feedback=false
       const versionId = await EssayVersionService.createClonedVersionWithComments(
         essayId,
-        document,
+        latestDocument,
         `Version ${nextVersionNumber}`,
         undefined // Remove the descriptive text
       );
@@ -723,11 +747,29 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
   };
 
   // Export document as PDF using browser print functionality
-  const exportAsPDF = () => {
+  const exportAsPDF = async () => {
     if (!document) return;
 
     try {
-      const htmlContent = semanticDocumentService.convertBlocksToHtml(document.blocks);
+      // Critical fix: Ensure we're using the latest document state from SemanticEditor
+      // If SemanticEditor has pending changes, wait for autosave to complete
+      // Reload from database to get the absolute latest version
+      let latestDocument = document;
+      
+      try {
+        if (document.id) {
+          const dbDocument = await semanticDocumentService.loadDocument(document.id);
+          if (dbDocument) {
+            // Use the database version which should have all saved changes
+            latestDocument = dbDocument;
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to reload document for PDF export, using current state:', error);
+        // Continue with current document state if reload fails
+      }
+
+      const htmlContent = semanticDocumentService.convertBlocksToHtml(latestDocument.blocks);
       
       // Create a new window with the HTML content and proper essay styling
       const printWindow = window.open('', '_blank');
@@ -816,11 +858,11 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
           </head>
           <body>
             <div class="essay-page">
-              <div class="essay-title">${document.title}</div>
-              ${prompt || document.metadata.prompt ? `
+              <div class="essay-title">${latestDocument.title}</div>
+              ${prompt || latestDocument.metadata.prompt ? `
                 <div class="essay-prompt">
                   <div class="essay-prompt-label">Essay Prompt:</div>
-                  ${prompt || document.metadata.prompt}
+                  ${prompt || latestDocument.metadata.prompt}
                 </div>
               ` : ''}
               <div class="essay-content">
