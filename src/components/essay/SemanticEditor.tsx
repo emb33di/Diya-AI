@@ -1887,7 +1887,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
       {/* Main Editor Area */}
       <div className={`${showCommentSidebar ? 'flex-1 min-w-0 pr-4 lg:pr-4 pr-0' : 'w-full'} h-full overflow-y-auto`}> 
         {/* Editor Content */}
-        <div className="relative pl-4 lg:pl-12 w-full" ref={contentContainerRef}>
+        <div className="relative pl-4 lg:pl-12 pr-4 lg:pr-12 w-full" ref={contentContainerRef}>
           {/* Render all blocks */}
           {useMemo(() => {
             const sortedBlocks = [...state.document.blocks].sort((a, b) => a.position - b.position);
