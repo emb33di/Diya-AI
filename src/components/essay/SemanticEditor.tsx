@@ -1123,16 +1123,13 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
         e.preventDefault();
         const prevBlock = state.document.blocks.find(b => b.position === block.position - 1);
         if (prevBlock) {
-          const currentCursorPos = tiptapEditor.getSelectionStart();
           finishEditingBlock(blockId);
+          // Use startEditingBlock's clickPosition parameter to set cursor to end of previous block
+          // clickPosition is 0-indexed from content start, and startEditingBlock adds +1, then clamps
+          // So passing content.length will result in the cursor at the end
+          const endPositionInContent = prevBlock.content.length;
           setTimeout(() => {
-            startEditingBlock(prevBlock.id, undefined);
-            // Set cursor to end of previous block or preserve relative position
-            const tiptapEditor = tiptapRefs.current[prevBlock.id];
-            if (tiptapEditor) {
-              const targetPosition = Math.min(currentCursorPos, prevBlock.content.length);
-              tiptapEditor.setSelectionRange(targetPosition, targetPosition);
-            }
+            startEditingBlock(prevBlock.id, endPositionInContent);
           }, 50);
         } else {
           // If no previous block, allow default behavior (do nothing or move to start)
@@ -1192,25 +1189,21 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
       // Otherwise, let TipTap handle normal cursor movement within the block
     }
 
-    // Arrow Left: when at start or end of paragraph, move to end of previous paragraph
+    // Arrow Left: when at start of paragraph, move to end of previous paragraph
     if (e.key === 'ArrowLeft') {
       const isAtStart = isAtStartOfFirstLine(tiptapEditor, block.content);
-      const isAtEnd = isAtEndOfLastLine(tiptapEditor, block.content);
       
-      if (isAtStart || isAtEnd) {
+      if (isAtStart) {
         e.preventDefault();
         const prevBlock = state.document.blocks.find(b => b.position === block.position - 1);
         if (prevBlock) {
           finishEditingBlock(blockId);
+          // Use startEditingBlock's clickPosition parameter to set cursor to end of previous block
+          // clickPosition is 0-indexed from content start, and startEditingBlock adds +1, then clamps
+          // So passing content.length will result in the cursor at the end
+          const endPositionInContent = prevBlock.content.length;
           setTimeout(() => {
-            startEditingBlock(prevBlock.id, undefined);
-            // Set cursor to end of previous block
-            const tiptapEditor = tiptapRefs.current[prevBlock.id];
-            if (tiptapEditor) {
-              const editorContentLength = tiptapEditor.getContentLength();
-              // Position at the end of the content
-              tiptapEditor.setSelectionRange(editorContentLength - 1, editorContentLength - 1);
-            }
+            startEditingBlock(prevBlock.id, endPositionInContent);
           }, 50);
         }
         // If no previous block, allow default behavior (move left/start)
