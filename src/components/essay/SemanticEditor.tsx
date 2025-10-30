@@ -830,8 +830,8 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
   // Helper functions for cursor position detection
   const isAtStartOfBlock = useCallback((tiptapEditor: TiptapEditorRef, blockContent: string) => {
     const cursorPos = tiptapEditor.getSelectionStart();
-    // Check if cursor is at the very start, or at start of first line (after any leading newlines)
-    return cursorPos === 0;
+    // Treat TipTap positions 0 or 1 as the start of the block (inside <p> tag)
+    return cursorPos <= 1;
   }, []);
 
   const isAtEndOfBlock = useCallback((tiptapEditor: TiptapEditorRef, blockContent: string) => {
@@ -984,7 +984,12 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     }
 
     // Backspace at beginning of non-empty block: move text to previous block
-    if (e.key === 'Backspace' && isAtStartOfBlock(tiptapEditor, block.content) && block.content !== '' && state.document.blocks.length > 1) {
+    // BUT only if there's no text selection (let TipTap handle deletion of selections)
+    const selectionStart = tiptapEditor.getSelectionStart();
+    const selectionEnd = tiptapEditor.getSelectionEnd();
+    const hasSelection = selectionStart !== selectionEnd;
+    
+    if (e.key === 'Backspace' && !hasSelection && isAtStartOfBlock(tiptapEditor, block.content) && block.content !== '' && state.document.blocks.length > 1) {
       e.preventDefault();
       saveToUndoStack();
       
@@ -997,13 +1002,15 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
         // Delete current block
         deleteBlock(blockId);
         
-        // Focus on previous block and set cursor to where the text was appended
+        // Focus on previous block and set cursor to end
         setTimeout(() => {
           startEditingBlock(prevBlock.id, undefined);
           const tiptapEditor = tiptapRefs.current[prevBlock.id];
           if (tiptapEditor) {
-            const cursorPosition = prevBlock.content.length; // Position at the end of original previous content
-            tiptapEditor.setSelectionRange(cursorPosition, cursorPosition);
+            // Set cursor to end of merged content
+            const endPosition = newPrevContent.length;
+            tiptapEditor.setSelectionRange(endPosition, endPosition);
+            tiptapEditor.focus();
           }
         }, 50);
       }
