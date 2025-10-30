@@ -947,26 +947,22 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     if (!blockContent) return true; // Empty block is considered at end
     
     const cursorPos = tiptapEditor.getSelectionStart();
-    const editorContentLength = tiptapEditor.getContentLength();
     
-    // TipTap positions include paragraph nodes. For a paragraph, positions are offset by ~1
-    // The actual text content length in TipTap should be close to blockContent.length + 1 (for <p> tag)
-    // If cursor is at or past the end of the editor's content (accounting for structure), we're at end
-    // Use a small tolerance to account for paragraph node structure
-    const expectedEndPos = blockContent.length + 1; // +1 for paragraph node
+    // TipTap positions include paragraph nodes. For a paragraph, positions start at 1 (inside the <p> tag).
+    // If blockContent is "see." (length 4), valid cursor positions are:
+    //   1 = start of paragraph (before 's')
+    //   2-5 = positions for 's', 'e', 'e', '.'
+    //   5 = after '.' (the absolute end of text)
+    // So the last valid cursor position is blockContent.length + 1
+    // We should only consider the cursor "at end" when it's at this absolute end position,
+    // not when it's one character before. This allows normal arrow key navigation to move
+    // through all characters including punctuation before jumping to the next block.
+    const lastTextPosition = blockContent.length + 1;
     
-    // If cursor is at the very end of the TipTap document content
-    if (cursorPos >= editorContentLength - 1) {
-      return true;
-    }
-    
-    // Also check if cursor position matches the end of the text content
-    // TipTap stores text positions offset by 1 (for <p> opening tag)
-    if (cursorPos >= expectedEndPos - 1) {
-      return true;
-    }
-    
-    return false;
+    // Only return true if cursor is at or beyond the last valid text position
+    // This ensures we don't jump to the next block prematurely when there's still
+    // a character (like punctuation) to move past
+    return cursorPos >= lastTextPosition;
   }, []);
 
   // Check if cursor is at the start of the first line (allowing normal up arrow to work within block)
