@@ -38,7 +38,6 @@ import {
   Trash2,
   Crown,
   Lock,
-  Award,
 } from 'lucide-react';
 import PaywallGuard from '@/components/PaywallGuard';
 import UpgradeModal from '@/components/UpgradeModal';
@@ -1370,16 +1369,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                             <Crown className="h-3 w-3 ml-2 text-primary" />
                           </Button>
                         </PaywallGuard>
-                        <Button 
-                          onClick={() => {}}
-                          variant="outline"
-                          size="sm"
-                          className="border-purple-200 text-purple-700 hover:bg-purple-50"
-                          title="Coming soon"
-                        >
-                          <Award className="h-4 w-4 mr-2" />
-                          Expert Review
-                        </Button>
+                        
                         {!showCommentSidebar && (
                           <Button 
                             onClick={() => setShowCommentSidebar(true)}
