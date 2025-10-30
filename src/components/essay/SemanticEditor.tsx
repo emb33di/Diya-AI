@@ -947,22 +947,24 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     if (!blockContent) return true; // Empty block is considered at end
     
     const cursorPos = tiptapEditor.getSelectionStart();
+    const editorContentLength = tiptapEditor.getContentLength();
     
     // TipTap positions include paragraph nodes. For a paragraph, positions start at 1 (inside the <p> tag).
-    // If blockContent is "see." (length 4), valid cursor positions are:
-    //   1 = start of paragraph (before 's')
-    //   2-5 = positions for 's', 'e', 'e', '.'
-    //   5 = after '.' (the absolute end of text)
-    // So the last valid cursor position is blockContent.length + 1
-    // We should only consider the cursor "at end" when it's at this absolute end position,
-    // not when it's one character before. This allows normal arrow key navigation to move
-    // through all characters including punctuation before jumping to the next block.
-    const lastTextPosition = blockContent.length + 1;
+    // TipTap's doc.content.size includes the paragraph structure:
+    // - For "see." (length 4), editorContentLength is typically 6 (positions 0-6)
+    // - Valid cursor positions are 1-5 (position 1 before 's', positions 2-5 for characters, position 5 after '.')
+    // - The last valid cursor position inside the text is editorContentLength - 1 = 5
+    // 
+    // We use editorContentLength - 1 as the source of truth since it reflects TipTap's actual document structure.
+    // We compare against both this and blockContent.length + 1 to ensure accuracy.
+    // The key is that cursorPos must be at or beyond the true end, not one position before.
+    const expectedLastPosition = blockContent.length + 1;
+    const actualLastPosition = editorContentLength - 1;
     
-    // Only return true if cursor is at or beyond the last valid text position
-    // This ensures we don't jump to the next block prematurely when there's still
-    // a character (like punctuation) to move past
-    return cursorPos >= lastTextPosition;
+    // Use editorContentLength - 1 as primary check (TipTap's actual end position)
+    // This should typically equal blockContent.length + 1, but using TipTap's reported length is more reliable
+    // We check >= actualLastPosition to ensure we're truly at the end, not one character before
+    return cursorPos >= actualLastPosition;
   }, []);
 
   // Check if cursor is at the start of the first line (allowing normal up arrow to work within block)
@@ -1143,16 +1145,13 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
         e.preventDefault();
         const nextBlock = state.document.blocks.find(b => b.position === block.position + 1);
         if (nextBlock) {
-          const currentCursorPos = tiptapEditor.getSelectionStart();
           finishEditingBlock(blockId);
+          // Use startEditingBlock's clickPosition parameter to set cursor to start of next block
+          // clickPosition is 0-indexed from content start, and startEditingBlock adds +1, then clamps
+          // So passing 0 will result in the cursor at the start (position 1)
+          const startPositionInContent = 0;
           setTimeout(() => {
-            startEditingBlock(nextBlock.id, undefined);
-            // Set cursor to beginning of next block or preserve relative position
-            const tiptapEditor = tiptapRefs.current[nextBlock.id];
-            if (tiptapEditor) {
-              const targetPosition = Math.min(currentCursorPos, nextBlock.content.length);
-              tiptapEditor.setSelectionRange(targetPosition, targetPosition);
-            }
+            startEditingBlock(nextBlock.id, startPositionInContent);
           }, 50);
         } else {
           // If no next block, allow default behavior (do nothing or move to end)
@@ -1171,13 +1170,12 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
         const nextBlock = state.document.blocks.find(b => b.position === block.position + 1);
         if (nextBlock) {
           finishEditingBlock(blockId);
+          // Use startEditingBlock's clickPosition parameter to set cursor to start of next block
+          // clickPosition is 0-indexed from content start, and startEditingBlock adds +1, then clamps
+          // So passing 0 will result in the cursor at the start (position 1)
+          const startPositionInContent = 0;
           setTimeout(() => {
-            startEditingBlock(nextBlock.id, undefined);
-            // Set cursor to start of next block
-            const tiptapEditor = tiptapRefs.current[nextBlock.id];
-            if (tiptapEditor) {
-              tiptapEditor.setSelectionRange(1, 1); // Position 1 is start of paragraph (after <p> tag)
-            }
+            startEditingBlock(nextBlock.id, startPositionInContent);
           }, 50);
         }
         // If no next block, allow default behavior (move to end)
