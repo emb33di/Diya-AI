@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import StarryBackground from "@/components/StarryBackground";
 import { getValidApplyingToValues } from "@/utils/userProfileUtils";
 import "@/styles/landing.css";
@@ -51,26 +52,14 @@ const Auth = () => {
   const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, isFounder, loading: authLoading } = useAuth();
 
-  // Check if user is already authenticated
+  // Redirect if already authenticated
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (session?.user) {
-          navigate("/dashboard");
-        }
-      }
-    );
-
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        navigate("/dashboard");
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
+    if (!authLoading && user) {
+      navigate(isFounder ? '/founder-portal' : '/dashboard', { replace: true });
+    }
+  }, [user, isFounder, authLoading, navigate]);
 
   const validatePhoneNumber = (phone: string): boolean => {
     // Remove any non-digit characters for validation

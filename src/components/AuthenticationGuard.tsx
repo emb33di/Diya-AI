@@ -7,7 +7,7 @@ interface AuthenticationGuardProps {
 }
 
 const AuthenticationGuard: React.FC<AuthenticationGuardProps> = ({ children }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, isFounder } = useAuth();
   const location = useLocation();
 
   // Show loading state while checking authentication
@@ -27,7 +27,12 @@ const AuthenticationGuard: React.FC<AuthenticationGuardProps> = ({ children }) =
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  // If user is authenticated, render the protected content
+  // If user is a founder, redirect to founder portal (founders only see founder dashboard)
+  if (isFounder) {
+    return <Navigate to="/founder-portal" replace />;
+  }
+
+  // If user is authenticated and not a founder, render the protected content
   return <>{children}</>;
 };
 

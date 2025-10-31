@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import HeroSection from "@/components/HeroSection";
 import StarryBackground from "@/components/StarryBackground";
 import FeaturesSection from "@/components/FeaturesSection";
@@ -14,27 +15,20 @@ import "@/styles/landing.css";
 
 const Index = () => {
   const navigate = useNavigate();
+  const { user, isFounder, loading: authLoading } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          // User is logged in, redirect to dashboard
-          navigate('/dashboard', { replace: true });
-        } else {
-          // User is not logged in, show landing page
-          setIsLoading(false);
-        }
-      } catch (error) {
-        console.error('Error checking authentication:', error);
+    if (!authLoading) {
+      if (user) {
+        // Redirect founders to founder portal, others to dashboard
+        navigate(isFounder ? '/founder-portal' : '/dashboard', { replace: true });
+      } else {
+        // User is not logged in, show landing page
         setIsLoading(false);
       }
-    };
-
-    checkAuth();
-  }, [navigate]);
+    }
+  }, [user, isFounder, authLoading, navigate]);
 
   // Show loading while checking authentication
   if (isLoading) {
