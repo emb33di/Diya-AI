@@ -38,10 +38,12 @@ import {
   Trash2,
   Crown,
   Lock,
+  ArrowUp,
 } from 'lucide-react';
 import PaywallGuard from '@/components/PaywallGuard';
 import UpgradeModal from '@/components/UpgradeModal';
 import { usePaywall } from '@/hooks/usePaywall';
+import { EscalatedEssaysService } from '@/services/escalatedEssaysService';
 
 interface EssayPrompt {
   id: string;
@@ -112,6 +114,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
   const [currentVersion, setCurrentVersion] = useState<EssayVersion | null>(null);
   const [isCreatingVersion, setIsCreatingVersion] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isEscalating, setIsEscalating] = useState(false);
   const { isPro } = usePaywall();
   const [showUpgrade, setShowUpgrade] = useState(false);
 
@@ -899,6 +902,54 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
     }
   };
 
+  // Handle essay escalation to founder
+  const handleEscalateEssay = async () => {
+    if (!document) {
+      toast({
+        title: "Error",
+        description: "No essay content to escalate. Please save your essay first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsEscalating(true);
+
+    try {
+      // Get current prompt and word limit
+      const currentPrompt = prompt || document.metadata?.prompt || null;
+      const currentWordLimit = wordLimit ? String(wordLimit) : document.metadata?.wordLimit ? String(document.metadata.wordLimit) : null;
+
+      // Escalate the essay
+      const result = await EscalatedEssaysService.escalateEssay(
+        essayId,
+        document.title,
+        document,
+        currentPrompt,
+        currentWordLimit,
+        document.id
+      );
+
+      if (result.success) {
+        toast({
+          title: "Essay Escalated",
+          description: "Your essay has been successfully escalated to the founder for review. You'll be notified when feedback is available.",
+        });
+      } else {
+        throw new Error('Escalation failed');
+      }
+    } catch (error) {
+      console.error('Failed to escalate essay:', error);
+      toast({
+        title: "Escalation Failed",
+        description: error instanceof Error ? error.message : "Failed to escalate essay. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsEscalating(false);
+    }
+  };
+
   // Calculate word count from document blocks
   const getCurrentWordCount = () => {
     if (!document) return 0;
@@ -1250,6 +1301,18 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                             <Crown className="h-3 w-3 ml-2 text-primary" />
                           </Button>
                         </PaywallGuard>
+                        
+                        <Button 
+                          onClick={handleEscalateEssay}
+                          disabled={isEscalating || !document}
+                          variant="outline"
+                          size="sm"
+                          className="border-orange-200 text-orange-700 hover:bg-orange-50"
+                          title="Escalate this essay to the founder for review"
+                        >
+                          <ArrowUp className="h-4 w-4 mr-2" />
+                          {isEscalating ? 'Escalating...' : 'Escalate Essay'}
+                        </Button>
                         
                         {!showCommentSidebar && (
                           <Button 

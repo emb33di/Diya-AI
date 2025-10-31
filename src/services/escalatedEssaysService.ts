@@ -485,5 +485,97 @@ export class EscalatedEssaysService {
       throw error;
     }
   }
+
+  /**
+   * Escalate an essay to the founder portal
+   * Creates a snapshot of the current essay state including document content and AI comments
+   */
+  static async escalateEssay(
+    essayId: string,
+    essayTitle: string,
+    essayContent: SemanticDocument,
+    essayPrompt: string | null,
+    wordLimit: string | null,
+    semanticDocumentId: string | null
+  ): Promise<{ id: string; success: boolean }> {
+    try {
+      // Verify user is authenticated
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Calculate word and character counts
+      const wordCount = essayContent.blocks.reduce((total, block) => {
+        const words = (block.content || '').split(/\s+/).filter(word => word.trim().length > 0);
+        return total + words.length;
+      }, 0);
+
+      const characterCount = essayContent.blocks.reduce((total, block) => {
+        return total + (block.content || '').length;
+      }, 0);
+
+      // Fetch current AI comments/annotations for this document
+      let aiCommentsSnapshot: EscalatedEssayComment[] = [];
+      if (semanticDocumentId) {
+        const { data: annotations, error: annotationsError } = await supabase
+          .from('semantic_annotations')
+          .select('*')
+          .eq('document_id', semanticDocumentId)
+          .eq('author', 'ai')
+          .order('created_at', { ascending: true });
+
+        if (!annotationsError && annotations) {
+          aiCommentsSnapshot = annotations.map((annotation: any) => ({
+            id: annotation.id,
+            blockId: annotation.block_id,
+            type: annotation.type,
+            content: annotation.content,
+            position: annotation.target_text ? {
+              start: 0, // Position info would need to be extracted from target_text if needed
+              end: annotation.target_text.length
+            } : undefined,
+            created_at: annotation.created_at
+          }));
+        }
+      }
+
+      // Create escalation record
+      const { data: escalatedEssay, error: insertError } = await supabase
+        .from('escalated_essays' as any)
+        .insert({
+          essay_id: essayId,
+          user_id: user.id,
+          essay_title: essayTitle,
+          essay_content: essayContent as any, // JSONB field
+          essay_prompt: essayPrompt,
+          word_limit: wordLimit,
+          word_count: wordCount,
+          character_count: characterCount,
+          ai_comments_snapshot: aiCommentsSnapshot as any, // JSONB field
+          semantic_document_id: semanticDocumentId,
+          status: 'pending'
+        })
+        .select('id')
+        .single();
+
+      if (insertError) {
+        console.error('Error escalating essay:', insertError);
+        throw insertError;
+      }
+
+      if (!escalatedEssay) {
+        throw new Error('Failed to create escalation record');
+      }
+
+      return {
+        id: escalatedEssay.id,
+        success: true
+      };
+    } catch (error) {
+      console.error('EscalatedEssaysService: Error escalating essay', error);
+      throw error;
+    }
+  }
 }
 

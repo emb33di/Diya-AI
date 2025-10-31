@@ -50,7 +50,7 @@ export type BlockType =
 export interface Annotation {
   id: string;
   type: AnnotationType;
-  author: 'ai' | 'user';
+  author: 'ai' | 'user' | 'mihir';
   content: string;
   targetBlockId: string; // Stable reference to the block
   targetText?: string; // Optional: specific text within the block

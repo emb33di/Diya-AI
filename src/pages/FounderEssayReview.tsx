@@ -5,7 +5,7 @@
  * Uses the same SemanticEditor experience as students.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,7 +25,7 @@ import {
   Bot
 } from 'lucide-react';
 import { EscalatedEssaysService, EscalatedEssay, EscalatedEssayComment } from '@/services/escalatedEssaysService';
-import { SemanticDocument, Annotation } from '@/types/semanticDocument';
+import { SemanticDocument, Annotation, AnnotationType } from '@/types/semanticDocument';
 import { semanticDocumentService } from '@/services/semanticDocumentService';
 import { useToast } from '@/hooks/use-toast';
 import FounderGuard from '@/components/FounderGuard';
@@ -39,10 +39,13 @@ const FounderEssayReview: React.FC = () => {
   const [essay, setEssay] = useState<EscalatedEssay | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [founderFeedback, setFounderFeedback] = useState('');
   const [document, setDocument] = useState<SemanticDocument | null>(null);
   const [initialHtml, setInitialHtml] = useState<string>('');
   const [aiCommentsSnapshot, setAiCommentsSnapshot] = useState<EscalatedEssayComment[]>([]);
+  const [lastSavedComments, setLastSavedComments] = useState<Date | null>(null);
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (escalationId) {
@@ -66,7 +69,46 @@ const FounderEssayReview: React.FC = () => {
       setAiCommentsSnapshot(data.ai_comments_snapshot || []);
 
       // Use founder_edited_content if available, otherwise use essay_content snapshot
-      const contentToUse: SemanticDocument = data.founder_edited_content || data.essay_content;
+      let contentToUse: SemanticDocument = data.founder_edited_content || data.essay_content;
+      
+      // If there are saved founder comments, inject them into the document
+      if (data.founder_comments && data.founder_comments.length > 0) {
+        // Convert founder_comments to annotations and attach to blocks
+        const founderCommentsMap = new Map<string, Annotation[]>();
+        
+        data.founder_comments.forEach((comment: EscalatedEssayComment) => {
+          if (!founderCommentsMap.has(comment.blockId)) {
+            founderCommentsMap.set(comment.blockId, []);
+          }
+          
+          const annotation: Annotation = {
+            id: comment.id,
+            type: comment.type as AnnotationType,
+            author: 'mihir',
+            content: comment.content,
+            targetBlockId: comment.blockId,
+            targetText: comment.position ? undefined : undefined,
+            createdAt: new Date(comment.created_at || Date.now()),
+            updatedAt: new Date(comment.created_at || Date.now()),
+            resolved: false
+          };
+          
+          founderCommentsMap.get(comment.blockId)!.push(annotation);
+        });
+        
+        // Merge founder comments into document blocks
+        contentToUse = {
+          ...contentToUse,
+          blocks: contentToUse.blocks.map(block => ({
+            ...block,
+            annotations: [
+              ...(block.annotations || []).filter(ann => ann.author !== 'mihir'), // Remove existing mihir comments
+              ...(founderCommentsMap.get(block.id) || []) // Add saved founder comments
+            ]
+          }))
+        };
+      }
+      
       setDocument(contentToUse);
 
       // Convert SemanticDocument to HTML for SemanticEditor's initialContent
@@ -92,9 +134,94 @@ const FounderEssayReview: React.FC = () => {
     }
   };
 
-  const handleDocumentChange = (updatedDocument: SemanticDocument) => {
-    setDocument(updatedDocument);
+  // Helper to extract founder comments (those with author === 'mihir')
+  const extractFounderComments = (doc: SemanticDocument): EscalatedEssayComment[] => {
+    const founderAnnotations = doc.blocks.flatMap(block => 
+      block.annotations.filter(ann => ann.author === 'mihir')
+    );
+
+    return founderAnnotations.map(ann => ({
+      id: ann.id,
+      blockId: ann.targetBlockId || ann.id,
+      type: ann.type,
+      content: ann.content,
+      position: ann.targetText ? {
+        start: 0,
+        end: 0
+      } : undefined,
+      created_at: ann.createdAt.toISOString()
+    }));
   };
+
+  // Auto-save founder comments every 2 seconds (memoized to have access to latest escalationId)
+  const autoSaveFounderCommentsMemo = React.useCallback(async (doc: SemanticDocument) => {
+    if (!escalationId || !doc) return;
+
+    try {
+      setIsAutoSaving(true);
+      
+      const comments = extractFounderComments(doc);
+
+      // Save comments to escalated_essays (without changing status)
+      await EscalatedEssaysService.updateEscalatedEssay(escalationId, {
+        founder_comments: comments,
+        founder_edited_content: doc,
+        // Keep existing status - don't change it on auto-save
+      });
+
+      setLastSavedComments(new Date());
+    } catch (error) {
+      console.error('Error auto-saving founder comments:', error);
+      // Don't show toast for auto-save errors to avoid annoying the founder
+    } finally {
+      setIsAutoSaving(false);
+    }
+  }, [escalationId]);
+
+  const handleDocumentChange = (updatedDocument: SemanticDocument) => {
+    // Convert any new 'user' comments to 'mihir' for founder
+    const hasUserComments = updatedDocument.blocks.some(block =>
+      block.annotations.some(ann => ann.author === 'user')
+    );
+
+    if (hasUserComments) {
+      // Update all 'user' comments to 'mihir'
+      const updatedBlocks = updatedDocument.blocks.map(block => ({
+        ...block,
+        annotations: block.annotations.map(ann => 
+          ann.author === 'user' ? { ...ann, author: 'mihir' as const } : ann
+        )
+      }));
+      
+      updatedDocument = {
+        ...updatedDocument,
+        blocks: updatedBlocks,
+        updatedAt: new Date()
+      };
+    }
+
+    setDocument(updatedDocument);
+
+    // Clear existing auto-save timeout
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+
+    // Set up auto-save after 2 seconds of inactivity
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      autoSaveFounderCommentsMemo(updatedDocument);
+    }, 2000);
+  };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, []);
+
 
   const handleSaveFeedback = async () => {
     if (!escalationId || !document) return;
@@ -102,24 +229,8 @@ const FounderEssayReview: React.FC = () => {
     try {
       setSaving(true);
 
-      // Extract founder comments from document annotations (those with author === 'user')
-      // These are comments the founder added in the editor
-      const founderAnnotations = document.blocks.flatMap(block => 
-        block.annotations.filter(ann => ann.author === 'user')
-      );
-
-      // Convert annotations to EscalatedEssayComment format
-      const comments: EscalatedEssayComment[] = founderAnnotations.map(ann => ({
-        id: ann.id,
-        blockId: ann.targetBlockId || ann.id, // Fallback to annotation id if blockId not set
-        type: ann.type,
-        content: ann.content,
-        position: ann.targetText ? {
-          start: 0, // Position tracking would need to be implemented based on targetText
-          end: 0
-        } : undefined,
-        created_at: ann.createdAt.toISOString()
-      }));
+      // Extract founder comments (those with author === 'mihir')
+      const comments = extractFounderComments(document);
 
       // Save feedback and comments
       await EscalatedEssaysService.updateEscalatedEssay(escalationId, {
@@ -195,21 +306,7 @@ const FounderEssayReview: React.FC = () => {
 
       // Save feedback/comments/edits before sending back
       if (document) {
-        const founderAnnotations = document.blocks.flatMap(block => 
-          block.annotations.filter(ann => ann.author === 'user')
-        );
-
-        const comments: EscalatedEssayComment[] = founderAnnotations.map(ann => ({
-          id: ann.id,
-          blockId: ann.targetBlockId || ann.id,
-          type: ann.type,
-          content: ann.content,
-          position: ann.targetText ? {
-            start: 0,
-            end: 0
-          } : undefined,
-          created_at: ann.createdAt.toISOString()
-        }));
+        const comments = extractFounderComments(document);
 
         await EscalatedEssaysService.sendBackToStudent(
           escalationId,
@@ -406,9 +503,20 @@ const FounderEssayReview: React.FC = () => {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-4">
+            {isAutoSaving && (
+              <span className="text-sm text-muted-foreground flex items-center gap-2">
+                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary"></div>
+                Auto-saving comments...
+              </span>
+            )}
+            {!isAutoSaving && lastSavedComments && (
+              <span className="text-sm text-muted-foreground">
+                Last saved: {lastSavedComments.toLocaleTimeString()}
+              </span>
+            )}
             <Button
               onClick={handleSaveFeedback}
-              disabled={saving}
+              disabled={saving || isAutoSaving}
               variant="outline"
             >
               <Save className="h-4 w-4 mr-2" />
