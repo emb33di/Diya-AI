@@ -280,7 +280,7 @@ const Header = () => {
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <button className={`text-sm font-medium transition-colors px-3 py-1 flex items-center gap-1 ${
-                          isActive('/blog') || isActive('/successful-examples')
+                          isActive('/blog')
                             ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
                             : 'text-black hover:text-black'
                         }`}>
@@ -292,11 +292,6 @@ const Header = () => {
                         <DropdownMenuItem asChild>
                           <Link to="/blog" className="flex items-center">
                             Blog
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link to="/successful-examples" className="flex items-center">
-                            Successful Examples
                           </Link>
                         </DropdownMenuItem>
                       </DropdownMenuContent>

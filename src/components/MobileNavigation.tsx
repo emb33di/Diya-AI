@@ -74,11 +74,6 @@ const MobileNavigation = () => {
       label: "Blog",
       icon: <BookOpen className="h-5 w-5" />,
     },
-    {
-      path: "/successful-examples",
-      label: "Successful Examples",
-      icon: <FolderOpen className="h-5 w-5" />,
-    },
   ];
 
   const handleLinkClick = () => {
