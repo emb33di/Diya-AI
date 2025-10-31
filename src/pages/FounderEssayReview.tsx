@@ -29,7 +29,7 @@ import { SemanticDocument, Annotation, AnnotationType } from '@/types/semanticDo
 import { semanticDocumentService } from '@/services/semanticDocumentService';
 import { useToast } from '@/hooks/use-toast';
 import FounderGuard from '@/components/FounderGuard';
-import SemanticEditor from '@/components/essay/SemanticEditor';
+import FounderSemanticEditor from '@/components/essay/FounderSemanticEditor';
 
 const FounderEssayReview: React.FC = () => {
   const { escalationId } = useParams<{ escalationId: string }>();
@@ -44,8 +44,9 @@ const FounderEssayReview: React.FC = () => {
   const [document, setDocument] = useState<SemanticDocument | null>(null);
   const [initialHtml, setInitialHtml] = useState<string>('');
   const [aiCommentsSnapshot, setAiCommentsSnapshot] = useState<EscalatedEssayComment[]>([]);
-  const [lastSavedComments, setLastSavedComments] = useState<Date | null>(null);
+  const [displaySaveTime, setDisplaySaveTime] = useState<Date | null>(null);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastActualSaveTimeRef = useRef<Date | null>(null);
 
   useEffect(() => {
     if (escalationId) {
@@ -169,7 +170,8 @@ const FounderEssayReview: React.FC = () => {
         // Keep existing status - don't change it on auto-save
       });
 
-      setLastSavedComments(new Date());
+      // Update the actual save time but don't update display state
+      lastActualSaveTimeRef.current = new Date();
     } catch (error) {
       console.error('Error auto-saving founder comments:', error);
       // Don't show toast for auto-save errors to avoid annoying the founder
@@ -213,6 +215,25 @@ const FounderEssayReview: React.FC = () => {
     }, 2000);
   };
 
+  // Update display time gently every minute (without triggering auto-save UI updates)
+  useEffect(() => {
+    // Update display immediately if there's a save time and no display time yet
+    if (lastActualSaveTimeRef.current && !displaySaveTime) {
+      setDisplaySaveTime(lastActualSaveTimeRef.current);
+    }
+
+    // Set up interval to update display time every 60 seconds (1 minute)
+    const displayUpdateInterval = setInterval(() => {
+      if (lastActualSaveTimeRef.current) {
+        setDisplaySaveTime(lastActualSaveTimeRef.current);
+      }
+    }, 60000); // 60 seconds = 1 minute
+
+    return () => {
+      clearInterval(displayUpdateInterval);
+    };
+  }, [displaySaveTime]);
+
   // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
@@ -239,6 +260,11 @@ const FounderEssayReview: React.FC = () => {
         founder_edited_content: document,
         status: essay?.status || 'in_review'
       });
+
+      // Update display time immediately when manually saved
+      const saveTime = new Date();
+      lastActualSaveTimeRef.current = saveTime;
+      setDisplaySaveTime(saveTime);
 
       toast({
         title: 'Success',
@@ -468,7 +494,7 @@ const FounderEssayReview: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <SemanticEditor
+              <FounderSemanticEditor
                 documentId={document.id}
                 essayId={essay.essay_id}
                 title={essay.essay_title}
@@ -509,9 +535,9 @@ const FounderEssayReview: React.FC = () => {
                 Auto-saving comments...
               </span>
             )}
-            {!isAutoSaving && lastSavedComments && (
+            {!isAutoSaving && displaySaveTime && (
               <span className="text-sm text-muted-foreground">
-                Last saved: {lastSavedComments.toLocaleTimeString()}
+                Last saved: {displaySaveTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
               </span>
             )}
             <Button
