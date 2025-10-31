@@ -15,7 +15,6 @@ import {
   SemanticDocument, 
   DocumentBlock, 
   Annotation, 
-  AnnotationType,
   SemanticEditorState
 } from '@/types/semanticDocument';
 import { semanticDocumentService } from '@/services/semanticDocumentService';
@@ -29,13 +28,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import TiptapEditor, { TiptapEditorRef } from './TiptapEditor';
 import { 
@@ -109,7 +101,6 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [newCommentText, setNewCommentText] = useState<string>('');
-  const [newCommentType, setNewCommentType] = useState<AnnotationType>('suggestion');
   const [isGeneratingAIComments, setIsGeneratingAIComments] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
 
@@ -128,7 +119,8 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
   } | null>(null);
   const [showCommentDialog, setShowCommentDialog] = useState(false);
   const [commentDialogText, setCommentDialogText] = useState('');
-  const [commentDialogType, setCommentDialogType] = useState<AnnotationType>('suggestion');
+  const [focusNewComment, setFocusNewComment] = useState(false);
+  const [newCommentSelectedText, setNewCommentSelectedText] = useState('');
 
   // Toast for user feedback
   const { toast } = useToast();
@@ -1541,13 +1533,15 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
         return;
       }
 
-      // Cmd/Ctrl + M: Create comment for selected text
+      // Cmd/Ctrl + M: Create comment for selected text (show in sidebar)
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'm') {
         if (activeSelection && activeSelection.text.trim().length > 0) {
           e.preventDefault();
-          setCommentDialogText('');
-          setCommentDialogType('suggestion');
-          setShowCommentDialog(true);
+          // Set selected text and trigger focus in sidebar
+          setNewCommentSelectedText(activeSelection.text);
+          setFocusNewComment(true);
+          // Ensure sidebar is visible - note: if sidebar is controlled by parent, 
+          // we'll need to rely on parent showing it or add a callback
         }
         return;
       }
@@ -1719,11 +1713,10 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
       });
   }, [state.document, deepCloneDocument, toast]);
 
-  // Create comment from selection
+  // Create comment from selection (kept for backward compatibility with dialog)
   const handleCreateComment = useCallback((
     selection: typeof activeSelection,
-    commentText: string,
-    commentType: AnnotationType
+    commentText: string
   ) => {
     if (!selection) return;
 
@@ -1733,7 +1726,7 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
     if (selection.blockIds.length === 1) {
       const blockId = selection.blockIds[0];
       const annotation: Omit<Annotation, 'id' | 'createdAt' | 'updatedAt'> = {
-        type: commentType,
+        type: 'comment', // Default type
         author: 'mihir',
         content: commentText,
         targetBlockId: blockId,
@@ -1771,7 +1764,7 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
       // Multi-block: use first block as anchor
       const startBlockId = selection.startBlock;
       const annotation: Omit<Annotation, 'id' | 'createdAt' | 'updatedAt'> = {
-        type: commentType,
+        type: 'comment', // Default type
         author: 'mihir',
         content: commentText,
         targetBlockId: startBlockId,
@@ -1814,6 +1807,75 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
 
     // Clear selection and UI
     setShowCommentDialog(false);
+    setActiveSelection(null);
+    window.getSelection()?.removeAllRanges();
+  }, [activeSelection, state.document, onDocumentChange, saveToUndoStack, toast]);
+
+  // Wrapper for sidebar to add annotation (uses current activeSelection)
+  const handleAnnotationAdd = useCallback((
+    annotation: Omit<Annotation, 'id' | 'createdAt' | 'updatedAt'>
+  ) => {
+    if (!activeSelection) {
+      toast({
+        title: 'Error',
+        description: 'No text selected. Please select text and try again.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // Merge annotation data with selection info
+    const blockId = activeSelection.blockIds.length === 1 
+      ? activeSelection.blockIds[0] 
+      : activeSelection.startBlock;
+    
+    const fullAnnotation: Omit<Annotation, 'id' | 'createdAt' | 'updatedAt'> = {
+      ...annotation,
+      type: 'comment', // Default type
+      targetBlockId: annotation.targetBlockId || blockId,
+      targetText: annotation.targetText || activeSelection.text,
+      metadata: {
+        ...annotation.metadata,
+        ...(activeSelection.blockIds.length > 1 ? {
+          multiBlock: true,
+          blockIds: activeSelection.blockIds,
+          position_start: activeSelection.startOffset,
+          position_end: activeSelection.endOffset
+        } : {
+          position_start: activeSelection.startOffset,
+          position_end: activeSelection.endOffset
+        } as any)
+      }
+    };
+
+    saveToUndoStack();
+
+    // Use service to add annotation (mutates document in place)
+    const documentCopy = deepCloneDocument(state.document);
+    const newAnnotation = semanticDocumentService.addAnnotation(
+      documentCopy,
+      fullAnnotation
+    );
+    
+    if (newAnnotation) {
+      setState(prev => ({
+        ...prev,
+        document: documentCopy,
+        pendingChanges: true
+      }));
+      
+      // Trigger parent callback with updated document
+      onDocumentChange?.(documentCopy);
+      
+      toast({
+        title: 'Comment added',
+        description: 'Your comment has been added to the document.',
+      });
+    }
+
+    // Clear selection and UI
+    setFocusNewComment(false);
+    setNewCommentSelectedText('');
     setActiveSelection(null);
     window.getSelection()?.removeAllRanges();
   }, [activeSelection, state.document, onDocumentChange, saveToUndoStack, toast]);
@@ -2230,7 +2292,7 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
             console.log('Highlight clicked, calling onAnnotationSelect with:', segment.annotation);
             onAnnotationSelect?.(segment.annotation);
           }}
-          title={`${segment.annotation.type}: ${segment.annotation.content}`}
+          title={segment.annotation.content}
         >
           {text.substring(segment.start, segment.end)}
         </span>
@@ -2455,7 +2517,6 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
               onClick={() => {
                 if (activeSelection) {
                   setCommentDialogText('');
-                  setCommentDialogType('suggestion');
                   setShowCommentDialog(true);
                 }
               }}
@@ -2493,7 +2554,11 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
           onAnnotationResolve={resolveAnnotation}
           onAnnotationDelete={deleteAnnotation}
           onAnnotationSelect={onAnnotationSelect}
+          onAnnotationAdd={handleAnnotationAdd}
           onDocumentReload={reloadDocument}
+          newCommentText={newCommentSelectedText}
+          focusNewComment={focusNewComment}
+          onNewCommentFocusComplete={() => setFocusNewComment(false)}
           selectedAnnotationId={selectedAnnotationId}
           onHideSidebar={onHideSidebar}
           className="h-full"
@@ -2529,27 +2594,6 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
           
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <label htmlFor="comment-type" className="text-sm font-medium">
-                Comment Type
-              </label>
-              <Select
-                value={commentDialogType}
-                onValueChange={(value) => setCommentDialogType(value as AnnotationType)}
-              >
-                <SelectTrigger id="comment-type">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="suggestion">Suggestion</SelectItem>
-                  <SelectItem value="comment">Comment</SelectItem>
-                  <SelectItem value="critique">Critique</SelectItem>
-                  <SelectItem value="praise">Praise</SelectItem>
-                  <SelectItem value="question">Question</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid gap-2">
               <label htmlFor="comment-text" className="text-sm font-medium">
                 Comment
               </label>
@@ -2578,7 +2622,7 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
             <Button
               onClick={() => {
                 if (commentDialogText.trim() && activeSelection) {
-                  handleCreateComment(activeSelection, commentDialogText.trim(), commentDialogType);
+                  handleCreateComment(activeSelection, commentDialogText.trim());
                   setCommentDialogText('');
                 }
               }}

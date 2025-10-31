@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Textarea } from '@/components/ui/textarea';
 import { 
   MessageSquare, 
   CheckCircle, 
@@ -44,10 +45,15 @@ interface FounderCommentSidebarProps {
   onAnnotationResolve?: (annotationId: string) => void;
   onAnnotationDelete?: (annotationId: string) => void;
   onAnnotationSelect?: (annotation: Annotation | null) => void;
+  onAnnotationAdd?: (annotation: Omit<Annotation, 'id' | 'createdAt' | 'updatedAt'>) => void;
   selectedAnnotationId?: string;
   onHideSidebar?: () => void;
   onDocumentReload?: () => Promise<void>;
   className?: string;
+  // For new comment creation
+  newCommentText?: string; // Pre-filled selected text
+  focusNewComment?: boolean; // Trigger focus on new comment box
+  onNewCommentFocusComplete?: () => void; // Callback when focus is complete
 }
 
 interface GroupedComment {
@@ -62,16 +68,24 @@ const FounderCommentSidebar: React.FC<FounderCommentSidebarProps> = ({
   onAnnotationResolve,
   onAnnotationDelete,
   onAnnotationSelect,
+  onAnnotationAdd,
   selectedAnnotationId,
   onHideSidebar,
   onDocumentReload,
-  className
+  className,
+  newCommentText: initialNewCommentText,
+  focusNewComment,
+  onNewCommentFocusComplete
 }) => {
   const [expandedCategories, setExpandedCategories] = useState<Set<FounderCommentCategory>>(
     new Set(['overall-analysis', 'tone', 'clarity', 'strengths', 'areas-for-improvement', 'paragraph-quality'])
   );
   const [activeTab, setActiveTab] = useState<'all' | 'unresolved'>('unresolved');
+  const [showNewComment, setShowNewComment] = useState(false);
+  const [newCommentText, setNewCommentText] = useState('');
+  const [newCommentSelectedText, setNewCommentSelectedText] = useState('');
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const newCommentTextareaRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
 
   // Determine comment category - excludes grammar
@@ -159,6 +173,75 @@ const FounderCommentSidebar: React.FC<FounderCommentSidebarProps> = ({
 
     return grouped;
   }, [blocks, activeTab]);
+
+  // Handle focus new comment trigger
+  useEffect(() => {
+    if (focusNewComment) {
+      if (initialNewCommentText) {
+        setNewCommentSelectedText(initialNewCommentText);
+        setShowNewComment(true);
+      } else {
+        setShowNewComment(true);
+      }
+      
+      // Scroll to top and focus textarea
+      setTimeout(() => {
+        const scrollContainer = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+        if (scrollContainer) {
+          scrollContainer.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+          });
+        }
+        
+        setTimeout(() => {
+          newCommentTextareaRef.current?.focus();
+          onNewCommentFocusComplete?.();
+        }, 100);
+      }, 50);
+    }
+  }, [focusNewComment, initialNewCommentText, onNewCommentFocusComplete]);
+
+  // Initialize new comment text when prop changes
+  useEffect(() => {
+    if (initialNewCommentText) {
+      setNewCommentSelectedText(initialNewCommentText);
+    }
+  }, [initialNewCommentText]);
+
+  // Handle saving new comment
+  const handleSaveNewComment = () => {
+    if (!newCommentText.trim() || !onAnnotationAdd) return;
+
+    // Find appropriate block - use first block as fallback
+    // The parent's handleAnnotationAdd will override with correct block from activeSelection
+    const firstBlock = blocks[0];
+    if (!firstBlock) {
+      toast({
+        title: 'Error',
+        description: 'No content to comment on.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    const annotation: Omit<Annotation, 'id' | 'createdAt' | 'updatedAt'> = {
+      type: 'comment', // Default type
+      author: 'mihir',
+      content: newCommentText.trim(),
+      targetBlockId: firstBlock.id, // Will be overridden by handleAnnotationAdd if activeSelection exists
+      targetText: newCommentSelectedText || '',
+      resolved: false,
+      metadata: {}
+    };
+
+    onAnnotationAdd(annotation);
+
+    // Reset form
+    setNewCommentText('');
+    setNewCommentSelectedText('');
+    setShowNewComment(false);
+  };
 
   // Scroll to selected comment when selectedAnnotationId changes
   useEffect(() => {
@@ -293,6 +376,74 @@ const FounderCommentSidebar: React.FC<FounderCommentSidebarProps> = ({
 
       <ScrollArea ref={scrollAreaRef} className="flex-1 h-[calc(100vh-200px)]">
         <div className="space-y-4 p-2 pb-4">
+          {/* New Comment Creation UI */}
+          {onAnnotationAdd && (
+            <Card className="border-2 border-blue-200 shadow-md">
+              <CardHeader className="py-2 px-3 bg-blue-25">
+                <CardTitle className="text-sm font-semibold text-blue-800 flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4" />
+                  {showNewComment ? 'New Comment' : 'Add Comment'}
+                </CardTitle>
+              </CardHeader>
+              {showNewComment ? (
+                <CardContent className="p-3 space-y-3">
+                  {newCommentSelectedText && (
+                    <div className="p-2 bg-gray-50 rounded text-sm italic text-gray-600 border border-gray-200">
+                      <strong>Selected text:</strong> &quot;{newCommentSelectedText.substring(0, 100)}
+                      {newCommentSelectedText.length > 100 ? '...' : ''}&quot;
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    <label htmlFor="new-comment-text" className="text-sm font-medium">
+                      Comment
+                    </label>
+                    <Textarea
+                      id="new-comment-text"
+                      ref={newCommentTextareaRef}
+                      placeholder="Enter your comment..."
+                      value={newCommentText}
+                      onChange={(e) => setNewCommentText(e.target.value)}
+                      rows={4}
+                      className="resize-none"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleSaveNewComment}
+                      disabled={!newCommentText.trim()}
+                      size="sm"
+                      className="flex-1"
+                    >
+                      Save Comment
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setShowNewComment(false);
+                        setNewCommentText('');
+                        setNewCommentSelectedText('');
+                      }}
+                      variant="outline"
+                      size="sm"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </CardContent>
+              ) : (
+                <CardContent className="p-3">
+                  <Button
+                    onClick={() => setShowNewComment(true)}
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                  >
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    Add New Comment
+                  </Button>
+                </CardContent>
+              )}
+            </Card>
+          )}
           {/* Overall Analysis Section - Always at top */}
           {groupedComments['overall-analysis'].length > 0 && (
             <>
@@ -347,9 +498,6 @@ const FounderCommentSidebar: React.FC<FounderCommentSidebarProps> = ({
                                   ) : (
                                     <User className="h-3 w-3 text-gray-600" />
                                   )}
-                                  <Badge variant="outline" className="text-xs">
-                                    {annotation.type}
-                                  </Badge>
                                   <Badge variant="outline" className="text-xs text-indigo-600 border-indigo-300">
                                     Big Picture
                                   </Badge>
@@ -474,9 +622,6 @@ const FounderCommentSidebar: React.FC<FounderCommentSidebarProps> = ({
                               ) : (
                                 <User className="h-3 w-3 text-gray-600" />
                               )}
-                              <Badge variant="outline" className="text-xs">
-                                {annotation.type}
-                              </Badge>
                               <Badge variant="outline" className="text-xs text-gray-500">
                                 Para {blockIndex + 1}
                               </Badge>

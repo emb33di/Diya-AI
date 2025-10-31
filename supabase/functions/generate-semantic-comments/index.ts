@@ -1033,32 +1033,11 @@ function extractTargetTextFromComment(agentComment: any, blockContent: string): 
 
 /**
  * Map agent comment type to semantic comment type
+ * Always returns 'comment' as we no longer use different comment types
  */
-function mapAgentCommentType(agentComment: any, agentType: string): 'suggestion' | 'critique' | 'praise' | 'question' | 'comment' {
-  const commentType = agentComment.comment_type || agentComment.commentType;
-  
-  if (commentType) {
-    switch (commentType) {
-      case 'suggestion': return 'suggestion';
-      case 'critique': return 'critique';
-      case 'praise': return 'praise';
-      case 'question': return 'question';
-      default: return 'comment';
-    }
-  }
-
-  // Map based on agent type and comment nature
-  const commentNature = agentComment.comment_nature || agentComment.commentNature;
-  
-  if (agentType === 'strengths' || commentNature === 'strength') {
-    return 'praise';
-  } else if (agentType === 'weaknesses' || commentNature === 'weakness') {
-    return 'critique';
-  } else if (agentType === 'tone' || agentType === 'clarity') {
-    return 'suggestion';
-  }
-
-  return 'suggestion';
+function mapAgentCommentType(agentComment: any, agentType: string): 'comment' {
+  // Always return 'comment' - comment type is no longer used
+  return 'comment';
 }
 
 /**
