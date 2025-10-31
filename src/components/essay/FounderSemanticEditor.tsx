@@ -21,6 +21,22 @@ import {
 import { semanticDocumentService } from '@/services/semanticDocumentService';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import TiptapEditor, { TiptapEditorRef } from './TiptapEditor';
 import { 
   MessageSquare, 
@@ -31,7 +47,8 @@ import {
   User,
   Bot,
   Copy,
-  CheckSquare
+  CheckSquare,
+  FileEdit
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import AICommentsLoadingPane, { AI_COMMENTS_LOADING_STEPS } from './AICommentsLoadingPane';
@@ -95,6 +112,23 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
   const [newCommentType, setNewCommentType] = useState<AnnotationType>('suggestion');
   const [isGeneratingAIComments, setIsGeneratingAIComments] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
+
+  // Mode-based editing state
+  const [founderMode, setFounderMode] = useState<'comment' | 'edit'>('comment');
+
+  // Selection tracking for comments
+  const [activeSelection, setActiveSelection] = useState<{
+    text: string;
+    range: Range;
+    blockIds: string[];
+    startBlock: string;
+    startOffset: number;
+    endBlock: string;
+    endOffset: number;
+  } | null>(null);
+  const [showCommentDialog, setShowCommentDialog] = useState(false);
+  const [commentDialogText, setCommentDialogText] = useState('');
+  const [commentDialogType, setCommentDialogType] = useState<AnnotationType>('suggestion');
 
   // Toast for user feedback
   const { toast } = useToast();
@@ -1484,6 +1518,56 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
   // Global key handling for undo/redo, full-essay cut, paste, and delete
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger shortcuts when typing in input fields or dialogs
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        // Allow Escape to work even in input fields for closing dialogs
+        if (e.key === 'Escape') {
+          if (showCommentDialog) {
+            e.preventDefault();
+            setShowCommentDialog(false);
+            setCommentDialogText('');
+            setActiveSelection(null);
+            window.getSelection()?.removeAllRanges();
+          }
+        }
+        return;
+      }
+
+      // Cmd/Ctrl + K: Toggle edit mode
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setFounderMode(founderMode === 'edit' ? 'comment' : 'edit');
+        return;
+      }
+
+      // Cmd/Ctrl + M: Create comment for selected text
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'm') {
+        if (activeSelection && activeSelection.text.trim().length > 0) {
+          e.preventDefault();
+          setCommentDialogText('');
+          setCommentDialogType('suggestion');
+          setShowCommentDialog(true);
+        }
+        return;
+      }
+
+      // Escape: Close comment dialog, clear selection
+      if (e.key === 'Escape') {
+        if (showCommentDialog) {
+          e.preventDefault();
+          setShowCommentDialog(false);
+          setCommentDialogText('');
+          setActiveSelection(null);
+          window.getSelection()?.removeAllRanges();
+        } else if (activeSelection) {
+          e.preventDefault();
+          setActiveSelection(null);
+          window.getSelection()?.removeAllRanges();
+        }
+        return;
+      }
+
       // Undo
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
         if (undoStackRef.current.length > 0) {
@@ -1545,7 +1629,7 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [undo, redo, getDocumentPlainText, handleFullEssayCut, handleFullEssayPaste, handleFullEssayDelete, editingBlockId, saveToUndoStack]);
+  }, [undo, redo, getDocumentPlainText, handleFullEssayCut, handleFullEssayPaste, handleFullEssayDelete, editingBlockId, saveToUndoStack, founderMode, showCommentDialog, activeSelection]);
 
   // Handle "See AI Comments" button click
   const handleSeeAIComments = () => {
@@ -1635,6 +1719,105 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
       });
   }, [state.document, deepCloneDocument, toast]);
 
+  // Create comment from selection
+  const handleCreateComment = useCallback((
+    selection: typeof activeSelection,
+    commentText: string,
+    commentType: AnnotationType
+  ) => {
+    if (!selection) return;
+
+    saveToUndoStack();
+
+    // For single-block: use block directly
+    if (selection.blockIds.length === 1) {
+      const blockId = selection.blockIds[0];
+      const annotation: Omit<Annotation, 'id' | 'createdAt' | 'updatedAt'> = {
+        type: commentType,
+        author: 'mihir',
+        content: commentText,
+        targetBlockId: blockId,
+        targetText: selection.text,
+        resolved: false,
+        metadata: {
+          // Store position info for reference (using type assertion since metadata is flexible JSONB)
+          ...({ position_start: selection.startOffset, position_end: selection.endOffset } as any)
+        }
+      };
+      
+      // Use service to add annotation (mutates document in place)
+      const documentCopy = deepCloneDocument(state.document);
+      const newAnnotation = semanticDocumentService.addAnnotation(
+        documentCopy,
+        annotation
+      );
+      
+      if (newAnnotation) {
+        setState(prev => ({
+          ...prev,
+          document: documentCopy,
+          pendingChanges: true
+        }));
+        
+        // Trigger parent callback with updated document
+        onDocumentChange?.(documentCopy);
+        
+        toast({
+          title: 'Comment added',
+          description: 'Your comment has been added to the document.',
+        });
+      }
+    } else {
+      // Multi-block: use first block as anchor
+      const startBlockId = selection.startBlock;
+      const annotation: Omit<Annotation, 'id' | 'createdAt' | 'updatedAt'> = {
+        type: commentType,
+        author: 'mihir',
+        content: commentText,
+        targetBlockId: startBlockId,
+        targetText: selection.text, // Full selected text
+        resolved: false,
+        metadata: {
+          // Store multi-block info (using type assertion since metadata is flexible JSONB)
+          ...({ 
+            multiBlock: true, 
+            blockIds: selection.blockIds, 
+            position_start: selection.startOffset, 
+            position_end: selection.endOffset 
+          } as any)
+        }
+      };
+      
+      // Use service to add annotation (mutates document in place)
+      const documentCopy = deepCloneDocument(state.document);
+      const newAnnotation = semanticDocumentService.addAnnotation(
+        documentCopy,
+        annotation
+      );
+      
+      if (newAnnotation) {
+        setState(prev => ({
+          ...prev,
+          document: documentCopy,
+          pendingChanges: true
+        }));
+        
+        // Trigger parent callback with updated document
+        onDocumentChange?.(documentCopy);
+        
+        toast({
+          title: 'Comment added',
+          description: 'Your comment has been added to the document.',
+        });
+      }
+    }
+
+    // Clear selection and UI
+    setShowCommentDialog(false);
+    setActiveSelection(null);
+    window.getSelection()?.removeAllRanges();
+  }, [activeSelection, state.document, onDocumentChange, saveToUndoStack, toast]);
+
   // Reload document from database
   const reloadDocument = useCallback(async () => {
     try {
@@ -1655,6 +1838,240 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
       });
     }
   }, [state.document.id, toast]);
+
+  // Helper function to find blocks involved in a selection range
+  const findBlocksInSelection = useCallback((range: Range): string[] => {
+    const blockIds: string[] = [];
+    const startContainer = range.startContainer;
+    const endContainer = range.endContainer;
+
+    // Walk up the DOM tree to find block elements
+    const findBlockId = (node: Node | null): string | null => {
+      if (!node) return null;
+      
+      let current: Node | null = node;
+      while (current && current.nodeType !== Node.DOCUMENT_NODE) {
+        if (current.nodeType === Node.ELEMENT_NODE) {
+          const element = current as HTMLElement;
+          const blockId = element.getAttribute('data-block-id');
+          if (blockId) return blockId;
+        }
+        current = current.parentNode;
+      }
+      return null;
+    };
+
+    // Get block IDs for start and end
+    const startBlockId = findBlockId(startContainer);
+    const endBlockId = findBlockId(endContainer);
+
+    if (!startBlockId || !endBlockId) return [];
+
+    // If same block, return it
+    if (startBlockId === endBlockId) {
+      return [startBlockId];
+    }
+
+    // For multi-block selections, find all blocks between start and end
+    const sortedBlocks = [...state.document.blocks].sort((a, b) => a.position - b.position);
+    const startIndex = sortedBlocks.findIndex(b => b.id === startBlockId);
+    const endIndex = sortedBlocks.findIndex(b => b.id === endBlockId);
+
+    if (startIndex === -1 || endIndex === -1) return [startBlockId];
+
+    const minIndex = Math.min(startIndex, endIndex);
+    const maxIndex = Math.max(startIndex, endIndex);
+
+    for (let i = minIndex; i <= maxIndex; i++) {
+      blockIds.push(sortedBlocks[i].id);
+    }
+
+    return blockIds;
+  }, [state.document.blocks]);
+
+  // Helper function to calculate cross-block selection positions
+  const calculateCrossBlockSelection = useCallback((range: Range, blockIds: string[]) => {
+    const sortedBlocks = [...state.document.blocks].sort((a, b) => a.position - b.position);
+    
+    if (blockIds.length === 0) {
+      return {
+        startBlock: '',
+        startOffset: 0,
+        endBlock: '',
+        endOffset: 0
+      };
+    }
+
+    if (blockIds.length === 1) {
+      // Single block selection
+      const blockId = blockIds[0];
+      const block = sortedBlocks.find(b => b.id === blockId);
+      if (!block) {
+        return { startBlock: blockId, startOffset: 0, endBlock: blockId, endOffset: 0 };
+      }
+
+      // Find the block element in the DOM
+      const blockElement = contentContainerRef.current?.querySelector(`[data-block-id="${blockId}"]`) as HTMLElement;
+      if (!blockElement) {
+        return { startBlock: blockId, startOffset: 0, endBlock: blockId, endOffset: 0 };
+      }
+
+      // Calculate position within the block
+      const textNodes = getTextNodesIn(blockElement);
+      let startOffset = 0;
+      let endOffset = 0;
+
+      const startContainer = range.startContainer;
+      const endContainer = range.endContainer;
+
+      // Calculate start offset
+      for (const node of textNodes) {
+        if (node === startContainer) {
+          startOffset += range.startOffset;
+          break;
+        }
+        if (node.contains(startContainer) || startContainer.contains(node)) {
+          // Walk to find exact position
+          const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+          let found = false;
+          let tempNode;
+          let tempOffset = 0;
+          while ((tempNode = walker.nextNode()) && !found) {
+            if (tempNode === startContainer) {
+              startOffset += range.startOffset;
+              found = true;
+              break;
+            }
+            if (tempNode.nodeType === Node.TEXT_NODE) {
+              tempOffset += (tempNode as Text).textContent?.length || 0;
+            }
+          }
+          if (!found) {
+            startOffset += tempOffset + (range.startOffset || 0);
+          }
+          break;
+        }
+        if (node.nodeType === Node.TEXT_NODE) {
+          startOffset += (node as Text).textContent?.length || 0;
+        }
+      }
+
+      // Calculate end offset
+      for (const node of textNodes) {
+        if (node === endContainer) {
+          endOffset += range.endOffset;
+          break;
+        }
+        if (node.contains(endContainer) || endContainer.contains(node)) {
+          const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+          let found = false;
+          let tempNode;
+          let tempOffset = 0;
+          while ((tempNode = walker.nextNode()) && !found) {
+            if (tempNode === endContainer) {
+              endOffset += range.endOffset;
+              found = true;
+              break;
+            }
+            if (tempNode.nodeType === Node.TEXT_NODE) {
+              tempOffset += (tempNode as Text).textContent?.length || 0;
+            }
+          }
+          if (!found) {
+            endOffset += tempOffset + (range.endOffset || 0);
+          }
+          break;
+        }
+        if (node.nodeType === Node.TEXT_NODE) {
+          endOffset += (node as Text).textContent?.length || 0;
+        }
+      }
+
+      // Clamp offsets to block content length
+      const contentLength = block.content.length;
+      startOffset = Math.max(0, Math.min(startOffset, contentLength));
+      endOffset = Math.max(0, Math.min(endOffset, contentLength));
+
+      return {
+        startBlock: blockId,
+        startOffset,
+        endBlock: blockId,
+        endOffset
+      };
+    } else {
+      // Multi-block selection
+      const startBlockId = blockIds[0];
+      const endBlockId = blockIds[blockIds.length - 1];
+
+      // For multi-block, we'll use simplified position calculation
+      // Start at beginning of first block, end at end of last block
+      const startBlock = sortedBlocks.find(b => b.id === startBlockId);
+      const endBlock = sortedBlocks.find(b => b.id === endBlockId);
+
+      return {
+        startBlock: startBlockId,
+        startOffset: 0,
+        endBlock: endBlockId,
+        endOffset: endBlock ? endBlock.content.length : 0
+      };
+    }
+  }, [state.document.blocks, getTextNodesIn]);
+
+  // Global selection listener for comment mode
+  useEffect(() => {
+    // Only listen for selections when not in edit mode for a block
+    if (editingBlockId !== null) {
+      setActiveSelection(null);
+      return;
+    }
+
+    const handleSelection = () => {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) {
+        setActiveSelection(null);
+        return;
+      }
+
+      const text = selection.toString().trim();
+      if (!text) {
+        setActiveSelection(null);
+        return;
+      }
+
+      const range = selection.getRangeAt(0);
+      
+      // Check if selection is within editor
+      if (!contentContainerRef.current?.contains(range.commonAncestorContainer)) {
+        setActiveSelection(null);
+        return;
+      }
+
+      // Find blocks involved in selection
+      const blockIds = findBlocksInSelection(range);
+      if (blockIds.length === 0) {
+        setActiveSelection(null);
+        return;
+      }
+
+      // Calculate positions
+      const selectionData = calculateCrossBlockSelection(range, blockIds);
+      
+      setActiveSelection({
+        text,
+        range: range.cloneRange(),
+        blockIds,
+        ...selectionData
+      });
+    };
+
+    document.addEventListener('selectionchange', handleSelection);
+    document.addEventListener('mouseup', handleSelection);
+    
+    return () => {
+      document.removeEventListener('selectionchange', handleSelection);
+      document.removeEventListener('mouseup', handleSelection);
+    };
+  }, [editingBlockId, findBlocksInSelection, calculateCrossBlockSelection]);
 
   // Render highlighted text with annotations
   const renderHighlightedText = (text: string, annotations: Annotation[]) => {
@@ -1844,11 +2261,14 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
   // Render a single block
   const renderBlock = (block: DocumentBlock) => {
     const isEditing = editingBlockId === block.id;
+    const isCommentMode = founderMode === 'comment';
+    const isEditMode = founderMode === 'edit';
 
     return (
       <div
         key={block.id}
-        className="relative mb-2"
+        className="relative"
+        data-block-id={block.id}
       >
 
         {/* Block Content */}
@@ -1883,13 +2303,21 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
             placeholder={block.position === 0 ? "Start writing here..." : ""}
           />
         ) : (
-          <div className="relative">
+          <div 
+            className={`relative ${
+              isEditMode && !isEditing ? 'hover:bg-gray-50' : ''
+            }`}
+            data-block-id={block.id}
+          >
             <div
               className={`min-h-[2.5rem] p-2 text-base w-full focus:outline-none focus:ring-0 ${
                 isReadOnly()
                   ? 'cursor-not-allowed bg-gray-50 text-gray-500'
-                  : ''
+                  : isCommentMode
+                  ? 'cursor-text'
+                  : 'cursor-pointer'
               }`}
+              data-block-id={block.id}
               style={{
                 fontFamily: 'Arial, sans-serif',
                 lineHeight: '1.6',
@@ -1898,9 +2326,42 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
                 wordBreak: 'normal',
                 hyphens: 'none',
                 textAlign: 'justify',
+                ...(isEditMode && !isEditing ? {
+                  borderLeft: '2px solid transparent',
+                  paddingLeft: '8px',
+                  transition: 'all 0.2s'
+                } : {})
+              }}
+              onMouseEnter={(e) => {
+                if (isEditMode && !isEditing && !isReadOnly()) {
+                  e.currentTarget.style.borderLeftColor = '#3b82f6';
+                  e.currentTarget.style.paddingLeft = '10px';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (isEditMode && !isEditing && !isReadOnly()) {
+                  e.currentTarget.style.borderLeftColor = 'transparent';
+                  e.currentTarget.style.paddingLeft = '8px';
+                }
               }}
               onClick={(e) => {
-                if (!isReadOnly()) {
+                if (isReadOnly()) return;
+                
+                if (founderMode === 'comment') {
+                  // In comment mode: delay to check for selection
+                  setTimeout(() => {
+                    const selection = window.getSelection();
+                    const hasSelection = selection && selection.toString().trim().length > 0;
+                    
+                    if (hasSelection) {
+                      // Selection exists - comment button already shown by global listener
+                      // Don't enter edit mode
+                      return;
+                    }
+                    // No selection - do nothing (comment mode is read-only)
+                  }, 50);
+                } else {
+                  // Edit mode - enter edit mode on click
                   const blockElement = e.currentTarget as HTMLElement;
                   const plainText = block.content;
                   
@@ -1916,6 +2377,20 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
                     const clickPosition = calculateClickPosition(e, plainText);
                     startEditingBlock(block.id, clickPosition);
                   }
+                }
+              }}
+              onDoubleClick={(e) => {
+                if (isReadOnly()) return;
+                
+                // Double-click always enters edit mode
+                const blockElement = e.currentTarget as HTMLElement;
+                const plainText = block.content;
+                const clickPosition = calculateClickPosition(e, plainText);
+                startEditingBlock(block.id, clickPosition);
+                
+                // Optionally switch to edit mode if in comment mode
+                if (founderMode === 'comment') {
+                  setFounderMode('edit');
                 }
               }}
               title={isReadOnly() ? 'Editor is read-only. Click "New Version" to edit.' : ''}
@@ -1947,13 +2422,64 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
     <div className={`clean-semantic-editor ${className} ${showCommentSidebar ? 'flex h-full w-full' : 'h-full w-full'} overflow-hidden`}>
       {/* Main Editor Area */}
       <div className={`${showCommentSidebar ? 'flex-1 min-w-0 pr-4 lg:pr-4 pr-0' : 'w-full'} h-full overflow-y-auto`}> 
+        {/* Mode Toolbar */}
+        <div className="border-b bg-gray-50 px-4 py-2 flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-700">Mode:</span>
+            
+            <Button
+              variant={founderMode === 'comment' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setFounderMode('comment')}
+            >
+              <MessageSquare className="h-4 w-4 mr-1" />
+              Comment
+              {founderMode === 'comment' && <Badge variant="secondary" className="ml-1">Active</Badge>}
+            </Button>
+            
+            <Button
+              variant={founderMode === 'edit' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setFounderMode('edit')}
+            >
+              <FileEdit className="h-4 w-4 mr-1" />
+              Edit
+              {founderMode === 'edit' && <Badge variant="secondary" className="ml-1">Active</Badge>}
+            </Button>
+          </div>
+
+          {/* Add Comment Button - Fixed */}
+          <div className="flex items-center gap-2 ml-4 border-l pl-4">
+            <Button
+              size="sm"
+              onClick={() => {
+                if (activeSelection) {
+                  setCommentDialogText('');
+                  setCommentDialogType('suggestion');
+                  setShowCommentDialog(true);
+                }
+              }}
+              disabled={!activeSelection || activeSelection.text.trim().length === 0}
+              variant={activeSelection ? 'default' : 'outline'}
+            >
+              <MessageSquare className="h-4 w-4 mr-1" />
+              Add Comment
+            </Button>
+            {activeSelection && (
+              <span className="text-xs text-gray-500">
+                ({activeSelection.text.length} chars selected)
+              </span>
+            )}
+          </div>
+        </div>
+
         {/* Editor Content */}
         <div className="relative pl-4 lg:pl-12 pr-4 lg:pr-12 w-full" ref={contentContainerRef}>
           {/* Render all blocks */}
           {useMemo(() => {
             const sortedBlocks = [...state.document.blocks].sort((a, b) => a.position - b.position);
             return sortedBlocks.map(renderBlock);
-          }, [state.document.blocks, editingBlockId, showCommentSidebar])}
+          }, [state.document.blocks, editingBlockId, showCommentSidebar, founderMode])}
 
         </div>
       </div>
@@ -1986,6 +2512,83 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
         onSeeComments={handleSeeAIComments}
       />
 
+      {/* Comment Dialog */}
+      <Dialog open={showCommentDialog} onOpenChange={setShowCommentDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Comment</DialogTitle>
+            <DialogDescription>
+              {activeSelection && (
+                <div className="mt-2 p-2 bg-gray-50 rounded text-sm italic">
+                  Selected text: &quot;{activeSelection.text.substring(0, 100)}
+                  {activeSelection.text.length > 100 ? '...' : ''}&quot;
+                </div>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <label htmlFor="comment-type" className="text-sm font-medium">
+                Comment Type
+              </label>
+              <Select
+                value={commentDialogType}
+                onValueChange={(value) => setCommentDialogType(value as AnnotationType)}
+              >
+                <SelectTrigger id="comment-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="suggestion">Suggestion</SelectItem>
+                  <SelectItem value="comment">Comment</SelectItem>
+                  <SelectItem value="critique">Critique</SelectItem>
+                  <SelectItem value="praise">Praise</SelectItem>
+                  <SelectItem value="question">Question</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-2">
+              <label htmlFor="comment-text" className="text-sm font-medium">
+                Comment
+              </label>
+              <Textarea
+                id="comment-text"
+                placeholder="Enter your comment..."
+                value={commentDialogText}
+                onChange={(e) => setCommentDialogText(e.target.value)}
+                rows={4}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowCommentDialog(false);
+                setCommentDialogText('');
+                setActiveSelection(null);
+                window.getSelection()?.removeAllRanges();
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (commentDialogText.trim() && activeSelection) {
+                  handleCreateComment(activeSelection, commentDialogText.trim(), commentDialogType);
+                  setCommentDialogText('');
+                }
+              }}
+              disabled={!commentDialogText.trim()}
+            >
+              Save Comment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );
