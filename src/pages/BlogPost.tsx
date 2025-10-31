@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Calendar, Clock, ArrowLeft, Share2, Tag, User } from "lucide-react";
+import { Calendar, Clock, ArrowLeft, Share2, Tag, User, PenTool, FileText, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,7 +48,7 @@ const BlogPost = () => {
               p.category === post.metadata.category || 
               p.tags.some(tag => post.metadata.tags.includes(tag))
             ))
-            .slice(0, 3);
+            .slice(0, 5);
           setRelatedPosts(related);
         }
       } catch (error) {
@@ -63,7 +63,10 @@ const BlogPost = () => {
   }, [slug]);
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    // Parse date string (YYYY-MM-DD) as local date to avoid timezone issues
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
@@ -224,7 +227,76 @@ const BlogPost = () => {
                   </div>
                 </div>
               )}
-            </div>
+
+              {/* Internal Advertising CTAs */}
+              <div className="space-y-4 mt-6">
+                {/* Essay Writing CTA */}
+                <div className="rounded-lg border p-4 sm:p-6 bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200 shadow-sm">
+                  <div className="flex items-start gap-3 mb-3">
+                    <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0">
+                      <PenTool className="h-5 w-5 text-primary" style={{ color: '#D07D00' }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-2">
+                        Perfect Your Essays with AI
+                      </h3>
+                      <p className="text-xs sm:text-sm text-gray-600 mb-3">
+                        Ready to get your essays to a perfect level using the power of AI? Sign up today and get two expert reviews from the Founder included.
+                      </p>
+                      <Link to="/auth">
+                        <Button size="sm" className="w-full sm:w-auto" style={{ backgroundColor: '#D07D00', color: 'white' }}>
+                          Get Started
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Resume Formatting CTA */}
+                <div className="rounded-lg border p-4 sm:p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200 shadow-sm">
+                  <div className="flex items-start gap-3 mb-3">
+                    <div className="p-2 rounded-lg bg-blue-100 flex-shrink-0">
+                      <FileText className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-2">
+                        Professional Resume Formatting
+                      </h3>
+                      <p className="text-xs sm:text-sm text-gray-600 mb-3">
+                        Create a polished, ATS-friendly resume that stands out to admissions committees and recruiters.
+                      </p>
+                      <Link to="/auth">
+                        <Button size="sm" variant="outline" className="w-full sm:w-auto border-blue-300 text-blue-700 hover:bg-blue-100">
+                          Get Started
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Deadline Tracking CTA */}
+                <div className="rounded-lg border p-4 sm:p-6 bg-gradient-to-br from-green-50 to-emerald-50 border-green-200 shadow-sm">
+                  <div className="flex items-start gap-3 mb-3">
+                    <div className="p-2 rounded-lg bg-green-100 flex-shrink-0">
+                      <CheckCircle2 className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-2">
+                        Stay on Top of Deadlines
+                      </h3>
+                      <p className="text-xs sm:text-sm text-gray-600 mb-3">
+                        Never miss an application deadline again. Track all your deadlines in one place with automated reminders.
+                      </p>
+                      <Link to="/auth">
+                        <Button size="sm" variant="outline" className="w-full sm:w-auto border-green-300 text-green-700 hover:bg-green-100">
+                          Get Started
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>ded
           </div>
         </div>
       </div>
