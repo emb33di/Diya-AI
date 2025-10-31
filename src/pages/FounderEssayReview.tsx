@@ -69,14 +69,16 @@ const FounderEssayReview: React.FC = () => {
       // Use founder_edited_content if available, otherwise use essay_content snapshot
       let contentToUse: SemanticDocument = data.founder_edited_content || data.essay_content;
       
-      // If there are saved founder comments, inject them into the document
-      if (data.founder_comments && data.founder_comments.length > 0) {
+      // Fetch founder comments from the new founder_comments table
+      const founderComments = await EscalatedEssaysService.getFounderCommentsByEscalationId(escalationId);
+      
+      if (founderComments.length > 0) {
         // Convert founder_comments to annotations and attach to blocks
         const founderCommentsMap = new Map<string, Annotation[]>();
         
-        data.founder_comments.forEach((comment: EscalatedEssayComment) => {
-          if (!founderCommentsMap.has(comment.blockId)) {
-            founderCommentsMap.set(comment.blockId, []);
+        founderComments.forEach((comment) => {
+          if (!founderCommentsMap.has(comment.block_id)) {
+            founderCommentsMap.set(comment.block_id, []);
           }
           
           const annotation: Annotation = {
@@ -84,14 +86,14 @@ const FounderEssayReview: React.FC = () => {
             type: comment.type as AnnotationType,
             author: 'mihir',
             content: comment.content,
-            targetBlockId: comment.blockId,
-            targetText: comment.position ? undefined : undefined,
-            createdAt: new Date(comment.created_at || Date.now()),
-            updatedAt: new Date(comment.created_at || Date.now()),
-            resolved: false
+            targetBlockId: comment.block_id,
+            targetText: comment.target_text || undefined,
+            createdAt: new Date(comment.created_at),
+            updatedAt: new Date(comment.updated_at),
+            resolved: comment.resolved
           };
           
-          founderCommentsMap.get(comment.blockId)!.push(annotation);
+          founderCommentsMap.get(comment.block_id)!.push(annotation);
         });
         
         // Merge founder comments into document blocks
@@ -153,19 +155,25 @@ const FounderEssayReview: React.FC = () => {
 
   // Auto-save founder comments every 2 seconds (memoized to have access to latest escalationId)
   const autoSaveFounderCommentsMemo = React.useCallback(async (doc: SemanticDocument) => {
-    if (!escalationId || !doc) return;
+    if (!escalationId || !doc || !essay) return;
 
     try {
       setIsAutoSaving(true);
       
       const comments = extractFounderComments(doc);
 
-      // Save comments to escalated_essays (without changing status)
+      // Save edited content to escalated_essays (without changing status)
       await EscalatedEssaysService.updateEscalatedEssay(escalationId, {
-        founder_comments: comments,
         founder_edited_content: doc,
         // Keep existing status - don't change it on auto-save
       });
+
+      // Save comments to the new founder_comments table
+      await EscalatedEssaysService.saveFounderComments(
+        essay.essay_id,
+        escalationId,
+        comments
+      );
 
       // Update the actual save time but don't update display state
       lastActualSaveTimeRef.current = new Date();
@@ -175,7 +183,7 @@ const FounderEssayReview: React.FC = () => {
     } finally {
       setIsAutoSaving(false);
     }
-  }, [escalationId]);
+  }, [escalationId, essay]);
 
   const handleDocumentChange = (updatedDocument: SemanticDocument) => {
     // Convert any new 'user' comments to 'mihir' for founder
@@ -242,7 +250,7 @@ const FounderEssayReview: React.FC = () => {
 
 
   const handleSaveFeedback = async () => {
-    if (!escalationId || !document) return;
+    if (!escalationId || !document || !essay) return;
 
     try {
       setSaving(true);
@@ -250,13 +258,19 @@ const FounderEssayReview: React.FC = () => {
       // Extract founder comments (those with author === 'mihir')
       const comments = extractFounderComments(document);
 
-      // Save feedback and comments
+      // Save feedback and edited content to escalated_essays table
       await EscalatedEssaysService.updateEscalatedEssay(escalationId, {
         founder_feedback: founderFeedback,
-        founder_comments: comments,
         founder_edited_content: document,
         status: essay?.status || 'in_review'
       });
+
+      // Save comments to the new founder_comments table
+      await EscalatedEssaysService.saveFounderComments(
+        essay.essay_id,
+        escalationId,
+        comments
+      );
 
       // Update display time immediately when manually saved
       const saveTime = new Date();
@@ -315,7 +329,7 @@ const FounderEssayReview: React.FC = () => {
   };
 
   const handleSendBack = async () => {
-    if (!escalationId || !founderFeedback.trim()) {
+    if (!escalationId || !founderFeedback.trim() || !essay) {
       toast({
         title: 'Validation Error',
         description: 'Please provide feedback before sending back to student.',
@@ -331,10 +345,18 @@ const FounderEssayReview: React.FC = () => {
       if (document) {
         const comments = extractFounderComments(document);
 
+        // Save comments to the new founder_comments table
+        await EscalatedEssaysService.saveFounderComments(
+          essay.essay_id,
+          escalationId,
+          comments
+        );
+
+        // Update escalated_essays status (comments are now in separate table)
         await EscalatedEssaysService.sendBackToStudent(
           escalationId,
           founderFeedback,
-          comments,
+          [], // Empty array since comments are now in separate table
           document
         );
       } else {
@@ -510,6 +532,7 @@ const FounderEssayReview: React.FC = () => {
                 onDocumentChange={handleDocumentChange}
                 showCommentSidebar={true}
                 readOnly={false}
+                disableAutoSave={true}
               />
             </CardContent>
           </Card>

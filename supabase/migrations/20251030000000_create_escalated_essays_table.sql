@@ -46,11 +46,19 @@ CREATE INDEX IF NOT EXISTS idx_escalated_essays_escalated_at ON escalated_essays
 CREATE INDEX IF NOT EXISTS idx_escalated_essays_pending ON escalated_essays(status) WHERE status = 'pending';
 CREATE INDEX IF NOT EXISTS idx_escalated_essays_in_review ON escalated_essays(status) WHERE status = 'in_review';
 
--- Create trigger for updated_at
-CREATE TRIGGER update_escalated_essays_updated_at
-  BEFORE UPDATE ON escalated_essays
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
+-- Create trigger for updated_at (idempotent - only create if doesn't exist)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger 
+    WHERE tgname = 'update_escalated_essays_updated_at'
+  ) THEN
+    CREATE TRIGGER update_escalated_essays_updated_at
+      BEFORE UPDATE ON escalated_essays
+      FOR EACH ROW
+      EXECUTE FUNCTION update_updated_at_column();
+  END IF;
+END $$;
 
 -- Enable RLS
 ALTER TABLE public.escalated_essays ENABLE ROW LEVEL SECURITY;

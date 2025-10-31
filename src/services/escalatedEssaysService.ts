@@ -51,7 +51,7 @@ export interface EscalatedEssay {
   // Founder feedback
   founder_feedback: string | null;
   founder_edited_content: SemanticDocument | null;
-  founder_comments: EscalatedEssayComment[];
+  founder_comments: EscalatedEssayComment[]; // Deprecated: Use founder_comments table instead
   
   // Timestamps
   escalated_at: string;
@@ -77,7 +77,24 @@ export interface UpdateEscalatedEssayData {
   status?: EscalatedEssayStatus;
   founder_feedback?: string | null;
   founder_edited_content?: SemanticDocument | null;
-  founder_comments?: EscalatedEssayComment[];
+  founder_comments?: EscalatedEssayComment[]; // Deprecated: Use founder_comments table instead
+}
+
+export interface FounderComment {
+  id: string;
+  essay_id: string;
+  escalation_id: string | null;
+  block_id: string;
+  type: string;
+  content: string;
+  target_text: string | null;
+  position_start: number | null;
+  position_end: number | null;
+  resolved: boolean;
+  resolved_at: string | null;
+  created_at: string;
+  updated_at: string;
+  metadata: Record<string, any>;
 }
 
 export class EscalatedEssaysService {
@@ -482,6 +499,182 @@ export class EscalatedEssaysService {
       };
     } catch (error) {
       console.error('EscalatedEssaysService: Error getting counts', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch founder comments for a specific essay
+   * Used by users to view founder feedback on their essays
+   */
+  static async getFounderCommentsByEssayId(essayId: string): Promise<FounderComment[]> {
+    try {
+      // Verify user is authenticated
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Verify the essay belongs to the user
+      const { data: essayData } = await supabase
+        .from('essays' as any)
+        .select('user_id')
+        .eq('id' as any, essayId)
+        .maybeSingle();
+
+      if (!essayData || (essayData as any).user_id !== user.id) {
+        throw new Error('Access denied: You can only view comments for your own essays');
+      }
+
+      // Fetch founder comments for this essay
+      const { data: comments, error } = await supabase
+        .from('founder_comments' as any)
+        .select('*')
+        .eq('essay_id' as any, essayId)
+        .order('created_at' as any, { ascending: true });
+
+      if (error) {
+        console.error('Error fetching founder comments:', error);
+        throw error;
+      }
+
+      return (comments || []).map((comment: any) => ({
+        id: comment.id,
+        essay_id: comment.essay_id,
+        escalation_id: comment.escalation_id,
+        block_id: comment.block_id,
+        type: comment.type,
+        content: comment.content,
+        target_text: comment.target_text,
+        position_start: comment.position_start,
+        position_end: comment.position_end,
+        resolved: comment.resolved,
+        resolved_at: comment.resolved_at,
+        created_at: comment.created_at,
+        updated_at: comment.updated_at,
+        metadata: comment.metadata || {}
+      }));
+    } catch (error) {
+      console.error('EscalatedEssaysService: Error fetching founder comments', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Save founder comments to the founder_comments table
+   * Replaces the old JSONB approach with a proper relational structure
+   */
+  static async saveFounderComments(
+    essayId: string,
+    escalationId: string,
+    comments: EscalatedEssayComment[]
+  ): Promise<void> {
+    try {
+      // Verify user is authenticated and is founder
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('User not authenticated');
+      }
+
+      const { data: founderProfile } = await supabase
+        .from('user_profiles')
+        .select('is_founder')
+        .eq('user_id' as any, user.id)
+        .maybeSingle();
+
+      const founderProfileData = founderProfile as any;
+      if (!founderProfileData?.is_founder) {
+        throw new Error('Access denied: Founder access required');
+      }
+
+      // Delete existing comments for this escalation (to replace them)
+      await supabase
+        .from('founder_comments' as any)
+        .delete()
+        .eq('escalation_id' as any, escalationId);
+
+      // Insert new comments
+      if (comments.length > 0) {
+        const commentsToInsert = comments.map(comment => ({
+          essay_id: essayId,
+          escalation_id: escalationId,
+          block_id: comment.blockId,
+          type: comment.type,
+          content: comment.content,
+          target_text: comment.position ? undefined : undefined, // Can be extracted if needed
+          position_start: comment.position?.start || null,
+          position_end: comment.position?.end || null,
+          resolved: false,
+          metadata: {}
+        }));
+
+        const { error: insertError } = await supabase
+          .from('founder_comments' as any)
+          .insert(commentsToInsert as any);
+
+        if (insertError) {
+          console.error('Error inserting founder comments:', insertError);
+          throw insertError;
+        }
+      }
+    } catch (error) {
+      console.error('EscalatedEssaysService: Error saving founder comments', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch founder comments for an escalation (founder view)
+   */
+  static async getFounderCommentsByEscalationId(escalationId: string): Promise<FounderComment[]> {
+    try {
+      // Verify user is authenticated and is founder
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('User not authenticated');
+      }
+
+      const { data: founderProfile } = await supabase
+        .from('user_profiles')
+        .select('is_founder')
+        .eq('user_id' as any, user.id)
+        .maybeSingle();
+
+      const founderProfileData = founderProfile as any;
+      if (!founderProfileData?.is_founder) {
+        throw new Error('Access denied: Founder access required');
+      }
+
+      // Fetch founder comments for this escalation
+      const { data: comments, error } = await supabase
+        .from('founder_comments' as any)
+        .select('*')
+        .eq('escalation_id' as any, escalationId)
+        .order('created_at' as any, { ascending: true });
+
+      if (error) {
+        console.error('Error fetching founder comments:', error);
+        throw error;
+      }
+
+      return (comments || []).map((comment: any) => ({
+        id: comment.id,
+        essay_id: comment.essay_id,
+        escalation_id: comment.escalation_id,
+        block_id: comment.block_id,
+        type: comment.type,
+        content: comment.content,
+        target_text: comment.target_text,
+        position_start: comment.position_start,
+        position_end: comment.position_end,
+        resolved: comment.resolved,
+        resolved_at: comment.resolved_at,
+        created_at: comment.created_at,
+        updated_at: comment.updated_at,
+        metadata: comment.metadata || {}
+      }));
+    } catch (error) {
+      console.error('EscalatedEssaysService: Error fetching founder comments', error);
       throw error;
     }
   }

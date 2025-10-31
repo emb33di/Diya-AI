@@ -52,6 +52,7 @@ interface FounderSemanticEditorProps {
   onHideSidebar?: () => void;
   className?: string;
   readOnly?: boolean;
+  disableAutoSave?: boolean; // When true, don't auto-save to semantic_documents (parent handles saving)
 }
 
 const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
@@ -67,7 +68,8 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
   selectedAnnotationId,
   onHideSidebar,
   className = '',
-  readOnly = false
+  readOnly = false,
+  disableAutoSave = false
 }) => {
   // Simple, clean state management
   const [state, setState] = useState<SemanticEditorState>({
@@ -123,8 +125,17 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
     }
   }, [initialContent]);
 
-  // Auto-save functionality
+  // Auto-save functionality (disabled if disableAutoSave is true - parent handles saving)
   useEffect(() => {
+    // Skip auto-save if disabled (founder workflow - parent saves to escalated_essays table)
+    if (disableAutoSave) {
+      // Still notify parent of changes so it can handle saving
+      if (state.pendingChanges && onDocumentChange) {
+        onDocumentChange(state.document);
+      }
+      return;
+    }
+
     if (!state.pendingChanges) return;
 
     // Critical safeguard: Don't autosave if document appears empty but we're tracking a loaded document
@@ -177,7 +188,7 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
     }, 1000);
 
     return () => clearTimeout(autoSaveTimer);
-  }, [state.document, state.pendingChanges, onSaveStatusChange, documentId, essayId]);
+  }, [state.document, state.pendingChanges, onSaveStatusChange, documentId, essayId, disableAutoSave, onDocumentChange]);
 
   // Track the last documentId we loaded to prevent unnecessary reloads
   // Use a stable key to persist across HMR - store in window to survive hot reloads
