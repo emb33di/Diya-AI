@@ -15,6 +15,7 @@ export interface EscalatedEssayComment {
   blockId: string;
   type: string;
   content: string;
+  targetText?: string; // The selected text that the comment targets
   position?: {
     start: number;
     end: number;
@@ -601,16 +602,17 @@ export class EscalatedEssaysService {
           block_id: comment.blockId,
           type: comment.type,
           content: comment.content,
-          target_text: comment.position ? undefined : undefined, // Can be extracted if needed
-          position_start: comment.position?.start || null,
-          position_end: comment.position?.end || null,
+          target_text: comment.targetText || null, // Save the selected text context
+          position_start: comment.position?.start ?? null,
+          position_end: comment.position?.end ?? null,
           resolved: false,
           metadata: {}
         }));
 
-        const { error: insertError } = await supabase
+        const { data: insertedData, error: insertError } = await supabase
           .from('founder_comments' as any)
-          .insert(commentsToInsert as any);
+          .insert(commentsToInsert as any)
+          .select();
 
         if (insertError) {
           console.error('Error inserting founder comments:', insertError);

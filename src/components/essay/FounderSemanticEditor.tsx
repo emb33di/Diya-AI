@@ -52,6 +52,7 @@ interface FounderSemanticEditorProps {
   essayId: string;
   title: string;
   initialContent?: string;
+  initialDocument?: SemanticDocument; // If provided, use this document instead of loading from DB
   wordLimit?: number;
   onDocumentChange?: (document: SemanticDocument) => void;
   onAnnotationSelect?: (annotation: Annotation | null) => void;
@@ -69,6 +70,7 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
   essayId,
   title,
   initialContent = '',
+  initialDocument,
   wordLimit = 650,
   onDocumentChange,
   onAnnotationSelect,
@@ -226,11 +228,50 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
       : undefined
   );
   const isInitialMountRef = useRef(true);
+  const lastInitialDocumentRef = useRef<string>(''); // Track initialDocument to prevent re-setting
 
   // Load existing document
   useEffect(() => {
     const loadDocument = async () => {
       try {
+        // If initialDocument is provided, use it instead of loading from DB
+        if (initialDocument) {
+          // Check if initialDocument actually changed (compare JSON to prevent loops)
+          const initialDocJson = JSON.stringify(initialDocument);
+          if (lastInitialDocumentRef.current === initialDocJson && !isInitialMountRef.current) {
+            // Same document, skip setting
+            isInitialMountRef.current = false;
+            return;
+          }
+          lastInitialDocumentRef.current = initialDocJson;
+          
+          // Only set if document ID is different (prevent infinite loops)
+          if (state.document.id !== initialDocument.id || isInitialMountRef.current) {
+            // Filter out grammar annotations (not relevant for Founder Portal)
+            const filteredDoc = {
+              ...initialDocument,
+              blocks: initialDocument.blocks.map(block => ({
+                ...block,
+                annotations: (block.annotations || []).filter(ann => 
+                  ann.metadata?.agentType !== 'grammar' && 
+                  ann.metadata?.commentCategory !== 'grammar'
+                )
+              }))
+            };
+            
+            // Skip notifying parent when setting from initialDocument
+            skipNextChangeRef.current = true;
+            setState(prev => ({
+              ...prev,
+              document: filteredDoc
+            }));
+            
+            lastLoadedDocumentIdRef.current = filteredDoc.id;
+          }
+          isInitialMountRef.current = false;
+          return;
+        }
+        
         const targetDocumentId = documentId || essayId;
         
         // Critical fix: If documentId hasn't changed AND it's not the initial mount, don't reload (prevents overwriting unsaved edits)
@@ -325,10 +366,34 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
 
     loadDocument();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [documentId, essayId]); // Note: intentionally not including state to prevent unnecessary reloads
+  }, [documentId, essayId, initialDocument]); // Note: intentionally not including state to prevent unnecessary reloads
 
   // Notify parent of document changes (with grammar annotations filtered out)
+  // Only notify when document actually changes, not on every render
+  const prevDocumentRef = useRef<string>('');
+  const skipNextChangeRef = useRef(false);
+  
   useEffect(() => {
+    // Skip notification during initial mount to prevent loops
+    if (isInitialMountRef.current) {
+      prevDocumentRef.current = JSON.stringify(state.document);
+      return;
+    }
+    
+    // Skip if we just set the document from initialDocument prop
+    if (skipNextChangeRef.current) {
+      skipNextChangeRef.current = false;
+      prevDocumentRef.current = JSON.stringify(state.document);
+      return;
+    }
+    
+    // Use a ref to track if document actually changed (compare JSON)
+    const currentDocJson = JSON.stringify(state.document);
+    if (prevDocumentRef.current === currentDocJson) {
+      return; // Document hasn't changed, skip notification
+    }
+    prevDocumentRef.current = currentDocJson;
+
     // Filter out grammar annotations before notifying parent
     const filteredDocument = {
       ...state.document,
@@ -1537,32 +1602,16 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
 
       // Cmd/Ctrl + M: Create comment for selected text (show in sidebar)
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'm') {
-        console.log('[SELECTION_DEBUG] Command-M pressed', {
-          activeSelection: activeSelection ? {
-            text: activeSelection.text.substring(0, 50),
-            blockIds: activeSelection.blockIds
-          } : null,
-          activeSelectionRef: activeSelectionRef.current ? {
-            text: activeSelectionRef.current.text.substring(0, 50),
-            blockIds: activeSelectionRef.current.blockIds
-          } : null
-        });
-        
         // Use ref to get latest value
         const currentSelection = activeSelectionRef.current || activeSelection;
         
         if (currentSelection && currentSelection.text.trim().length > 0) {
           e.preventDefault();
-          console.log('[SELECTION_DEBUG] Command-M: Setting up new comment with selection', {
-            text: currentSelection.text.substring(0, 50)
-          });
           // Set selected text and trigger focus in sidebar
           setNewCommentSelectedText(currentSelection.text);
           setFocusNewComment(true);
           // Ensure sidebar is visible - note: if sidebar is controlled by parent, 
           // we'll need to rely on parent showing it or add a callback
-        } else {
-          console.log('[SELECTION_DEBUG] Command-M: No valid selection found');
         }
         return;
       }
@@ -1741,20 +1790,7 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
     selection: typeof activeSelection,
     commentText: string
   ) => {
-    console.log('[SELECTION_DEBUG] handleCreateComment called (dialog save)', {
-      selection: selection ? {
-        text: selection.text.substring(0, 50),
-        blockIds: selection.blockIds,
-        startBlock: selection.startBlock,
-        endBlock: selection.endBlock
-      } : null,
-      commentText: commentText.substring(0, 50)
-    });
-    
-    if (!selection) {
-      console.log('[SELECTION_DEBUG] handleCreateComment: ERROR - No selection provided');
-      return;
-    }
+    if (!selection) return;
 
     saveToUndoStack();
 
@@ -1852,23 +1888,10 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
   const handleAnnotationAdd = useCallback((
     annotation: Omit<Annotation, 'id' | 'createdAt' | 'updatedAt'>
   ) => {
-    console.log('[SELECTION_DEBUG] handleAnnotationAdd called (sidebar save)', {
-      annotationContent: annotation.content.substring(0, 50),
-      activeSelection: activeSelection ? {
-        text: activeSelection.text.substring(0, 50),
-        blockIds: activeSelection.blockIds
-      } : null,
-      activeSelectionRef: activeSelectionRef.current ? {
-        text: activeSelectionRef.current.text.substring(0, 50),
-        blockIds: activeSelectionRef.current.blockIds
-      } : null
-    });
-    
     // Use ref to get the latest activeSelection value (may have been preserved during typing)
     const currentSelection = activeSelectionRef.current;
     
     if (!currentSelection) {
-      console.log('[SELECTION_DEBUG] handleAnnotationAdd: ERROR - No currentSelection found');
       toast({
         title: 'Error',
         description: 'No text selected. Please select text and try again.',
@@ -1876,13 +1899,6 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
       });
       return;
     }
-    
-    console.log('[SELECTION_DEBUG] handleAnnotationAdd: Using currentSelection', {
-      text: currentSelection.text.substring(0, 50),
-      blockIds: currentSelection.blockIds,
-      startBlock: currentSelection.startBlock,
-      endBlock: currentSelection.endBlock
-    });
 
     // Merge annotation data with selection info
     const blockId = currentSelection.blockIds.length === 1 
@@ -1892,6 +1908,7 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
     const fullAnnotation: Omit<Annotation, 'id' | 'createdAt' | 'updatedAt'> = {
       ...annotation,
       type: 'comment', // Default type
+      author: annotation.author || 'mihir', // Ensure author is set (founder comments should be 'mihir')
       targetBlockId: annotation.targetBlockId || blockId,
       targetText: annotation.targetText || currentSelection.text,
       metadata: {
@@ -1907,6 +1924,8 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
         } as any)
       }
     };
+
+    // Ensure author is set correctly for founder comments
 
     saveToUndoStack();
 
@@ -2142,19 +2161,7 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
 
   // Keep activeSelection ref in sync
   useEffect(() => {
-    console.log('[SELECTION_DEBUG] activeSelection state changed', {
-      activeSelection: activeSelection ? {
-        text: activeSelection.text.substring(0, 50),
-        blockIds: activeSelection.blockIds
-      } : null
-    });
     activeSelectionRef.current = activeSelection;
-    console.log('[SELECTION_DEBUG] activeSelectionRef updated', {
-      activeSelectionRef: activeSelectionRef.current ? {
-        text: activeSelectionRef.current.text.substring(0, 50),
-        blockIds: activeSelectionRef.current.blockIds
-      } : null
-    });
   }, [activeSelection]);
 
   // Global selection listener for comment mode
@@ -2188,62 +2195,25 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
         ))
       );
 
-      console.log('[SELECTION_DEBUG] handleSelection called', {
-        activeElement: activeElement?.tagName,
-        activeElementId: activeElement?.id,
-        isTypingInInput,
-        isInCommentForm,
-        currentActiveSelection: activeSelectionRef.current ? {
-          text: activeSelectionRef.current.text.substring(0, 50),
-          blockIds: activeSelectionRef.current.blockIds
-        } : null
-      });
-
       const selection = window.getSelection();
       if (!selection || selection.rangeCount === 0) {
-        console.log('[SELECTION_DEBUG] No browser selection', {
-          isTypingInInput,
-          isInCommentForm,
-          hasActiveSelectionRef: !!activeSelectionRef.current
-        });
         // If user is typing in an input field or interacting with comment form,
         // and we have an existing activeSelection, preserve it.
         // Otherwise, clear it.
         if ((!isTypingInInput && !isInCommentForm) || !activeSelectionRef.current) {
-          console.log('[SELECTION_DEBUG] Clearing activeSelection (no selection, not typing/in-form or no ref)', {
-            isTypingInInput,
-            isInCommentForm,
-            hasRef: !!activeSelectionRef.current
-          });
           setActiveSelection(null);
           activeSelectionRef.current = null;
-        } else {
-          console.log('[SELECTION_DEBUG] Preserving activeSelection (user typing in input or in comment form)', {
-            isTypingInInput,
-            isInCommentForm
-          });
         }
         return;
       }
 
       const text = selection.toString().trim();
       if (!text) {
-        console.log('[SELECTION_DEBUG] Selection has no text');
         // If user is typing in an input field or in comment form and we have an existing activeSelection,
         // preserve it. Otherwise, clear it.
         if ((!isTypingInInput && !isInCommentForm) || !activeSelectionRef.current) {
-          console.log('[SELECTION_DEBUG] Clearing activeSelection (no text, not typing/in-form or no ref)', {
-            isTypingInInput,
-            isInCommentForm,
-            hasRef: !!activeSelectionRef.current
-          });
           setActiveSelection(null);
           activeSelectionRef.current = null;
-        } else {
-          console.log('[SELECTION_DEBUG] Preserving activeSelection (user typing in input or in comment form, no text)', {
-            isTypingInInput,
-            isInCommentForm
-          });
         }
         return;
       }
@@ -2252,22 +2222,11 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
       
       // Check if selection is within editor
       if (!contentContainerRef.current?.contains(range.commonAncestorContainer)) {
-        console.log('[SELECTION_DEBUG] Selection not within editor container');
         // If user is typing in an input field or in comment form and we have an existing activeSelection,
         // preserve it. Otherwise, clear it.
         if ((!isTypingInInput && !isInCommentForm) || !activeSelectionRef.current) {
-          console.log('[SELECTION_DEBUG] Clearing activeSelection (not in editor, not typing/in-form or no ref)', {
-            isTypingInInput,
-            isInCommentForm,
-            hasRef: !!activeSelectionRef.current
-          });
           setActiveSelection(null);
           activeSelectionRef.current = null;
-        } else {
-          console.log('[SELECTION_DEBUG] Preserving activeSelection (user typing in input or in comment form, selection outside editor)', {
-            isTypingInInput,
-            isInCommentForm
-          });
         }
         return;
       }
@@ -2275,22 +2234,11 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
       // Find blocks involved in selection
       const blockIds = findBlocksInSelection(range);
       if (blockIds.length === 0) {
-        console.log('[SELECTION_DEBUG] No blocks found in selection');
         // If user is typing in an input field or in comment form and we have an existing activeSelection,
         // preserve it. Otherwise, clear it.
         if ((!isTypingInInput && !isInCommentForm) || !activeSelectionRef.current) {
-          console.log('[SELECTION_DEBUG] Clearing activeSelection (no blocks, not typing/in-form or no ref)', {
-            isTypingInInput,
-            isInCommentForm,
-            hasRef: !!activeSelectionRef.current
-          });
           setActiveSelection(null);
           activeSelectionRef.current = null;
-        } else {
-          console.log('[SELECTION_DEBUG] Preserving activeSelection (user typing in input or in comment form, no blocks)', {
-            isTypingInInput,
-            isInCommentForm
-          });
         }
         return;
       }
@@ -2304,15 +2252,6 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
         blockIds,
         ...selectionData
       };
-      
-      console.log('[SELECTION_DEBUG] Setting new activeSelection', {
-        text: newSelection.text.substring(0, 50),
-        blockIds: newSelection.blockIds,
-        startBlock: newSelection.startBlock,
-        endBlock: newSelection.endBlock,
-        startOffset: newSelection.startOffset,
-        endOffset: newSelection.endOffset
-      });
       
       setActiveSelection(newSelection);
       activeSelectionRef.current = newSelection;
@@ -2707,28 +2646,12 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
             <Button
               size="sm"
               onClick={() => {
-                console.log('[SELECTION_DEBUG] Add Comment button clicked', {
-                  activeSelection: activeSelection ? {
-                    text: activeSelection.text.substring(0, 50),
-                    blockIds: activeSelection.blockIds
-                  } : null,
-                  activeSelectionRef: activeSelectionRef.current ? {
-                    text: activeSelectionRef.current.text.substring(0, 50),
-                    blockIds: activeSelectionRef.current.blockIds
-                  } : null
-                });
-                
                 // Use ref to get latest value
                 const currentSelection = activeSelectionRef.current || activeSelection;
                 
                 if (currentSelection) {
-                  console.log('[SELECTION_DEBUG] Add Comment: Opening dialog with selection', {
-                    text: currentSelection.text.substring(0, 50)
-                  });
                   setCommentDialogText('');
                   setShowCommentDialog(true);
-                } else {
-                  console.log('[SELECTION_DEBUG] Add Comment: No selection found, button should be disabled');
                 }
               }}
               disabled={!activeSelection || activeSelection.text.trim().length === 0}
@@ -2833,36 +2756,18 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
             </Button>
             <Button
               onClick={() => {
-                console.log('[SELECTION_DEBUG] Dialog Save Comment button clicked', {
-                  commentDialogText: commentDialogText.substring(0, 50),
-                  activeSelection: activeSelection ? {
-                    text: activeSelection.text.substring(0, 50),
-                    blockIds: activeSelection.blockIds
-                  } : null,
-                  activeSelectionRef: activeSelectionRef.current ? {
-                    text: activeSelectionRef.current.text.substring(0, 50),
-                    blockIds: activeSelectionRef.current.blockIds
-                  } : null
-                });
-                
                 // Use ref to get latest selection value (may have been preserved during typing)
                 const currentSelection = activeSelectionRef.current;
                 
                 if (commentDialogText.trim() && currentSelection) {
-                  console.log('[SELECTION_DEBUG] Dialog Save: Calling handleCreateComment', {
-                    selectionText: currentSelection.text.substring(0, 50)
-                  });
                   handleCreateComment(currentSelection, commentDialogText.trim());
                   setCommentDialogText('');
                 } else if (!currentSelection) {
-                  console.log('[SELECTION_DEBUG] Dialog Save: ERROR - No currentSelection found');
                   toast({
                     title: 'Error',
                     description: 'No text selected. Please select text and try again.',
                     variant: 'destructive'
                   });
-                } else {
-                  console.log('[SELECTION_DEBUG] Dialog Save: No comment text or selection');
                 }
               }}
               disabled={!commentDialogText.trim()}

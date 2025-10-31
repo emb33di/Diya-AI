@@ -14,12 +14,10 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { 
   MessageSquare, 
-  CheckCircle, 
   User, 
   Bot, 
   Trash2,
@@ -80,7 +78,6 @@ const FounderCommentSidebar: React.FC<FounderCommentSidebarProps> = ({
   const [expandedCategories, setExpandedCategories] = useState<Set<FounderCommentCategory>>(
     new Set(['overall-analysis', 'tone', 'clarity', 'strengths', 'areas-for-improvement', 'paragraph-quality'])
   );
-  const [activeTab, setActiveTab] = useState<'all' | 'unresolved'>('unresolved');
   const [showNewComment, setShowNewComment] = useState(false);
   const [newCommentText, setNewCommentText] = useState('');
   const [newCommentSelectedText, setNewCommentSelectedText] = useState('');
@@ -145,9 +142,7 @@ const FounderCommentSidebar: React.FC<FounderCommentSidebarProps> = ({
           return;
         }
         
-        // Skip resolved comments if we're only showing unresolved
-        if (activeTab === 'unresolved' && annotation.resolved) return;
-        
+        // Show all comments (no filtering by resolved status)
         allComments.push({
           annotation,
           blockIndex,
@@ -172,7 +167,7 @@ const FounderCommentSidebar: React.FC<FounderCommentSidebarProps> = ({
     });
 
     return grouped;
-  }, [blocks, activeTab]);
+  }, [blocks]);
 
   // Handle focus new comment trigger
   useEffect(() => {
@@ -211,32 +206,12 @@ const FounderCommentSidebar: React.FC<FounderCommentSidebarProps> = ({
 
   // Handle saving new comment
   const handleSaveNewComment = () => {
-    console.log('[SELECTION_DEBUG] Sidebar handleSaveNewComment called', {
-      newCommentText: newCommentText ? newCommentText.substring(0, 50) : 'null/undefined',
-      newCommentTextLength: newCommentText?.length || 0,
-      newCommentTextTrimmed: newCommentText?.trim() || '',
-      newCommentSelectedText: newCommentSelectedText ? newCommentSelectedText.substring(0, 50) : 'null/undefined',
-      hasOnAnnotationAdd: !!onAnnotationAdd,
-      blocksCount: blocks.length,
-      stackTrace: new Error().stack
-    });
-    
-    if (!newCommentText.trim() || !onAnnotationAdd) {
-      console.log('[SELECTION_DEBUG] Sidebar Save: Early return - no text or callback', {
-        hasText: !!newCommentText.trim(),
-        textValue: newCommentText,
-        textTrimmed: newCommentText.trim(),
-        hasCallback: !!onAnnotationAdd,
-        onAnnotationAddType: typeof onAnnotationAdd
-      });
-      return;
-    }
+    if (!newCommentText.trim() || !onAnnotationAdd) return;
 
     // Find appropriate block - use first block as fallback
     // The parent's handleAnnotationAdd will override with correct block from activeSelection
     const firstBlock = blocks[0];
     if (!firstBlock) {
-      console.log('[SELECTION_DEBUG] Sidebar Save: ERROR - No blocks found');
       toast({
         title: 'Error',
         description: 'No content to comment on.',
@@ -255,20 +230,12 @@ const FounderCommentSidebar: React.FC<FounderCommentSidebarProps> = ({
       metadata: {}
     };
 
-    console.log('[SELECTION_DEBUG] Sidebar Save: Calling onAnnotationAdd', {
-      annotationContent: annotation.content.substring(0, 50),
-      targetBlockId: annotation.targetBlockId,
-      targetText: annotation.targetText.substring(0, 50)
-    });
-
     onAnnotationAdd(annotation);
 
     // Reset form
     setNewCommentText('');
     setNewCommentSelectedText('');
     setShowNewComment(false);
-    
-    console.log('[SELECTION_DEBUG] Sidebar Save: Form reset complete');
   };
 
   // Scroll to selected comment when selectedAnnotationId changes
@@ -366,18 +333,18 @@ const FounderCommentSidebar: React.FC<FounderCommentSidebarProps> = ({
     }
   };
 
-  const totalUnresolvedComments = Object.values(groupedComments).flat().length;
+  const totalComments = Object.values(groupedComments).flat().length;
 
   return (
-    <div className={cn("flex-1 min-w-64 max-w-96 h-full max-h-screen border border-gray-300 bg-white flex-shrink-0 flex flex-col comment-sidebar", className)}>
+    <div className={cn("flex-1 min-w-64 max-w-96 h-full border border-gray-300 bg-white flex-shrink-0 flex flex-col comment-sidebar", className)}>
       <div className="p-3 border-b border-gray-200 flex-shrink-0">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-base font-semibold flex items-center gap-2">
             <MessageSquare className="h-4 w-4" />
             Comments
-            {totalUnresolvedComments > 0 && (
-              <Badge variant="destructive" className="ml-1 text-xs">
-                {totalUnresolvedComments}
+            {totalComments > 0 && (
+              <Badge variant="outline" className="ml-1 text-xs">
+                {totalComments}
               </Badge>
             )}
           </h3>
@@ -393,16 +360,9 @@ const FounderCommentSidebar: React.FC<FounderCommentSidebarProps> = ({
             </Button>
           )}
         </div>
-        
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'all' | 'unresolved')}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="unresolved">Unresolved</TabsTrigger>
-            <TabsTrigger value="all">All</TabsTrigger>
-          </TabsList>
-        </Tabs>
       </div>
 
-      <ScrollArea ref={scrollAreaRef} className="flex-1 h-[calc(100vh-200px)]">
+      <ScrollArea ref={scrollAreaRef} className="flex-1 h-full">
         <div className="space-y-4 p-2 pb-4">
           {/* New Comment Creation UI */}
           {onAnnotationAdd && (
@@ -415,15 +375,6 @@ const FounderCommentSidebar: React.FC<FounderCommentSidebarProps> = ({
               </CardHeader>
               {showNewComment ? (
                 <CardContent className="p-3 space-y-3">
-                  {(() => {
-                    console.log('[SELECTION_DEBUG] Rendering new comment form', {
-                      showNewComment,
-                      newCommentText,
-                      newCommentSelectedText: newCommentSelectedText ? newCommentSelectedText.substring(0, 50) : null,
-                      hasOnAnnotationAdd: !!onAnnotationAdd
-                    });
-                    return null;
-                  })()}
                   {newCommentSelectedText && (
                     <div className="p-2 bg-gray-50 rounded text-sm italic text-gray-600 border border-gray-200">
                       <strong>Selected text:</strong> &quot;{newCommentSelectedText.substring(0, 100)}
@@ -436,58 +387,20 @@ const FounderCommentSidebar: React.FC<FounderCommentSidebarProps> = ({
                     </label>
                     <Textarea
                       id="new-comment-text"
-                      ref={(el) => {
-                        newCommentTextareaRef.current = el;
-                        if (el) {
-                          console.log('[SELECTION_DEBUG] Textarea ref updated', {
-                            value: el.value,
-                            newCommentText: newCommentText
-                          });
-                        }
-                      }}
+                      ref={newCommentTextareaRef}
                       placeholder="Enter your comment..."
                       value={newCommentText}
-                      onChange={(e) => {
-                        console.log('[SELECTION_DEBUG] Textarea onChange', {
-                          newValue: e.target.value,
-                          newValueLength: e.target.value.length,
-                          willEnableButton: !!e.target.value.trim()
-                        });
-                        setNewCommentText(e.target.value);
-                      }}
+                      onChange={(e) => setNewCommentText(e.target.value)}
                       rows={4}
                       className="resize-none"
                     />
                   </div>
                   <div className="flex gap-2">
                     <Button
-                      ref={(btn) => {
-                        if (btn) {
-                          console.log('[SELECTION_DEBUG] Save Button rendered/updated', {
-                            isDisabled: btn.disabled,
-                            newCommentText: newCommentText,
-                            newCommentTextLength: newCommentText?.length || 0,
-                            newCommentTextTrimmed: newCommentText?.trim() || '',
-                            willBeDisabled: !newCommentText.trim()
-                          });
-                        }
-                      }}
-                      onClick={(e) => {
-                        console.log('[SELECTION_DEBUG] Sidebar Save Button clicked directly', {
-                          newCommentText: newCommentText,
-                          newCommentTextTrimmed: newCommentText.trim(),
-                          isEmpty: !newCommentText.trim(),
-                          event: e,
-                          buttonDisabled: (e.currentTarget as HTMLButtonElement).disabled
-                        });
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleSaveNewComment();
-                      }}
+                      onClick={handleSaveNewComment}
                       disabled={!newCommentText.trim()}
                       size="sm"
                       className="flex-1"
-                      type="button"
                     >
                       Save Comment
                     </Button>
@@ -559,8 +472,7 @@ const FounderCommentSidebar: React.FC<FounderCommentSidebarProps> = ({
                               className={cn(
                                 "p-2 rounded-lg border-l-4 cursor-pointer transition-all duration-200 overflow-hidden",
                                 getCategoryColor(category),
-                                selectedAnnotationId === annotation.id && "ring-2 ring-indigo-500 ring-opacity-50",
-                                annotation.resolved && "opacity-60"
+                                selectedAnnotationId === annotation.id && "ring-2 ring-indigo-500 ring-opacity-50"
                               )}
                               onClick={() => {
                                 onAnnotationSelect?.(annotation);
@@ -576,29 +488,9 @@ const FounderCommentSidebar: React.FC<FounderCommentSidebarProps> = ({
                                   <Badge variant="outline" className="text-xs text-indigo-600 border-indigo-300">
                                     Big Picture
                                   </Badge>
-                                  {annotation.resolved && (
-                                    <Badge variant="outline" className="text-xs text-green-600">
-                                      <CheckCircle className="h-3 w-3 mr-1" />
-                                      Resolved
-                                    </Badge>
-                                  )}
                                 </div>
                                 
                                 <div className="flex items-center gap-1">
-                                  {!annotation.resolved && onAnnotationResolve && (
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      className="h-6 w-6 p-0"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        onAnnotationResolve(annotation.id);
-                                      }}
-                                      title="Mark as resolved"
-                                    >
-                                      <CheckCircle className="h-3 w-3" />
-                                    </Button>
-                                  )}
                                   {onAnnotationDelete && (
                                     <Button
                                       size="sm"
@@ -680,12 +572,11 @@ const FounderCommentSidebar: React.FC<FounderCommentSidebarProps> = ({
                         <div
                           key={annotation.id}
                           data-annotation-id={annotation.id}
-                          className={cn(
-                            "p-2 rounded-lg border-l-4 cursor-pointer transition-all duration-200 overflow-hidden",
-                            getCategoryColor(categoryKey),
-                            selectedAnnotationId === annotation.id && "ring-2 ring-blue-500 ring-opacity-50",
-                            annotation.resolved && "opacity-60"
-                          )}
+                              className={cn(
+                                "p-2 rounded-lg border-l-4 cursor-pointer transition-all duration-200 overflow-hidden",
+                                getCategoryColor(categoryKey),
+                                selectedAnnotationId === annotation.id && "ring-2 ring-blue-500 ring-opacity-50"
+                              )}
                           onClick={() => {
                             onAnnotationSelect?.(annotation);
                           }}
@@ -700,29 +591,9 @@ const FounderCommentSidebar: React.FC<FounderCommentSidebarProps> = ({
                               <Badge variant="outline" className="text-xs text-gray-500">
                                 Para {blockIndex + 1}
                               </Badge>
-                              {annotation.resolved && (
-                                <Badge variant="outline" className="text-xs text-green-600">
-                                  <CheckCircle className="h-3 w-3 mr-1" />
-                                  Resolved
-                                </Badge>
-                              )}
                             </div>
                             
                             <div className="flex items-center gap-1">
-                              {!annotation.resolved && onAnnotationResolve && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-6 w-6 p-0"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onAnnotationResolve(annotation.id);
-                                  }}
-                                  title="Mark as resolved"
-                                >
-                                  <CheckCircle className="h-3 w-3" />
-                                </Button>
-                              )}
                               {onAnnotationDelete && (
                                 <Button
                                   size="sm"
@@ -756,11 +627,11 @@ const FounderCommentSidebar: React.FC<FounderCommentSidebarProps> = ({
             );
           })}
           
-          {totalUnresolvedComments === 0 && activeTab === 'unresolved' && (
+          {totalComments === 0 && (
             <div className="text-center py-8 text-gray-500">
               <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No unresolved comments</p>
-              <p className="text-sm">Great work! All feedback has been addressed.</p>
+              <p>No comments yet</p>
+              <p className="text-sm">Add a comment to get started.</p>
             </div>
           )}
         </div>

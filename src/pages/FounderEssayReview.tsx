@@ -5,7 +5,7 @@
  * Uses the same SemanticEditor experience as students.
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -136,31 +136,63 @@ const FounderEssayReview: React.FC = () => {
 
   // Helper to extract founder comments (those with author === 'mihir')
   const extractFounderComments = (doc: SemanticDocument): EscalatedEssayComment[] => {
+    // Get all annotations with author 'mihir'
     const founderAnnotations = doc.blocks.flatMap(block => 
-      block.annotations.filter(ann => ann.author === 'mihir')
+      (block.annotations || []).filter(ann => ann.author === 'mihir')
     );
 
-    return founderAnnotations.map(ann => ({
-      id: ann.id,
-      blockId: ann.targetBlockId || ann.id,
-      type: ann.type,
-      content: ann.content,
-      position: ann.targetText ? {
-        start: 0,
-        end: 0
-      } : undefined,
-      created_at: ann.createdAt.toISOString()
-    }));
+    if (founderAnnotations.length === 0) {
+      return [];
+    }
+
+    return founderAnnotations.map(ann => {
+      // Extract position from metadata if available (metadata is flexible, position_start/end may be stored there)
+      const metadata = ann.metadata as any;
+      const positionStart = metadata?.position_start as number | undefined;
+      const positionEnd = metadata?.position_end as number | undefined;
+      
+      // Handle createdAt - could be Date object or string
+      let createdAtStr: string;
+      if (ann.createdAt instanceof Date) {
+        createdAtStr = ann.createdAt.toISOString();
+      } else if (typeof ann.createdAt === 'string') {
+        createdAtStr = ann.createdAt;
+      } else {
+        createdAtStr = new Date().toISOString(); // Fallback
+      }
+      
+      const comment: EscalatedEssayComment = {
+        id: ann.id,
+        blockId: ann.targetBlockId || ann.id,
+        type: ann.type,
+        content: ann.content,
+        targetText: ann.targetText, // Include the selected text context
+        position: (positionStart !== undefined && positionEnd !== undefined) ? {
+          start: positionStart,
+          end: positionEnd
+        } : undefined,
+        created_at: createdAtStr
+      };
+
+      return comment;
+    });
   };
 
   // Auto-save founder comments every 2 seconds (memoized to have access to latest escalationId)
   const autoSaveFounderCommentsMemo = React.useCallback(async (doc: SemanticDocument) => {
-    if (!escalationId || !doc || !essay) return;
+    if (!escalationId || !doc || !essay) {
+      return;
+    }
 
     try {
       setIsAutoSaving(true);
       
       const comments = extractFounderComments(doc);
+      
+      if (comments.length === 0) {
+        // No comments to save, skip silently
+        return;
+      }
 
       // Save edited content to escalated_essays (without changing status)
       await EscalatedEssaysService.updateEscalatedEssay(escalationId, {
@@ -185,19 +217,19 @@ const FounderEssayReview: React.FC = () => {
     }
   }, [escalationId, essay]);
 
-  const handleDocumentChange = (updatedDocument: SemanticDocument) => {
+  const handleDocumentChange = React.useCallback((updatedDocument: SemanticDocument) => {
     // Convert any new 'user' comments to 'mihir' for founder
     const hasUserComments = updatedDocument.blocks.some(block =>
-      block.annotations.some(ann => ann.author === 'user')
+      block.annotations?.some(ann => ann.author === 'user')
     );
 
     if (hasUserComments) {
       // Update all 'user' comments to 'mihir'
       const updatedBlocks = updatedDocument.blocks.map(block => ({
         ...block,
-        annotations: block.annotations.map(ann => 
+        annotations: block.annotations?.map(ann => 
           ann.author === 'user' ? { ...ann, author: 'mihir' as const } : ann
-        )
+        ) || []
       }));
       
       updatedDocument = {
@@ -209,16 +241,23 @@ const FounderEssayReview: React.FC = () => {
 
     setDocument(updatedDocument);
 
-    // Clear existing auto-save timeout
-    if (autoSaveTimeoutRef.current) {
-      clearTimeout(autoSaveTimeoutRef.current);
+    // Only save if there are actually comments AND essay is loaded
+    const founderCommentCount = updatedDocument.blocks.reduce((sum, b) => 
+      sum + (b.annotations?.filter(a => a.author === 'mihir').length || 0), 0
+    );
+    
+    if (essay && escalationId && founderCommentCount > 0) {
+      // Clear existing auto-save timeout
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+        autoSaveTimeoutRef.current = null;
+      }
+      // Debounce: wait 500ms before saving to avoid multiple rapid saves
+      autoSaveTimeoutRef.current = setTimeout(() => {
+        autoSaveFounderCommentsMemo(updatedDocument);
+      }, 500);
     }
-
-    // Set up auto-save after 2 seconds of inactivity
-    autoSaveTimeoutRef.current = setTimeout(() => {
-      autoSaveFounderCommentsMemo(updatedDocument);
-    }, 2000);
-  };
+  }, [essay, escalationId, autoSaveFounderCommentsMemo]);
 
   // Update display time gently every minute (without triggering auto-save UI updates)
   useEffect(() => {
@@ -528,6 +567,7 @@ const FounderEssayReview: React.FC = () => {
                 essayId={essay.essay_id}
                 title={essay.essay_title}
                 initialContent={initialHtml}
+                initialDocument={document}
                 wordLimit={essay.word_limit ? parseInt(essay.word_limit) : undefined}
                 onDocumentChange={handleDocumentChange}
                 showCommentSidebar={true}
