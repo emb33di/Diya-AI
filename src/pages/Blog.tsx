@@ -8,9 +8,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import BlogSEO from "@/components/BlogSEO";
 import { loadAllBlogPosts, BlogPostMetadata } from "@/services/blogService";
 import { trackEvent } from "@/utils/analytics";
+import { useAuth } from "@/hooks/useAuth";
 
 const Blog = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [posts, setPosts] = useState<BlogPostMetadata[]>([]);
   const [filteredPosts, setFilteredPosts] = useState<BlogPostMetadata[]>([]);
   const [loading, setLoading] = useState(true);
@@ -252,23 +254,25 @@ const Blog = () => {
         </div>
       </div>
 
-      {/* CTA Section */}
-      <div className="py-12 sm:py-16" style={{ backgroundColor: '#F4EDE2' }}>
-        <div className="container mx-auto px-4 sm:px-6 text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold mb-4 text-gray-900">Ready to Start Your College Application Journey?</h2>
-          <p className="text-lg sm:text-xl mb-6 sm:mb-8 text-gray-600 px-4">
-            Get personalized guidance and AI-powered essay assistance with Diya AI
-          </p>
-          <Button 
-            size="lg" 
-            className="hover:shadow-lg transition-all w-full sm:w-auto" 
-            style={{ backgroundColor: '#D07D00', color: 'white' }}
-            onClick={handleGetStartedClick}
-          >
-            Get Started For Free
-          </Button>
+      {/* CTA Section - Only show if user is not authenticated */}
+      {!user && (
+        <div className="py-12 sm:py-16" style={{ backgroundColor: '#F4EDE2' }}>
+          <div className="container mx-auto px-4 sm:px-6 text-center">
+            <h2 className="text-2xl sm:text-3xl font-bold mb-4 text-gray-900">Ready to Start Your College Application Journey?</h2>
+            <p className="text-lg sm:text-xl mb-6 sm:mb-8 text-gray-600 px-4">
+              Get personalized guidance and AI-powered essay assistance with Diya AI
+            </p>
+            <Button 
+              size="lg" 
+              className="hover:shadow-lg transition-all w-full sm:w-auto" 
+              style={{ backgroundColor: '#D07D00', color: 'white' }}
+              onClick={handleGetStartedClick}
+            >
+              Get Started For Free
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

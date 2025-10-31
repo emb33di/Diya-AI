@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import BlogSEO from "@/components/BlogSEO";
 import { loadBlogPost, loadAllBlogPosts, BlogPostMetadata, BlogPostFile } from "@/services/blogService";
+import { useAuth } from "@/hooks/useAuth";
 
 // Function to extract article content from HTML
 function extractArticleContent(htmlContent: string): string {
@@ -27,6 +28,7 @@ function extractArticleContent(htmlContent: string): string {
 
 const BlogPost = () => {
   const { slug } = useParams<{ slug: string }>();
+  const { user } = useAuth();
   const [postFile, setPostFile] = useState<BlogPostFile | null>(null);
   const [relatedPosts, setRelatedPosts] = useState<BlogPostMetadata[]>([]);
   const [loading, setLoading] = useState(true);
@@ -228,93 +230,97 @@ const BlogPost = () => {
                 </div>
               )}
 
-              {/* Internal Advertising CTAs */}
-              <div className="space-y-4 mt-6">
-                {/* Essay Writing CTA */}
-                <div className="rounded-lg border p-4 sm:p-6 bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200 shadow-sm">
-                  <div className="flex items-start gap-3 mb-3">
-                    <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0">
-                      <PenTool className="h-5 w-5 text-primary" style={{ color: '#D07D00' }} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-2">
-                        Perfect Your Essays with AI
-                      </h3>
-                      <p className="text-xs sm:text-sm text-gray-600 mb-3">
-                        Ready to get your essays to a perfect level using the power of AI? Sign up today and get two expert reviews from the Founder included.
-                      </p>
-                      <Link to="/auth">
-                        <Button size="sm" className="w-full sm:w-auto" style={{ backgroundColor: '#D07D00', color: 'white' }}>
-                          Get Started
-                        </Button>
-                      </Link>
+              {/* Internal Advertising CTAs - Only show if user is not authenticated */}
+              {!user && (
+                <div className="space-y-4 mt-6">
+                  {/* Essay Writing CTA */}
+                  <div className="rounded-lg border p-4 sm:p-6 bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200 shadow-sm">
+                    <div className="flex items-start gap-3 mb-3">
+                      <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0">
+                        <PenTool className="h-5 w-5 text-primary" style={{ color: '#D07D00' }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-2">
+                          Perfect Your Essays with AI
+                        </h3>
+                        <p className="text-xs sm:text-sm text-gray-600 mb-3">
+                          Ready to get your essays to a perfect level using the power of AI? Sign up today and get two expert reviews from the Founder included.
+                        </p>
+                        <Link to="/auth">
+                          <Button size="sm" className="w-full sm:w-auto" style={{ backgroundColor: '#D07D00', color: 'white' }}>
+                            Get Started
+                          </Button>
+                        </Link>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Resume Formatting CTA */}
-                <div className="rounded-lg border p-4 sm:p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200 shadow-sm">
-                  <div className="flex items-start gap-3 mb-3">
-                    <div className="p-2 rounded-lg bg-blue-100 flex-shrink-0">
-                      <FileText className="h-5 w-5 text-blue-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-2">
-                        Professional Resume Formatting
-                      </h3>
-                      <p className="text-xs sm:text-sm text-gray-600 mb-3">
-                        Create a polished, ATS-friendly resume that stands out to admissions committees and recruiters.
-                      </p>
-                      <Link to="/auth">
-                        <Button size="sm" variant="outline" className="w-full sm:w-auto border-blue-300 text-blue-700 hover:bg-blue-100">
-                          Get Started
-                        </Button>
-                      </Link>
+                  {/* Resume Formatting CTA */}
+                  <div className="rounded-lg border p-4 sm:p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200 shadow-sm">
+                    <div className="flex items-start gap-3 mb-3">
+                      <div className="p-2 rounded-lg bg-blue-100 flex-shrink-0">
+                        <FileText className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-2">
+                          Professional Resume Formatting
+                        </h3>
+                        <p className="text-xs sm:text-sm text-gray-600 mb-3">
+                          Create a polished, ATS-friendly resume that stands out to admissions committees and recruiters.
+                        </p>
+                        <Link to="/auth">
+                          <Button size="sm" variant="outline" className="w-full sm:w-auto border-blue-300 text-blue-700 hover:bg-blue-100">
+                            Get Started
+                          </Button>
+                        </Link>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Deadline Tracking CTA */}
-                <div className="rounded-lg border p-4 sm:p-6 bg-gradient-to-br from-green-50 to-emerald-50 border-green-200 shadow-sm">
-                  <div className="flex items-start gap-3 mb-3">
-                    <div className="p-2 rounded-lg bg-green-100 flex-shrink-0">
-                      <CheckCircle2 className="h-5 w-5 text-green-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-2">
-                        Stay on Top of Deadlines
-                      </h3>
-                      <p className="text-xs sm:text-sm text-gray-600 mb-3">
-                        Never miss an application deadline again. Track all your deadlines in one place with automated reminders.
-                      </p>
-                      <Link to="/auth">
-                        <Button size="sm" variant="outline" className="w-full sm:w-auto border-green-300 text-green-700 hover:bg-green-100">
-                          Get Started
-                        </Button>
-                      </Link>
+                  {/* Deadline Tracking CTA */}
+                  <div className="rounded-lg border p-4 sm:p-6 bg-gradient-to-br from-green-50 to-emerald-50 border-green-200 shadow-sm">
+                    <div className="flex items-start gap-3 mb-3">
+                      <div className="p-2 rounded-lg bg-green-100 flex-shrink-0">
+                        <CheckCircle2 className="h-5 w-5 text-green-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-2">
+                          Stay on Top of Deadlines
+                        </h3>
+                        <p className="text-xs sm:text-sm text-gray-600 mb-3">
+                          Never miss an application deadline again. Track all your deadlines in one place with automated reminders.
+                        </p>
+                        <Link to="/auth">
+                          <Button size="sm" variant="outline" className="w-full sm:w-auto border-green-300 text-green-700 hover:bg-green-100">
+                            Get Started
+                          </Button>
+                        </Link>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>ded
+              )}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* CTA Section */}
-      <div className="py-12 sm:py-16" style={{ backgroundColor: '#F4EDE2' }}>
-        <div className="container mx-auto px-4 sm:px-6 text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold mb-4 text-gray-900">Ready to Improve Your Essays?</h2>
-          <p className="text-lg sm:text-xl mb-6 sm:mb-8 text-gray-600 px-4">
-            Get personalized AI-powered assistance for your college application essays
-          </p>
-          <Link to="/auth">
-            <Button size="lg" className="hover:shadow-lg transition-all w-full sm:w-auto" style={{ backgroundColor: '#D07D00', color: 'white' }}>
-              Start Writing Better Essays
-            </Button>
-          </Link>
+      {/* CTA Section - Only show if user is not authenticated */}
+      {!user && (
+        <div className="py-12 sm:py-16" style={{ backgroundColor: '#F4EDE2' }}>
+          <div className="container mx-auto px-4 sm:px-6 text-center">
+            <h2 className="text-2xl sm:text-3xl font-bold mb-4 text-gray-900">Ready to Improve Your Essays?</h2>
+            <p className="text-lg sm:text-xl mb-6 sm:mb-8 text-gray-600 px-4">
+              Get personalized AI-powered assistance for your college application essays
+            </p>
+            <Link to="/auth">
+              <Button size="lg" className="hover:shadow-lg transition-all w-full sm:w-auto" style={{ backgroundColor: '#D07D00', color: 'white' }}>
+                Start Writing Better Essays
+              </Button>
+            </Link>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
