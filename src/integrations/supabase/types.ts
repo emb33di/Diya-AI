@@ -45,6 +45,7 @@ export interface Database {
           skipped_onboarding: boolean
           cumulative_onboarding_time: number
           user_tier: string | null
+          is_founder: boolean
           created_at: string
           updated_at: string
         }
@@ -83,6 +84,7 @@ export interface Database {
           skipped_onboarding?: boolean
           cumulative_onboarding_time?: number
           user_tier?: string | null
+          is_founder?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -121,6 +123,7 @@ export interface Database {
           skipped_onboarding?: boolean
           cumulative_onboarding_time?: number
           user_tier?: string | null
+          is_founder?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -267,6 +270,94 @@ export interface Database {
             foreignKeyName: "conversation_tracking_user_id_fkey"
             columns: ["user_id"]
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      escalated_essays: {
+        Row: {
+          id: string
+          essay_id: string
+          user_id: string
+          essay_title: string
+          essay_content: Json
+          essay_prompt: string | null
+          word_limit: string | null
+          word_count: number
+          character_count: number
+          ai_comments_snapshot: Json
+          semantic_document_id: string | null
+          status: 'pending' | 'in_review' | 'reviewed' | 'sent_back'
+          founder_feedback: string | null
+          founder_edited_content: Json | null
+          founder_comments: Json
+          escalated_at: string
+          reviewed_at: string | null
+          sent_back_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          essay_id: string
+          user_id: string
+          essay_title: string
+          essay_content: Json
+          essay_prompt?: string | null
+          word_limit?: string | null
+          word_count?: number
+          character_count?: number
+          ai_comments_snapshot?: Json
+          semantic_document_id?: string | null
+          status?: 'pending' | 'in_review' | 'reviewed' | 'sent_back'
+          founder_feedback?: string | null
+          founder_edited_content?: Json | null
+          founder_comments?: Json
+          escalated_at?: string
+          reviewed_at?: string | null
+          sent_back_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          essay_id?: string
+          user_id?: string
+          essay_title?: string
+          essay_content?: Json
+          essay_prompt?: string | null
+          word_limit?: string | null
+          word_count?: number
+          character_count?: number
+          ai_comments_snapshot?: Json
+          semantic_document_id?: string | null
+          status?: 'pending' | 'in_review' | 'reviewed' | 'sent_back'
+          founder_feedback?: string | null
+          founder_edited_content?: Json | null
+          founder_comments?: Json
+          escalated_at?: string
+          reviewed_at?: string | null
+          sent_back_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escalated_essays_essay_id_fkey"
+            columns: ["essay_id"]
+            referencedRelation: "essays"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escalated_essays_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escalated_essays_semantic_document_id_fkey"
+            columns: ["semantic_document_id"]
+            referencedRelation: "semantic_documents"
             referencedColumns: ["id"]
           }
         ]

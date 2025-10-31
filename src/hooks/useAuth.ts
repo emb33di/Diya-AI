@@ -11,6 +11,7 @@ export interface UserProfile {
   skipped_onboarding: boolean;
   profile_saved: boolean;
   user_tier: string | null;
+  is_founder?: boolean;
 }
 
 export interface AuthState {
@@ -122,7 +123,7 @@ export const useAuth = () => {
         // Fetch profile from user_profiles table only
         const { data: profile, error } = await supabase
           .from('user_profiles')
-          .select('id, full_name, email_address, onboarding_complete, skipped_onboarding, profile_saved, user_tier')
+          .select('id, full_name, email_address, onboarding_complete, skipped_onboarding, profile_saved, user_tier, is_founder')
           .eq('user_id', user.id)
           .maybeSingle();
 
@@ -143,7 +144,7 @@ export const useAuth = () => {
               skipped_onboarding: false,
               profile_saved: false,
             })
-            .select('id, full_name, email_address, onboarding_complete, skipped_onboarding, profile_saved, user_tier')
+            .select('id, full_name, email_address, onboarding_complete, skipped_onboarding, profile_saved, user_tier, is_founder')
             .single();
 
           if (createError) throw createError;
@@ -154,14 +155,17 @@ export const useAuth = () => {
             throw new Error('Failed to create or fetch user profile.');
         }
 
+        // Type assertion needed due to Supabase type inference limitations
+        const profileData = finalProfile as any;
         const combinedProfile: UserProfile = {
-          id: finalProfile.id,
-          full_name: finalProfile.full_name || user.user_metadata?.full_name || null,
-          email_address: finalProfile.email_address || user.email || null,
-          onboarding_complete: finalProfile.onboarding_complete || false,
-          skipped_onboarding: finalProfile.skipped_onboarding || false,
-          profile_saved: finalProfile.profile_saved || false,
-          user_tier: finalProfile.user_tier || 'Free',
+          id: profileData.id,
+          full_name: profileData.full_name || user.user_metadata?.full_name || null,
+          email_address: profileData.email_address || user.email || null,
+          onboarding_complete: profileData.onboarding_complete || false,
+          skipped_onboarding: profileData.skipped_onboarding || false,
+          profile_saved: profileData.profile_saved || false,
+          user_tier: profileData.user_tier || 'Free',
+          is_founder: profileData.is_founder || false,
         };
 
         if (isMounted) {
@@ -221,6 +225,7 @@ export const useAuth = () => {
     ...authState,
     onboardingCompleted: authState.profile?.onboarding_complete ?? null,
     profileSaved: authState.profile?.profile_saved ?? null,
+    isFounder: authState.profile?.is_founder ?? false,
     markOnboardingCompleted,
     signOut,
   };
