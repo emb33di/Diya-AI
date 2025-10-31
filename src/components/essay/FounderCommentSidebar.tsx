@@ -211,12 +211,32 @@ const FounderCommentSidebar: React.FC<FounderCommentSidebarProps> = ({
 
   // Handle saving new comment
   const handleSaveNewComment = () => {
-    if (!newCommentText.trim() || !onAnnotationAdd) return;
+    console.log('[SELECTION_DEBUG] Sidebar handleSaveNewComment called', {
+      newCommentText: newCommentText ? newCommentText.substring(0, 50) : 'null/undefined',
+      newCommentTextLength: newCommentText?.length || 0,
+      newCommentTextTrimmed: newCommentText?.trim() || '',
+      newCommentSelectedText: newCommentSelectedText ? newCommentSelectedText.substring(0, 50) : 'null/undefined',
+      hasOnAnnotationAdd: !!onAnnotationAdd,
+      blocksCount: blocks.length,
+      stackTrace: new Error().stack
+    });
+    
+    if (!newCommentText.trim() || !onAnnotationAdd) {
+      console.log('[SELECTION_DEBUG] Sidebar Save: Early return - no text or callback', {
+        hasText: !!newCommentText.trim(),
+        textValue: newCommentText,
+        textTrimmed: newCommentText.trim(),
+        hasCallback: !!onAnnotationAdd,
+        onAnnotationAddType: typeof onAnnotationAdd
+      });
+      return;
+    }
 
     // Find appropriate block - use first block as fallback
     // The parent's handleAnnotationAdd will override with correct block from activeSelection
     const firstBlock = blocks[0];
     if (!firstBlock) {
+      console.log('[SELECTION_DEBUG] Sidebar Save: ERROR - No blocks found');
       toast({
         title: 'Error',
         description: 'No content to comment on.',
@@ -235,12 +255,20 @@ const FounderCommentSidebar: React.FC<FounderCommentSidebarProps> = ({
       metadata: {}
     };
 
+    console.log('[SELECTION_DEBUG] Sidebar Save: Calling onAnnotationAdd', {
+      annotationContent: annotation.content.substring(0, 50),
+      targetBlockId: annotation.targetBlockId,
+      targetText: annotation.targetText.substring(0, 50)
+    });
+
     onAnnotationAdd(annotation);
 
     // Reset form
     setNewCommentText('');
     setNewCommentSelectedText('');
     setShowNewComment(false);
+    
+    console.log('[SELECTION_DEBUG] Sidebar Save: Form reset complete');
   };
 
   // Scroll to selected comment when selectedAnnotationId changes
@@ -378,7 +406,7 @@ const FounderCommentSidebar: React.FC<FounderCommentSidebarProps> = ({
         <div className="space-y-4 p-2 pb-4">
           {/* New Comment Creation UI */}
           {onAnnotationAdd && (
-            <Card className="border-2 border-blue-200 shadow-md">
+            <Card className="border-2 border-blue-200 shadow-md" data-comment-form="true">
               <CardHeader className="py-2 px-3 bg-blue-25">
                 <CardTitle className="text-sm font-semibold text-blue-800 flex items-center gap-2">
                   <MessageSquare className="h-4 w-4" />
@@ -387,6 +415,15 @@ const FounderCommentSidebar: React.FC<FounderCommentSidebarProps> = ({
               </CardHeader>
               {showNewComment ? (
                 <CardContent className="p-3 space-y-3">
+                  {(() => {
+                    console.log('[SELECTION_DEBUG] Rendering new comment form', {
+                      showNewComment,
+                      newCommentText,
+                      newCommentSelectedText: newCommentSelectedText ? newCommentSelectedText.substring(0, 50) : null,
+                      hasOnAnnotationAdd: !!onAnnotationAdd
+                    });
+                    return null;
+                  })()}
                   {newCommentSelectedText && (
                     <div className="p-2 bg-gray-50 rounded text-sm italic text-gray-600 border border-gray-200">
                       <strong>Selected text:</strong> &quot;{newCommentSelectedText.substring(0, 100)}
@@ -399,20 +436,58 @@ const FounderCommentSidebar: React.FC<FounderCommentSidebarProps> = ({
                     </label>
                     <Textarea
                       id="new-comment-text"
-                      ref={newCommentTextareaRef}
+                      ref={(el) => {
+                        newCommentTextareaRef.current = el;
+                        if (el) {
+                          console.log('[SELECTION_DEBUG] Textarea ref updated', {
+                            value: el.value,
+                            newCommentText: newCommentText
+                          });
+                        }
+                      }}
                       placeholder="Enter your comment..."
                       value={newCommentText}
-                      onChange={(e) => setNewCommentText(e.target.value)}
+                      onChange={(e) => {
+                        console.log('[SELECTION_DEBUG] Textarea onChange', {
+                          newValue: e.target.value,
+                          newValueLength: e.target.value.length,
+                          willEnableButton: !!e.target.value.trim()
+                        });
+                        setNewCommentText(e.target.value);
+                      }}
                       rows={4}
                       className="resize-none"
                     />
                   </div>
                   <div className="flex gap-2">
                     <Button
-                      onClick={handleSaveNewComment}
+                      ref={(btn) => {
+                        if (btn) {
+                          console.log('[SELECTION_DEBUG] Save Button rendered/updated', {
+                            isDisabled: btn.disabled,
+                            newCommentText: newCommentText,
+                            newCommentTextLength: newCommentText?.length || 0,
+                            newCommentTextTrimmed: newCommentText?.trim() || '',
+                            willBeDisabled: !newCommentText.trim()
+                          });
+                        }
+                      }}
+                      onClick={(e) => {
+                        console.log('[SELECTION_DEBUG] Sidebar Save Button clicked directly', {
+                          newCommentText: newCommentText,
+                          newCommentTextTrimmed: newCommentText.trim(),
+                          isEmpty: !newCommentText.trim(),
+                          event: e,
+                          buttonDisabled: (e.currentTarget as HTMLButtonElement).disabled
+                        });
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleSaveNewComment();
+                      }}
                       disabled={!newCommentText.trim()}
                       size="sm"
                       className="flex-1"
+                      type="button"
                     >
                       Save Comment
                     </Button>
