@@ -21,8 +21,7 @@ import {
   CheckCircle,
   Send,
   MessageSquare,
-  AlertCircle,
-  Bot
+  AlertCircle
 } from 'lucide-react';
 import { EscalatedEssaysService, EscalatedEssay, EscalatedEssayComment } from '@/services/escalatedEssaysService';
 import { SemanticDocument, Annotation, AnnotationType } from '@/types/semanticDocument';
@@ -43,7 +42,6 @@ const FounderEssayReview: React.FC = () => {
   const [founderFeedback, setFounderFeedback] = useState('');
   const [document, setDocument] = useState<SemanticDocument | null>(null);
   const [initialHtml, setInitialHtml] = useState<string>('');
-  const [aiCommentsSnapshot, setAiCommentsSnapshot] = useState<EscalatedEssayComment[]>([]);
   const [displaySaveTime, setDisplaySaveTime] = useState<Date | null>(null);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastActualSaveTimeRef = useRef<Date | null>(null);
@@ -67,7 +65,6 @@ const FounderEssayReview: React.FC = () => {
 
       setEssay(data);
       setFounderFeedback(data.founder_feedback || '');
-      setAiCommentsSnapshot(data.ai_comments_snapshot || []);
 
       // Use founder_edited_content if available, otherwise use essay_content snapshot
       let contentToUse: SemanticDocument = data.founder_edited_content || data.essay_content;
@@ -451,37 +448,47 @@ const FounderEssayReview: React.FC = () => {
             </div>
 
             {essay.essay_prompt && (
-              <Card className="mb-6">
-                <CardHeader>
-                  <CardTitle className="text-sm font-medium">Essay Prompt</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm">{essay.essay_prompt}</p>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* AI Comments Snapshot Info */}
-            {aiCommentsSnapshot.length > 0 && (
-              <Card className="mb-6 border-blue-200 bg-blue-50/50">
-                <CardContent className="pt-6">
-                  <div className="flex items-start gap-3">
-                    <Bot className="h-5 w-5 text-blue-600 mt-0.5" />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="font-medium text-sm">AI Comments Snapshot</span>
-                        <Badge variant="outline" className="text-xs">
-                          {aiCommentsSnapshot.length} comment{aiCommentsSnapshot.length !== 1 ? 's' : ''}
-                        </Badge>
+              <div className="bg-white p-4 md:p-8 rounded-xl shadow-lg border border-gray-300 relative overflow-hidden group hover:shadow-xl transition-shadow duration-300 mb-6">
+                {/* Subtle accent line */}
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500"></div>
+                
+                <div className="flex flex-col sm:flex-row sm:items-start space-y-4 sm:space-y-0 sm:space-x-4">
+                  <div className="flex-shrink-0 self-center sm:self-start sm:mt-1">
+                    <div className="p-3 bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg border border-blue-100">
+                      <FileText className="h-5 w-5 text-blue-600" />
+                    </div>
+                  </div>
+                  
+                  <div className="flex-1">
+                    <h3 className="text-base md:text-lg font-semibold text-gray-800 mb-3 flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0">
+                      <div className="flex items-center gap-2">
+                        <span>{essay.essay_title}</span>
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        These are the AI comments that were present when the essay was escalated. 
-                        They are shown as read-only for reference.
+                      <div className="sm:ml-2 px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full self-start">
+                        Required
+                      </div>
+                    </h3>
+                    <div className="prose prose-gray max-w-none">
+                      <p className="text-gray-700 leading-relaxed m-0 text-base" style={{ fontFamily: 'Arial, sans-serif', whiteSpace: 'pre-wrap' }}>
+                        {essay.essay_prompt}
                       </p>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+                
+                {/* Word limit reminder */}
+                {essay.word_limit && (
+                  <div className="mt-4 md:mt-6 pt-4 border-t border-gray-100">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-600">
+                          Word Limit: {essay.word_count || 0}/{essay.word_limit || 'Not specified'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
 
