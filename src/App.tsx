@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import Header from "./components/Header";
 import AuthenticationGuard from "./components/AuthenticationGuard";
+import FounderGuard from "./components/FounderGuard";
 import ScrollToTop from "./components/ScrollToTop";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
@@ -96,8 +97,8 @@ const App = () => {
             <Route path="/payment-success" element={<AuthenticationGuard><PaymentSuccess /></AuthenticationGuard>} />
 
             {/* Founder Portal Routes */}
-            <Route path="/founder-portal" element={<FounderPortal />} />
-            <Route path="/founder-portal/:escalationId" element={<FounderEssayReview />} />
+            <Route path="/founder-portal" element={<FounderGuard><FounderPortal /></FounderGuard>} />
+            <Route path="/founder-portal/:escalationId" element={<FounderGuard><FounderEssayReview /></FounderGuard>} />
 
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

@@ -1,7 +1,8 @@
 /**
  * Founder Essay Review Page
  * 
- * Allows founder to review, comment on, and provide feedback for escalated essays
+ * Allows founder to review, comment on, and provide feedback for escalated essays.
+ * Uses the same SemanticEditor experience as students.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -19,9 +20,9 @@ import {
   Save,
   CheckCircle,
   Send,
-  Eye,
   MessageSquare,
-  AlertCircle
+  AlertCircle,
+  Bot
 } from 'lucide-react';
 import { EscalatedEssaysService, EscalatedEssay, EscalatedEssayComment } from '@/services/escalatedEssaysService';
 import { SemanticDocument, Annotation } from '@/types/semanticDocument';
@@ -40,7 +41,8 @@ const FounderEssayReview: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [founderFeedback, setFounderFeedback] = useState('');
   const [document, setDocument] = useState<SemanticDocument | null>(null);
-  const [founderComments, setFounderComments] = useState<EscalatedEssayComment[]>([]);
+  const [initialHtml, setInitialHtml] = useState<string>('');
+  const [aiCommentsSnapshot, setAiCommentsSnapshot] = useState<EscalatedEssayComment[]>([]);
 
   useEffect(() => {
     if (escalationId) {
@@ -54,14 +56,22 @@ const FounderEssayReview: React.FC = () => {
     try {
       setLoading(true);
       const data = await EscalatedEssaysService.getEscalatedEssayById(escalationId);
+      
+      if (!data) {
+        throw new Error('Essay not found');
+      }
+
       setEssay(data);
       setFounderFeedback(data.founder_feedback || '');
-      setFounderComments(data.founder_comments || []);
+      setAiCommentsSnapshot(data.ai_comments_snapshot || []);
 
-      // Initialize document from essay content
-      // Use founder_edited_content if available, otherwise use essay_content
-      const contentToUse = data.founder_edited_content || data.essay_content;
+      // Use founder_edited_content if available, otherwise use essay_content snapshot
+      const contentToUse: SemanticDocument = data.founder_edited_content || data.essay_content;
       setDocument(contentToUse);
+
+      // Convert SemanticDocument to HTML for SemanticEditor's initialContent
+      const htmlContent = semanticDocumentService.convertBlocksToHtml(contentToUse.blocks);
+      setInitialHtml(htmlContent);
 
       // Mark as in_review if it's currently pending
       if (data.status === 'pending') {
@@ -92,19 +102,20 @@ const FounderEssayReview: React.FC = () => {
     try {
       setSaving(true);
 
-      // Extract founder comments from document annotations
-      const annotations = document.blocks.flatMap(block => 
+      // Extract founder comments from document annotations (those with author === 'user')
+      // These are comments the founder added in the editor
+      const founderAnnotations = document.blocks.flatMap(block => 
         block.annotations.filter(ann => ann.author === 'user')
       );
 
       // Convert annotations to EscalatedEssayComment format
-      const comments: EscalatedEssayComment[] = annotations.map(ann => ({
+      const comments: EscalatedEssayComment[] = founderAnnotations.map(ann => ({
         id: ann.id,
-        blockId: ann.targetBlockId,
+        blockId: ann.targetBlockId || ann.id, // Fallback to annotation id if blockId not set
         type: ann.type,
         content: ann.content,
         position: ann.targetText ? {
-          start: 0, // Position tracking would need to be implemented
+          start: 0, // Position tracking would need to be implemented based on targetText
           end: 0
         } : undefined,
         created_at: ann.createdAt.toISOString()
@@ -184,13 +195,13 @@ const FounderEssayReview: React.FC = () => {
 
       // Save feedback/comments/edits before sending back
       if (document) {
-        const annotations = document.blocks.flatMap(block => 
+        const founderAnnotations = document.blocks.flatMap(block => 
           block.annotations.filter(ann => ann.author === 'user')
         );
 
-        const comments: EscalatedEssayComment[] = annotations.map(ann => ({
+        const comments: EscalatedEssayComment[] = founderAnnotations.map(ann => ({
           id: ann.id,
-          blockId: ann.targetBlockId,
+          blockId: ann.targetBlockId || ann.id,
           type: ann.type,
           content: ann.content,
           position: ann.targetText ? {
@@ -212,7 +223,7 @@ const FounderEssayReview: React.FC = () => {
 
       toast({
         title: 'Success',
-        description: 'Essay sent back to student.'
+        description: 'Essay sent back to student.',
       });
 
       // Navigate back to list
@@ -246,28 +257,6 @@ const FounderEssayReview: React.FC = () => {
     );
   };
 
-  // Convert SemanticDocument to HTML for SemanticEditor
-  const convertDocumentToHtml = (doc: SemanticDocument): string => {
-    return semanticDocumentService.convertBlocksToHtml(doc.blocks);
-  };
-
-  // Load AI comments snapshot as annotations (read-only)
-  const loadAICommentsAsAnnotations = (): Annotation[] => {
-    if (!essay || !essay.ai_comments_snapshot) return [];
-
-    return essay.ai_comments_snapshot.map((comment, index) => ({
-      id: `ai-snapshot-${index}`,
-      type: comment.type as any,
-      author: 'ai',
-      content: comment.content,
-      targetBlockId: comment.blockId,
-      targetText: comment.position ? undefined : undefined, // Position would need block content mapping
-      createdAt: new Date(comment.created_at || new Date()),
-      updatedAt: new Date(comment.created_at || new Date()),
-      resolved: false
-    }));
-  };
-
   if (loading) {
     return (
       <FounderGuard>
@@ -299,9 +288,6 @@ const FounderEssayReview: React.FC = () => {
       </FounderGuard>
     );
   }
-
-  const htmlContent = convertDocumentToHtml(document);
-  const aiAnnotations = loadAICommentsAsAnnotations();
 
   return (
     <FounderGuard>
@@ -351,6 +337,29 @@ const FounderEssayReview: React.FC = () => {
                 </CardContent>
               </Card>
             )}
+
+            {/* AI Comments Snapshot Info */}
+            {aiCommentsSnapshot.length > 0 && (
+              <Card className="mb-6 border-blue-200 bg-blue-50/50">
+                <CardContent className="pt-6">
+                  <div className="flex items-start gap-3">
+                    <Bot className="h-5 w-5 text-blue-600 mt-0.5" />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="font-medium text-sm">AI Comments Snapshot</span>
+                        <Badge variant="outline" className="text-xs">
+                          {aiCommentsSnapshot.length} comment{aiCommentsSnapshot.length !== 1 ? 's' : ''}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        These are the AI comments that were present when the essay was escalated. 
+                        They are shown as read-only for reference.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Editor */}
@@ -366,21 +375,12 @@ const FounderEssayReview: React.FC = () => {
                 documentId={document.id}
                 essayId={essay.essay_id}
                 title={essay.essay_title}
-                initialContent={htmlContent}
+                initialContent={initialHtml}
                 wordLimit={essay.word_limit ? parseInt(essay.word_limit) : undefined}
                 onDocumentChange={handleDocumentChange}
                 showCommentSidebar={true}
                 readOnly={false}
               />
-              {/* Note: AI comments from snapshot would need to be merged into the document's blocks */}
-              {aiAnnotations.length > 0 && (
-                <div className="mt-4 p-3 bg-muted rounded-md">
-                  <p className="text-sm text-muted-foreground">
-                    <MessageSquare className="h-4 w-4 inline mr-2" />
-                    {aiAnnotations.length} AI comment(s) from when essay was escalated (read-only)
-                  </p>
-                </div>
-              )}
             </CardContent>
           </Card>
 
@@ -438,4 +438,3 @@ const FounderEssayReview: React.FC = () => {
 };
 
 export default FounderEssayReview;
-
