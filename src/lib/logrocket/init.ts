@@ -20,7 +20,8 @@ const getEnv = (key: string): string | undefined => {
 };
 
 export const getLogRocketAppId = (): string | undefined => {
-  return getEnv('VITE_LOGROCKET_APP_ID');
+  // Check both VITE_LOGROCKET_ID and VITE_LOGROCKET_APP_ID for compatibility
+  return getEnv('VITE_LOGROCKET_ID') || getEnv('VITE_LOGROCKET_APP_ID');
 };
 
 /**

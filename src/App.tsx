@@ -37,7 +37,6 @@ import PasswordReset from "./pages/PasswordReset";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import { initAnalytics } from "./lib/ga/init";
 import RouteTracker from "./lib/ga/RouteTracker";
-import { initLogRocket } from "./lib/logrocket/init";
 import LogRocketRouteTracker from "./lib/logrocket/LogRocketRouteTracker";
 import LogRocketUserTracker from "./lib/logrocket/LogRocketUserTracker";
 
@@ -47,9 +46,6 @@ const queryClient = new QueryClient();
 const App = () => {
   // Initialize analytics
   initAnalytics();
-  
-  // Initialize LogRocket
-  initLogRocket();
   
   return (
   <HelmetProvider>
