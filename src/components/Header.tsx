@@ -135,7 +135,7 @@ const Header = () => {
     <header className="sticky top-0 z-50 w-full backdrop-blur-md bg-transparent">
       <div className="container mx-auto flex h-20 items-center justify-between px-6">
         {/* Logo */}
-        <Link to={loading ? "/" : (isAuthenticated ? "/dashboard" : "/")} className="flex items-center space-x-2">
+        <Link to={loading ? "/" : (isAuthenticated ? "/dashboard" : "/")} className="flex items-center space-x-2 flex-shrink-0">
           <img 
             src={location.pathname === "/" || location.pathname === "/auth" ? "/DiyaLogo White.svg" : "/DiyaLogo.svg"} 
             alt="Diya Logo" 
@@ -147,7 +147,7 @@ const Header = () => {
         {isAuthenticated && (
           <>
             {/* Desktop Navigation */}
-            <nav className={`hidden md:flex items-center space-x-8 px-4 py-2 rounded-full border transition-all duration-200 ${
+            <nav className={`hidden md:flex items-center space-x-4 lg:space-x-6 xl:space-x-8 px-2 py-1.5 lg:px-3 xl:px-4 lg:py-2 rounded-full border transition-all duration-200 flex-shrink min-w-0 ${
               location.pathname === '/onboarding' || location.pathname === '/dashboard' || 
               location.pathname === '/schools' || location.pathname === '/resume' || 
               location.pathname === '/essays' || location.pathname === '/lor' || 
@@ -156,12 +156,12 @@ const Header = () => {
                 : 'border-gray-300/30'
             }`}>
               {onboardingLoading ? (
-                <span className="text-sm font-medium text-gray-400 px-3 py-1">
+                <span className="text-xs lg:text-sm font-medium text-gray-400 px-2 py-0.5 lg:px-3 lg:py-1">
                   Onboarding
                 </span>
               ) : onboardingCompleted === true ? (
                 <button 
-                  className="text-sm font-medium transition-colors text-gray-400 cursor-not-allowed px-3 py-1"
+                  className="text-xs lg:text-sm font-medium transition-colors text-gray-400 cursor-not-allowed px-2 py-0.5 lg:px-3 lg:py-1"
                   disabled
                 >
                   Onboarding
@@ -169,7 +169,7 @@ const Header = () => {
               ) : (
                 <Link 
                   to="/onboarding" 
-                  className={`text-sm font-medium transition-colors px-3 py-1 ${
+                  className={`text-xs lg:text-sm font-medium transition-colors px-2 py-0.5 lg:px-3 lg:py-1 ${
                     isActive('/onboarding') 
                       ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
                       : 'text-black hover:text-black'
@@ -183,7 +183,7 @@ const Header = () => {
                   <TooltipTrigger asChild>
                     <Link 
                       to="/dashboard" 
-                      className={`text-sm font-medium transition-colors px-3 py-1 ${
+                      className={`text-xs lg:text-sm font-medium transition-colors px-2 py-0.5 lg:px-3 lg:py-1 ${
                         isActive('/dashboard') 
                           ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
                           : 'text-black hover:text-black'
@@ -199,7 +199,7 @@ const Header = () => {
                   <TooltipTrigger asChild>
                     <Link 
                       to="/schools" 
-                      className={`text-sm font-medium transition-colors px-3 py-1 ${
+                      className={`text-xs lg:text-sm font-medium transition-colors px-2 py-0.5 lg:px-3 lg:py-1 ${
                         isActive('/schools') 
                           ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
                           : 'text-black hover:text-black'
@@ -215,7 +215,7 @@ const Header = () => {
                   <TooltipTrigger asChild>
                     <Link 
                       to="/resume" 
-                      className={`text-sm font-medium transition-colors px-3 py-1 ${
+                      className={`text-xs lg:text-sm font-medium transition-colors px-2 py-0.5 lg:px-3 lg:py-1 ${
                         isActive('/resume') 
                           ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
                           : 'text-black hover:text-black'
@@ -231,7 +231,7 @@ const Header = () => {
                   <TooltipTrigger asChild>
                     <Link 
                       to="/essays" 
-                      className={`text-sm font-medium transition-colors px-3 py-1 ${
+                      className={`text-xs lg:text-sm font-medium transition-colors px-2 py-0.5 lg:px-3 lg:py-1 ${
                         isActive('/essays') 
                           ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
                           : 'text-black hover:text-black'
@@ -247,7 +247,7 @@ const Header = () => {
                   <TooltipTrigger asChild>
                     <Link 
                       to="/lor" 
-                      className={`text-sm font-medium transition-colors px-3 py-1 ${
+                      className={`text-xs lg:text-sm font-medium transition-colors px-2 py-0.5 lg:px-3 lg:py-1 ${
                         isActive('/lor') 
                           ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
                           : 'text-black hover:text-black'
@@ -263,7 +263,7 @@ const Header = () => {
                   <TooltipTrigger asChild>
                     <Link 
                       to="/deadlines" 
-                      className={`text-sm font-medium transition-colors px-3 py-1 ${
+                      className={`text-xs lg:text-sm font-medium transition-colors px-2 py-0.5 lg:px-3 lg:py-1 ${
                         isActive('/deadlines') 
                           ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
                           : 'text-black hover:text-black'
@@ -279,13 +279,13 @@ const Header = () => {
                   <TooltipTrigger asChild>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <button className={`text-sm font-medium transition-colors px-3 py-1 flex items-center gap-1 ${
+                        <button className={`text-xs lg:text-sm font-medium transition-colors px-2 py-0.5 lg:px-3 lg:py-1 flex items-center gap-1 ${
                           isActive('/blog')
                             ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
                             : 'text-black hover:text-black'
                         }`}>
                           Resources
-                          <ChevronDown className="h-3 w-3" />
+                          <ChevronDown className="h-2.5 w-2.5 lg:h-3 lg:w-3" />
                         </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="w-48">
@@ -396,7 +396,7 @@ const Header = () => {
         )}
         
         {/* Auth Buttons */}
-        <div className="flex items-center space-x-6">
+        <div className="flex items-center space-x-6 flex-shrink-0">
           {!isAuthenticated ? (
             <>
               <Link 
