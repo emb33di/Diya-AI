@@ -17,7 +17,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
 import { cn } from "@/lib/utils";
-import OnboardingGuard from "@/components/OnboardingGuard";
 import GradientBackground from "@/components/GradientBackground";
 import { getValidApplyingToValues } from "@/utils/userProfileUtils";
 import { OnboardingApiService } from "@/services/onboarding.api";
@@ -481,52 +480,50 @@ export default function Profile() {
 
 
   return (
-    <OnboardingGuard pageName="Profile">
-      <GradientBackground>
-        <div className="container mx-auto py-8 max-w-4xl">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">
-          {profileMode === 'review' ? "Review Your Profile" : "Profile"}
-        </h1>
-        <p className="text-muted-foreground">
-          {profileMode === 'review'
-            ? "Please review your profile information and make any necessary changes. Once you're satisfied, click 'Complete Profile' to unlock all features."
-            : "Complete your profile to start using Diya."}
-        </p>
-      </div>
+    <GradientBackground>
+      <div className="container mx-auto py-8 max-w-4xl">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold">
+            {profileMode === 'review' ? "Review Your Profile" : "Profile"}
+          </h1>
+          <p className="text-muted-foreground">
+            {profileMode === 'review'
+              ? "Please review your profile information and make any necessary changes. Once you're satisfied, click 'Complete Profile' to unlock all features."
+              : "Complete your profile to start using Diya."}
+          </p>
+        </div>
 
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          {/* Personal Information */}
-          <PersonalInfoSection
-            form={form}
-            isAIPopulated={() => false}
-            clearFieldError={clearFieldError}
-            countryCodes={countryCodes}
-          />
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            {/* Personal Information */}
+            <PersonalInfoSection
+              form={form}
+              isAIPopulated={() => false}
+              clearFieldError={clearFieldError}
+              countryCodes={countryCodes}
+            />
 
-          <div className="flex justify-end gap-4">
-            <Button 
-              type="submit" 
-              disabled={loading}
-              onClick={() => {
-                if (profileMode === 'review') {
-                  handleProfileCompletion();
+            <div className="flex justify-end gap-4">
+              <Button 
+                type="submit" 
+                disabled={loading}
+                onClick={() => {
+                  if (profileMode === 'review') {
+                    handleProfileCompletion();
+                  }
+                }}
+              >
+                {loading 
+                  ? "Saving..." 
+                  : profileMode === 'review'
+                    ? "Save Profile"
+                    : "Save Profile"
                 }
-              }}
-            >
-              {loading 
-                ? "Saving..." 
-                : profileMode === 'review'
-                  ? "Save Profile"
-                  : "Save Profile"
-              }
-            </Button>
-          </div>
-        </form>
-      </Form>
+              </Button>
+            </div>
+          </form>
+        </Form>
       </div>
-        </GradientBackground>
-    </OnboardingGuard>
+    </GradientBackground>
   );
 }
