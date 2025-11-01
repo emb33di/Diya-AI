@@ -267,7 +267,9 @@ Deno.serve(async (req) => {
           payment_status: session.payment_status,
           client_reference_id: session.client_reference_id,
           metadata_user_id: session.metadata?.user_id,
-          customer_email: session.customer_email || session.customer_details?.email
+          customer_email: session.customer_email || session.customer_details?.email,
+          is_promo: session.metadata?.is_promo === 'true',
+          promo_code: session.metadata?.promo_code
         });
 
         // Only process if payment was successful

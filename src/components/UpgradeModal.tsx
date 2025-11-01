@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { usePaywall } from '@/hooks/usePaywall';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Crown, Sparkles, Check, X } from 'lucide-react';
+import { Crown, Sparkles, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { createCheckoutSession } from '@/services/stripePaymentService';
+import { PromoCodeModal } from '@/components/PromoCodeModal';
 
 interface UpgradeModalProps {
   isOpen: boolean;
@@ -26,6 +27,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
 }) => {
   const { getFeatureInfo } = usePaywall();
   const navigate = useNavigate();
+  const [showPromoCodeModal, setShowPromoCodeModal] = useState(false);
 
   // Mirror features exactly as shown on the landing page pricing section
   const freeFeatures: string[] = [
@@ -43,8 +45,15 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
     'Access to weekly webinars and college guidance videos',
   ];
 
-  const handleUpgrade = async () => {
-    await createCheckoutSession();
+  const handleUpgrade = () => {
+    setShowPromoCodeModal(true);
+  };
+
+  const handlePromoCodeProceed = async (hasPromoCode: boolean) => {
+    setShowPromoCodeModal(false);
+    await createCheckoutSession({
+      use_promo_price: hasPromoCode,
+    });
     onClose();
   };
 
@@ -111,27 +120,15 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
           </div>
 
           {/* Call to Action */}
-          <div className="text-center space-y-4">
-            <div className="text-sm text-muted-foreground">
-              Join thousands of students who have successfully improved their applications with Pro features
-            </div>
-            <div className="flex gap-3 justify-center">
+          <div className="text-center">
+            <div className="flex justify-center">
               <Button 
                 onClick={handleUpgrade}
                 size="lg"
-                className="flex-1 max-w-xs"
+                className="max-w-xs"
               >
                 <Crown className="h-4 w-4 mr-2" />
                 Upgrade to Pro
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={onClose}
-                size="lg"
-                className="flex-1 max-w-xs"
-              >
-                <X className="h-4 w-4 mr-2" />
-                Maybe Later
               </Button>
             </div>
           </div>
@@ -156,6 +153,13 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
           </div>
         </div>
       </DialogContent>
+
+      {/* Promo Code Modal */}
+      <PromoCodeModal
+        isOpen={showPromoCodeModal}
+        onClose={() => setShowPromoCodeModal(false)}
+        onProceed={handlePromoCodeProceed}
+      />
     </Dialog>
   );
 };

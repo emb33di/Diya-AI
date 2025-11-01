@@ -11,7 +11,7 @@ interface VerifyPaymentResult {
 
 /**
  * Create a Stripe Checkout session via Supabase Edge Function and redirect
- * @param options Optional overrides like price_id, success_url, cancel_url
+ * @param options Optional overrides like price_id, success_url, cancel_url, use_promo_price
  */
 export const createCheckoutSession = async (
   options?: {
@@ -19,6 +19,7 @@ export const createCheckoutSession = async (
     success_url?: string;
     cancel_url?: string;
     origin?: string;
+    use_promo_price?: boolean;
   }
 ): Promise<{ success: boolean; url?: string; message?: string }> => {
   try {
@@ -30,12 +31,14 @@ export const createCheckoutSession = async (
 
     const origin = options?.origin || window.location.origin;
 
+    // If use_promo_price is true, we'll let the edge function handle getting the promo price ID
     const { data, error } = await supabase.functions.invoke('create-stripe-checkout', {
       body: {
         price_id: options?.price_id || DEFAULT_STRIPE_PRICE_ID,
         success_url: options?.success_url,
         cancel_url: options?.cancel_url,
         origin,
+        use_promo_price: options?.use_promo_price || false,
       }
     });
 

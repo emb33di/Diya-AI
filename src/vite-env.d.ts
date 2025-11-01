@@ -7,6 +7,7 @@ interface ImportMetaEnv {
   readonly VITE_SUPABASE_URL: string
   readonly VITE_SUPABASE_ANON_KEY: string
   readonly VITE_OUTSPEED_ONBOARDING: string
+  readonly VITE_PROMO_CODE?: string
   readonly VITE_LOGROCKET_ID?: string
   readonly VITE_LOGROCKET_APP_ID?: string
   readonly VITE_LOGROCKET_ENABLE_IN_DEV?: string
