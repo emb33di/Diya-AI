@@ -1,13 +1,27 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import "@/styles/landing.css";
 import { createCheckoutSession } from "@/services/stripePaymentService";
+import { PromoCodeModal } from "@/components/PromoCodeModal";
 
 
 const Pricing = () => {
   const navigate = useNavigate();
+  const [showPromoCodeModal, setShowPromoCodeModal] = useState(false);
+
+  const handleUpgrade = () => {
+    setShowPromoCodeModal(true);
+  };
+
+  const handlePromoCodeProceed = async (hasPromoCode: boolean) => {
+    setShowPromoCodeModal(false);
+    await createCheckoutSession({
+      use_promo_price: hasPromoCode,
+    });
+  };
   return (
     <div className="landing-page min-h-screen bg-black">
       <div className="bg-gradient-to-br from-background via-primary/5 to-secondary/10 p-4 min-h-screen">
@@ -100,7 +114,7 @@ const Pricing = () => {
               </div>
               <Button 
                 className="w-full mt-6"
-                onClick={async () => { await createCheckoutSession(); }}
+                onClick={handleUpgrade}
               >
                 Upgrade to Pro
               </Button>
@@ -166,6 +180,13 @@ const Pricing = () => {
         </div>
       </div>
       </div>
+
+      {/* Promo Code Modal */}
+      <PromoCodeModal
+        isOpen={showPromoCodeModal}
+        onClose={() => setShowPromoCodeModal(false)}
+        onProceed={handlePromoCodeProceed}
+      />
     </div>
   );
 };

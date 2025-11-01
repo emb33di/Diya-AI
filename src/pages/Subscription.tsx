@@ -9,15 +9,24 @@ import { useNavigate } from 'react-router-dom';
 import GradientBackground from '@/components/GradientBackground';
 import AuthenticationGuard from '@/components/AuthenticationGuard';
 import { createCheckoutSession } from '@/services/stripePaymentService';
+import { PromoCodeModal } from '@/components/PromoCodeModal';
 
 const Subscription = () => {
   const { userTier, isPro, isFree, getProFeatures, getFreeFeatures } = usePaywall();
   const { profile, loading } = useAuth();
   const navigate = useNavigate();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showPromoCodeModal, setShowPromoCodeModal] = useState(false);
 
-  const handleUpgrade = async () => {
-    await createCheckoutSession();
+  const handleUpgrade = () => {
+    setShowPromoCodeModal(true);
+  };
+
+  const handlePromoCodeProceed = async (hasPromoCode: boolean) => {
+    setShowPromoCodeModal(false);
+    await createCheckoutSession({
+      use_promo_price: hasPromoCode,
+    });
   };
 
   const freeFeatures = getFreeFeatures();
@@ -194,6 +203,13 @@ const Subscription = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Promo Code Modal */}
+      <PromoCodeModal
+        isOpen={showPromoCodeModal}
+        onClose={() => setShowPromoCodeModal(false)}
+        onProceed={handlePromoCodeProceed}
+      />
     </GradientBackground>
   );
 };
