@@ -92,21 +92,20 @@ export const identifyUser = (userId: string, userData?: {
 
 /**
  * Clear user identification (call on logout)
- * LogRocket doesn't have a clearIdentify method, so we identify with anonymous data
+ * Note: LogRocket doesn't have a clearIdentify method. User identification persists
+ * for the current session, but new sessions will automatically be anonymous.
+ * According to LogRocket SDK: "There is no need to call LogRocket.identify for 
+ * anonymous or logged out users. We use sessionStorage to persist sessions across pages."
  */
 export const clearUser = (): void => {
   if (!initialized) {
     return;
   }
 
-  try {
-    // LogRocket doesn't support clearing identify, but we can identify as anonymous
-    // This is handled automatically when a new session starts
-    if (import.meta.env.DEV) {
-      console.log('✅ LogRocket: User cleared (will be cleared on next session)');
-    }
-  } catch (error) {
-    console.error('❌ LogRocket: Failed to clear user', error);
+  // No-op: LogRocket handles anonymous users automatically
+  // The current session remains identified, but new sessions will be anonymous
+  if (import.meta.env.DEV) {
+    console.log('✅ LogRocket: User logged out (current session keeps ID, new sessions will be anonymous)');
   }
 };
 
