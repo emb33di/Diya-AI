@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useAuth } from './useAuth';
 
 export type UserTier = 'Free' | 'Pro';
@@ -86,6 +87,17 @@ export const usePaywall = () => {
   const userTier: UserTier = profile?.user_tier === 'Pro' ? 'Pro' : 'Free';
   const isPro = userTier === 'Pro';
   const isFree = userTier === 'Free';
+
+  useEffect(() => {
+    console.log('[PAYWALL_DEBUG] Paywall state snapshot', {
+      loading,
+      userTier,
+      isPro,
+      isFree,
+      hasProfile: Boolean(profile),
+      profileId: profile?.id ?? null,
+    });
+  }, [loading, userTier, isPro, isFree, profile?.id]);
   
   const hasAccess = (featureKey: string): boolean => {
     const feature = PAYWALL_FEATURES[featureKey];

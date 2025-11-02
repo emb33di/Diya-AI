@@ -37,7 +37,13 @@ export const useDashboardData = () => {
   const userId = user?.id;
 
   useEffect(() => {
+    console.log('[DASHBOARD_DATA] Effect triggered', {
+      userId,
+      hasUser: Boolean(userId),
+    });
+
     if (!userId) {
+      console.log('[DASHBOARD_DATA] No user ID available, skipping dashboard fetch');
       setData(prev => ({ ...prev, loading: false }));
       return;
     }
@@ -45,6 +51,10 @@ export const useDashboardData = () => {
     let isMounted = true; // Prevent state updates after component unmounts
 
     const fetchDashboardData = async (userId: string) => {
+      console.log('[DASHBOARD_DATA] Fetch start', {
+        userId,
+        timestamp: new Date().toISOString(),
+      });
       try {
         setData(prev => ({ ...prev, loading: true, error: null }));
 
@@ -66,6 +76,13 @@ export const useDashboardData = () => {
             timeoutPromise
           ])
         ]);
+
+        console.log('[DASHBOARD_DATA] Fetch results received', {
+          essaysStatus: essays.status,
+          deadlinesStatus: deadlineResponse.status,
+          lorStatus: lorDeadlinesResult.status,
+          schoolStatus: schoolRecommendationsResult.status,
+        });
 
         // Handle essays
         const essaysData = essays.status === 'fulfilled' ? (essays.value as Essay[]) : [];
@@ -151,6 +168,13 @@ export const useDashboardData = () => {
           .slice(0, 5);
 
         if (isMounted) {
+          console.log('[DASHBOARD_DATA] Updating state with fetched data', {
+            essaysCount: essaysData.length,
+            deadlinesCount: deadlines.length,
+            schoolCategoriesCount: schoolCategories.length,
+            upcomingDeadlinesCount: upcomingDeadlines.length,
+            upcomingLorDeadlinesCount: upcomingLorDeadlines.length,
+          });
           setData({
             essays: essaysData,
             deadlines,
@@ -162,6 +186,10 @@ export const useDashboardData = () => {
           });
         }
       } catch (error) {
+        console.log('[DASHBOARD_DATA] Fetch encountered error', {
+          userId,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
         console.error('[DASHBOARD_ERROR] Failed to load dashboard data:', {
           userId: userId,
           userEmail: user?.email || 'unknown',
@@ -185,6 +213,7 @@ export const useDashboardData = () => {
     // Cleanup function to prevent state updates after unmount
     return () => {
       isMounted = false;
+      console.log('[DASHBOARD_DATA] Cleanup invoked', { userId });
     };
   }, [userId]);
 

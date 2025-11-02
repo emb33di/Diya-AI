@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import OnboardingLock from './OnboardingLock';
 
@@ -14,9 +15,23 @@ const OnboardingGuard: React.FC<OnboardingGuardProps> = ({
   allowAccess = false 
 }) => {
   const { onboardingCompleted, loading } = useAuth();
+  const location = useLocation();
+
+  useEffect(() => {
+    console.log('[ONBOARDING_GUARD] State snapshot', {
+      path: location.pathname,
+      loading,
+      onboardingCompleted,
+      allowAccess,
+    });
+  }, [location.pathname, loading, onboardingCompleted, allowAccess]);
 
   // Show loading state
   if (loading) {
+    console.log('[ONBOARDING_GUARD] Rendering loading fallback', {
+      path: location.pathname,
+      pageName,
+    });
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F4EDE2' }}>
         <div className="text-center">
@@ -29,10 +44,20 @@ const OnboardingGuard: React.FC<OnboardingGuardProps> = ({
 
   // If onboarding is not completed and access is not allowed, show lock screen
   if (!onboardingCompleted && !allowAccess) {
+    console.log('[ONBOARDING_GUARD] Blocking access until onboarding complete', {
+      path: location.pathname,
+      pageName,
+    });
     return <OnboardingLock pageName={pageName} />;
   }
 
   // If onboarding is completed or access is allowed, show the children
+  console.log('[ONBOARDING_GUARD] Rendering children', {
+    path: location.pathname,
+    pageName,
+    onboardingCompleted,
+    allowAccess,
+  });
   return <>{children}</>;
 };
 
