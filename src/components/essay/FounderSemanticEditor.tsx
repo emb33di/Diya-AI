@@ -1906,6 +1906,142 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
     }
   }, [state.document, deepCloneDocument, toast, essayId, escalationId]);
 
+  // Update annotation (founder comments only)
+  const updateAnnotation = useCallback(async (annotationId: string, updatedContent: string) => {
+    console.log('[FOUNDER_UPDATE_DEBUG] updateAnnotation invoked', {
+      annotationId,
+      documentId: state.document.id,
+      essayId,
+      escalationId,
+      updatedContent: updatedContent.substring(0, 50)
+    });
+
+    const previousDocument = deepCloneDocument(state.document);
+
+    // Locate annotation in current document
+    let annotationToUpdate: Annotation | null = null;
+    for (const block of state.document.blocks) {
+      const match = block.annotations.find(ann => ann.id === annotationId);
+      if (match) {
+        annotationToUpdate = match;
+        break;
+      }
+    }
+
+    if (!annotationToUpdate) {
+      console.warn('[FOUNDER_UPDATE_DEBUG] Annotation not found in document state', {
+        annotationId
+      });
+      toast({
+        title: 'Comment not found',
+        description: 'We could not locate that comment in the current document.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (annotationToUpdate.author !== 'mihir') {
+      console.warn('[FOUNDER_UPDATE_DEBUG] Attempted to update non-founder annotation. Skipping.', {
+        annotationId,
+        author: annotationToUpdate.author
+      });
+      toast({
+        title: 'Cannot edit AI comment',
+        description: 'Founder annotations are managed separately from AI comments.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    console.log('[FOUNDER_UPDATE_DEBUG] Updating founder annotation in local state', {
+      annotationId,
+      author: annotationToUpdate.author
+    });
+
+    // Update annotation in document using semanticDocumentService
+    const documentCopy = deepCloneDocument(state.document);
+    const updatedAnnotation = semanticDocumentService.updateAnnotation(
+      documentCopy,
+      annotationId,
+      { content: updatedContent }
+    );
+
+    if (!updatedAnnotation) {
+      console.error('[FOUNDER_UPDATE_DEBUG] Failed to update annotation in document', {
+        annotationId
+      });
+      toast({
+        title: 'Error',
+        description: 'Failed to update comment in document.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setState(prev => ({
+      ...prev,
+      document: documentCopy,
+      pendingChanges: true
+    }));
+
+    if (!escalationId) {
+      console.error('[FOUNDER_UPDATE_DEBUG] Cannot update: escalationId is required', {
+        annotationId
+      });
+      toast({
+        title: 'Error',
+        description: 'Cannot update comment: Missing escalation ID.',
+        variant: 'destructive'
+      });
+      // Revert optimistic update
+      setState(prev => ({
+        ...prev,
+        document: previousDocument,
+        pendingChanges: prev.pendingChanges
+      }));
+      return;
+    }
+
+    // Trigger parent callback with updated document
+    onDocumentChange?.(documentCopy);
+
+    try {
+      await EscalatedEssaysService.updateFounderComment(
+        annotationId,
+        escalationId,
+        updatedContent,
+        documentCopy
+      );
+      console.log('[FOUNDER_UPDATE_DEBUG] Founder comment updated successfully', {
+        annotationId,
+        escalationId
+      });
+      toast({
+        title: 'Comment updated',
+        description: 'Your comment has been updated.',
+      });
+    } catch (error) {
+      console.error('[FOUNDER_UPDATE_DEBUG] Failed to update founder comment from backend', {
+        annotationId,
+        escalationId,
+        error
+      });
+
+      // Revert optimistic change on failure
+      setState(prev => ({
+        ...prev,
+        document: previousDocument,
+        pendingChanges: prev.pendingChanges
+      }));
+
+      toast({
+        title: 'Failed to update comment',
+        description: error instanceof Error ? error.message : 'Please try again.',
+        variant: 'destructive'
+      });
+    }
+  }, [state.document, deepCloneDocument, toast, essayId, escalationId, onDocumentChange]);
+
   // Create comment from selection (kept for backward compatibility with dialog)
   const handleCreateComment = useCallback((
     selection: typeof activeSelection,
@@ -2808,6 +2944,7 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
           documentId={state.document.id}
           onAnnotationResolve={resolveAnnotation}
           onAnnotationDelete={deleteAnnotation}
+          onAnnotationUpdate={updateAnnotation}
           onAnnotationSelect={onAnnotationSelect}
           onAnnotationAdd={handleAnnotationAdd}
           onDocumentReload={reloadDocument}
@@ -2857,6 +2994,26 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
                 placeholder="Enter your comment..."
                 value={commentDialogText}
                 onChange={(e) => setCommentDialogText(e.target.value)}
+                onKeyDown={(e) => {
+                  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    if (commentDialogText.trim()) {
+                      // Use ref to get latest selection value (may have been preserved during typing)
+                      const currentSelection = activeSelectionRef.current;
+                      
+                      if (currentSelection) {
+                        handleCreateComment(currentSelection, commentDialogText.trim());
+                        setCommentDialogText('');
+                      } else {
+                        toast({
+                          title: 'Error',
+                          description: 'No text selected. Please select text and try again.',
+                          variant: 'destructive'
+                        });
+                      }
+                    }
+                  }
+                }}
                 rows={4}
               />
             </div>

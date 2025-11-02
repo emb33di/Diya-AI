@@ -341,6 +341,14 @@ const CommentOverlay: React.FC<CommentOverlayProps> = React.memo(({
               <Textarea
                 value={newCommentText}
                 onChange={(e) => setNewCommentText(e.target.value)}
+                onKeyDown={(e) => {
+                  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    if (newCommentText.trim()) {
+                      handleAddComment();
+                    }
+                  }
+                }}
                 placeholder="Enter your comment..."
                 className="min-h-[80px]"
                 autoFocus

@@ -29,7 +29,10 @@ import {
   TrendingUp,
   FileText,
   Target,
-  SidebarClose
+  SidebarClose,
+  Pencil,
+  Check,
+  X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
@@ -42,6 +45,7 @@ interface FounderCommentSidebarProps {
   documentId?: string;
   onAnnotationResolve?: (annotationId: string) => void;
   onAnnotationDelete?: (annotationId: string) => void;
+  onAnnotationUpdate?: (annotationId: string, updatedContent: string) => void;
   onAnnotationSelect?: (annotation: Annotation | null) => void;
   onAnnotationAdd?: (annotation: Omit<Annotation, 'id' | 'createdAt' | 'updatedAt'>) => void;
   selectedAnnotationId?: string;
@@ -65,6 +69,7 @@ const FounderCommentSidebar: React.FC<FounderCommentSidebarProps> = ({
   documentId,
   onAnnotationResolve,
   onAnnotationDelete,
+  onAnnotationUpdate,
   onAnnotationSelect,
   onAnnotationAdd,
   selectedAnnotationId,
@@ -81,8 +86,11 @@ const FounderCommentSidebar: React.FC<FounderCommentSidebarProps> = ({
   const [showNewComment, setShowNewComment] = useState(false);
   const [newCommentText, setNewCommentText] = useState('');
   const [newCommentSelectedText, setNewCommentSelectedText] = useState('');
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingCommentText, setEditingCommentText] = useState('');
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const newCommentTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const editingTextareaRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
 
   // Determine comment category - excludes grammar
@@ -203,6 +211,31 @@ const FounderCommentSidebar: React.FC<FounderCommentSidebarProps> = ({
       setNewCommentSelectedText(initialNewCommentText);
     }
   }, [initialNewCommentText]);
+
+  // Handle starting to edit a comment
+  const handleStartEdit = (annotation: Annotation) => {
+    setEditingCommentId(annotation.id);
+    setEditingCommentText(annotation.content || '');
+    // Focus the textarea after state update
+    setTimeout(() => {
+      editingTextareaRef.current?.focus();
+    }, 0);
+  };
+
+  // Handle canceling edit
+  const handleCancelEdit = () => {
+    setEditingCommentId(null);
+    setEditingCommentText('');
+  };
+
+  // Handle saving edited comment
+  const handleSaveEdit = () => {
+    if (!editingCommentId || !editingCommentText.trim() || !onAnnotationUpdate) return;
+    
+    onAnnotationUpdate(editingCommentId, editingCommentText.trim());
+    setEditingCommentId(null);
+    setEditingCommentText('');
+  };
 
   // Handle saving new comment
   const handleSaveNewComment = () => {
@@ -391,6 +424,14 @@ const FounderCommentSidebar: React.FC<FounderCommentSidebarProps> = ({
                       placeholder="Enter your comment..."
                       value={newCommentText}
                       onChange={(e) => setNewCommentText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                          e.preventDefault();
+                          if (newCommentText.trim()) {
+                            handleSaveNewComment();
+                          }
+                        }
+                      }}
                       rows={4}
                       className="resize-none"
                     />
@@ -491,7 +532,21 @@ const FounderCommentSidebar: React.FC<FounderCommentSidebarProps> = ({
                                 </div>
                                 
                                 <div className="flex items-center gap-1">
-                                  {onAnnotationDelete && (
+                                  {annotation.author === 'mihir' && onAnnotationUpdate && editingCommentId !== annotation.id && (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-6 w-6 p-0 text-blue-600 hover:text-blue-700"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleStartEdit(annotation);
+                                      }}
+                                      title="Edit comment"
+                                    >
+                                      <Pencil className="h-3 w-3" />
+                                    </Button>
+                                  )}
+                                  {onAnnotationDelete && annotation.author === 'mihir' && (
                                     <Button
                                       size="sm"
                                       variant="ghost"
@@ -516,7 +571,49 @@ const FounderCommentSidebar: React.FC<FounderCommentSidebarProps> = ({
                                 </div>
                               </div>
                               
-                              <p className="text-comment text-gray-700 mb-2 leading-relaxed break-words overflow-wrap-anywhere comment-content" style={{ fontFamily: 'Arial, sans-serif' }}>{annotation.content}</p>
+                              {editingCommentId === annotation.id ? (
+                                <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
+                                  <Textarea
+                                    ref={editingTextareaRef}
+                                    value={editingCommentText}
+                                    onChange={(e) => setEditingCommentText(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                                        e.preventDefault();
+                                        if (editingCommentText.trim()) {
+                                          handleSaveEdit();
+                                        }
+                                      }
+                                      if (e.key === 'Escape') {
+                                        e.preventDefault();
+                                        handleCancelEdit();
+                                      }
+                                    }}
+                                    rows={4}
+                                    className="resize-none"
+                                  />
+                                  <div className="flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      onClick={handleSaveEdit}
+                                      disabled={!editingCommentText.trim()}
+                                    >
+                                      <Check className="h-3 w-3 mr-1" />
+                                      Save
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={handleCancelEdit}
+                                    >
+                                      <X className="h-3 w-3 mr-1" />
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <p className="text-comment text-gray-700 mb-2 leading-relaxed break-words overflow-wrap-anywhere comment-content" style={{ fontFamily: 'Arial, sans-serif' }}>{annotation.content}</p>
+                              )}
                               
                               {annotation.targetText && (
                                 <div className="mt-2 p-2 bg-white rounded border text-sm text-gray-600 leading-relaxed break-words overflow-wrap-anywhere" style={{ fontFamily: 'Arial, sans-serif' }}>
@@ -602,7 +699,21 @@ const FounderCommentSidebar: React.FC<FounderCommentSidebarProps> = ({
                             </div>
                             
                             <div className="flex items-center gap-1">
-                              {onAnnotationDelete && (
+                              {annotation.author === 'mihir' && onAnnotationUpdate && editingCommentId !== annotation.id && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 w-6 p-0 text-blue-600 hover:text-blue-700"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleStartEdit(annotation);
+                                  }}
+                                  title="Edit comment"
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </Button>
+                              )}
+                              {onAnnotationDelete && annotation.author === 'mihir' && (
                                 <Button
                                   size="sm"
                                   variant="ghost"
@@ -627,7 +738,49 @@ const FounderCommentSidebar: React.FC<FounderCommentSidebarProps> = ({
                             </div>
                           </div>
                           
-                          <p className="text-comment text-gray-700 mb-2 leading-relaxed break-words overflow-wrap-anywhere comment-content" style={{ fontFamily: 'Arial, sans-serif' }}>{annotation.content}</p>
+                          {editingCommentId === annotation.id ? (
+                            <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
+                              <Textarea
+                                ref={editingTextareaRef}
+                                value={editingCommentText}
+                                onChange={(e) => setEditingCommentText(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                                    e.preventDefault();
+                                    if (editingCommentText.trim()) {
+                                      handleSaveEdit();
+                                    }
+                                  }
+                                  if (e.key === 'Escape') {
+                                    e.preventDefault();
+                                    handleCancelEdit();
+                                  }
+                                }}
+                                rows={4}
+                                className="resize-none"
+                              />
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  onClick={handleSaveEdit}
+                                  disabled={!editingCommentText.trim()}
+                                >
+                                  <Check className="h-3 w-3 mr-1" />
+                                  Save
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={handleCancelEdit}
+                                >
+                                  <X className="h-3 w-3 mr-1" />
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-comment text-gray-700 mb-2 leading-relaxed break-words overflow-wrap-anywhere comment-content" style={{ fontFamily: 'Arial, sans-serif' }}>{annotation.content}</p>
+                          )}
                           
                           {annotation.targetText && (
                             <div className="mt-2 p-2 bg-white rounded border text-sm text-gray-600 leading-relaxed break-words overflow-wrap-anywhere" style={{ fontFamily: 'Arial, sans-serif' }}>

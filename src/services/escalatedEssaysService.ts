@@ -770,6 +770,77 @@ export class EscalatedEssaysService {
   }
 
   /**
+   * Update a founder comment in the founder_comments table
+   */
+  static async updateFounderComment(
+    commentId: string,
+    escalationId: string,
+    updatedContent: string,
+    updatedDocument: SemanticDocument
+  ): Promise<void> {
+    try {
+      console.log('[FOUNDER_UPDATE_DEBUG] updateFounderComment called in EscalatedEssaysService', {
+        commentId,
+        escalationId,
+        updatedContent: updatedContent.substring(0, 50)
+      });
+
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('User not authenticated');
+      }
+
+      const { data: founderProfile } = await supabase
+        .from('user_profiles')
+        .select('is_founder')
+        .eq('user_id' as any, user.id)
+        .maybeSingle();
+
+      const founderProfileData = founderProfile as any;
+      if (!founderProfileData?.is_founder) {
+        throw new Error('Access denied: Founder access required');
+      }
+
+      // Step 1: Update the comment in founder_comments table
+      const { error: updateError } = await supabase
+        .from('founder_comments' as any)
+        .update({
+          content: updatedContent,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id' as any, commentId)
+        .eq('escalation_id' as any, escalationId);
+
+      if (updateError) {
+        console.error('[FOUNDER_UPDATE_DEBUG] Error updating founder_comments', updateError);
+        throw updateError;
+      }
+
+      console.log('[FOUNDER_UPDATE_DEBUG] Successfully updated founder_comments table', {
+        commentId
+      });
+
+      // Step 2: Update founder_edited_content to reflect the updated annotation
+      try {
+        await EscalatedEssaysService.updateEscalatedEssay(escalationId, {
+          founder_edited_content: updatedDocument
+        });
+        console.log('[FOUNDER_UPDATE_DEBUG] Successfully updated founder_edited_content', {
+          commentId,
+          escalationId
+        });
+      } catch (updateError) {
+        console.error('[FOUNDER_UPDATE_DEBUG] Error updating founder_edited_content', updateError);
+        // Don't throw - comment is already updated in founder_comments, this is just cleanup
+        console.warn('[FOUNDER_UPDATE_DEBUG] Comment updated in founder_comments but failed to update founder_edited_content. Changes may not persist on reload.');
+      }
+    } catch (error) {
+      console.error('[FOUNDER_UPDATE_DEBUG] EscalatedEssaysService: Error updating founder comment', error);
+      throw error;
+    }
+  }
+
+  /**
    * Fetch founder comments for an escalation (founder view)
    */
   static async getFounderCommentsByEscalationId(escalationId: string): Promise<FounderComment[]> {
