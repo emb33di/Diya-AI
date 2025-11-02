@@ -116,6 +116,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
   const [currentVersion, setCurrentVersion] = useState<EssayVersion | null>(null);
   const [isCreatingVersion, setIsCreatingVersion] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showEscalateDialog, setShowEscalateDialog] = useState(false);
   const [isEscalating, setIsEscalating] = useState(false);
   const [hasFeedback, setHasFeedback] = useState(false);
   const [isCheckingFeedback, setIsCheckingFeedback] = useState(false);
@@ -958,8 +959,8 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
     }
   };
 
-  // Handle essay escalation to founder
-  const handleEscalateEssay = async () => {
+  // Handle essay escalation to founder - shows confirmation modal
+  const handleEscalateEssay = () => {
     // Check if user is Pro
     if (!isPro) {
       setUpgradeFeatureKey('expert-review');
@@ -986,7 +987,16 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
       return;
     }
 
+    // Show confirmation modal
+    setShowEscalateDialog(true);
+  };
+
+  // Confirm and execute essay escalation
+  const confirmEscalateEssay = async () => {
+    if (!document) return;
+
     setIsEscalating(true);
+    setShowEscalateDialog(false);
 
     try {
       // Get current prompt and word limit
@@ -1144,7 +1154,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
   return (
     <div className={`semantic-essay-editor ${className}`}>
       <div className="w-full">
-        <div className="mt-6">
+        <div className="mt-2">
           {/* Mobile Navigation */}
           <div className="lg:hidden mb-4">
             <div className="flex bg-gray-100 rounded-lg p-1">
@@ -1180,19 +1190,14 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
 
           <div className="flex gap-6 lg:gap-6 gap-0">
             {/* Main Content Area */}
-            <div className={`flex-1 space-y-4 ${mobileView === 'comments' ? 'hidden lg:block' : ''}`}>
-              {/* Header (title moved into prompt section) */}
-              <div className="flex items-center justify-between px-4 lg:px-0">
-                <div className="flex-1"></div>
-              </div>
-
+            <div className={`flex-1 space-y-2 ${mobileView === 'comments' ? 'hidden lg:block' : ''}`}>
               {/* Prompt Section */}
               {(prompt || document.metadata.prompt) && (
                 <div className="bg-white p-4 md:p-8 rounded-xl shadow-lg border border-gray-300 relative overflow-hidden group hover:shadow-xl transition-shadow duration-300">
                   {/* Subtle accent line */}
                   <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500"></div>
                   
-                  {/* Top action buttons - Escalate, Expert Feedback, and Delete */}
+                  {/* Top action buttons - Founder Review, Expert Feedback, and Delete */}
                   <div className="absolute top-4 right-4 flex items-center gap-2">
                     <PaywallGuard featureKey="expert-review">
                       <Button 
@@ -1216,7 +1221,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                         <ArrowUp className="h-4 w-4 mr-2" />
                         {isEscalating ? 'Escalating...' : (
                           <>
-                            Escalate Essay
+                            Founder Review
                             {escalationStatus && (
                               <span className="ml-1">
                                 ({escalationStatus.remaining} remaining)
@@ -1572,6 +1577,59 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
             >
               <Trash2 className="h-4 w-4 mr-2" />
               Delete Essay
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Escalate Essay Confirmation Dialog */}
+      <Dialog open={showEscalateDialog} onOpenChange={setShowEscalateDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowUp className="h-5 w-5 text-orange-600" />
+              Escalate Essay for Review
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to escalate this essay to Mihir for review?
+              <br /><br />
+              Click continue to send the current version of your essay to Mihir.
+              {escalationStatus && (
+                <>
+                  <br /><br />
+                  <span className="font-medium">
+                    There {escalationStatus.remaining === 1 ? 'is' : 'are'} {escalationStatus.remaining} review{escalationStatus.remaining === 1 ? '' : 's'} remaining.
+                  </span>
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowEscalateDialog(false)}
+              disabled={isEscalating}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              className="bg-orange-600 hover:bg-orange-700 text-white"
+              onClick={confirmEscalateEssay}
+              disabled={isEscalating}
+            >
+              {isEscalating ? (
+                <>
+                  Escalating...
+                </>
+              ) : (
+                <>
+                  <ArrowUp className="h-4 w-4 mr-2" />
+                  Continue
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

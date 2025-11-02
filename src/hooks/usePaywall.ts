@@ -25,6 +25,11 @@ export const PAYWALL_FEATURES: Record<string, PaywallFeature> = {
     description: 'AI-powered grammar and style suggestions for your essay',
     requiresPro: true,
   },
+  'expert-review': {
+    name: 'Expert Review',
+    description: 'Get personalized feedback from our expert team on your essays (2 reviews per subscription cycle)',
+    requiresPro: true,
+  },
   
   // Resume features
   'unlimited_resume_formatting': {
