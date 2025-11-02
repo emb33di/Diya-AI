@@ -33,7 +33,17 @@ import {
   CSS,
 } from '@dnd-kit/utilities';
 
-import { Plus, Star, Target, Shield, MapPin, Users, GraduationCap, X, FileText, Loader2, Archive, GripVertical } from "lucide-react";
+import { Plus, Star, Target, Shield, MapPin, Users, GraduationCap, X, FileText, Loader2, Archive, GripVertical, AlertTriangle } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface School {
   id: string;
@@ -59,6 +69,8 @@ const SchoolList = () => {
   const [error, setError] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
+  const [showRemoveConfirmDialog, setShowRemoveConfirmDialog] = useState(false);
+  const [schoolToRemove, setSchoolToRemove] = useState<School | null>(null);
   const [contextMenu, setContextMenu] = useState<{
     visible: boolean;
     x: number;
@@ -219,7 +231,10 @@ const SchoolList = () => {
 
   const handleContextMenuAction = async (action: string) => {
     if (action === 'archive') {
-      await removeSchool(contextMenu.schoolId);
+      const school = schools.find(s => s.id === contextMenu.schoolId);
+      if (school) {
+        handleRemoveSchoolClick(school);
+      }
     }
     setContextMenu({
       visible: false,
@@ -472,6 +487,11 @@ const SchoolList = () => {
     }
   };
 
+  const handleRemoveSchoolClick = (school: School) => {
+    setSchoolToRemove(school);
+    setShowRemoveConfirmDialog(true);
+  };
+
   const removeSchool = async (id: string) => {
     try {
       // Archive the school instead of deleting
@@ -480,8 +500,18 @@ const SchoolList = () => {
       if (result.success) {
         // Remove from local state for responsive UI
         setSchools(schools.filter(school => school.id !== id));
+        toast({
+          title: "School Removed",
+          description: "The school and its associated essays have been removed from your list.",
+          variant: "default",
+        });
       } else {
         setError(result.message || 'Failed to archive school');
+        toast({
+          title: "Error",
+          description: result.message || 'Failed to remove school',
+          variant: "destructive",
+        });
       }
     } catch (err) {
       console.error('[SCHOOLS_ERROR] Failed to archive school:', {
@@ -493,6 +523,20 @@ const SchoolList = () => {
         message: 'User cannot remove school from their list'
       });
       setError('Failed to archive school');
+      toast({
+        title: "Error",
+        description: "Failed to remove school. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setShowRemoveConfirmDialog(false);
+      setSchoolToRemove(null);
+    }
+  };
+
+  const handleConfirmRemove = () => {
+    if (schoolToRemove) {
+      removeSchool(schoolToRemove.id);
     }
   };
 
@@ -608,7 +652,7 @@ const SchoolList = () => {
                 variant="ghost"
                 onClick={(e) => {
                   e.stopPropagation();
-                  removeSchool(school.id);
+                  handleRemoveSchoolClick(school);
                 }}
                 className="h-8 w-8 p-0 touch-manipulation"
               >
@@ -852,6 +896,37 @@ const SchoolList = () => {
         fetchSchoolRecommendationsData();
       }}
     />
+
+    {/* Remove School Confirmation Dialog */}
+    <AlertDialog open={showRemoveConfirmDialog} onOpenChange={setShowRemoveConfirmDialog}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+            <AlertTriangle className="h-5 w-5" />
+            Remove School
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to remove <strong>"{schoolToRemove?.name}"</strong> from your school list?
+            <br /><br />
+            Any essays that you have written attached to this school will also be removed.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={() => {
+            setShowRemoveConfirmDialog(false);
+            setSchoolToRemove(null);
+          }}>
+            Cancel
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleConfirmRemove}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Remove School
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
 
     {/* Context Menu */}
     {contextMenu.visible && (
