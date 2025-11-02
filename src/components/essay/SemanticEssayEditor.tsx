@@ -121,6 +121,14 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
   const [isCheckingFeedback, setIsCheckingFeedback] = useState(false);
   const { isPro } = usePaywall();
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [upgradeFeatureKey, setUpgradeFeatureKey] = useState<string | null>(null);
+  const [escalationStatus, setEscalationStatus] = useState<{
+    used: number;
+    remaining: number;
+    max: number;
+    canEscalate: boolean;
+  } | null>(null);
+  const [isLoadingEscalationStatus, setIsLoadingEscalationStatus] = useState(false);
 
   // Toast for user feedback
   const { toast } = useToast();
@@ -156,6 +164,29 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
 
     checkFeedback();
   }, [essayId]);
+
+  // Fetch escalation status (for Pro users)
+  useEffect(() => {
+    const fetchEscalationStatus = async () => {
+      if (!isPro) {
+        setEscalationStatus(null);
+        return;
+      }
+
+      try {
+        setIsLoadingEscalationStatus(true);
+        const status = await EscalatedEssaysService.getUserEscalationStatus();
+        setEscalationStatus(status);
+      } catch (error) {
+        console.error('Failed to fetch escalation status:', error);
+        setEscalationStatus(null);
+      } finally {
+        setIsLoadingEscalationStatus(false);
+      }
+    };
+
+    fetchEscalationStatus();
+  }, [isPro]);
 
   // Reload document when page becomes visible (handles tab switches, etc.)
   const handlePageVisible = async () => {
@@ -929,6 +960,23 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
 
   // Handle essay escalation to founder
   const handleEscalateEssay = async () => {
+    // Check if user is Pro
+    if (!isPro) {
+      setUpgradeFeatureKey('expert-review');
+      setShowUpgrade(true);
+      return;
+    }
+
+    // Check if limit reached
+    if (escalationStatus && !escalationStatus.canEscalate) {
+      toast({
+        title: "Limit Reached",
+        description: `You have reached your escalation limit of ${escalationStatus.max}. Your limit will reset on your next subscription cycle.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (!document) {
       toast({
         title: "Error",
@@ -956,6 +1004,10 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
       );
 
       if (result.success) {
+        // Refresh escalation status
+        const status = await EscalatedEssaysService.getUserEscalationStatus();
+        setEscalationStatus(status);
+
         toast({
           title: "Essay Escalated",
           description: "Your essay has been successfully escalated to the founder for review. You'll be notified when feedback is available.",
@@ -1020,6 +1072,21 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
     }
     setShowDeleteDialog(false);
   };
+
+  const selectedUpgradeKey = upgradeFeatureKey || (isGeneratingGrammar ? 'grammar_check' : 'unlimited_essay_feedback');
+  const upgradeTitleMap: Record<string, string> = {
+    'unlimited_essay_feedback': 'Unlock AI Comments',
+    'grammar_check': 'Unlock Grammar Check',
+    'expert-review': 'Unlock Expert Review',
+  };
+  const upgradeDescriptionMap: Record<string, string> = {
+    'unlimited_essay_feedback': 'AI comments are a Pro feature. Upgrade to generate unlimited expert suggestions.',
+    'grammar_check': 'Grammar Check is included with Pro. Upgrade to receive detailed grammar fixes instantly.',
+    'expert-review': 'Expert review is only available for Pro members. Upgrade to escalate essays directly to the founder.',
+  };
+
+  const upgradeModalTitle = upgradeTitleMap[selectedUpgradeKey] || 'Upgrade to Pro';
+  const upgradeModalDescription = upgradeDescriptionMap[selectedUpgradeKey] || 'Unlock premium features and take your application to the next level.';
 
   
 
@@ -1125,8 +1192,41 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                   {/* Subtle accent line */}
                   <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500"></div>
                   
-                  {/* Top action buttons - Expert Reviews and Delete */}
+                  {/* Top action buttons - Escalate, Expert Feedback, and Delete */}
                   <div className="absolute top-4 right-4 flex items-center gap-2">
+                    <PaywallGuard featureKey="expert-review">
+                      <Button 
+                        onClick={handleEscalateEssay}
+                        disabled={
+                          isEscalating || 
+                          !document || 
+                          (escalationStatus && !escalationStatus.canEscalate)
+                        }
+                        variant="outline"
+                        size="sm"
+                        className="border-orange-200 text-orange-700 hover:bg-orange-50"
+                        title={
+                          !isPro 
+                            ? "Expert review is only available for Pro users" 
+                            : escalationStatus && !escalationStatus.canEscalate
+                            ? `You have reached your escalation limit of ${escalationStatus.max}`
+                            : "Escalate this essay to the founder for review"
+                        }
+                      >
+                        <ArrowUp className="h-4 w-4 mr-2" />
+                        {isEscalating ? 'Escalating...' : (
+                          <>
+                            Escalate Essay
+                            {escalationStatus && (
+                              <span className="ml-1">
+                                ({escalationStatus.remaining} remaining)
+                              </span>
+                            )}
+                          </>
+                        )}
+                        {!isPro && <Crown className="h-3 w-3 ml-2 text-primary" />}
+                      </Button>
+                    </PaywallGuard>
                     {hasFeedback && (
                       <Button 
                         onClick={() => navigate(`/essays/${essayId}/expert-reviews`)}
@@ -1284,7 +1384,10 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                           featureKey="unlimited_essay_feedback"
                           fallback={
                             <Button 
-                              onClick={() => setShowUpgrade(true)} 
+                              onClick={() => {
+                                setUpgradeFeatureKey('unlimited_essay_feedback');
+                                setShowUpgrade(true);
+                              }} 
                               disabled={isGeneratingAIComments}
                               variant="outline"
                               size="sm"
@@ -1312,7 +1415,10 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                           featureKey="grammar_check"
                           fallback={
                             <Button 
-                              onClick={() => setShowUpgrade(true)} 
+                              onClick={() => {
+                                setUpgradeFeatureKey('grammar_check');
+                                setShowUpgrade(true);
+                              }} 
                               disabled={isGeneratingGrammar}
                               variant="outline"
                               size="sm"
@@ -1338,18 +1444,6 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                             <Crown className="h-3 w-3 ml-2 text-primary" />
                           </Button>
                         </PaywallGuard>
-                        
-                        <Button 
-                          onClick={handleEscalateEssay}
-                          disabled={isEscalating || !document}
-                          variant="outline"
-                          size="sm"
-                          className="border-orange-200 text-orange-700 hover:bg-orange-50"
-                          title="Escalate this essay to the founder for review"
-                        >
-                          <ArrowUp className="h-4 w-4 mr-2" />
-                          {isEscalating ? 'Escalating...' : 'Escalate Essay'}
-                        </Button>
                         
                         {!showCommentSidebar && (
                           <Button 
@@ -1485,10 +1579,13 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
 
       <UpgradeModal
         isOpen={showUpgrade}
-        onClose={() => setShowUpgrade(false)}
-        featureKey={isGeneratingGrammar ? 'grammar_check' : 'unlimited_essay_feedback'}
-        title="Upgrade to Pro"
-        description="AI Comments and Grammar Check are Pro features."
+        onClose={() => {
+          setShowUpgrade(false);
+          setUpgradeFeatureKey(null);
+        }}
+        featureKey={selectedUpgradeKey}
+        title={upgradeModalTitle}
+        description={upgradeModalDescription}
       />
 
     </div>
