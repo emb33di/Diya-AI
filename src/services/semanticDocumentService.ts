@@ -403,15 +403,25 @@ export class SemanticDocumentService {
         const existingHasContent = existingDocData.blocks.some((block: any) => 
           block.content && typeof block.content === 'string' && block.content.trim().length > 0
         );
-        const newIsEmpty = !document.blocks.some((block: any) => 
+        const newHasContent = document.blocks.some((block: any) => 
           block.content && typeof block.content === 'string' && block.content.trim().length > 0
         );
 
-        if (existingHasContent && newIsEmpty) {
+        if (existingHasContent && !newHasContent) {
           const errorMsg = `[SAFETY] Preventing save: Attempted to overwrite document ${document.id} with empty content. Existing document has ${existingDocData.blocks.length} blocks with content.`;
           console.error(errorMsg);
-          console.error('Existing document blocks:', existingDocData.blocks.map((b: any) => ({ id: b.id, contentLength: b.content?.length || 0 })));
-          console.error('New document blocks:', document.blocks.map((b: any) => ({ id: b.id, contentLength: b.content?.length || 0 })));
+          console.error('Existing document blocks:', existingDocData.blocks.map((b: any) => ({ 
+            id: b.id, 
+            type: b.type,
+            contentLength: b.content?.length || 0,
+            contentPreview: b.content?.substring(0, 50) || '(empty)'
+          })));
+          console.error('New document blocks:', document.blocks.map((b: any) => ({ 
+            id: b.id, 
+            type: b.type,
+            contentLength: b.content?.length || 0,
+            contentPreview: b.content?.substring(0, 50) || '(empty)'
+          })));
           throw new Error('Cannot save empty document over existing document with content. This prevents data loss during hot reload.');
         }
       }

@@ -98,6 +98,12 @@ export interface FounderComment {
   metadata: Record<string, any>;
 }
 
+interface EscalationSlotReservation {
+  success: boolean;
+  escalation_count: number;
+  max_escalations: number;
+}
+
 export class EscalatedEssaysService {
   /**
    * Fetch all escalated essays with student info for the founder dashboard
@@ -664,37 +670,27 @@ export class EscalatedEssaysService {
         throw new Error('Access denied: Founder access required');
       }
 
-      // Delete existing comments for this escalation (to replace them)
-      await supabase
-        .from('founder_comments' as any)
-        .delete()
-        .eq('escalation_id' as any, escalationId);
+      const commentsPayload = comments.map(comment => ({
+        id: comment.id,
+        blockId: comment.blockId,
+        type: comment.type,
+        content: comment.content,
+        targetText: comment.targetText || null,
+        positionStart: comment.position?.start ?? null,
+        positionEnd: comment.position?.end ?? null,
+        metadata: (comment as any).metadata || {},
+        createdAt: comment.created_at || new Date().toISOString(),
+      }));
 
-      // Insert new comments
-      if (comments.length > 0) {
-        const commentsToInsert = comments.map(comment => ({
-          id: comment.id,
-          essay_id: essayId,
-          escalation_id: escalationId,
-          block_id: comment.blockId,
-          type: comment.type,
-          content: comment.content,
-          target_text: comment.targetText || null, // Save the selected text context
-          position_start: comment.position?.start ?? null,
-          position_end: comment.position?.end ?? null,
-          resolved: false,
-          metadata: {}
-        }));
+      const { error: saveError } = await supabase.rpc('save_founder_comments', {
+        p_essay_id: essayId,
+        p_escalation_id: escalationId,
+        p_comments: commentsPayload,
+      } as any);
 
-        const { data: insertedData, error: insertError } = await supabase
-          .from('founder_comments' as any)
-          .insert(commentsToInsert as any)
-          .select();
-
-        if (insertError) {
-          console.error('Error inserting founder comments:', insertError);
-          throw insertError;
-        }
+      if (saveError) {
+        console.error('Error saving founder comments via RPC:', saveError);
+        throw saveError;
       }
     } catch (error) {
       console.error('EscalatedEssaysService: Error saving founder comments', error);
@@ -880,8 +876,221 @@ export class EscalatedEssaysService {
   }
 
   /**
+   * Check if user is a Pro user
+   */
+  static async checkProUserStatus(userId: string): Promise<boolean> {
+    try {
+      const { data: profile, error } = await supabase
+        .from('user_profiles')
+        .select('user_tier')
+        .eq('user_id' as any, userId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error checking Pro user status:', error);
+        return false;
+      }
+
+      const profileData = profile as any;
+      return profileData?.user_tier === 'Pro';
+    } catch (error) {
+      console.error('EscalatedEssaysService: Error checking Pro user status', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get or create escalation tracking record for a user
+   */
+  static async getOrCreateEscalationTracking(userId: string): Promise<{
+    escalation_count: number;
+    max_escalations: number;
+    id: string;
+  }> {
+    try {
+      // Try to get existing record
+      const { data: existing, error: fetchError } = await supabase
+        .from('user_escalation_tracking' as any)
+        .select('*')
+        .eq('user_id' as any, userId)
+        .maybeSingle();
+
+      if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "not found"
+        console.error('Error fetching escalation tracking:', fetchError);
+        throw fetchError;
+      }
+
+      if (existing) {
+        const existingData = existing as any;
+        return {
+          id: existingData.id,
+          escalation_count: existingData.escalation_count || 0,
+          max_escalations: existingData.max_escalations || 2,
+        };
+      }
+
+      // Create new record if doesn't exist
+      const { data: created, error: createError } = await supabase
+        .from('user_escalation_tracking' as any)
+        .insert({
+          user_id: userId,
+          escalation_count: 0,
+          max_escalations: 2,
+          subscription_started_at: new Date().toISOString(),
+          last_reset_at: new Date().toISOString(),
+        } as any)
+        .select('*')
+        .single();
+
+      if (createError) {
+        if ((createError as any).code === '23505') {
+          const { data: existingAfterConflict } = await supabase
+            .from('user_escalation_tracking' as any)
+            .select('*')
+            .eq('user_id' as any, userId)
+            .maybeSingle();
+
+          if (existingAfterConflict) {
+            const conflictData = existingAfterConflict as any;
+            return {
+              id: conflictData.id,
+              escalation_count: conflictData.escalation_count || 0,
+              max_escalations: conflictData.max_escalations || 2,
+            };
+          }
+        }
+
+        console.error('Error creating escalation tracking:', createError);
+        throw createError;
+      }
+
+      const createdData = created as any;
+      return {
+        id: createdData.id,
+        escalation_count: createdData.escalation_count || 0,
+        max_escalations: createdData.max_escalations || 2,
+      };
+    } catch (error) {
+      console.error('EscalatedEssaysService: Error getting/creating escalation tracking', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Reserve an escalation slot for a user atomically.
+   * Returns the updated escalation and max counts.
+   */
+  static async reserveEscalationSlot(userId: string): Promise<EscalationSlotReservation> {
+    try {
+      const { data, error } = await supabase.rpc('reserve_escalation_slot', {
+        p_user_id: userId,
+      } as any);
+
+      if (error) {
+        console.error('Error reserving escalation slot:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+          userId
+        });
+        
+        // Provide more user-friendly error messages
+        if (error.code === '42501') {
+          throw new Error('Permission denied. Please ensure you are logged in.');
+        } else if (error.message?.includes('Unauthorized')) {
+          throw new Error('Unauthorized access. Please log in again.');
+        } else {
+          throw new Error(error.message || 'Failed to reserve escalation slot');
+        }
+      }
+
+      const reservation = Array.isArray(data) ? (data[0] as EscalationSlotReservation | undefined) : undefined;
+
+      if (!reservation) {
+        console.error('EscalatedEssaysService: RPC returned empty result', { data, userId });
+        throw new Error('Failed to reserve escalation slot: No data returned');
+      }
+
+      return reservation;
+    } catch (error) {
+      console.error('EscalatedEssaysService: Error reserving escalation slot', {
+        error,
+        userId,
+        errorMessage: error instanceof Error ? error.message : String(error)
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Release an escalation slot for a user (used when escalation fails).
+   */
+  static async releaseEscalationSlot(userId: string): Promise<void> {
+    try {
+      const { error } = await supabase.rpc('release_escalation_slot', {
+        p_user_id: userId,
+      } as any);
+
+      if (error) {
+        console.error('Error releasing escalation slot:', error);
+        throw error;
+      }
+    } catch (error) {
+      console.error('EscalatedEssaysService: Error releasing escalation slot', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get user escalation status (used/remaining/max)
+   */
+  static async getUserEscalationStatus(): Promise<{
+    used: number;
+    remaining: number;
+    max: number;
+    canEscalate: boolean;
+  }> {
+    try {
+      // Verify user is authenticated
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Check if user is Pro
+      const isPro = await this.checkProUserStatus(user.id);
+      if (!isPro) {
+        return {
+          used: 0,
+          remaining: 0,
+          max: 0,
+          canEscalate: false,
+        };
+      }
+
+      // Get tracking record
+      const tracking = await this.getOrCreateEscalationTracking(user.id);
+
+      const remaining = Math.max(0, tracking.max_escalations - tracking.escalation_count);
+      const canEscalate = tracking.escalation_count < tracking.max_escalations;
+
+      return {
+        used: tracking.escalation_count,
+        remaining,
+        max: tracking.max_escalations,
+        canEscalate,
+      };
+    } catch (error) {
+      console.error('EscalatedEssaysService: Error getting user escalation status', error);
+      throw error;
+    }
+  }
+
+  /**
    * Escalate an essay to the founder portal
    * Creates a snapshot of the current essay state including document content and AI comments
+   * Enforces Pro user requirement and escalation limits
    */
   static async escalateEssay(
     essayId: string,
@@ -898,73 +1107,102 @@ export class EscalatedEssaysService {
         throw new Error('User not authenticated');
       }
 
-      // Calculate word and character counts
-      const wordCount = essayContent.blocks.reduce((total, block) => {
-        const words = (block.content || '').split(/\s+/).filter(word => word.trim().length > 0);
-        return total + words.length;
-      }, 0);
+      // 1. Check if user is Pro user
+      const isPro = await this.checkProUserStatus(user.id);
+      if (!isPro) {
+        throw new Error('Expert review is only available for Pro users. Please upgrade to Pro to access this feature.');
+      }
 
-      const characterCount = essayContent.blocks.reduce((total, block) => {
-        return total + (block.content || '').length;
-      }, 0);
+      let reservation: EscalationSlotReservation | null = null;
 
-      // Fetch current AI comments/annotations for this document
-      let aiCommentsSnapshot: EscalatedEssayComment[] = [];
-      if (semanticDocumentId) {
-        const { data: annotations, error: annotationsError } = await supabase
-          .from('semantic_annotations')
-          .select('*')
-          .eq('document_id', semanticDocumentId)
-          .eq('author', 'ai')
-          .order('created_at', { ascending: true });
+      try {
+        reservation = await this.reserveEscalationSlot(user.id);
 
-        if (!annotationsError && annotations) {
-          aiCommentsSnapshot = annotations.map((annotation: any) => ({
-            id: annotation.id,
-            blockId: annotation.block_id,
-            type: annotation.type,
-            content: annotation.content,
-            position: annotation.target_text ? {
-              start: 0, // Position info would need to be extracted from target_text if needed
-              end: annotation.target_text.length
-            } : undefined,
-            created_at: annotation.created_at
-          }));
+        if (!reservation.success) {
+          throw new Error(
+            `You have reached your escalation limit of ${reservation.max_escalations}. ` +
+            'Your limit will reset on your next subscription cycle.'
+          );
         }
+
+        // Calculate word and character counts
+        const wordCount = essayContent.blocks.reduce((total, block) => {
+          const words = (block.content || '').split(/\s+/).filter(word => word.trim().length > 0);
+          return total + words.length;
+        }, 0);
+
+        const characterCount = essayContent.blocks.reduce((total, block) => {
+          return total + (block.content || '').length;
+        }, 0);
+
+        // Fetch current AI comments/annotations for this document
+        let aiCommentsSnapshot: EscalatedEssayComment[] = [];
+        if (semanticDocumentId) {
+          const { data: annotations, error: annotationsError } = await supabase
+            .from('semantic_annotations')
+            .select('*')
+            .eq('document_id', semanticDocumentId)
+            .eq('author', 'ai')
+            .order('created_at', { ascending: true });
+
+          if (!annotationsError && annotations) {
+            aiCommentsSnapshot = annotations.map((annotation: any) => ({
+              id: annotation.id,
+              blockId: annotation.block_id,
+              type: annotation.type,
+              content: annotation.content,
+              position: annotation.target_text ? {
+                start: 0, // Position info would need to be extracted from target_text if needed
+                end: annotation.target_text.length
+              } : undefined,
+              created_at: annotation.created_at
+            }));
+          }
+        }
+
+        // Create escalation record
+        const { data: escalatedEssay, error: insertError } = await supabase
+          .from('escalated_essays' as any)
+          .insert({
+            essay_id: essayId,
+            user_id: user.id,
+            essay_title: essayTitle,
+            essay_content: essayContent as any, // JSONB field
+            essay_prompt: essayPrompt,
+            word_limit: wordLimit,
+            word_count: wordCount,
+            character_count: characterCount,
+            ai_comments_snapshot: aiCommentsSnapshot as any, // JSONB field
+            semantic_document_id: semanticDocumentId,
+            status: 'pending'
+          })
+          .select('id')
+          .single();
+
+        if (insertError) {
+          console.error('Error escalating essay:', insertError);
+          throw insertError;
+        }
+
+        if (!escalatedEssay) {
+          throw new Error('Failed to create escalation record');
+        }
+
+        return {
+          id: escalatedEssay.id,
+          success: true
+        };
+      } catch (error) {
+        if (reservation?.success) {
+          try {
+            await this.releaseEscalationSlot(user.id);
+          } catch (releaseError) {
+            console.error('Failed to release escalation slot after error:', releaseError);
+          }
+        }
+
+        throw error;
       }
-
-      // Create escalation record
-      const { data: escalatedEssay, error: insertError } = await supabase
-        .from('escalated_essays' as any)
-        .insert({
-          essay_id: essayId,
-          user_id: user.id,
-          essay_title: essayTitle,
-          essay_content: essayContent as any, // JSONB field
-          essay_prompt: essayPrompt,
-          word_limit: wordLimit,
-          word_count: wordCount,
-          character_count: characterCount,
-          ai_comments_snapshot: aiCommentsSnapshot as any, // JSONB field
-          semantic_document_id: semanticDocumentId,
-          status: 'pending'
-        })
-        .select('id')
-        .single();
-
-      if (insertError) {
-        console.error('Error escalating essay:', insertError);
-        throw insertError;
-      }
-
-      if (!escalatedEssay) {
-        throw new Error('Failed to create escalation record');
-      }
-
-      return {
-        id: escalatedEssay.id,
-        success: true
-      };
     } catch (error) {
       console.error('EscalatedEssaysService: Error escalating essay', error);
       throw error;
