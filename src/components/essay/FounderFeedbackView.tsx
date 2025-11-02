@@ -44,6 +44,20 @@ const renderHighlightedText = (text: string, annotations: Annotation[]) => {
   const lowerText = text.toLowerCase();
   const segments: HighlightSegment[] = [];
 
+  // Debug: Log annotation data to understand what we're receiving
+  if (annotations.length > 0) {
+    console.log('[FounderFeedbackView] Rendering highlights:', {
+      textLength,
+      annotationCount: annotations.length,
+      annotations: annotations.map(ann => ({
+        id: ann.id,
+        targetText: ann.targetText,
+        metadata: ann.metadata,
+        hasPosition: typeof (ann.metadata as any)?.['position_start'] === 'number'
+      }))
+    });
+  }
+
   const addSegment = (start: number, end: number, annotation: Annotation) => {
     const clampedStart = Math.max(0, Math.min(textLength, Math.floor(start)));
     const clampedEnd = Math.max(0, Math.min(textLength, Math.floor(end)));
@@ -82,14 +96,29 @@ const renderHighlightedText = (text: string, annotations: Annotation[]) => {
         ? (metadata['position_end'] as number)
         : undefined;
 
+    // Use position data if available and valid
     if (positionStart !== undefined && positionEnd !== undefined && positionEnd > positionStart) {
-      addSegment(positionStart, positionEnd, annotation);
-      searchCursor = Math.max(searchCursor, positionEnd);
-      return;
+      // If position spans entire block (0 to full length), it's likely a block-level comment
+      // For block-level comments, highlight just the first 50 chars as a visual indicator
+      if (positionStart === 0 && positionEnd >= textLength * 0.95) {
+        const highlightLength = Math.min(50, textLength);
+        addSegment(0, highlightLength, annotation);
+        searchCursor = Math.max(searchCursor, highlightLength);
+        console.log('[FounderFeedbackView] Block-level comment detected, highlighting first 50 chars');
+        return;
+      }
+      
+      // Normal position-based highlight
+      if (positionEnd <= textLength) {
+        addSegment(positionStart, Math.min(positionEnd, textLength), annotation);
+        searchCursor = Math.max(searchCursor, positionEnd);
+        return;
+      }
     }
 
     const targetText = annotation.targetText?.trim();
     if (!targetText) {
+      // If no position and no targetText, skip this annotation
       return;
     }
 
@@ -208,7 +237,7 @@ const renderHighlightedText = (text: string, annotations: Annotation[]) => {
  * Get CSS class for annotation highlighting
  */
 const getAnnotationHighlightClass = (annotation: Annotation): string => {
-  const baseClass = 'inline-block px-1 rounded cursor-pointer transition-colors';
+  const baseClass = 'inline px-1 rounded cursor-pointer transition-colors';
   
   // Founder comments are always displayed as user comments
   if (annotation.author === 'mihir' || annotation.author === 'user') {
@@ -258,7 +287,7 @@ const FounderFeedbackView: React.FC<FounderFeedbackViewProps> = ({
               overflowWrap: 'normal',
               wordBreak: 'normal',
               hyphens: 'none',
-              textAlign: 'justify',
+              textAlign: 'left',
             }}
           >
             {block.content ? (

@@ -1125,9 +1125,21 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                   {/* Subtle accent line */}
                   <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500"></div>
                   
-                  {/* Delete button - only show for custom essays */}
-                  {onDelete && (
-                    <div className="absolute top-4 right-4">
+                  {/* Top action buttons - Expert Reviews and Delete */}
+                  <div className="absolute top-4 right-4 flex items-center gap-2">
+                    {hasFeedback && (
+                      <Button 
+                        onClick={() => navigate(`/essays/${essayId}/expert-reviews`)}
+                        variant="default"
+                        size="sm"
+                        className="text-white border-[#D07D00] hover:opacity-90"
+                        style={{ backgroundColor: '#D07D00' }}
+                        title="View expert review and feedback"
+                      >
+                        View Expert Feedback
+                      </Button>
+                    )}
+                    {onDelete && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -1137,8 +1149,8 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                   
                   <div className="flex flex-col sm:flex-row sm:items-start space-y-4 sm:space-y-0 sm:space-x-4">
                     <div className="flex-shrink-0 self-center sm:self-start sm:mt-1">
@@ -1326,19 +1338,6 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                             <Crown className="h-3 w-3 ml-2 text-primary" />
                           </Button>
                         </PaywallGuard>
-                        
-                        {hasFeedback && (
-                          <Button 
-                            onClick={() => navigate(`/essays/${essayId}/expert-reviews`)}
-                            variant="default"
-                            size="sm"
-                            className="bg-purple-600 text-white hover:bg-purple-700 border-purple-600"
-                            title="View expert review and feedback"
-                          >
-                            <Star className="h-4 w-4 mr-2" />
-                            Expert Reviews
-                          </Button>
-                        )}
                         
                         <Button 
                           onClick={handleEscalateEssay}
