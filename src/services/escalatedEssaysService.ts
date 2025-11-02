@@ -711,12 +711,6 @@ export class EscalatedEssaysService {
     updatedDocument: SemanticDocument
   ): Promise<void> {
     try {
-      console.log('[FOUNDER_DELETE_DEBUG] deleteFounderComment called in EscalatedEssaysService', {
-        commentId,
-        escalationId,
-        documentBlocks: updatedDocument.blocks.length
-      });
-
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
         throw new Error('User not authenticated');
@@ -740,13 +734,8 @@ export class EscalatedEssaysService {
         .eq('id' as any, commentId);
 
       if (deleteError) {
-        console.error('[FOUNDER_DELETE_DEBUG] Error deleting from founder_comments', deleteError);
         throw deleteError;
       }
-
-      console.log('[FOUNDER_DELETE_DEBUG] Successfully deleted from founder_comments table', {
-        commentId
-      });
 
       // Step 2: Update founder_edited_content to remove the deleted annotation
       // This ensures the comment doesn't reappear on page reload
@@ -754,17 +743,11 @@ export class EscalatedEssaysService {
         await EscalatedEssaysService.updateEscalatedEssay(escalationId, {
           founder_edited_content: updatedDocument
         });
-        console.log('[FOUNDER_DELETE_DEBUG] Successfully updated founder_edited_content', {
-          commentId,
-          escalationId
-        });
       } catch (updateError) {
-        console.error('[FOUNDER_DELETE_DEBUG] Error updating founder_edited_content', updateError);
         // Don't throw - comment is already deleted from founder_comments, this is just cleanup
-        console.warn('[FOUNDER_DELETE_DEBUG] Comment deleted from founder_comments but failed to update founder_edited_content. Comment may reappear on reload.');
+        // Comment may reappear on reload if update fails
       }
     } catch (error) {
-      console.error('[FOUNDER_DELETE_DEBUG] EscalatedEssaysService: Error deleting founder comment', error);
       throw error;
     }
   }

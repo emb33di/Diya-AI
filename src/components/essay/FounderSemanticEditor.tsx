@@ -1733,9 +1733,6 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
     }
 
     if (annotationToResolve.author === 'mihir') {
-      console.warn('[FOUNDER_DELETE_DEBUG] Skipping resolve for founder comment to avoid semantic_annotations write', {
-        annotationId
-      });
       toast({
         title: 'Resolve not supported',
         description: 'Founder comments are managed separately and cannot be resolved here.',
@@ -1784,13 +1781,6 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
 
   // Delete annotation (founder comments only)
   const deleteAnnotation = useCallback(async (annotationId: string) => {
-    console.log('[FOUNDER_DELETE_DEBUG] deleteAnnotation invoked', {
-      annotationId,
-      documentId: state.document.id,
-      essayId,
-      escalationId
-    });
-
     const previousDocument = deepCloneDocument(state.document);
 
     // Locate annotation in current document
@@ -1804,9 +1794,6 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
     }
 
     if (!annotationToDelete) {
-      console.warn('[FOUNDER_DELETE_DEBUG] Annotation not found in document state', {
-        annotationId
-      });
       toast({
         title: 'Comment not found',
         description: 'We could not locate that comment in the current document.',
@@ -1816,10 +1803,6 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
     }
 
     if (annotationToDelete.author !== 'mihir') {
-      console.warn('[FOUNDER_DELETE_DEBUG] Attempted to delete non-founder annotation. Skipping.', {
-        annotationId,
-        author: annotationToDelete.author
-      });
       toast({
         title: 'Cannot delete AI comment',
         description: 'Founder annotations are managed separately from AI comments.',
@@ -1827,11 +1810,6 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
       });
       return;
     }
-
-    console.log('[FOUNDER_DELETE_DEBUG] Removing founder annotation from local state', {
-      annotationId,
-      author: annotationToDelete.author
-    });
 
     setState(prev => ({
       ...prev,
@@ -1847,9 +1825,6 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
     }));
 
     if (!escalationId) {
-      console.error('[FOUNDER_DELETE_DEBUG] Cannot delete: escalationId is required', {
-        annotationId
-      });
       toast({
         title: 'Error',
         description: 'Cannot delete comment: Missing escalation ID.',
@@ -1880,16 +1855,7 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
         escalationId,
         updatedDocument
       );
-      console.log('[FOUNDER_DELETE_DEBUG] Founder comment deleted successfully', {
-        annotationId,
-        escalationId
-      });
     } catch (error) {
-      console.error('[FOUNDER_DELETE_DEBUG] Failed to delete founder comment from backend', {
-        annotationId,
-        escalationId,
-        error
-      });
 
       // Revert optimistic change on failure
       setState(prev => ({
@@ -2161,25 +2127,27 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
     const blockId = currentSelection.blockIds.length === 1 
       ? currentSelection.blockIds[0] 
       : currentSelection.startBlock;
-    
+
+    const normalizedMetadata = {
+      ...(annotation.metadata || {}),
+      ...(currentSelection.blockIds.length > 1 ? {
+        multiBlock: true,
+        blockIds: currentSelection.blockIds,
+        position_start: currentSelection.startOffset,
+        position_end: currentSelection.endOffset
+      } : {
+        position_start: currentSelection.startOffset,
+        position_end: currentSelection.endOffset
+      })
+    } as Annotation['metadata'];
+
     const fullAnnotation: Omit<Annotation, 'id' | 'createdAt' | 'updatedAt'> = {
       ...annotation,
       type: 'comment', // Default type
       author: annotation.author || 'mihir', // Ensure author is set (founder comments should be 'mihir')
-      targetBlockId: annotation.targetBlockId || blockId,
-      targetText: annotation.targetText || currentSelection.text,
-      metadata: {
-        ...annotation.metadata,
-        ...(currentSelection.blockIds.length > 1 ? {
-          multiBlock: true,
-          blockIds: currentSelection.blockIds,
-          position_start: currentSelection.startOffset,
-          position_end: currentSelection.endOffset
-        } : {
-          position_start: currentSelection.startOffset,
-          position_end: currentSelection.endOffset
-        } as any)
-      }
+      targetBlockId: blockId,
+      targetText: currentSelection.text,
+      metadata: normalizedMetadata
     };
 
     // Ensure author is set correctly for founder comments

@@ -30,59 +30,173 @@ interface FounderFeedbackViewProps {
  * Render highlighted text with annotations (read-only version)
  */
 const renderHighlightedText = (text: string, annotations: Annotation[]) => {
-  if (!annotations || annotations.length === 0) {
+  if (!text || !annotations || annotations.length === 0) {
     return <span>{text}</span>;
   }
 
-  // Sort annotations by position (if available in targetText)
-  const sortedAnnotations = [...annotations].sort((a, b) => {
-    // Use the targetText position within the full text as a simple sort
-    const aPos = text.indexOf(a.targetText || '', 0);
-    const bPos = text.indexOf(b.targetText || '', 0);
-    return aPos - bPos;
+  type HighlightSegment = {
+    start: number;
+    end: number;
+    annotation: Annotation;
+  };
+
+  const textLength = text.length;
+  const lowerText = text.toLowerCase();
+  const segments: HighlightSegment[] = [];
+
+  const addSegment = (start: number, end: number, annotation: Annotation) => {
+    const clampedStart = Math.max(0, Math.min(textLength, Math.floor(start)));
+    const clampedEnd = Math.max(0, Math.min(textLength, Math.floor(end)));
+
+    if (clampedEnd <= clampedStart) {
+      return;
+    }
+
+    const duplicate = segments.find(segment =>
+      segment.annotation.id === annotation.id &&
+      segment.start === clampedStart &&
+      segment.end === clampedEnd
+    );
+
+    if (duplicate) {
+      return;
+    }
+
+    segments.push({
+      start: clampedStart,
+      end: clampedEnd,
+      annotation
+    });
+  };
+
+  let searchCursor = 0;
+
+  annotations.forEach(annotation => {
+    const metadata = annotation.metadata as Record<string, unknown> | undefined;
+    const positionStart =
+      typeof metadata?.['position_start'] === 'number'
+        ? (metadata['position_start'] as number)
+        : undefined;
+    const positionEnd =
+      typeof metadata?.['position_end'] === 'number'
+        ? (metadata['position_end'] as number)
+        : undefined;
+
+    if (positionStart !== undefined && positionEnd !== undefined && positionEnd > positionStart) {
+      addSegment(positionStart, positionEnd, annotation);
+      searchCursor = Math.max(searchCursor, positionEnd);
+      return;
+    }
+
+    const targetText = annotation.targetText?.trim();
+    if (!targetText) {
+      return;
+    }
+
+    const candidates = [targetText];
+
+    if (targetText.endsWith('...')) {
+      candidates.push(targetText.slice(0, -3));
+    }
+
+    if (targetText.length > 20) {
+      candidates.push(targetText.slice(0, 20));
+    }
+
+    let matched = false;
+
+    for (const candidate of candidates) {
+      if (!candidate) continue;
+
+      let startIndex = text.indexOf(candidate, searchCursor);
+      if (startIndex === -1) {
+        startIndex = text.indexOf(candidate);
+      }
+
+      if (startIndex === -1) {
+        const lowerCandidate = candidate.toLowerCase();
+        startIndex = lowerText.indexOf(lowerCandidate, searchCursor);
+        if (startIndex === -1) {
+          startIndex = lowerText.indexOf(lowerCandidate);
+        }
+      }
+
+      if (startIndex !== -1) {
+        addSegment(startIndex, startIndex + candidate.length, annotation);
+        searchCursor = Math.max(searchCursor, startIndex + candidate.length);
+        matched = true;
+        break;
+      }
+    }
+
+    if (!matched && targetText.includes(' ')) {
+      const firstWords = targetText.split(' ').slice(0, 3).join(' ');
+      if (firstWords.length > 3) {
+        let startIndex = text.indexOf(firstWords, searchCursor);
+        if (startIndex === -1) {
+          startIndex = text.indexOf(firstWords);
+        }
+
+        if (startIndex === -1) {
+          const lowerWords = firstWords.toLowerCase();
+          startIndex = lowerText.indexOf(lowerWords, searchCursor);
+          if (startIndex === -1) {
+            startIndex = lowerText.indexOf(lowerWords);
+          }
+        }
+
+        if (startIndex !== -1) {
+          addSegment(startIndex, startIndex + firstWords.length, annotation);
+          searchCursor = Math.max(searchCursor, startIndex + firstWords.length);
+        }
+      }
+    }
+  });
+
+  if (segments.length === 0) {
+    return <span>{text}</span>;
+  }
+
+  segments.sort((a, b) => {
+    if (a.start === b.start) {
+      return a.end - b.end;
+    }
+    return a.start - b.start;
   });
 
   const parts: JSX.Element[] = [];
-  let lastIndex = 0;
+  let cursor = 0;
 
-  sortedAnnotations.forEach((annotation, idx) => {
-    const targetText = annotation.targetText || '';
-    if (!targetText) return;
-
-    const startIndex = text.indexOf(targetText, lastIndex);
-    if (startIndex === -1) return;
-
-    const endIndex = startIndex + targetText.length;
-
-    // Add text before annotation
-    if (startIndex > lastIndex) {
+  segments.forEach((segment, index) => {
+    if (segment.start > cursor) {
       parts.push(
-        <span key={`text-${idx}`}>
-          {text.substring(lastIndex, startIndex)}
+        <span key={`text-${index}-${cursor}`}>
+          {text.slice(cursor, segment.start)}
         </span>
       );
     }
 
-    // Add highlighted annotation
-    const annotationClass = getAnnotationHighlightClass(annotation);
+    const highlightedText = text.slice(segment.start, segment.end);
+    const annotationClass = getAnnotationHighlightClass(segment.annotation);
+    const annotationKey = segment.annotation.id || `${segment.start}-${segment.end}-${index}`;
+
     parts.push(
       <span
-        key={`annotation-${idx}`}
+        key={`annotation-${annotationKey}`}
         className={cn('annotation-highlight', annotationClass)}
-        data-annotation-id={annotation.id}
+        data-annotation-id={segment.annotation.id}
       >
-        {targetText}
+        {highlightedText}
       </span>
     );
 
-    lastIndex = endIndex;
+    cursor = segment.end;
   });
 
-  // Add remaining text
-  if (lastIndex < text.length) {
+  if (cursor < textLength) {
     parts.push(
       <span key="text-end">
-        {text.substring(lastIndex)}
+        {text.slice(cursor)}
       </span>
     );
   }

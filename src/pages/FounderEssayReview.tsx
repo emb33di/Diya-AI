@@ -72,32 +72,6 @@ const FounderEssayReview: React.FC = () => {
       // Fetch founder comments from the new founder_comments table
       const founderComments = await EscalatedEssaysService.getFounderCommentsByEscalationId(escalationId);
       
-      console.log('[FOUNDER_DELETE_DEBUG] Loading essay - founder comments fetched', {
-        escalationId,
-        founderCommentsCount: founderComments.length,
-        founderComments: founderComments.map(c => ({
-          id: c.id,
-          block_id: c.block_id,
-          content: c.content?.substring(0, 50),
-          type: c.type
-        }))
-      });
-
-      // Check annotations in document before merging
-      const annotationsBeforeMerge = contentToUse.blocks.reduce((sum, b) => sum + (b.annotations?.length || 0), 0);
-      const mihirCommentsBefore = contentToUse.blocks.reduce((sum, b) => 
-        sum + (b.annotations?.filter(a => a.author === 'mihir').length || 0), 0);
-      
-      console.log('[FOUNDER_DELETE_DEBUG] Document state before merging founder comments', {
-        totalAnnotations: annotationsBeforeMerge,
-        mihirCommentsCount: mihirCommentsBefore,
-        blocks: contentToUse.blocks.map(b => ({
-          blockId: b.id,
-          annotationCount: b.annotations?.length || 0,
-          mihirCount: b.annotations?.filter(a => a.author === 'mihir').length || 0
-        }))
-      });
-      
       if (founderComments.length > 0) {
         // Convert founder_comments to annotations and attach to blocks
         const founderCommentsMap = new Map<string, Annotation[]>();
@@ -129,14 +103,6 @@ const FounderEssayReview: React.FC = () => {
             const existingMihirComments = (block.annotations || []).filter(ann => ann.author === 'mihir');
             const newMihirComments = founderCommentsMap.get(block.id) || [];
             
-            console.log('[FOUNDER_DELETE_DEBUG] Merging comments for block', {
-              blockId: block.id,
-              existingMihirCount: existingMihirComments.length,
-              existingMihirIds: existingMihirComments.map(a => a.id),
-              newMihirCount: newMihirComments.length,
-              newMihirIds: newMihirComments.map(a => a.id)
-            });
-            
             return {
               ...block,
               annotations: [
@@ -147,21 +113,6 @@ const FounderEssayReview: React.FC = () => {
           })
         };
       }
-
-      const annotationsAfterMerge = contentToUse.blocks.reduce((sum, b) => sum + (b.annotations?.length || 0), 0);
-      const mihirCommentsAfter = contentToUse.blocks.reduce((sum, b) => 
-        sum + (b.annotations?.filter(a => a.author === 'mihir').length || 0), 0);
-      
-      console.log('[FOUNDER_DELETE_DEBUG] Document state after merging founder comments', {
-        totalAnnotations: annotationsAfterMerge,
-        mihirCommentsCount: mihirCommentsAfter,
-        changeFromBefore: mihirCommentsAfter - mihirCommentsBefore,
-        allMihirCommentIds: contentToUse.blocks.flatMap(b => 
-          (b.annotations || [])
-            .filter(a => a.author === 'mihir')
-            .map(a => a.id)
-        )
-      });
       
       setDocument(contentToUse);
 

@@ -125,23 +125,35 @@ const FounderFeedbackPage: React.FC = () => {
       const blockComments = commentsByBlock.get(block.id) || [];
       
       // Convert FounderComment to Annotation
-      const annotations: Annotation[] = blockComments.map(comment => ({
-        id: comment.id,
-        type: comment.type as Annotation['type'],
-        author: 'mihir', // Founder comments are marked as 'mihir' author
-        content: comment.content,
-        targetBlockId: comment.block_id,
-        targetText: comment.target_text || '',
-        createdAt: new Date(comment.created_at),
-        updatedAt: new Date(comment.updated_at),
-        resolved: comment.resolved,
-        resolvedAt: comment.resolved_at ? new Date(comment.resolved_at) : undefined,
-        metadata: {
-          ...comment.metadata,
+      const annotations: Annotation[] = blockComments.map(comment => {
+        const metadata: Record<string, unknown> = {
+          ...(comment.metadata || {}),
           escalationId: comment.escalation_id || undefined,
           commentCategory: 'areas-for-improvement' // Default category for founder comments
-        } as Annotation['metadata']
-      }));
+        };
+
+        if (typeof comment.position_start === 'number') {
+          metadata['position_start'] = comment.position_start;
+        }
+
+        if (typeof comment.position_end === 'number') {
+          metadata['position_end'] = comment.position_end;
+        }
+
+        return {
+          id: comment.id,
+          type: comment.type as Annotation['type'],
+          author: 'mihir', // Founder comments are marked as 'mihir' author
+          content: comment.content,
+          targetBlockId: comment.block_id,
+          targetText: comment.target_text || '',
+          createdAt: new Date(comment.created_at),
+          updatedAt: new Date(comment.updated_at),
+          resolved: comment.resolved,
+          resolvedAt: comment.resolved_at ? new Date(comment.resolved_at) : undefined,
+          metadata: metadata as Annotation['metadata']
+        };
+      });
 
       return {
         ...block,
