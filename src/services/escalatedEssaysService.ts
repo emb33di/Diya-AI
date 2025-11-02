@@ -673,6 +673,7 @@ export class EscalatedEssaysService {
       // Insert new comments
       if (comments.length > 0) {
         const commentsToInsert = comments.map(comment => ({
+          id: comment.id,
           essay_id: essayId,
           escalation_id: escalationId,
           block_id: comment.blockId,
@@ -697,6 +698,73 @@ export class EscalatedEssaysService {
       }
     } catch (error) {
       console.error('EscalatedEssaysService: Error saving founder comments', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a founder comment from both founder_comments table and founder_edited_content
+   */
+  static async deleteFounderComment(
+    commentId: string,
+    escalationId: string,
+    updatedDocument: SemanticDocument
+  ): Promise<void> {
+    try {
+      console.log('[FOUNDER_DELETE_DEBUG] deleteFounderComment called in EscalatedEssaysService', {
+        commentId,
+        escalationId,
+        documentBlocks: updatedDocument.blocks.length
+      });
+
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('User not authenticated');
+      }
+
+      const { data: founderProfile } = await supabase
+        .from('user_profiles')
+        .select('is_founder')
+        .eq('user_id' as any, user.id)
+        .maybeSingle();
+
+      const founderProfileData = founderProfile as any;
+      if (!founderProfileData?.is_founder) {
+        throw new Error('Access denied: Founder access required');
+      }
+
+      // Step 1: Delete from founder_comments table
+      const { error: deleteError } = await supabase
+        .from('founder_comments' as any)
+        .delete()
+        .eq('id' as any, commentId);
+
+      if (deleteError) {
+        console.error('[FOUNDER_DELETE_DEBUG] Error deleting from founder_comments', deleteError);
+        throw deleteError;
+      }
+
+      console.log('[FOUNDER_DELETE_DEBUG] Successfully deleted from founder_comments table', {
+        commentId
+      });
+
+      // Step 2: Update founder_edited_content to remove the deleted annotation
+      // This ensures the comment doesn't reappear on page reload
+      try {
+        await EscalatedEssaysService.updateEscalatedEssay(escalationId, {
+          founder_edited_content: updatedDocument
+        });
+        console.log('[FOUNDER_DELETE_DEBUG] Successfully updated founder_edited_content', {
+          commentId,
+          escalationId
+        });
+      } catch (updateError) {
+        console.error('[FOUNDER_DELETE_DEBUG] Error updating founder_edited_content', updateError);
+        // Don't throw - comment is already deleted from founder_comments, this is just cleanup
+        console.warn('[FOUNDER_DELETE_DEBUG] Comment deleted from founder_comments but failed to update founder_edited_content. Comment may reappear on reload.');
+      }
+    } catch (error) {
+      console.error('[FOUNDER_DELETE_DEBUG] EscalatedEssaysService: Error deleting founder comment', error);
       throw error;
     }
   }

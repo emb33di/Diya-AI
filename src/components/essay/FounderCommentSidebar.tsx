@@ -498,6 +498,14 @@ const FounderCommentSidebar: React.FC<FounderCommentSidebarProps> = ({
                                       className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
                                       onClick={(e) => {
                                         e.stopPropagation();
+                                        console.log('[FOUNDER_DELETE_DEBUG] Delete button clicked in FounderCommentSidebar', {
+                                          annotationId: annotation.id,
+                                          annotationAuthor: annotation.author,
+                                          annotationType: annotation.type,
+                                          annotationContent: annotation.content?.substring(0, 50),
+                                          targetBlockId: annotation.targetBlockId,
+                                          fullAnnotation: annotation
+                                        });
                                         onAnnotationDelete(annotation.id);
                                       }}
                                       title="Delete comment"
@@ -601,6 +609,14 @@ const FounderCommentSidebar: React.FC<FounderCommentSidebarProps> = ({
                                   className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
                                   onClick={(e) => {
                                     e.stopPropagation();
+                                    console.log('[FOUNDER_DELETE_DEBUG] Delete button clicked in FounderCommentSidebar', {
+                                      annotationId: annotation.id,
+                                      annotationAuthor: annotation.author,
+                                      annotationType: annotation.type,
+                                      annotationContent: annotation.content?.substring(0, 50),
+                                      targetBlockId: annotation.targetBlockId,
+                                      fullAnnotation: annotation
+                                    });
                                     onAnnotationDelete(annotation.id);
                                   }}
                                   title="Delete comment"

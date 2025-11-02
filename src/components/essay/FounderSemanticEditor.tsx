@@ -18,6 +18,7 @@ import {
   SemanticEditorState
 } from '@/types/semanticDocument';
 import { semanticDocumentService } from '@/services/semanticDocumentService';
+import { EscalatedEssaysService } from '@/services/escalatedEssaysService';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -50,6 +51,7 @@ import './SemanticHighlighting.css';
 interface FounderSemanticEditorProps {
   documentId?: string;
   essayId: string;
+  escalationId?: string;
   title: string;
   initialContent?: string;
   initialDocument?: SemanticDocument; // If provided, use this document instead of loading from DB
@@ -68,6 +70,7 @@ interface FounderSemanticEditorProps {
 const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
   documentId,
   essayId,
+  escalationId,
   title,
   initialContent = '',
   initialDocument,
@@ -1711,6 +1714,36 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
 
   // Resolve annotation (optimistic update + persist to Supabase)
   const resolveAnnotation = useCallback((annotationId: string) => {
+    let annotationToResolve: Annotation | null = null;
+    for (const block of state.document.blocks) {
+      const match = block.annotations.find(ann => ann.id === annotationId);
+      if (match) {
+        annotationToResolve = match;
+        break;
+      }
+    }
+
+    if (!annotationToResolve) {
+      toast({
+        title: 'Comment not found',
+        description: 'We could not locate that comment in the current document.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (annotationToResolve.author === 'mihir') {
+      console.warn('[FOUNDER_DELETE_DEBUG] Skipping resolve for founder comment to avoid semantic_annotations write', {
+        annotationId
+      });
+      toast({
+        title: 'Resolve not supported',
+        description: 'Founder comments are managed separately and cannot be resolved here.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     const previousDocument = deepCloneDocument(state.document);
 
     // Optimistic UI update
@@ -1731,7 +1764,7 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
       pendingChanges: true
     }));
 
-    // Persist to backend
+    // Persist to backend (AI comments only)
     semanticDocumentService
       .persistAnnotationResolution(annotationId)
       .catch((error) => {
@@ -1749,11 +1782,57 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
       });
   }, [state.document, deepCloneDocument, toast]);
 
-  // Delete annotation
-  const deleteAnnotation = useCallback((annotationId: string) => {
+  // Delete annotation (founder comments only)
+  const deleteAnnotation = useCallback(async (annotationId: string) => {
+    console.log('[FOUNDER_DELETE_DEBUG] deleteAnnotation invoked', {
+      annotationId,
+      documentId: state.document.id,
+      essayId,
+      escalationId
+    });
+
     const previousDocument = deepCloneDocument(state.document);
 
-    // Optimistic UI update
+    // Locate annotation in current document
+    let annotationToDelete: Annotation | null = null;
+    for (const block of state.document.blocks) {
+      const match = block.annotations.find(ann => ann.id === annotationId);
+      if (match) {
+        annotationToDelete = match;
+        break;
+      }
+    }
+
+    if (!annotationToDelete) {
+      console.warn('[FOUNDER_DELETE_DEBUG] Annotation not found in document state', {
+        annotationId
+      });
+      toast({
+        title: 'Comment not found',
+        description: 'We could not locate that comment in the current document.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (annotationToDelete.author !== 'mihir') {
+      console.warn('[FOUNDER_DELETE_DEBUG] Attempted to delete non-founder annotation. Skipping.', {
+        annotationId,
+        author: annotationToDelete.author
+      });
+      toast({
+        title: 'Cannot delete AI comment',
+        description: 'Founder annotations are managed separately from AI comments.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    console.log('[FOUNDER_DELETE_DEBUG] Removing founder annotation from local state', {
+      annotationId,
+      author: annotationToDelete.author
+    });
+
     setState(prev => ({
       ...prev,
       document: {
@@ -1767,23 +1846,65 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
       pendingChanges: true
     }));
 
-    // Persist to backend
-    semanticDocumentService
-      .persistAnnotationDeletion(annotationId)
-      .catch((error) => {
-        // Revert optimistic change on failure
-        setState(prev => ({
-          ...prev,
-          document: previousDocument,
-          pendingChanges: prev.pendingChanges
-        }));
-        toast({
-          title: 'Failed to delete comment',
-          description: error instanceof Error ? error.message : 'Please try again.',
-          variant: 'destructive'
-        });
+    if (!escalationId) {
+      console.error('[FOUNDER_DELETE_DEBUG] Cannot delete: escalationId is required', {
+        annotationId
       });
-  }, [state.document, deepCloneDocument, toast]);
+      toast({
+        title: 'Error',
+        description: 'Cannot delete comment: Missing escalation ID.',
+        variant: 'destructive'
+      });
+      // Revert optimistic update
+      setState(prev => ({
+        ...prev,
+        document: previousDocument,
+        pendingChanges: prev.pendingChanges
+      }));
+      return;
+    }
+
+    // Create updated document with annotation removed
+    const updatedDocument = {
+      ...state.document,
+      blocks: state.document.blocks.map(block => ({
+        ...block,
+        annotations: block.annotations.filter(annotation => annotation.id !== annotationId)
+      })),
+      updatedAt: new Date()
+    };
+
+    try {
+      await EscalatedEssaysService.deleteFounderComment(
+        annotationId,
+        escalationId,
+        updatedDocument
+      );
+      console.log('[FOUNDER_DELETE_DEBUG] Founder comment deleted successfully', {
+        annotationId,
+        escalationId
+      });
+    } catch (error) {
+      console.error('[FOUNDER_DELETE_DEBUG] Failed to delete founder comment from backend', {
+        annotationId,
+        escalationId,
+        error
+      });
+
+      // Revert optimistic change on failure
+      setState(prev => ({
+        ...prev,
+        document: previousDocument,
+        pendingChanges: prev.pendingChanges
+      }));
+
+      toast({
+        title: 'Failed to delete comment',
+        description: error instanceof Error ? error.message : 'Please try again.',
+        variant: 'destructive'
+      });
+    }
+  }, [state.document, deepCloneDocument, toast, essayId, escalationId]);
 
   // Create comment from selection (kept for backward compatibility with dialog)
   const handleCreateComment = useCallback((

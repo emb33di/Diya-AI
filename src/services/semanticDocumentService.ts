@@ -665,16 +665,55 @@ export class SemanticDocumentService {
    */
   async persistAnnotationDeletion(annotationId: string): Promise<void> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      console.log('[FOUNDER_DELETE_DEBUG] persistAnnotationDeletion called in semanticDocumentService', {
+        annotationId
+      });
 
-      const { error } = await (supabase.from as any)('semantic_annotations')
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        console.error('[FOUNDER_DELETE_DEBUG] User authentication failed', { userError });
+        throw new Error('User not authenticated');
+      }
+
+      console.log('[FOUNDER_DELETE_DEBUG] Attempting to delete from semantic_annotations', {
+        annotationId,
+        userId: user.id
+      });
+
+      // Check if annotation exists in semantic_annotations first
+      const { data: existingAnnotation, error: checkError } = await (supabase.from as any)('semantic_annotations')
+        .select('id, document_id, block_id, author')
+        .eq('id' as any, annotationId as any)
+        .maybeSingle();
+
+      console.log('[FOUNDER_DELETE_DEBUG] Check if annotation exists in semantic_annotations', {
+        annotationId,
+        exists: !!existingAnnotation,
+        author: existingAnnotation?.author,
+        checkError: checkError?.message
+      });
+
+      const { error, data } = await (supabase.from as any)('semantic_annotations')
         .delete()
-        .eq('id' as any, annotationId as any);
+        .eq('id' as any, annotationId as any)
+        .select();
+
+      console.log('[FOUNDER_DELETE_DEBUG] Delete from semantic_annotations result', {
+        annotationId,
+        error: error?.message,
+        deletedRows: data?.length || 0,
+        warning: existingAnnotation?.author === 'mihir' ? 'Founder comment deleted from semantic_annotations, but may still exist in founder_comments table' : null
+      });
 
       if (error) {
         throw new Error(error.message);
       }
     } catch (err) {
+      console.error('[FOUNDER_DELETE_DEBUG] persistAnnotationDeletion error', {
+        annotationId,
+        error: err instanceof Error ? err.message : String(err)
+      });
       throw err instanceof Error ? err : new Error('Failed to persist annotation deletion');
     }
   }
