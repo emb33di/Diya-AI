@@ -1,9 +1,6 @@
--- Fix permissions and security for escalation slot functions
--- Add SECURITY DEFINER to allow functions to properly manage escalation tracking
--- Grant execute permissions to authenticated users
+-- Fix ambiguous column references in escalation slot functions
+-- The column names conflicted with variable names in the UPDATE statements
 
--- Update reserve_escalation_slot to use SECURITY DEFINER
--- This allows the function to bypass RLS when needed for atomic operations
 create or replace function public.reserve_escalation_slot(p_user_id uuid)
 returns table(success boolean, escalation_count integer, max_escalations integer)
 language plpgsql
@@ -59,6 +56,7 @@ begin
     return query select false, v_escalation_count, v_max_escalations;
   end if;
 
+  -- Use table alias to avoid ambiguous column references
   update user_escalation_tracking uet
   set escalation_count = uet.escalation_count + 1,
       updated_at = now()
@@ -70,7 +68,6 @@ begin
 end;
 $$;
 
--- Update release_escalation_slot to use SECURITY DEFINER
 create or replace function public.release_escalation_slot(p_user_id uuid)
 returns void
 language plpgsql
@@ -83,18 +80,11 @@ begin
     raise exception 'Unauthorized: user_id must match authenticated user';
   end if;
 
+  -- Use table alias to avoid ambiguous column references
   update user_escalation_tracking uet
   set escalation_count = greatest(uet.escalation_count - 1, 0),
       updated_at = now()
   where uet.user_id = p_user_id;
 end;
 $$;
-
--- Grant execute permissions to authenticated users
-grant execute on function public.reserve_escalation_slot(uuid) to authenticated;
-grant execute on function public.release_escalation_slot(uuid) to authenticated;
-
--- Add comments for documentation
-comment on function public.reserve_escalation_slot(uuid) is 'Atomically reserves an escalation slot for a user. Returns success status and current counts. Uses SECURITY DEFINER to bypass RLS for atomic operations.';
-comment on function public.release_escalation_slot(uuid) is 'Releases an escalation slot for a user (used when escalation fails). Uses SECURITY DEFINER to bypass RLS.';
 
