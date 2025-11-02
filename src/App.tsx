@@ -26,6 +26,7 @@ import EarlyAccessSignup from "./pages/EarlyAccessSignup";
 import LOR from "./pages/LOR";
 import FounderPortal from "./pages/FounderPortal";
 import FounderEssayReview from "./pages/FounderEssayReview";
+import FounderFeedbackPage from "./pages/FounderFeedbackPage";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
 import RefundPolicy from "./pages/RefundPolicy";
@@ -84,6 +85,7 @@ const App = () => {
             {/* Protected routes - require authentication */}
             <Route path="/dashboard" element={<AuthenticationGuard><Dashboard /></AuthenticationGuard>} />
             <Route path="/essays" element={<AuthenticationGuard><Essays /></AuthenticationGuard>} />
+            <Route path="/essays/:essayId/expert-reviews" element={<AuthenticationGuard><FounderFeedbackPage /></AuthenticationGuard>} />
             <Route path="/schools" element={<AuthenticationGuard><SchoolList /></AuthenticationGuard>} />
             <Route path="/deadlines" element={<AuthenticationGuard><Deadlines /></AuthenticationGuard>} />
             <Route path="/profile" element={<AuthenticationGuard><Profile /></AuthenticationGuard>} />

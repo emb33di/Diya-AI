@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useEffect, startTransition } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { SemanticDocument, Annotation } from '@/types/semanticDocument';
 import { semanticDocumentService } from '@/services/semanticDocumentService';
 import { ExportService } from '@/services/exportService';
@@ -39,6 +40,7 @@ import {
   Crown,
   Lock,
   ArrowUp,
+  Star,
 } from 'lucide-react';
 import PaywallGuard from '@/components/PaywallGuard';
 import UpgradeModal from '@/components/UpgradeModal';
@@ -115,11 +117,14 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
   const [isCreatingVersion, setIsCreatingVersion] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isEscalating, setIsEscalating] = useState(false);
+  const [hasFeedback, setHasFeedback] = useState(false);
+  const [isCheckingFeedback, setIsCheckingFeedback] = useState(false);
   const { isPro } = usePaywall();
   const [showUpgrade, setShowUpgrade] = useState(false);
 
   // Toast for user feedback
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   // Get current user
   const [user, setUser] = useState<any>(null);
@@ -131,6 +136,26 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
     };
     getUser();
   }, []);
+
+  // Check if founder feedback is available for this essay
+  useEffect(() => {
+    const checkFeedback = async () => {
+      if (!essayId) return;
+      
+      try {
+        setIsCheckingFeedback(true);
+        const escalation = await EscalatedEssaysService.getEscalationByEssayId(essayId);
+        setHasFeedback(!!escalation);
+      } catch (error) {
+        // Silently fail - just means no feedback available
+        setHasFeedback(false);
+      } finally {
+        setIsCheckingFeedback(false);
+      }
+    };
+
+    checkFeedback();
+  }, [essayId]);
 
   // Reload document when page becomes visible (handles tab switches, etc.)
   const handlePageVisible = async () => {
@@ -1301,6 +1326,19 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                             <Crown className="h-3 w-3 ml-2 text-primary" />
                           </Button>
                         </PaywallGuard>
+                        
+                        {hasFeedback && (
+                          <Button 
+                            onClick={() => navigate(`/essays/${essayId}/expert-reviews`)}
+                            variant="default"
+                            size="sm"
+                            className="bg-purple-600 text-white hover:bg-purple-700 border-purple-600"
+                            title="View expert review and feedback"
+                          >
+                            <Star className="h-4 w-4 mr-2" />
+                            Expert Reviews
+                          </Button>
+                        )}
                         
                         <Button 
                           onClick={handleEscalateEssay}

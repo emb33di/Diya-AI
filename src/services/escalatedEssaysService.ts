@@ -505,6 +505,82 @@ export class EscalatedEssaysService {
   }
 
   /**
+   * Get escalated essay by essay_id (user-facing)
+   * Returns escalation data if essay was escalated and sent back
+   */
+  static async getEscalationByEssayId(essayId: string): Promise<EscalatedEssay | null> {
+    try {
+      // Verify user is authenticated
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Verify the essay belongs to the user
+      const { data: essayData } = await supabase
+        .from('essays' as any)
+        .select('user_id')
+        .eq('id' as any, essayId)
+        .maybeSingle();
+
+      if (!essayData || (essayData as any).user_id !== user.id) {
+        throw new Error('Access denied: You can only view escalations for your own essays');
+      }
+
+      // Fetch escalation where status = 'sent_back' (most recent one)
+      const { data: escalationData, error: escalationError } = await supabase
+        .from('escalated_essays' as any)
+        .select('*')
+        .eq('essay_id' as any, essayId)
+        .eq('status' as any, 'sent_back')
+        .order('sent_back_at' as any, { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (escalationError) {
+        console.error('Error fetching escalation:', escalationError);
+        throw escalationError;
+      }
+
+      if (!escalationData) {
+        return null; // No escalation found with sent_back status
+      }
+
+      // Transform escalation data to EscalatedEssay type
+      const essayItem = escalationData as any;
+      const essay: EscalatedEssay = {
+        id: essayItem.id,
+        essay_id: essayItem.essay_id,
+        user_id: essayItem.user_id,
+        student_name: null, // Not needed for user view
+        student_email: null, // Not needed for user view
+        essay_title: essayItem.essay_title,
+        essay_content: essayItem.essay_content as SemanticDocument,
+        essay_prompt: essayItem.essay_prompt,
+        word_limit: essayItem.word_limit,
+        word_count: essayItem.word_count || 0,
+        character_count: essayItem.character_count || 0,
+        ai_comments_snapshot: (essayItem.ai_comments_snapshot || []) as EscalatedEssayComment[],
+        semantic_document_id: essayItem.semantic_document_id,
+        status: essayItem.status as EscalatedEssayStatus,
+        founder_feedback: essayItem.founder_feedback,
+        founder_edited_content: essayItem.founder_edited_content as SemanticDocument | null,
+        founder_comments: (essayItem.founder_comments || []) as EscalatedEssayComment[],
+        escalated_at: essayItem.escalated_at,
+        reviewed_at: essayItem.reviewed_at,
+        sent_back_at: essayItem.sent_back_at,
+        created_at: essayItem.created_at,
+        updated_at: essayItem.updated_at,
+      };
+
+      return essay;
+    } catch (error) {
+      console.error('EscalatedEssaysService: Error fetching escalation by essay ID', error);
+      throw error;
+    }
+  }
+
+  /**
    * Fetch founder comments for a specific essay
    * Used by users to view founder feedback on their essays
    */
