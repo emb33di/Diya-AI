@@ -80,8 +80,19 @@ Deno.serve(async (req) => {
     // Determine price ID based on promo code usage or request body
     let priceId: string | undefined;
     
+    // Handle both boolean true and string "true" for use_promo_price
+    const usePromoPrice = requestBody?.use_promo_price === true || requestBody?.use_promo_price === 'true';
+    
+    console.log('[Edge Function] Received request:', {
+      use_promo_price: requestBody?.use_promo_price,
+      use_promo_price_type: typeof requestBody?.use_promo_price,
+      usePromoPrice: usePromoPrice,
+      has_price_id: !!requestBody?.price_id,
+      price_id: requestBody?.price_id
+    });
+    
     // If use_promo_price is true, use the early access price ID
-    if (requestBody?.use_promo_price === true) {
+    if (usePromoPrice) {
       priceId = Deno.env.get('STRIPE_EA_PRICE_ID');
       if (!priceId) {
         console.error('STRIPE_EA_PRICE_ID not configured for promo pricing');
@@ -93,10 +104,11 @@ Deno.serve(async (req) => {
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      console.log('Using promo price ID:', priceId);
+      console.log('[Edge Function] Using promo price ID:', priceId);
     } else {
       // Use regular price ID from request body or environment variable
       priceId = requestBody?.price_id || Deno.env.get('STRIPE_PRICE_ID');
+      console.log('[Edge Function] Using regular price ID:', priceId);
     }
     
     if (!priceId) {
@@ -116,7 +128,8 @@ Deno.serve(async (req) => {
     
     // Construct success and cancel URLs
     const successUrl = requestBody.success_url || `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}`;
-    const cancelUrl = requestBody.cancel_url || `${origin}/pricing`;
+    // Default to subscription page (logged-in users manage subscription there)
+    const cancelUrl = requestBody.cancel_url || `${origin}/subscription`;
 
     console.log(`Creating checkout session with:
       - Price ID: ${priceId}
@@ -130,7 +143,7 @@ Deno.serve(async (req) => {
       email: customerEmail,
     };
     
-    if (requestBody?.use_promo_price === true) {
+    if (usePromoPrice) {
       metadata.promo_code = 'early-access';
       metadata.is_promo = 'true';
     }
