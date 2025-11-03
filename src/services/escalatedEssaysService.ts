@@ -100,8 +100,7 @@ export interface FounderComment {
 
 interface EscalationSlotReservation {
   success: boolean;
-  escalation_count: number;
-  max_escalations: number;
+  remaining_slots: number;
 }
 
 export class EscalatedEssaysService {
@@ -977,12 +976,12 @@ export class EscalatedEssaysService {
   }
 
   /**
-   * Reserve an escalation slot for a user atomically.
-   * Returns the updated escalation and max counts.
+   * Reserve an escalation slot for a user atomically by decrementing escalation_slots.
+   * Returns success status and remaining slots.
    */
   static async reserveEscalationSlot(userId: string): Promise<EscalationSlotReservation> {
     try {
-      const { data, error } = await supabase.rpc('reserve_escalation_slot', {
+      const { data, error } = await supabase.rpc('decrement_escalation_slots', {
         p_user_id: userId,
       } as any);
 
@@ -1025,12 +1024,50 @@ export class EscalatedEssaysService {
 
   /**
    * Release an escalation slot for a user (used when escalation fails).
+   * Restores the user's previous slot count without overwriting admin overrides.
    */
-  static async releaseEscalationSlot(userId: string): Promise<void> {
+  static async releaseEscalationSlot(userId: string, expectedSlots?: number): Promise<void> {
     try {
-      const { error } = await supabase.rpc('release_escalation_slot', {
-        p_user_id: userId,
-      } as any);
+      // Get current escalation_slots value
+      const { data: profile, error: fetchError } = await supabase
+        .from('user_profiles' as any)
+        .select('escalation_slots')
+        .eq('user_id' as any, userId)
+        .single();
+
+      if (fetchError) {
+        console.error('Error fetching profile for slot release:', fetchError);
+        throw fetchError;
+      }
+
+      const currentSlotsRaw = (profile as any)?.escalation_slots;
+
+      if (currentSlotsRaw === null || currentSlotsRaw === undefined) {
+        // If slots are null/undefined, nothing to restore; user is not eligible for slots.
+        return;
+      }
+
+      const currentSlots = Number(currentSlotsRaw);
+
+      // If we have an expected slot count (original before decrement), restore to at least that value.
+      let newSlots: number;
+      if (typeof expectedSlots === 'number' && !Number.isNaN(expectedSlots)) {
+        newSlots = Math.max(currentSlots, expectedSlots);
+      } else {
+        newSlots = currentSlots + 1;
+      }
+
+      if (newSlots === currentSlots) {
+        return; // No update needed.
+      }
+
+      const { error } = await supabase
+        .from('user_profiles' as any)
+        .update({
+          escalation_slots: newSlots,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id' as any, userId);
 
       if (error) {
         console.error('Error releasing escalation slot:', error);
@@ -1043,7 +1080,7 @@ export class EscalatedEssaysService {
   }
 
   /**
-   * Get user escalation status (used/remaining/max)
+   * Get user escalation status (used/remaining/max) from user_profiles.escalation_slots
    */
   static async getUserEscalationStatus(): Promise<{
     used: number;
@@ -1069,16 +1106,27 @@ export class EscalatedEssaysService {
         };
       }
 
-      // Get tracking record
-      const tracking = await this.getOrCreateEscalationTracking(user.id);
+      // Get escalation_slots from user_profiles
+      const { data: profile, error: profileError } = await supabase
+        .from('user_profiles' as any)
+        .select('escalation_slots')
+        .eq('user_id' as any, user.id)
+        .single();
 
-      const remaining = Math.max(0, tracking.max_escalations - tracking.escalation_count);
-      const canEscalate = tracking.escalation_count < tracking.max_escalations;
+      if (profileError) {
+        console.error('Error fetching user profile for escalation status:', profileError);
+        throw profileError;
+      }
+
+      const max = 2;
+      const remaining = (profile as any)?.escalation_slots ?? 0;
+      const used = max - remaining;
+      const canEscalate = remaining > 0;
 
       return {
-        used: tracking.escalation_count,
-        remaining,
-        max: tracking.max_escalations,
+        used: Math.max(0, used),
+        remaining: Math.max(0, remaining),
+        max,
         canEscalate,
       };
     } catch (error) {
@@ -1120,7 +1168,7 @@ export class EscalatedEssaysService {
 
         if (!reservation.success) {
           throw new Error(
-            `You have reached your escalation limit of ${reservation.max_escalations}. ` +
+            'You have reached your escalation limit of 2. ' +
             'Your limit will reset on your next subscription cycle.'
           );
         }
@@ -1194,8 +1242,9 @@ export class EscalatedEssaysService {
         };
       } catch (error) {
         if (reservation?.success) {
+          const expectedSlots = reservation.remaining_slots + 1;
           try {
-            await this.releaseEscalationSlot(user.id);
+            await this.releaseEscalationSlot(user.id, expectedSlots);
           } catch (releaseError) {
             console.error('Failed to release escalation slot after error:', releaseError);
           }
