@@ -139,16 +139,11 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     
     // If we've previously loaded a document with this ID, but now state is empty, don't save
     // This indicates a state reset (possibly from HMR) and we should reload instead
+    // BUT: Only reload once to prevent infinite loops
     if (!hasContent && lastLoadedDocumentIdRef.current && lastLoadedDocumentIdRef.current === (documentId || essayId)) {
-      console.warn('[AUTOSAVE] Skipping save: Document appears empty but we had loaded content. This might be from HMR. Reloading...');
-      // Trigger a reload instead of saving empty content
-      if (documentId) {
-        semanticDocumentService.loadDocument(documentId).then(loadedDoc => {
-          if (loadedDoc && loadedDoc.blocks.some(b => b.content?.trim())) {
-            setState(prev => ({ ...prev, document: loadedDoc, pendingChanges: false }));
-          }
-        }).catch(console.error);
-      }
+      console.warn('[AUTOSAVE] Skipping save: Document appears empty but we had loaded content. This might be from HMR.');
+      // Reset pending changes to prevent infinite loop
+      setState(prev => ({ ...prev, pendingChanges: false }));
       return;
     }
 

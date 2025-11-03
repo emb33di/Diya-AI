@@ -91,13 +91,15 @@ export class SemanticDocumentService {
       .from('semantic_documents')
       .select('*')
       .eq('id', documentId)
-      .single();
+      .maybeSingle();
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        return null; // Document not found
-      }
+      console.error(`Failed to load document ${documentId}: ${error.message}`);
       throw new Error(`Failed to load document: ${error.message}`);
+    }
+
+    if (!data) {
+      return null; // Document not found
     }
 
     // Load associated annotations (non-blocking - if it fails, we still return the document)
@@ -391,10 +393,11 @@ export class SemanticDocumentService {
         .from('semantic_documents')
         .select('*')
         .eq('id', document.id)
-        .single();
+        .maybeSingle();
 
-      if (checkError && checkError.code !== 'PGRST116') {
-        throw new Error(`Failed to check existing document: ${checkError.message}`);
+      if (checkError) {
+        console.warn(`Non-fatal error checking existing document: ${checkError.message}`);
+        // Continue with save operation even if check fails
       }
 
       // Critical safeguard: Never overwrite a document with content using an empty document
