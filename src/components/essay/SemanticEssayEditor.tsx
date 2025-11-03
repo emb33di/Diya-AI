@@ -961,13 +961,6 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
 
   // Handle essay escalation to founder - shows confirmation modal
   const handleEscalateEssay = () => {
-    // Check if user is Pro
-    if (!isPro) {
-      setUpgradeFeatureKey('expert-review');
-      setShowUpgrade(true);
-      return;
-    }
-
     // Check if limit reached
     if (escalationStatus && !escalationStatus.canEscalate) {
       toast({
@@ -1199,7 +1192,25 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                   
                   {/* Top action buttons - Founder Review, Expert Feedback, and Delete */}
                   <div className="absolute top-4 right-4 flex items-center gap-2">
-                    <PaywallGuard featureKey="expert-review">
+                    <PaywallGuard 
+                      featureKey="expert-review"
+                      fallback={
+                        <Button 
+                          onClick={() => {
+                            setUpgradeFeatureKey('expert-review');
+                            setShowUpgrade(true);
+                          }} 
+                          variant="outline"
+                          size="sm"
+                          className="border-orange-200 text-orange-700 hover:bg-orange-50"
+                          title="Pro users only"
+                        >
+                          <ArrowUp className="h-4 w-4 mr-2" />
+                          Founder Review
+                          <Lock className="h-3 w-3 ml-2 text-primary" />
+                        </Button>
+                      }
+                    >
                       <Button 
                         onClick={handleEscalateEssay}
                         disabled={
@@ -1211,9 +1222,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                         size="sm"
                         className="border-orange-200 text-orange-700 hover:bg-orange-50"
                         title={
-                          !isPro 
-                            ? "Expert review is only available for Pro users" 
-                            : escalationStatus && !escalationStatus.canEscalate
+                          escalationStatus && !escalationStatus.canEscalate
                             ? `You have reached your escalation limit of ${escalationStatus.max}`
                             : "Escalate this essay to the founder for review"
                         }
@@ -1229,7 +1238,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                             )}
                           </>
                         )}
-                        {!isPro && <Crown className="h-3 w-3 ml-2 text-primary" />}
+                        <Crown className="h-3 w-3 ml-2 text-primary" />
                       </Button>
                     </PaywallGuard>
                     {hasFeedback && (

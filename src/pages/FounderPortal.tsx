@@ -111,7 +111,7 @@ const FounderPortal: React.FC = () => {
 
           {/* Status Tabs */}
           <Tabs value={selectedStatus} onValueChange={(value) => setSelectedStatus(value as EscalatedEssayStatus | 'all')} className="mb-6">
-            <TabsList className="grid w-full max-w-md grid-cols-5">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="all">
                 All ({counts.total})
               </TabsTrigger>
