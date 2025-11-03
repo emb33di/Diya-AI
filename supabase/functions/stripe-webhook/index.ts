@@ -125,7 +125,7 @@ async function upgradeUserToPro(
     // IDEMPOTENCY CHECK: Prevent race conditions between webhook and client verification
     const { data: existingProfile } = await supabase
       .from('user_profiles')
-      .select('user_tier, stripe_checkout_session_id')
+      .select('user_tier, stripe_checkout_session_id, escalation_slots')
       .eq('user_id', userId)
       .maybeSingle();
 
@@ -154,6 +154,12 @@ async function upgradeUserToPro(
       user_tier: 'Pro',
       updated_at: new Date().toISOString()
     };
+
+    // Only set escalation_slots to 2 if it's currently NULL (new Pro user)
+    // This preserves any admin manual adjustments
+    if (existingProfile?.escalation_slots === null || existingProfile?.escalation_slots === undefined) {
+      updateData.escalation_slots = 2;
+    }
 
     if (sessionId) {
       updateData.stripe_checkout_session_id = sessionId;

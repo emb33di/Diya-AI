@@ -489,12 +489,28 @@ export class RazorpayService {
 
       console.log('Updating user tier to Pro...');
 
+      // Check current escalation_slots to avoid overwriting admin adjustments
+      const { data: currentProfile } = await supabase
+        .from('user_profiles')
+        .select('escalation_slots')
+        .eq('user_id', user.id as any)
+        .single();
+
+      const updateData: any = {
+        user_tier: 'Pro' as any,
+        updated_at: new Date().toISOString()
+      };
+
+      // Only set escalation_slots to 2 if it's currently NULL (new Pro user)
+      // This preserves any admin manual adjustments
+      const currentSlots = (currentProfile as any)?.escalation_slots;
+      if (currentSlots === null || currentSlots === undefined) {
+        updateData.escalation_slots = 2;
+      }
+
       const { error } = await supabase
         .from('user_profiles')
-        .update({ 
-          user_tier: 'Pro' as any,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('user_id', user.id as any);
 
       if (error) {

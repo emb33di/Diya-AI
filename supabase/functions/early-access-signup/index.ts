@@ -130,19 +130,34 @@ serve(async (req) => {
 
     // If profile already exists, update it with early user fields
     if (existingProfile && existingProfile.length > 0) {
+      // Check current escalation_slots to avoid overwriting admin adjustments
+      const { data: currentProfile } = await supabaseClient
+        .from('user_profiles')
+        .select('escalation_slots')
+        .eq('user_id', authData.user.id)
+        .single();
+
+      const updateData: any = {
+        full_name: name,
+        email_address: email,
+        applying_to: programType,
+        is_early_user: true,
+        early_user_signup_date: new Date().toISOString(),
+        early_user_trial_end_date: new Date(Date.now() + (14 * 24 * 60 * 60 * 1000)).toISOString(),
+        biggest_pain_point: biggestPainPoint || null,
+        willing_to_pay_2000: willingToPayValue,
+        user_tier: 'Pro', // Give them pro access during trial
+      };
+
+      // Only set escalation_slots to 2 if it's currently NULL (new Pro user)
+      // This preserves any admin manual adjustments
+      if (currentProfile?.escalation_slots === null || currentProfile?.escalation_slots === undefined) {
+        updateData.escalation_slots = 2;
+      }
+
       const { error: updateError } = await supabaseClient
         .from('user_profiles')
-        .update({
-          full_name: name,
-          email_address: email,
-          applying_to: programType,
-          is_early_user: true,
-          early_user_signup_date: new Date().toISOString(),
-          early_user_trial_end_date: new Date(Date.now() + (14 * 24 * 60 * 60 * 1000)).toISOString(),
-          biggest_pain_point: biggestPainPoint || null,
-          willing_to_pay_2000: willingToPayValue,
-          user_tier: 'Pro', // Give them pro access during trial
-        })
+        .update(updateData)
         .eq('user_id', authData.user.id)
 
       if (updateError) {
@@ -186,6 +201,7 @@ serve(async (req) => {
         biggest_pain_point: biggestPainPoint || null,
         willing_to_pay_2000: willingToPayValue,
         user_tier: 'Pro', // Give them pro access during trial
+        escalation_slots: 2, // New Pro users get 2 escalation slots
         onboarding_complete: false,
         skipped_onboarding: false,
         profile_saved: false

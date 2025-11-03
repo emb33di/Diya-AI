@@ -45,6 +45,7 @@ export interface Database {
           skipped_onboarding: boolean
           cumulative_onboarding_time: number
           user_tier: string | null
+          escalation_slots: number | null
           is_founder: boolean
           created_at: string
           updated_at: string
@@ -84,6 +85,7 @@ export interface Database {
           skipped_onboarding?: boolean
           cumulative_onboarding_time?: number
           user_tier?: string | null
+          escalation_slots?: number | null
           is_founder?: boolean
           created_at?: string
           updated_at?: string
@@ -123,6 +125,7 @@ export interface Database {
           skipped_onboarding?: boolean
           cumulative_onboarding_time?: number
           user_tier?: string | null
+          escalation_slots?: number | null
           is_founder?: boolean
           created_at?: string
           updated_at?: string

@@ -85,7 +85,7 @@ serve(async (req) => {
     // IDEMPOTENCY: if already Pro with this session, return success immediately
     const { data: profile } = await supabaseClient
       .from('user_profiles')
-      .select('user_tier, stripe_checkout_session_id')
+      .select('user_tier, stripe_checkout_session_id, escalation_slots')
       .eq('user_id', user_id)
       .maybeSingle();
 
@@ -101,15 +101,23 @@ serve(async (req) => {
     }
 
     // Update user tier to Pro, record session and audit fields
+    const updateData: any = {
+      user_tier: 'Pro',
+      updated_at: new Date().toISOString(),
+      stripe_checkout_session_id: session_id,
+      upgraded_by: 'client-verification',
+      upgraded_at: new Date().toISOString()
+    };
+
+    // Only set escalation_slots to 2 if it's currently NULL (new Pro user)
+    // This preserves any admin manual adjustments
+    if (profile?.escalation_slots === null || profile?.escalation_slots === undefined) {
+      updateData.escalation_slots = 2;
+    }
+
     const { error } = await supabaseClient
       .from('user_profiles')
-      .update({ 
-        user_tier: 'Pro',
-        updated_at: new Date().toISOString(),
-        stripe_checkout_session_id: session_id,
-        upgraded_by: 'client-verification',
-        upgraded_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('user_id', user_id);
 
     if (error) {
