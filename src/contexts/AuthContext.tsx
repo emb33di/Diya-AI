@@ -515,10 +515,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // Check if a fetch is already in progress
             const fetchInProgress = fetchInProgressRef.current.has(userToUse.id);
             
+            // Always set loading to false when we have cached profile - we have data to show
             setState({
               user: userToUse,
               profile: state.profile,
-              loading: fetchInProgress ? false : true, // If fetch already in progress, use cached data immediately
+              loading: false,
               error: null
             });
             
@@ -530,9 +531,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               clearTimeout(loadingTimeout);
               return; // Don't trigger another fetch
             }
+            
+            // Fetch fresh profile in background (non-blocking)
+            console.log('[AUTH_PROVIDER] Fetching profile from getSession in background');
+            sessionProcessedRef.current = { userId: userToUse.id, processed: true };
+            fetchUserProfile(userToUse, mountedRef).catch(err => {
+              console.warn('[AUTH_PROVIDER] Background profile fetch failed, using cached:', err);
+            });
+            clearTimeout(loadingTimeout);
+            return;
           }
           
-          // Fetch fresh profile
+          // Fetch fresh profile (no cached profile available)
           console.log('[AUTH_PROVIDER] Fetching profile from getSession');
           sessionProcessedRef.current = { userId: userToUse.id, processed: true };
           await fetchUserProfile(userToUse, mountedRef);
