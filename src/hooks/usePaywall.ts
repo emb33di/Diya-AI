@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { useAuth } from './useAuth';
+import { useEffect, useMemo } from 'react';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 export type UserTier = 'Free' | 'Pro';
 
@@ -82,11 +82,14 @@ export const PAYWALL_FEATURES: Record<string, PaywallFeature> = {
 };
 
 export const usePaywall = () => {
-  const { profile, loading } = useAuth();
+  const { profile, loading } = useAuthContext();
   
-  const userTier: UserTier = profile?.user_tier === 'Pro' ? 'Pro' : 'Free';
-  const isPro = userTier === 'Pro';
-  const isFree = userTier === 'Free';
+  const userTier: UserTier = useMemo(() => 
+    profile?.user_tier === 'Pro' ? 'Pro' : 'Free',
+    [profile?.user_tier]
+  );
+  const isPro = useMemo(() => userTier === 'Pro', [userTier]);
+  const isFree = useMemo(() => userTier === 'Free', [userTier]);
 
   useEffect(() => {
     console.log('[PAYWALL_DEBUG] Paywall state snapshot', {

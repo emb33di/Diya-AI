@@ -58,9 +58,9 @@ export const useDashboardData = () => {
       try {
         setData(prev => ({ ...prev, loading: true, error: null }));
 
-        // Add timeout to prevent hanging
+        // Add timeout to prevent hanging (5s - fail fast)
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Request timeout')), 10000)
+          setTimeout(() => reject(new Error('Request timeout')), 5000)
         );
 
         // Fetch all data in parallel for better performance

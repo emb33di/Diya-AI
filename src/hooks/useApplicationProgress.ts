@@ -60,8 +60,8 @@ export const useApplicationProgress = () => {
       try {
         setData(prev => ({ ...prev, loading: true, error: null }));
 
-        // Fetch tasks with school information
-        const { data: tasksData, error } = await supabase
+        // Fetch tasks with school information with timeout protection
+        const queryPromise = supabase
           .from('school_application_tasks')
           .select(`
             id,
@@ -78,6 +78,20 @@ export const useApplicationProgress = () => {
             )
           `)
           .eq('school_recommendations.student_id', userId as any);
+        
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('Application progress query timeout after 5s')), 5000);
+        });
+        
+        let queryResult: { data: any; error: any };
+        try {
+          queryResult = await Promise.race([queryPromise, timeoutPromise]);
+        } catch (timeoutError) {
+          console.warn('[APPLICATION_PROGRESS] Query timed out, using empty results');
+          queryResult = { data: [], error: null };
+        }
+        
+        const { data: tasksData, error } = queryResult;
 
         if (error) {
           throw error;

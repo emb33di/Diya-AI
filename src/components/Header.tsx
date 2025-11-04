@@ -35,6 +35,18 @@ const Header = () => {
   // Get first name from profile
   const userFirstName = profile?.full_name?.split(' ')[0] || user?.user_metadata?.first_name || '';
 
+  // Debug logging for auth state
+  useEffect(() => {
+    console.log('[HEADER] Auth state:', {
+      hasUser: Boolean(user),
+      userId: user?.id,
+      hasProfile: Boolean(profile),
+      loading: authLoading,
+      isAuthenticated,
+      path: location.pathname
+    });
+  }, [user, profile, authLoading, isAuthenticated, location.pathname]);
+
   // Handle hash scrolling when navigating from other pages
   useEffect(() => {
     if (location.pathname === '/' && location.hash) {

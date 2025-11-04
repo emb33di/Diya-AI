@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ProfileCompletionData {
   completionPercentage: number;
@@ -57,6 +58,7 @@ const ADDITIONAL_FIELDS = [
 ];
 
 export const useProfileCompletion = () => {
+  const { user } = useAuth();
   const [completionData, setCompletionData] = useState<ProfileCompletionData>({
     completionPercentage: 0,
     completedFields: 0,
@@ -66,7 +68,7 @@ export const useProfileCompletion = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const calculateCompletion = async () => {
+  const calculateCompletion = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -77,7 +79,7 @@ export const useProfileCompletion = () => {
           setTimeout(() => reject(new Error('Request timeout')), timeoutMs)
         );
 
-      const { data: { user } } = await supabase.auth.getUser();
+      // Use user from auth context instead of calling getUser()
       if (!user) {
         setCompletionData({
           completionPercentage: 0,
@@ -85,6 +87,7 @@ export const useProfileCompletion = () => {
           totalFields: PROFILE_FIELDS.length + ADDITIONAL_FIELDS.length,
           missingFields: PROFILE_FIELDS.map(f => f.key),
         });
+        setLoading(false);
         return;
       }
 
@@ -94,20 +97,20 @@ export const useProfileCompletion = () => {
           supabase
             .from('user_profiles')
             .select('*')
-            .eq('user_id', user.id)
+            .eq('user_id', user.id as any)
             .maybeSingle(),
           createTimeoutPromise(5000)
         ]),
         Promise.race([
-          supabase.from('sat_scores').select('id').eq('user_id', user.id),
+          supabase.from('sat_scores').select('id').eq('user_id', user.id as any),
           createTimeoutPromise(3000)
         ]),
         Promise.race([
-          supabase.from('act_scores').select('id').eq('user_id', user.id),
+          supabase.from('act_scores').select('id').eq('user_id', user.id as any),
           createTimeoutPromise(3000)
         ]),
         Promise.race([
-          supabase.from('geographic_preferences').select('id').eq('user_id', user.id),
+          supabase.from('geographic_preferences').select('id').eq('user_id', user.id as any),
           createTimeoutPromise(3000)
         ])
       ]);
@@ -115,7 +118,8 @@ export const useProfileCompletion = () => {
       // Handle profile data
       let profile = null;
       if (profileResult.status === 'fulfilled') {
-        const { data, error } = profileResult.value;
+        const result = profileResult.value as any;
+        const { data, error } = result;
         if (error && error.code !== 'PGRST116') {
           console.warn('Error loading profile:', error);
         } else {
@@ -124,9 +128,9 @@ export const useProfileCompletion = () => {
       }
 
       // Handle test scores data
-      const hasSatScores = satScoresResult.status === 'fulfilled' && (satScoresResult.value.data?.length || 0) > 0;
-      const hasActScores = actScoresResult.status === 'fulfilled' && (actScoresResult.value.data?.length || 0) > 0;
-      const hasGeographicPreferences = geographicPreferencesResult.status === 'fulfilled' && (geographicPreferencesResult.value.data?.length || 0) > 0;
+      const hasSatScores = satScoresResult.status === 'fulfilled' && ((satScoresResult.value as any)?.data?.length || 0) > 0;
+      const hasActScores = actScoresResult.status === 'fulfilled' && ((actScoresResult.value as any)?.data?.length || 0) > 0;
+      const hasGeographicPreferences = geographicPreferencesResult.status === 'fulfilled' && ((geographicPreferencesResult.value as any)?.data?.length || 0) > 0;
 
       // Calculate completion for main profile fields
       let completedFields = 0;
@@ -218,7 +222,7 @@ export const useProfileCompletion = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     let isMounted = true;
@@ -227,11 +231,16 @@ export const useProfileCompletion = () => {
       await calculateCompletion();
     };
 
-    runCalculation();
+    // Only run calculation if user is available
+    if (user) {
+      runCalculation();
+    } else {
+      setLoading(false);
+    }
 
     // Listen for profile updates to refresh completion data
     const handleProfileUpdate = () => {
-      if (isMounted) {
+      if (isMounted && user) {
         runCalculation();
       }
     };
@@ -243,7 +252,7 @@ export const useProfileCompletion = () => {
       isMounted = false;
       window.removeEventListener('profileUpdated', handleProfileUpdate);
     };
-  }, []);
+  }, [user, calculateCompletion]);
 
   return {
     ...completionData,

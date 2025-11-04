@@ -129,6 +129,11 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
 
   // Auto-save functionality
   useEffect(() => {
+    // Don't auto-save until document has been loaded from DB or created
+    if (!isDocumentLoadedRef.current) {
+      return;
+    }
+
     if (!state.pendingChanges) return;
 
     // Critical safeguard: Don't autosave if document appears empty but we're tracking a loaded document
@@ -187,6 +192,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
       : undefined
   );
   const isInitialMountRef = useRef(true);
+  const isDocumentLoadedRef = useRef(false); // Track if document has been loaded from DB
 
   // Load existing document
   useEffect(() => {
@@ -201,6 +207,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
         }
         
         isInitialMountRef.current = false;
+        isDocumentLoadedRef.current = false; // Reset flag when loading new document
 
         // If we have pending changes and documentId changed, save them first
         if (state.pendingChanges && lastLoadedDocumentIdRef.current && lastLoadedDocumentIdRef.current !== targetDocumentId) {
@@ -241,6 +248,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
           
           // Track that we've loaded this document (persist across HMR)
           lastLoadedDocumentIdRef.current = targetDocumentId;
+          isDocumentLoadedRef.current = true; // Mark as loaded
           if (typeof window !== 'undefined') {
             try {
               window.sessionStorage.setItem(getStableKey(targetDocumentId), targetDocumentId);
@@ -264,11 +272,16 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
           // Create a new document with a single empty block
           addNewBlock();
           lastLoadedDocumentIdRef.current = targetDocumentId;
+          isDocumentLoadedRef.current = true; // Mark as loaded (new document created)
+        } else {
+          // Initial content provided, mark as loaded
+          isDocumentLoadedRef.current = true;
         }
       } catch (error) {
         console.error('Failed to load document:', error);
         // Create a new document with a single empty block on error
         addNewBlock();
+        isDocumentLoadedRef.current = true; // Mark as loaded even on error
       }
     };
 

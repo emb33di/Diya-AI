@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import OnboardingLock from './OnboardingLock';
@@ -16,6 +16,15 @@ const OnboardingGuard: React.FC<OnboardingGuardProps> = ({
 }) => {
   const { onboardingCompleted, loading } = useAuth();
   const location = useLocation();
+
+  // Memoize the decision logic to prevent unnecessary re-renders
+  const isOnboardingCompleted = useMemo(() => {
+    return onboardingCompleted === true;
+  }, [onboardingCompleted]);
+
+  const shouldShowLock = useMemo(() => {
+    return !isOnboardingCompleted && !allowAccess;
+  }, [isOnboardingCompleted, allowAccess]);
 
   useEffect(() => {
     console.log('[ONBOARDING_GUARD] State snapshot', {
@@ -43,10 +52,13 @@ const OnboardingGuard: React.FC<OnboardingGuardProps> = ({
   }
 
   // If onboarding is not completed and access is not allowed, show lock screen
-  if (!onboardingCompleted && !allowAccess) {
+  if (shouldShowLock) {
     console.log('[ONBOARDING_GUARD] Blocking access until onboarding complete', {
       path: location.pathname,
       pageName,
+      onboardingCompleted,
+      isOnboardingCompleted,
+      allowAccess,
     });
     return <OnboardingLock pageName={pageName} />;
   }
@@ -56,9 +68,11 @@ const OnboardingGuard: React.FC<OnboardingGuardProps> = ({
     path: location.pathname,
     pageName,
     onboardingCompleted,
+    isOnboardingCompleted,
     allowAccess,
   });
   return <>{children}</>;
 };
 
-export default OnboardingGuard; 
+// Memoize the component to prevent re-renders when props haven't changed
+export default React.memo(OnboardingGuard); 
