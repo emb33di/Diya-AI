@@ -40,6 +40,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const fetchInProgressRef = React.useRef<Map<string, number>>(new Map());
   // Track if initial session has been processed to prevent redundant fetches from multiple auth events
   const sessionProcessedRef = React.useRef<{ userId: string | null; processed: boolean }>({ userId: null, processed: false });
+  // Track fallback timeout ID so we can clear it when INITIAL_SESSION fires
+  const fallbackTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const [state, setState] = useState<{
     user: User | null;
@@ -303,6 +305,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const mountedRef = { current: true };
     // Reset session processed flag on mount (new session initialization)
     sessionProcessedRef.current = { userId: null, processed: false };
+    // Clear any existing fallback timeout
+    if (fallbackTimeoutRef.current) {
+      clearTimeout(fallbackTimeoutRef.current);
+      fallbackTimeoutRef.current = null;
+    }
 
     // Safety timeout: If loading takes more than 15 seconds, set loading to false
     // But preserve user if we have one (profile fetch might still be in progress)
@@ -588,33 +595,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         clearTimeout(loadingTimeout);
         if (mountedRef.current) {
           // If getSession times out or fails, check if we have a cached profile
-          // If we do, preserve it but mark as unauthenticated
+          // Wait a bit longer for INITIAL_SESSION event before giving up
           const cachedProfile = localStorage.getItem('user_profile');
           if (cachedProfile) {
-            console.log('[AUTH_PROVIDER] getSession failed but cached profile exists - preserving profile but clearing user');
-            try {
-              const profile = JSON.parse(cachedProfile);
-              setState({
-                user: null,
-                profile: profile,
-                loading: false,
-                error: error instanceof Error ? error.message : 'Session check failed'
-              });
-            } catch (parseError) {
-              console.error('[AUTH_PROVIDER] Failed to parse cached profile:', parseError);
-              setState({
-                user: null,
-                profile: null,
-                loading: false,
-                error: error instanceof Error ? error.message : 'Session check failed'
-              });
-            }
+            console.log('[AUTH_PROVIDER] getSession failed but cached profile exists - waiting for INITIAL_SESSION event');
+            // Don't set loading to false yet - wait for INITIAL_SESSION event
+            // Set a shorter timeout (2s) to wait for INITIAL_SESSION before giving up
+            fallbackTimeoutRef.current = setTimeout(() => {
+              if (mountedRef.current && !sessionProcessedRef.current.processed) {
+                console.log('[AUTH_PROVIDER] INITIAL_SESSION did not fire after getSession timeout - using cached profile');
+                try {
+                  const profile = JSON.parse(cachedProfile);
+                  setState({
+                    user: null,
+                    profile: profile,
+                    loading: false,
+                    error: 'Session check timed out - using cached profile'
+                  });
+                  sessionProcessedRef.current = { userId: null, processed: true };
+                } catch (parseError) {
+                  console.error('[AUTH_PROVIDER] Failed to parse cached profile:', parseError);
+                  setState({
+                    user: null,
+                    profile: null,
+                    loading: false,
+                    error: error instanceof Error ? error.message : 'Session check failed'
+                  });
+                  sessionProcessedRef.current = { userId: null, processed: true };
+                }
+                fallbackTimeoutRef.current = null;
+              }
+            }, 2000); // Wait 2s for INITIAL_SESSION before giving up
           } else {
+            // No cached profile - set loading to false immediately
             setState(prev => ({
               ...prev,
               loading: false,
               error: error instanceof Error ? error.message : 'Unexpected error getting session'
             }));
+            sessionProcessedRef.current = { userId: null, processed: true };
           }
         }
       }
@@ -651,6 +670,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.log('[AUTH_PROVIDER] Processing INITIAL_SESSION event');
             sessionProcessedRef.current = { userId: session.user.id, processed: true };
             clearTimeout(loadingTimeout);
+            // Clear fallback timeout if it exists
+            if (fallbackTimeoutRef.current) {
+              clearTimeout(fallbackTimeoutRef.current);
+              fallbackTimeoutRef.current = null;
+            }
+            
+            // Check if we have cached profile - use it immediately
+            const cachedProfile = localStorage.getItem('user_profile');
+            if (cachedProfile) {
+              try {
+                const parsed = JSON.parse(cachedProfile);
+                if (parsed && parsed.id) {
+                  console.log('[AUTH_PROVIDER] Using cached profile immediately for INITIAL_SESSION');
+                  setState({
+                    user: session.user,
+                    profile: parsed as UserProfile,
+                    loading: false,
+                    error: null
+                  });
+                  // Fetch fresh profile in background (non-blocking)
+                  fetchUserProfile(session.user, mountedRef).catch(err => {
+                    console.warn('[AUTH_PROVIDER] Background profile fetch failed, using cached:', err);
+                  });
+                  return;
+                }
+              } catch (e) {
+                console.warn('[AUTH_PROVIDER] Failed to parse cached profile:', e);
+              }
+            }
+            
+            // No cached profile or invalid cache - fetch fresh
             await fetchUserProfile(session.user, mountedRef);
             return;
           } else {
@@ -752,6 +802,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.debug('[UNMOUNT] AuthProvider cleanup');
       console.debug('[AUTH_WIRE] unsubscribe');
       clearTimeout(loadingTimeout);
+      if (fallbackTimeoutRef.current) {
+        clearTimeout(fallbackTimeoutRef.current);
+        fallbackTimeoutRef.current = null;
+      }
       mountedRef.current = false;
       subscription.unsubscribe();
       authDebug('Cleaned up auth listener');
