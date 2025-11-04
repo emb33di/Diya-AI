@@ -58,23 +58,16 @@ export const useDashboardData = () => {
       try {
         setData(prev => ({ ...prev, loading: true, error: null }));
 
-        // Add timeout to prevent hanging (5s - fail fast)
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Request timeout')), 5000)
-        );
-
         // Fetch all data in parallel for better performance
+        // Removed timeout wrapper - let queries complete naturally and handle errors properly
         const [essays, deadlineResponse, lorDeadlinesResult, schoolRecommendationsResult] = await Promise.allSettled([
-          Promise.race([EssayService.getUserEssays(), timeoutPromise]),
-          Promise.race([DeadlineService.getUserDeadlines(userId), timeoutPromise]),
-          Promise.race([LORService.getUserLORDeadlines(userId), timeoutPromise]),
-          Promise.race([
-            supabase
-              .from('school_recommendations')
-              .select('school, category, application_status')
-              .eq('student_id', userId as any),
-            timeoutPromise
-          ])
+          EssayService.getUserEssays(),
+          DeadlineService.getUserDeadlines(userId),
+          LORService.getUserLORDeadlines(userId),
+          supabase
+            .from('school_recommendations')
+            .select('school, category, application_status')
+            .eq('student_id', userId as any)
         ]);
 
         console.log('[DASHBOARD_DATA] Fetch results received', {
@@ -82,6 +75,10 @@ export const useDashboardData = () => {
           deadlinesStatus: deadlineResponse.status,
           lorStatus: lorDeadlinesResult.status,
           schoolStatus: schoolRecommendationsResult.status,
+          essaysError: essays.status === 'rejected' ? essays.reason : undefined,
+          deadlinesError: deadlineResponse.status === 'rejected' ? deadlineResponse.reason : undefined,
+          lorError: lorDeadlinesResult.status === 'rejected' ? lorDeadlinesResult.reason : undefined,
+          schoolError: schoolRecommendationsResult.status === 'rejected' ? schoolRecommendationsResult.reason : undefined,
         });
 
         // Handle essays
@@ -99,11 +96,15 @@ export const useDashboardData = () => {
           : [];
 
         // Handle school recommendations
-        const schoolRecommendations = schoolRecommendationsResult.status === 'fulfilled' 
-          ? (schoolRecommendationsResult.value as any)?.data 
-          : null;
-        
-        if (schoolRecommendationsResult.status === 'rejected') {
+        let schoolRecommendations = null;
+        if (schoolRecommendationsResult.status === 'fulfilled') {
+          const result = schoolRecommendationsResult.value as any;
+          if (result?.data !== undefined) {
+            schoolRecommendations = result.data;
+          } else if (result?.error) {
+            console.error('[DASHBOARD_ERROR] School recommendations query error:', result.error);
+          }
+        } else {
           console.error('[DASHBOARD_ERROR] Failed to load school list:', {
             userId: userId,
             userEmail: user?.email || 'unknown',

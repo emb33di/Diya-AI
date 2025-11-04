@@ -73,12 +73,6 @@ export const useProfileCompletion = () => {
       setLoading(true);
       setError(null);
 
-      // Helper function to create timeout promise
-      const createTimeoutPromise = (timeoutMs: number) => 
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Request timeout')), timeoutMs)
-        );
-
       // Use user from auth context instead of calling getUser()
       if (!user) {
         setCompletionData({
@@ -91,28 +85,17 @@ export const useProfileCompletion = () => {
         return;
       }
 
-      // Load all data in parallel with timeouts
+      // Load all data in parallel
+      // Removed timeout wrapper - let queries complete naturally and handle errors properly
       const [profileResult, satScoresResult, actScoresResult, geographicPreferencesResult] = await Promise.allSettled([
-        Promise.race([
-          supabase
-            .from('user_profiles')
-            .select('*')
-            .eq('user_id', user.id as any)
-            .maybeSingle(),
-          createTimeoutPromise(5000)
-        ]),
-        Promise.race([
-          supabase.from('sat_scores').select('id').eq('user_id', user.id as any),
-          createTimeoutPromise(3000)
-        ]),
-        Promise.race([
-          supabase.from('act_scores').select('id').eq('user_id', user.id as any),
-          createTimeoutPromise(3000)
-        ]),
-        Promise.race([
-          supabase.from('geographic_preferences').select('id').eq('user_id', user.id as any),
-          createTimeoutPromise(3000)
-        ])
+        supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('user_id', user.id as any)
+          .maybeSingle(),
+        supabase.from('sat_scores').select('id').eq('user_id', user.id as any),
+        supabase.from('act_scores').select('id').eq('user_id', user.id as any),
+        supabase.from('geographic_preferences').select('id').eq('user_id', user.id as any)
       ]);
 
       // Handle profile data

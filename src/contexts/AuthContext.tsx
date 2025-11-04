@@ -110,17 +110,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       authDebug('About to query user_profiles table');
       
-      // Use shorter timeout (5s) since we already have cached profile
+      // Use longer timeout in production due to network latency
+      // Production often has higher latency due to CDN/proxy, so use longer timeout
+      const isProduction = import.meta.env.PROD || window.location.hostname !== 'localhost';
+      const timeoutMs = isProduction ? 20000 : 5000; // 20s in prod, 5s in dev
+      
       const queryPromise = supabase
         .from('user_profiles')
         .select('id, full_name, email_address, onboarding_complete, skipped_onboarding, profile_saved, user_tier')
         .eq('user_id', user.id as any)
         .maybeSingle();
-      
-      const timeoutMs = 5000; // 5 second timeout - fail fast
       let timeoutId: ReturnType<typeof setTimeout>;
       const timeoutPromise = new Promise<never>((_, reject) => {
-        timeoutId = setTimeout(() => reject(new Error('Profile query timeout after 5s')), timeoutMs);
+        timeoutId = setTimeout(() => reject(new Error(`Profile query timeout after ${timeoutMs / 1000}s`)), timeoutMs);
       });
       
       let result: any;
@@ -409,10 +411,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       try {
-        // Wrap getSession in a shorter timeout since we have fallback
+        // Wrap getSession in a timeout - longer in production due to network latency
+        // Production often has higher latency due to CDN/proxy, so use longer timeout
+        const isProduction = import.meta.env.PROD || window.location.hostname !== 'localhost';
+        const getSessionTimeout = isProduction ? 15000 : 3000; // 15s in prod, 3s in dev
+        
         const sessionPromise = supabase.auth.getSession();
         const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('getSession timeout after 3 seconds')), 3000);
+          setTimeout(() => reject(new Error(`getSession timeout after ${getSessionTimeout / 1000} seconds`)), getSessionTimeout);
         });
         
         let sessionResult: { data: { session: any } | null; error: any } | null = null;

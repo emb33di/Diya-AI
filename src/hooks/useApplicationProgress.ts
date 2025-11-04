@@ -60,8 +60,9 @@ export const useApplicationProgress = () => {
       try {
         setData(prev => ({ ...prev, loading: true, error: null }));
 
-        // Fetch tasks with school information with timeout protection
-        const queryPromise = supabase
+        // Fetch tasks with school information
+        // Removed timeout wrapper - let query complete naturally and handle errors properly
+        const { data: tasksData, error } = await supabase
           .from('school_application_tasks')
           .select(`
             id,
@@ -78,20 +79,6 @@ export const useApplicationProgress = () => {
             )
           `)
           .eq('school_recommendations.student_id', userId as any);
-        
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('Application progress query timeout after 5s')), 5000);
-        });
-        
-        let queryResult: { data: any; error: any };
-        try {
-          queryResult = await Promise.race([queryPromise, timeoutPromise]);
-        } catch (timeoutError) {
-          console.warn('[APPLICATION_PROGRESS] Query timed out, using empty results');
-          queryResult = { data: [], error: null };
-        }
-        
-        const { data: tasksData, error } = queryResult;
 
         if (error) {
           throw error;
@@ -139,11 +126,14 @@ export const useApplicationProgress = () => {
         console.log('[APPLICATION_PROGRESS] Fetch encountered error', {
           userId,
           error: error instanceof Error ? error.message : 'Unknown error',
+          errorStack: error instanceof Error ? error.stack : undefined,
+          errorType: error instanceof Error ? error.constructor.name : typeof error,
         });
         console.error('[APPLICATION_PROGRESS_ERROR] Failed to fetch application progress:', {
           userId,
           userEmail: user?.email || 'unknown',
           error: error instanceof Error ? error.message : 'Unknown error',
+          errorDetails: error,
           timestamp: new Date().toISOString(),
         });
 
