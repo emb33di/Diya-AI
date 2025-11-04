@@ -40,7 +40,12 @@ export const useApplicationProgress = () => {
   const userId = user?.id;
 
   useEffect(() => {
+    console.log('[APPLICATION_PROGRESS] Effect triggered', {
+      userId,
+      hasUser: Boolean(userId),
+    });
     if (!userId) {
+      console.log('[APPLICATION_PROGRESS] No user ID available, skipping fetch');
       setData(prev => ({ ...prev, loading: false }));
       return;
     }
@@ -48,10 +53,15 @@ export const useApplicationProgress = () => {
     let isMounted = true;
 
     const fetchApplicationProgress = async () => {
+      console.log('[APPLICATION_PROGRESS] Fetch start', {
+        userId,
+        timestamp: new Date().toISOString(),
+      });
       try {
         setData(prev => ({ ...prev, loading: true, error: null }));
 
         // Fetch tasks with school information
+        // Removed timeout wrapper - let query complete naturally and handle errors properly
         const { data: tasksData, error } = await supabase
           .from('school_application_tasks')
           .select(`
@@ -96,6 +106,12 @@ export const useApplicationProgress = () => {
           // Count unique schools with tasks
           const uniqueSchools = new Set(tasks.map(task => task.school_recommendation_id)).size;
 
+          console.log('[APPLICATION_PROGRESS] Updating state with fetched data', {
+            taskCount: tasks.length,
+            completedTasks,
+            progressPercentage,
+            schoolsWithTasks: uniqueSchools,
+          });
           setData({
             tasks,
             totalTasks,
@@ -107,10 +123,17 @@ export const useApplicationProgress = () => {
           });
         }
       } catch (error) {
+        console.log('[APPLICATION_PROGRESS] Fetch encountered error', {
+          userId,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          errorStack: error instanceof Error ? error.stack : undefined,
+          errorType: error instanceof Error ? error.constructor.name : typeof error,
+        });
         console.error('[APPLICATION_PROGRESS_ERROR] Failed to fetch application progress:', {
           userId,
           userEmail: user?.email || 'unknown',
           error: error instanceof Error ? error.message : 'Unknown error',
+          errorDetails: error,
           timestamp: new Date().toISOString(),
         });
 
@@ -128,6 +151,7 @@ export const useApplicationProgress = () => {
 
     return () => {
       isMounted = false;
+      console.log('[APPLICATION_PROGRESS] Cleanup invoked', { userId });
     };
   }, [userId]);
 
@@ -155,6 +179,11 @@ export const useApplicationProgress = () => {
         completedTasks: completed ? prev.completedTasks + 1 : prev.completedTasks - 1,
         progressPercentage: prev.totalTasks > 0 ? Math.round(((completed ? prev.completedTasks + 1 : prev.completedTasks - 1) / prev.totalTasks) * 100) : 0,
       }));
+
+      console.log('[APPLICATION_PROGRESS] Task completion updated locally', {
+        taskId,
+        completed,
+      });
 
       return true;
     } catch (error) {

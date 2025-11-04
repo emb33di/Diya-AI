@@ -37,7 +37,13 @@ export const useDashboardData = () => {
   const userId = user?.id;
 
   useEffect(() => {
+    console.log('[DASHBOARD_DATA] Effect triggered', {
+      userId,
+      hasUser: Boolean(userId),
+    });
+
     if (!userId) {
+      console.log('[DASHBOARD_DATA] No user ID available, skipping dashboard fetch');
       setData(prev => ({ ...prev, loading: false }));
       return;
     }
@@ -45,27 +51,35 @@ export const useDashboardData = () => {
     let isMounted = true; // Prevent state updates after component unmounts
 
     const fetchDashboardData = async (userId: string) => {
+      console.log('[DASHBOARD_DATA] Fetch start', {
+        userId,
+        timestamp: new Date().toISOString(),
+      });
       try {
         setData(prev => ({ ...prev, loading: true, error: null }));
 
-        // Add timeout to prevent hanging
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Request timeout')), 10000)
-        );
-
         // Fetch all data in parallel for better performance
+        // Removed timeout wrapper - let queries complete naturally and handle errors properly
         const [essays, deadlineResponse, lorDeadlinesResult, schoolRecommendationsResult] = await Promise.allSettled([
-          Promise.race([EssayService.getUserEssays(), timeoutPromise]),
-          Promise.race([DeadlineService.getUserDeadlines(userId), timeoutPromise]),
-          Promise.race([LORService.getUserLORDeadlines(userId), timeoutPromise]),
-          Promise.race([
-            supabase
-              .from('school_recommendations')
-              .select('school, category, application_status')
-              .eq('student_id', userId as any),
-            timeoutPromise
-          ])
+          EssayService.getUserEssays(),
+          DeadlineService.getUserDeadlines(userId),
+          LORService.getUserLORDeadlines(userId),
+          supabase
+            .from('school_recommendations')
+            .select('school, category, application_status')
+            .eq('student_id', userId as any)
         ]);
+
+        console.log('[DASHBOARD_DATA] Fetch results received', {
+          essaysStatus: essays.status,
+          deadlinesStatus: deadlineResponse.status,
+          lorStatus: lorDeadlinesResult.status,
+          schoolStatus: schoolRecommendationsResult.status,
+          essaysError: essays.status === 'rejected' ? essays.reason : undefined,
+          deadlinesError: deadlineResponse.status === 'rejected' ? deadlineResponse.reason : undefined,
+          lorError: lorDeadlinesResult.status === 'rejected' ? lorDeadlinesResult.reason : undefined,
+          schoolError: schoolRecommendationsResult.status === 'rejected' ? schoolRecommendationsResult.reason : undefined,
+        });
 
         // Handle essays
         const essaysData = essays.status === 'fulfilled' ? (essays.value as Essay[]) : [];
@@ -82,11 +96,15 @@ export const useDashboardData = () => {
           : [];
 
         // Handle school recommendations
-        const schoolRecommendations = schoolRecommendationsResult.status === 'fulfilled' 
-          ? (schoolRecommendationsResult.value as any)?.data 
-          : null;
-        
-        if (schoolRecommendationsResult.status === 'rejected') {
+        let schoolRecommendations = null;
+        if (schoolRecommendationsResult.status === 'fulfilled') {
+          const result = schoolRecommendationsResult.value as any;
+          if (result?.data !== undefined) {
+            schoolRecommendations = result.data;
+          } else if (result?.error) {
+            console.error('[DASHBOARD_ERROR] School recommendations query error:', result.error);
+          }
+        } else {
           console.error('[DASHBOARD_ERROR] Failed to load school list:', {
             userId: userId,
             userEmail: user?.email || 'unknown',
@@ -151,6 +169,13 @@ export const useDashboardData = () => {
           .slice(0, 5);
 
         if (isMounted) {
+          console.log('[DASHBOARD_DATA] Updating state with fetched data', {
+            essaysCount: essaysData.length,
+            deadlinesCount: deadlines.length,
+            schoolCategoriesCount: schoolCategories.length,
+            upcomingDeadlinesCount: upcomingDeadlines.length,
+            upcomingLorDeadlinesCount: upcomingLorDeadlines.length,
+          });
           setData({
             essays: essaysData,
             deadlines,
@@ -162,6 +187,10 @@ export const useDashboardData = () => {
           });
         }
       } catch (error) {
+        console.log('[DASHBOARD_DATA] Fetch encountered error', {
+          userId,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
         console.error('[DASHBOARD_ERROR] Failed to load dashboard data:', {
           userId: userId,
           userEmail: user?.email || 'unknown',
@@ -185,6 +214,7 @@ export const useDashboardData = () => {
     // Cleanup function to prevent state updates after unmount
     return () => {
       isMounted = false;
+      console.log('[DASHBOARD_DATA] Cleanup invoked', { userId });
     };
   }, [userId]);
 

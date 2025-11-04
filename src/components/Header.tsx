@@ -25,65 +25,27 @@ import MobileNavigation from "@/components/MobileNavigation";
 const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [userFirstName, setUserFirstName] = useState<string>('');
-  const { onboardingCompleted, loading: onboardingLoading } = useAuth();
+  const { user, profile, loading: authLoading, onboardingCompleted, signOut } = useAuth();
   const { userTier, isPro } = usePaywall();
   
-  const fetchUserProfile = async (userId: string) => {
-    try {
-      // Get user data for metadata fallback
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      // Fetch profile data using centralized utility
-      const profile = await fetchUserProfileData(userId);
-      
-      // Get first name using centralized logic
-      const firstName = getUserFirstName(profile, user, '');
-      setUserFirstName(firstName);
-    } catch (error) {
-      console.error('Error fetching user profile:', error);
-      setUserFirstName('');
-    }
-  };
+  // Derive state from useAuth hook instead of maintaining separate state
+  const isAuthenticated = !!user;
+  const loading = authLoading;
+  
+  // Get first name from profile
+  const userFirstName = profile?.full_name?.split(' ')[0] || user?.user_metadata?.first_name || '';
 
+  // Debug logging for auth state
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        setIsAuthenticated(!!user);
-        
-        // Don't await profile fetch to avoid blocking the UI
-        if (user) {
-          fetchUserProfile(user.id);
-        } else {
-          setUserFirstName('');
-        }
-      } catch (error) {
-        console.error('Error checking auth status:', error);
-        setIsAuthenticated(false);
-        setUserFirstName('');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    checkAuth();
-    
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setIsAuthenticated(!!session?.user);
-      
-      if (session?.user) {
-        fetchUserProfile(session.user.id);
-      } else {
-        setUserFirstName('');
-      }
+    console.log('[HEADER] Auth state:', {
+      hasUser: Boolean(user),
+      userId: user?.id,
+      hasProfile: Boolean(profile),
+      loading: authLoading,
+      isAuthenticated,
+      path: location.pathname
     });
-    
-    return () => subscription.unsubscribe();
-  }, []);
+  }, [user, profile, authLoading, isAuthenticated, location.pathname]);
 
   // Handle hash scrolling when navigating from other pages
   useEffect(() => {
@@ -155,7 +117,7 @@ const Header = () => {
                 ? 'border-primary/50' 
                 : 'border-gray-300/30'
             }`}>
-              {onboardingLoading ? (
+              {loading ? (
                 <span className="text-xs lg:text-sm font-medium text-gray-400 px-2 py-0.5 lg:px-3 lg:py-1">
                   Onboarding
                 </span>
@@ -456,7 +418,7 @@ const Header = () => {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
                   onClick={async () => {
-                    await supabase.auth.signOut();
+                    await signOut();
                     // Redirect to auth page after sign out
                     navigate('/auth', { replace: true });
                   }}

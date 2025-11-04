@@ -9,6 +9,7 @@ import { useDashboardData } from "@/hooks/useDashboardData";
 import { useProfileCompletion } from "@/hooks/useProfileCompletion";
 import { useApplicationProgress } from "@/hooks/useApplicationProgress";
 import { Link, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 
 import { BookOpen, Calendar, CheckCircle, Target, Users, PenTool, Clock, AlertCircle } from "lucide-react";
 
@@ -40,7 +41,6 @@ const Dashboard = () => {
     loading: applicationProgressLoading 
   } = useApplicationProgress();
 
-
   // Get user's display name with consistent fallback logic
   const displayName = (() => {
     // Priority order: full_name -> email username -> 'Student'
@@ -53,6 +53,44 @@ const Dashboard = () => {
     }
     return 'Student';
   })();
+
+  useEffect(() => {
+    console.log('[DASHBOARD_DEBUG] Loading flags snapshot', {
+      authLoading,
+      dashboardDataLoading: loading,
+      profileLoading,
+      applicationProgressLoading,
+    });
+  }, [authLoading, loading, profileLoading, applicationProgressLoading]);
+
+  useEffect(() => {
+    console.log('[DASHBOARD_DEBUG] Data snapshot', {
+      essaysCount: essays.length,
+      deadlinesCount: deadlines.length,
+      schoolCategoriesCount: schoolCategories.length,
+      upcomingDeadlinesCount: upcomingDeadlines.length,
+      upcomingLorDeadlinesCount: upcomingLorDeadlines.length,
+    });
+  }, [essays, deadlines, schoolCategories, upcomingDeadlines, upcomingLorDeadlines]);
+
+  useEffect(() => {
+    if (authError || error) {
+      console.log('[DASHBOARD_DEBUG] Error state detected', {
+        authError,
+        dashboardError: error,
+      });
+    }
+  }, [authError, error]);
+
+  useEffect(() => {
+    if (!authLoading && !loading && !profileLoading && !applicationProgressLoading) {
+      console.log('[DASHBOARD_DEBUG] Ready to render dashboard content', {
+        userId: user?.id ?? null,
+        profileId: profile?.id ?? null,
+        displayName,
+      });
+    }
+  }, [authLoading, loading, profileLoading, applicationProgressLoading, user?.id, profile?.id, displayName]);
 
   // Profile completion is now calculated by the useProfileCompletion hook
 
@@ -147,6 +185,12 @@ const Dashboard = () => {
   };
 
   if (authLoading || loading || profileLoading || applicationProgressLoading) {
+    console.log('[DASHBOARD_DEBUG] Rendering loading fallback', {
+      authLoading,
+      dashboardDataLoading: loading,
+      profileLoading,
+      applicationProgressLoading,
+    });
     return (
       <OnboardingGuard pageName="Dashboard">
         <GradientBackground>
@@ -164,6 +208,7 @@ const Dashboard = () => {
   }
 
   if (authError) {
+    console.log('[DASHBOARD_DEBUG] Rendering auth error state', { authError });
     return (
       <OnboardingGuard pageName="Dashboard">
         <GradientBackground>
@@ -181,6 +226,7 @@ const Dashboard = () => {
   }
 
   if (error) {
+    console.log('[DASHBOARD_DEBUG] Rendering dashboard error state', { error });
     return (
       <OnboardingGuard pageName="Dashboard">
         <GradientBackground>
