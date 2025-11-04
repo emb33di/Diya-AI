@@ -28,6 +28,9 @@ interface NewUserData {
   email: string;
   fullName?: string;
   applyingTo?: string;
+  hearAboutUs?: string;
+  hearAboutOther?: string;
+  isEarlyUser?: boolean;
   createdAt: string;
 }
 
@@ -81,6 +84,20 @@ async function sendEmail(to: string, subject: string, html: string): Promise<boo
 function generateAdminNotificationEmail(data: NewUserData): string {
   const displayName = data.fullName || 'Not provided';
   const applyingTo = data.applyingTo || 'Not specified';
+  const hearAboutUs = data.hearAboutUs || 'Not specified';
+  const hearAboutOther = data.hearAboutOther || '';
+  const isEarlyUser = data.isEarlyUser || false;
+  
+  // Format hear about us display
+  let hearAboutDisplay = hearAboutUs;
+  if (hearAboutUs === 'other' && hearAboutOther) {
+    hearAboutDisplay = `Other: ${hearAboutOther}`;
+  } else if (hearAboutUs === 'other') {
+    hearAboutDisplay = 'Other (no details provided)';
+  }
+  
+  // Format early access display
+  const earlyAccessDisplay = isEarlyUser ? 'Yes ✨' : 'No';
   
   return `
     <!DOCTYPE html>
@@ -192,6 +209,14 @@ function generateAdminNotificationEmail(data: NewUserData): string {
                 <span class="info-label">🆔 User ID:</span>
                 <span class="info-value"><code>${data.userId}</code></span>
               </div>
+              <div class="info-row">
+                <span class="info-label">📢 Heard about us:</span>
+                <span class="info-value">${hearAboutDisplay}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">⭐ Early Access:</span>
+                <span class="info-value">${earlyAccessDisplay}</span>
+              </div>
             </div>
             
             <div style="text-align: center; margin: 30px 0;">
@@ -232,7 +257,7 @@ Deno.serve(async (req) => {
     const payload = await req.json();
     
     // Handle both Supabase webhook format and direct calls
-    let userId, email, fullName, applyingTo, createdAt;
+    let userId, email, fullName, applyingTo, hearAboutUs, hearAboutOther, isEarlyUser, createdAt;
     
     if (payload.type === 'INSERT' && payload.record) {
       // Supabase webhook format
@@ -241,6 +266,9 @@ Deno.serve(async (req) => {
       email = record.email;
       fullName = record.raw_user_meta_data?.full_name;
       applyingTo = record.raw_user_meta_data?.applying_to;
+      hearAboutUs = record.raw_user_meta_data?.hear_about_us;
+      hearAboutOther = record.raw_user_meta_data?.hear_about_other;
+      isEarlyUser = record.raw_user_meta_data?.is_early_user || false;
       createdAt = record.created_at;
     } else {
       // Direct call format
@@ -248,6 +276,9 @@ Deno.serve(async (req) => {
       email = payload.email;
       fullName = payload.fullName;
       applyingTo = payload.applyingTo;
+      hearAboutUs = payload.hearAboutUs;
+      hearAboutOther = payload.hearAboutOther;
+      isEarlyUser = payload.isEarlyUser || false;
       createdAt = payload.createdAt;
     }
 
@@ -272,6 +303,9 @@ Deno.serve(async (req) => {
       email,
       fullName,
       applyingTo,
+      hearAboutUs,
+      hearAboutOther,
+      isEarlyUser,
       createdAt: createdAt || new Date().toISOString()
     });
 
