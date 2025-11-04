@@ -532,12 +532,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               return; // Don't trigger another fetch
             }
             
-            // Fetch fresh profile in background (non-blocking)
-            console.log('[AUTH_PROVIDER] Fetching profile from getSession in background');
+            // Skip background fetch when we have cached profile - Supabase is already slow
+            // Background fetches can overwhelm Supabase when it's slow, causing timeouts
+            // The cached profile is sufficient, and we can refresh later when Supabase recovers
+            console.log('[AUTH_PROVIDER] Skipping background fetch - using cached profile to avoid overwhelming slow Supabase');
             sessionProcessedRef.current = { userId: userToUse.id, processed: true };
-            fetchUserProfile(userToUse, mountedRef).catch(err => {
-              console.warn('[AUTH_PROVIDER] Background profile fetch failed, using cached:', err);
-            });
             clearTimeout(loadingTimeout);
             return;
           }
@@ -699,10 +698,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     loading: false,
                     error: null
                   });
-                  // Fetch fresh profile in background (non-blocking)
-                  fetchUserProfile(session.user, mountedRef).catch(err => {
-                    console.warn('[AUTH_PROVIDER] Background profile fetch failed, using cached:', err);
-                  });
+                  // Skip background fetch - Supabase is slow, cached profile is sufficient
+                  // We can refresh later when Supabase recovers
+                  console.log('[AUTH_PROVIDER] Skipping background fetch for INITIAL_SESSION - using cached profile');
                   return;
                 }
               } catch (e) {
