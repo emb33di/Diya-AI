@@ -2,7 +2,7 @@
 
 A comprehensive AI-powered college counseling platform that provides 24/7 voice-based guidance for college applications, essay writing, and school selection.
 
-> Deployment trigger - November 2024
+> Deployment trigger - November 2024 (updated)
 
 ## 🎯 Overview
 
