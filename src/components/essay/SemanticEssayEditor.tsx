@@ -5,7 +5,7 @@
  * Provides Google Docs-like commenting experience with stable AI integration.
  */
 
-import React, { useState, useEffect, startTransition, useRef } from 'react';
+import React, { useState, useEffect, startTransition, useRef, useMemo } from 'react';
 import { SemanticDocument, Annotation } from '@/types/semanticDocument';
 import { semanticDocumentService } from '@/services/semanticDocumentService';
 import { ExportService } from '@/services/exportService';
@@ -1201,7 +1201,24 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
     setShowDeleteDialog(false);
   };
 
-  
+  // Check if AI comments exist for the current version
+  // This must be before any early returns to follow Rules of Hooks
+  const hasAICommentsForCurrentVersion = useMemo(() => {
+    // Primary check: version has_ai_feedback flag
+    if (currentVersion?.has_ai_feedback) {
+      return true;
+    }
+    
+    // Fallback check: check if document has any AI annotations
+    if (document) {
+      const hasAIAnnotations = document.blocks.some(block => 
+        block.annotations?.some(annotation => annotation.author === 'ai')
+      );
+      return hasAIAnnotations;
+    }
+    
+    return false;
+  }, [currentVersion, document]);
 
   if (isLoading || migrationStatus.isMigrating) {
     return (
@@ -1466,7 +1483,11 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={createNewVersionWithComments}>
+                            <DropdownMenuItem 
+                              onClick={createNewVersionWithComments}
+                              disabled={!hasAICommentsForCurrentVersion}
+                              className={!hasAICommentsForCurrentVersion ? 'opacity-50 cursor-not-allowed' : ''}
+                            >
                               <MessageSquare className="h-4 w-4 mr-2" />
                               New Version with AI Comments
                             </DropdownMenuItem>
