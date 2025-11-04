@@ -129,11 +129,6 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
 
   // Auto-save functionality
   useEffect(() => {
-    // Don't auto-save until document has been loaded from DB or created
-    if (!isDocumentLoadedRef.current) {
-      return;
-    }
-
     if (!state.pendingChanges) return;
 
     // Critical safeguard: Don't autosave if document appears empty but we're tracking a loaded document
@@ -192,7 +187,6 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
       : undefined
   );
   const isInitialMountRef = useRef(true);
-  const isDocumentLoadedRef = useRef(false); // Track if document has been loaded from DB
 
   // Load existing document
   useEffect(() => {
@@ -201,13 +195,26 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
         const targetDocumentId = documentId || essayId;
         
         // Critical fix: If documentId hasn't changed AND it's not the initial mount, don't reload (prevents overwriting unsaved edits)
-        if (!isInitialMountRef.current && lastLoadedDocumentIdRef.current === targetDocumentId && state.document.id === targetDocumentId) {
-          // Document ID hasn't changed, skip reload to preserve unsaved edits
+        // BUT: Always reload if current state is empty (handles production loading issues)
+        const currentStateIsEmpty = !state.document.blocks.some(block => 
+          block.content && typeof block.content === 'string' && block.content.trim().length > 0
+        );
+        
+        if (!isInitialMountRef.current && lastLoadedDocumentIdRef.current === targetDocumentId && state.document.id === targetDocumentId && !currentStateIsEmpty) {
+          // Document ID hasn't changed and state has content, skip reload to preserve unsaved edits
           return;
         }
         
+        // If state is empty but we know a document should exist, force reload (fixes production loading issue)
+        if (currentStateIsEmpty && lastLoadedDocumentIdRef.current === targetDocumentId) {
+          console.warn('[SEMANTIC_EDITOR] Document state is empty, forcing reload from database', {
+            documentId: targetDocumentId,
+            currentBlocksCount: state.document.blocks.length,
+            isInitialMount: isInitialMountRef.current
+          });
+        }
+        
         isInitialMountRef.current = false;
-        isDocumentLoadedRef.current = false; // Reset flag when loading new document
 
         // If we have pending changes and documentId changed, save them first
         if (state.pendingChanges && lastLoadedDocumentIdRef.current && lastLoadedDocumentIdRef.current !== targetDocumentId) {
@@ -231,14 +238,40 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
         }
 
         if (existingDoc) {
-          // Only update if documentId actually changed
-          if (existingDoc.id !== state.document.id) {
+          // Critical fix: Always update state if:
+          // 1. Document IDs don't match (document changed), OR
+          // 2. Current state is empty but loaded document has content (initial load or recovery)
+          const currentStateIsEmpty = !state.document.blocks.some(block => 
+            block.content && typeof block.content === 'string' && block.content.trim().length > 0
+          );
+          const loadedDocHasContent = existingDoc.blocks.some(block => 
+            block.content && typeof block.content === 'string' && block.content.trim().length > 0
+          );
+          const shouldUpdate = existingDoc.id !== state.document.id || (currentStateIsEmpty && loadedDocHasContent);
+          
+          if (shouldUpdate) {
+            console.log('[SEMANTIC_EDITOR] Updating document state', {
+              documentId: existingDoc.id,
+              currentBlocksCount: state.document.blocks.length,
+              loadedBlocksCount: existingDoc.blocks.length,
+              currentStateIsEmpty,
+              loadedDocHasContent,
+              reason: existingDoc.id !== state.document.id ? 'documentId changed' : 'recovering empty state'
+            });
+            
             setState(prev => ({
               ...prev,
               document: existingDoc
             }));
+          } else {
+            console.log('[SEMANTIC_EDITOR] Skipping state update - document already loaded', {
+              documentId: existingDoc.id,
+              currentBlocksCount: state.document.blocks.length,
+              loadedBlocksCount: existingDoc.blocks.length
+            });
           }
-          // Seed undo stack with the loaded document so Cmd+Z with no edits is a no-op
+          
+          // Always seed undo stack with the loaded document so Cmd+Z with no edits is a no-op
           try {
             undoStackRef.current = [deepCloneDocument(existingDoc)];
             redoStackRef.current = [];
@@ -248,7 +281,6 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
           
           // Track that we've loaded this document (persist across HMR)
           lastLoadedDocumentIdRef.current = targetDocumentId;
-          isDocumentLoadedRef.current = true; // Mark as loaded
           if (typeof window !== 'undefined') {
             try {
               window.sessionStorage.setItem(getStableKey(targetDocumentId), targetDocumentId);
@@ -272,16 +304,11 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
           // Create a new document with a single empty block
           addNewBlock();
           lastLoadedDocumentIdRef.current = targetDocumentId;
-          isDocumentLoadedRef.current = true; // Mark as loaded (new document created)
-        } else {
-          // Initial content provided, mark as loaded
-          isDocumentLoadedRef.current = true;
         }
       } catch (error) {
         console.error('Failed to load document:', error);
         // Create a new document with a single empty block on error
         addNewBlock();
-        isDocumentLoadedRef.current = true; // Mark as loaded even on error
       }
     };
 
