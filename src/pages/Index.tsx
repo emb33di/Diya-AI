@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import HeroSection from "@/components/HeroSection";
+import DemoVideoSection from "@/components/DemoVideoSection";
 import StarryBackground from "@/components/StarryBackground";
-import FeaturesSection from "@/components/FeaturesSection";
 import MBASection from "@/components/MBASection";
 import FAQSection from "@/components/FAQSection";
 import PricingSection from "@/components/PricingSection";
@@ -54,7 +54,7 @@ const Index = () => {
       <StarryBackground />
       <div className="relative z-10">
         <HeroSection />
-        <FeaturesSection />
+        <DemoVideoSection />
         <MBASection />
         <PricingSection />
         <FounderProfile />
