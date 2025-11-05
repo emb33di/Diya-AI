@@ -13,7 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getUserDisplayName, fetchUserProfileData } from "@/utils/userNameUtils";
 import { getUserProgramType } from "@/utils/userProfileUtils";
 import { getDraftStatusLabel } from "@/utils/statusUtils";
-import { PenTool, MessageSquare, FileText, Clock, CheckCircle2, Plus, ArrowLeft, ChevronRight, Trash2 } from "lucide-react";
+import { PenTool, MessageSquare, FileText, Clock, CheckCircle2, Plus, ArrowLeft, ChevronRight, Trash2, ChevronDown } from "lucide-react";
 import SemanticEssayEditor from "@/components/essay/SemanticEssayEditor";
 import { CreateEssayModal } from "@/components/essay/CreateEssayModal";
 import { DeleteEssayDialog } from "@/components/essay/DeleteEssayDialog";
@@ -21,6 +21,13 @@ import { EssayService, CreateEssayData } from "@/services/essayService";
 import { useIsMobile } from "@/hooks/use-mobile";
 import PromptDropdown from "@/components/essay/PromptDropdown";
 import AddSchoolModal from "@/components/AddSchoolModal";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface School {
   id: string;
@@ -161,6 +168,121 @@ const Essays = () => {
   const [mobileStep, setMobileStep] = useState<'school' | 'prompts' | 'editor'>('school');
   const [selectedMobilePrompt, setSelectedMobilePrompt] = useState<Essay | null>(null);
   const [showMobileEditor, setShowMobileEditor] = useState(false);
+  const [schoolEssayCounts, setSchoolEssayCounts] = useState<Record<string, { total: number; inProgress: number }>>({});
+  const [showDesktopMessage, setShowDesktopMessage] = useState(false);
+  const [expandedSchool, setExpandedSchool] = useState<string | null>(null);
+  const [schoolPrompts, setSchoolPrompts] = useState<Record<string, { prompts: EssayPrompt[]; essays: Essay[]; newEssays: any[] }>>({});
+  const [loadingPrompts, setLoadingPrompts] = useState<Record<string, boolean>>({});
+
+  // Fetch prompts for a school when expanded (mobile view)
+  const fetchSchoolPrompts = async (schoolName: string) => {
+    if (schoolPrompts[schoolName]) {
+      // Already loaded
+      return;
+    }
+
+    setLoadingPrompts(prev => ({ ...prev, [schoolName]: true }));
+    try {
+      let prompts: EssayPrompt[] = [];
+      
+      // Handle Common Application and UCAS specially
+      if (schoolName === 'Common Application') {
+        prompts = await EssayPromptService.getPromptsForCollegeForUser('Common Application');
+      } else if (schoolName === 'UCAS (UK Schools)') {
+        prompts = await EssayPromptService.getPromptsForCollegeForUser('UCAS (UK Schools)');
+      } else {
+        // Check if this is a UK school - redirect to UCAS prompts
+        const ukSchools = [
+          'University of Oxford',
+          'University of Cambridge', 
+          'Imperial College London',
+          'University College London (UCL)',
+          'London School of Economics and Political Science (LSE)'
+        ];
+        
+        if (ukSchools.includes(schoolName)) {
+          prompts = await EssayPromptService.getPromptsForCollegeForUser('UCAS (UK Schools)');
+        } else {
+          prompts = await EssayPromptService.getPromptsForCollegeForUser(schoolName);
+          
+          // If no prompts found, try common variations
+          if (prompts.length === 0) {
+            const variations = [
+              schoolName.replace(' University', ''),
+              schoolName.replace(' College', ''),
+              schoolName.replace(' Institute', '')
+            ];
+
+            for (const variation of variations) {
+              prompts = await EssayPromptService.getPromptsForCollegeForUser(variation);
+              if (prompts.length > 0) break;
+            }
+          }
+        }
+      }
+
+      // Fetch user's existing selections for this school
+      const selections = await EssayPromptService.getUserSelectionsForSchool(schoolName);
+      
+      // Fetch new essays for this school
+      const newEssays = await EssayService.getEssaysForSchool(schoolName);
+
+      // Convert prompts to essays format
+      const essaysFromPrompts: Essay[] = prompts.map((prompt) => {
+        const existingSelection = selections.find(s => s.prompt_number === prompt.prompt_number);
+        const wordCount = existingSelection?.essay_content?.split(' ').length || 0;
+        const hasExistingContent = existingSelection?.essay_content?.trim().length > 0;
+        
+        const associatedNewEssay = newEssays.find(e => 
+          e.prompt_id === prompt.id && !e.prompt_text
+        );
+        
+        return {
+          id: `${schoolName}-${prompt.prompt_number}`,
+          title: prompt.title || `${schoolName} - ${prompt.prompt_number}`,
+          prompt: prompt.prompt,
+          wordCount: associatedNewEssay ? associatedNewEssay.word_count : wordCount,
+          wordLimit: parseWordLimit(prompt.word_limit),
+          status: associatedNewEssay ? associatedNewEssay.status : (hasExistingContent ? 'draft' : 'not_started'),
+          lastEdited: existingSelection ? 'Recently' : 'Never',
+          feedback: 0,
+          schoolName: schoolName,
+          promptNumber: prompt.prompt_number
+        };
+      });
+
+      setSchoolPrompts(prev => ({
+        ...prev,
+        [schoolName]: {
+          prompts,
+          essays: essaysFromPrompts,
+          newEssays
+        }
+      }));
+    } catch (error) {
+      console.error(`[ESSAYS_ERROR] Failed to load prompts for ${schoolName}:`, error);
+      setSchoolPrompts(prev => ({
+        ...prev,
+        [schoolName]: {
+          prompts: [],
+          essays: [],
+          newEssays: []
+        }
+      }));
+    } finally {
+      setLoadingPrompts(prev => ({ ...prev, [schoolName]: false }));
+    }
+  };
+
+  // Handle school card click/toggle
+  const handleSchoolCardClick = (schoolName: string) => {
+    if (expandedSchool === schoolName) {
+      setExpandedSchool(null);
+    } else {
+      setExpandedSchool(schoolName);
+      fetchSchoolPrompts(schoolName);
+    }
+  };
 
   // Helper function to persist essay selection
   const persistEssaySelection = (essayId: string | null) => {
@@ -307,6 +429,27 @@ const Essays = () => {
         const schools = await fetchSchools();
         setSchools(schools);
         
+        // Fetch essay counts for all schools (for mobile view)
+        if (isMobile && schools.length > 0) {
+          const counts: Record<string, { total: number; inProgress: number }> = {};
+          await Promise.all(
+            schools.map(async (school) => {
+              try {
+                const essays = await EssayService.getEssaysForSchool(school.name);
+                const inProgress = essays.filter(e => e.status === 'draft' || e.status === 'review').length;
+                counts[school.name] = {
+                  total: essays.length,
+                  inProgress: inProgress
+                };
+              } catch (error) {
+                console.error(`[ESSAYS_ERROR] Failed to load essay count for ${school.name}:`, error);
+                counts[school.name] = { total: 0, inProgress: 0 };
+              }
+            })
+          );
+          setSchoolEssayCounts(counts);
+        }
+        
         // Clear selectedSchool if it doesn't exist in the schools list
         const persistedSchool = localStorage.getItem('essays_selected_school');
         if (persistedSchool && schools.length === 0) {
@@ -356,7 +499,7 @@ const Essays = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [isMobile]);
 
   // Fetch new essays when school is selected
   useEffect(() => {
@@ -1196,12 +1339,9 @@ const Essays = () => {
           {mobileStep === 'school' && (
             <div className="p-4">
               <div className="mb-6">
-                <h1 className="text-2xl font-display font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent mb-2">
-                  Essay Workshop
+                <h1 className="text-2xl font-display font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                  Essay Dashboard
                 </h1>
-                <p className="text-muted-foreground text-sm">
-                  {schools.length > 0 ? 'Select a school to see essay prompts' : 'Add schools to start writing essays'}
-                </p>
               </div>
 
               {schools.length === 0 ? (
@@ -1221,40 +1361,184 @@ const Essays = () => {
                   </CardContent>
                 </Card>
               ) : (
-                <Card className="shadow-sm">
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <div className="p-2 bg-primary/10 rounded-lg">
-                        <FileText className="h-4 w-4 text-primary" />
-                      </div>
-                      <span className="text-lg">Choose Your School</span>
-                    </CardTitle>
-                    <CardDescription>
-                      Select the school you want to write essays for
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <Select value={selectedSchool} onValueChange={handleSchoolChange}>
-                      <SelectTrigger className="w-full bg-card shadow-sm">
-                        <SelectValue placeholder="Select a school to start writing" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {schools.map(school => (
-                          <SelectItem key={school.id} value={school.name}>
-                            <div className="flex items-center space-x-2">
-                              <div className={`w-2 h-2 rounded-full ${
-                                school.category === 'reach' ? 'bg-red-500' : 
-                                school.category === 'target' ? 'bg-yellow-500' : 
-                                'bg-green-500'
-                              }`} />
-                              <span>{school.name}</span>
+                <div className="space-y-3">
+                  {schools.map(school => {
+                    const counts = schoolEssayCounts[school.name] || { total: 0, inProgress: 0 };
+                    const isExpanded = expandedSchool === school.name;
+                    const schoolData = schoolPrompts[school.name];
+                    const isLoading = loadingPrompts[school.name];
+                    const { requiredPrompts, optionalPrompts } = schoolData 
+                      ? categorizePrompts(schoolData.prompts) 
+                      : { requiredPrompts: [], optionalPrompts: [] };
+                    
+                    return (
+                      <Card
+                        key={school.id}
+                        className="bg-card"
+                      >
+                        <CardContent className="p-0">
+                          {/* School Header - Clickable */}
+                          <div
+                            className="cursor-pointer transition-all duration-200 hover:bg-muted/50 p-4"
+                            onClick={() => handleSchoolCardClick(school.name)}
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-2 mb-2">
+                                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                    school.category === 'reach' ? 'bg-red-500' : 
+                                    school.category === 'target' ? 'bg-yellow-500' : 
+                                    'bg-green-500'
+                                  }`} />
+                                  <h3 className="text-base font-semibold text-foreground">
+                                    {school.name}
+                                  </h3>
+                                </div>
+                                <div className="flex items-center space-x-4 text-sm text-muted-foreground ml-4">
+                                  <span>{counts.total} {counts.total === 1 ? 'essay' : 'essays'}</span>
+                                  <span>{counts.inProgress} in progress</span>
+                                </div>
+                              </div>
+                              <ChevronDown 
+                                className={`h-5 w-5 text-muted-foreground flex-shrink-0 transition-transform duration-200 ${
+                                  isExpanded ? 'rotate-180' : ''
+                                }`} 
+                              />
                             </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </CardContent>
-                </Card>
+                          </div>
+
+                          {/* Expanded Prompts Section */}
+                          {isExpanded && (
+                            <div className="border-t border-border">
+                              {isLoading ? (
+                                <div className="p-4 flex items-center justify-center">
+                                  <Clock className="h-5 w-5 animate-spin mr-2" />
+                                  <span className="text-sm text-muted-foreground">Loading prompts...</span>
+                                </div>
+                              ) : schoolData && (schoolData.prompts.length > 0 || schoolData.newEssays.filter(e => e.prompt_text).length > 0) ? (
+                                <div className="p-4 space-y-3">
+                                  {/* Required Prompts */}
+                                  {requiredPrompts.length > 0 && (
+                                    <div className="space-y-2">
+                                      <h4 className="text-xs font-medium text-red-600 flex items-center space-x-2">
+                                        <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                                        <span>Required Essays ({requiredPrompts.length})</span>
+                                      </h4>
+                                      {requiredPrompts.map((prompt) => {
+                                        return (
+                                          <div
+                                            key={prompt.id}
+                                            className="cursor-pointer p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setShowDesktopMessage(true);
+                                            }}
+                                          >
+                                            <div className="flex items-start justify-between">
+                                              <div className="flex-1">
+                                                <div className="mb-2">
+                                                  <span className="text-sm font-medium text-foreground">
+                                                    {prompt.title || `Prompt ${prompt.prompt_number}`}
+                                                  </span>
+                                                </div>
+                                                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                                                  {prompt.prompt}
+                                                </p>
+                                              </div>
+                                              <ChevronRight className="h-4 w-4 text-muted-foreground ml-2 flex-shrink-0 mt-1" />
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+
+                                  {/* Optional Prompts */}
+                                  {optionalPrompts.length > 0 && (
+                                    <div className="space-y-2">
+                                      <h4 className="text-xs font-medium text-blue-600 flex items-center space-x-2">
+                                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                        <span>{getSelectionText(optionalPrompts)} ({optionalPrompts.length} prompts)</span>
+                                      </h4>
+                                      {optionalPrompts.map((prompt) => {
+                                        return (
+                                          <div
+                                            key={prompt.id}
+                                            className="cursor-pointer p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setShowDesktopMessage(true);
+                                            }}
+                                          >
+                                            <div className="flex items-start justify-between">
+                                              <div className="flex-1">
+                                                <div className="mb-2">
+                                                  <span className="text-sm font-medium text-foreground">
+                                                    {prompt.title || `Prompt ${prompt.prompt_number}`}
+                                                  </span>
+                                                </div>
+                                                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                                                  {prompt.prompt}
+                                                </p>
+                                              </div>
+                                              <ChevronRight className="h-4 w-4 text-muted-foreground ml-2 flex-shrink-0 mt-1" />
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+
+                                  {/* Custom Essays */}
+                                  {schoolData.newEssays.filter(e => e.prompt_text).length > 0 && (
+                                    <div className="space-y-2">
+                                      <h4 className="text-xs font-medium text-purple-600 flex items-center space-x-2">
+                                        <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                        <span>Custom Essays</span>
+                                      </h4>
+                                      {schoolData.newEssays.filter(e => e.prompt_text).map((essay) => {
+                                        return (
+                                          <div
+                                            key={essay.id}
+                                            className="cursor-pointer p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setShowDesktopMessage(true);
+                                            }}
+                                          >
+                                            <div className="flex items-start justify-between">
+                                              <div className="flex-1">
+                                                <div className="mb-2">
+                                                  <span className="text-sm font-medium text-foreground">
+                                                    {essay.title}
+                                                  </span>
+                                                </div>
+                                                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                                                  {essay.prompt_text}
+                                                </p>
+                                              </div>
+                                              <ChevronRight className="h-4 w-4 text-muted-foreground ml-2 flex-shrink-0 mt-1" />
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="p-4 text-center">
+                                  <p className="text-sm text-muted-foreground">
+                                    No prompts found for this school
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
               )}
             </div>
           )}
@@ -1680,6 +1964,18 @@ const Essays = () => {
           onAddMultipleSchools={addMultipleSchools}
           existingSchools={schools.map(school => school.name)}
         />
+
+        {/* Desktop Message Dialog */}
+        <Dialog open={showDesktopMessage} onOpenChange={setShowDesktopMessage}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Best Viewing Experience</DialogTitle>
+              <DialogDescription>
+                For best viewing please use the website on your laptop or desktop for editing essays.
+              </DialogDescription>
+            </DialogHeader>
+          </DialogContent>
+        </Dialog>
       </GradientBackground>
     </OnboardingGuard>;
   }
