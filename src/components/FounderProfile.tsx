@@ -66,7 +66,7 @@ const FounderProfile = () => {
 
           {/* Right Side: Body Text */}
           <div className="flex-1 text-left sm:text-left">
-            <p className="text-sm sm:text-base text-white leading-relaxed">
+            <p className="text-base sm:text-lg text-white leading-relaxed">
             Raised in Delhi and a graduate of DPS R.K. Puram, Mihir studied Economics at the University of Chicago and is now pursuing his law degree at Harvard Law School. Having navigated the competitive admissions process himself twice, Mihir brings first-hand insight into what top global universities seek. He founded Diya AI to make world-class admissions guidance affordable, transparent, and accessible to every student in India.
             </p>
           </div>

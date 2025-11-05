@@ -50,7 +50,7 @@ const Index = () => {
 
   // Landing page content for non-authenticated users
   return (
-    <div className="landing-page min-h-screen bg-black font-inter relative">
+    <div className="landing-page min-h-screen bg-black font-manrope relative">
       <StarryBackground />
       <div className="relative z-10">
         <HeroSection />

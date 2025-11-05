@@ -83,6 +83,17 @@
     }
   }
 
+  @keyframes gentle-pulse {
+    0%, 100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.05);
+      opacity: 0.95;
+    }
+  }
+
   @keyframes twinkle {
     0%, 100% {
       opacity: 0.2;
@@ -255,6 +266,11 @@
     color: hsl(0 0% 100%) !important;
   }
 
+  /* Override for Meet Diya text - gold color */
+  .landing-page .meet-diya-text {
+    color: hsl(36, 100%, 61%) !important;
+  }
+
   /* Muted text should be slightly lighter but still visible - only for landing page */
   .landing-page .text-muted-foreground {
     color: hsl(0 0% 70%) !important;
@@ -268,6 +284,11 @@
 
   .landing-page nav .container {
     background: transparent !important;
+  }
+
+  /* Gentle pulse animation for play button */
+  .play-button-pulse {
+    animation: gentle-pulse 7s ease-in-out infinite;
   }
 
 }
