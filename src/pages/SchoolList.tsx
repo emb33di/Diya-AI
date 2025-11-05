@@ -781,7 +781,7 @@ const SchoolList = () => {
           <div className="flex-1">
             <h1 className="text-2xl lg:text-3xl font-display font-bold mb-2">Schools</h1>
             <p className="text-muted-foreground text-base lg:text-lg">
-              Organize your target schools into Reach, Target, and Safety categories
+              Drag and drop to organize your schools into Reach, Target, and Safety categories
             </p>
           </div>
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">

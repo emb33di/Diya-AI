@@ -7,7 +7,7 @@ const HeroSection = () => {
   const { elementRef: containerRef, isVisible: videoVisible } = useScrollAnimation();
   const [displayedText, setDisplayedText] = useState("");
   const [showCursor, setShowCursor] = useState(true);
-  const fullText = "Meet Diya";
+  const fullText = "Meet Diya,";
 
   // Typing animation effect
   useEffect(() => {
@@ -38,7 +38,7 @@ const HeroSection = () => {
           <div className="text-center mb-8 sm:mb-12">
             {/* Meet Diya AI Header */}
             <div ref={headerRef} className={`scroll-fade-in ${headerVisible ? 'animate' : ''} mb-4`}>
-              <span className="meet-diya-text text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-semibold tracking-wider uppercase font-cursive">
+              <span className="meet-diya-text text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-semibold tracking-wider font-cursive">
                 {displayedText}
                 {showCursor && <span className="animate-pulse">|</span>}
               </span>
@@ -53,7 +53,7 @@ const HeroSection = () => {
 
             {/* Credentials */}
             <div className={`text-center scroll-fade-in scroll-stagger-1 ${contentVisible ? 'animate' : ''} mt-4 sm:mt-6`}>
-              <p className="text-base sm:text-lg md:text-xl gold-shimmer font-medium">
+              <p className="text-base sm:text-lg md:text-xl lg:text-2xl gold-shimmer font-medium">
                 Built by Indian alumni from Harvard and UChicago.
               </p>
             </div>

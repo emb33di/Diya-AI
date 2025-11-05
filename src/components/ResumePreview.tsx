@@ -55,6 +55,40 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
   const { toast } = useToast();
   const { isPro } = usePaywall();
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile screen and calculate initial zoom to fit screen
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 640; // sm breakpoint
+      setIsMobile(mobile);
+      
+      if (mobile && isOpen) {
+        // Calculate zoom to fit A4 width (420mm ≈ 1588px) on screen
+        // Account for: dialog padding (24px), container padding (8px), and minimal margin (16px each side)
+        const dialogPadding = 24; // p-3 on mobile = 12px * 2
+        const containerPadding = 8; // p-2 on mobile = 8px * 2 = 16px total
+        const margin = 32; // 16px on each side
+        const availableWidth = window.innerWidth - dialogPadding - containerPadding - margin;
+        const resumeWidth = 1588; // 420mm in pixels at 96 DPI
+        const fitZoom = Math.floor((availableWidth / resumeWidth) * 100);
+        // Set a higher minimum zoom (60%) so it appears larger on screen
+        // This may require horizontal scrolling, but will make the text more readable
+        setZoom(Math.max(60, Math.min(100, fitZoom * 2)));
+      } else if (!mobile && isOpen) {
+        setZoom(100);
+      }
+    };
+    
+    // Small delay to ensure dialog is rendered
+    const timer = setTimeout(checkMobile, 100);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', checkMobile);
+    };
+  }, [isOpen]);
 
   // Load resume preview HTML when component opens
   useEffect(() => {
@@ -332,11 +366,27 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
 
 
   const adjustZoom = (delta: number) => {
-    setZoom(prev => Math.max(50, Math.min(200, prev + delta)));
+    // Allow lower zoom on mobile (down to 25%) to fit screen
+    const minZoom = isMobile ? 25 : 50;
+    setZoom(prev => Math.max(minZoom, Math.min(200, prev + delta)));
   };
 
   const resetZoom = () => {
-    setZoom(100);
+    if (isMobile) {
+      // Calculate zoom to fit screen width on mobile, but target a larger size
+      // Account for: dialog padding (24px), container padding (8px), and minimal margin (16px each side)
+      const dialogPadding = 24;
+      const containerPadding = 8;
+      const margin = 32;
+      const availableWidth = window.innerWidth - dialogPadding - containerPadding - margin;
+      const resumeWidth = 1588; // 420mm in pixels at 96 DPI
+      const fitZoom = Math.floor((availableWidth / resumeWidth) * 100);
+      // Set a higher minimum zoom (60%) so it appears larger on screen
+      // This may require horizontal scrolling, but will make the text more readable
+      setZoom(Math.max(60, Math.min(100, fitZoom * 2)));
+    } else {
+      setZoom(100);
+    }
   };
 
 
@@ -699,7 +749,6 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
           <DialogOverlay />
           <DialogPrimitive.Content
             className={`fixed left-[50%] top-[50%] z-50 grid w-full translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-3 sm:p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg ${isFullscreen ? 'max-w-none w-screen h-screen' : 'max-w-6xl max-h-[90vh]'} overflow-hidden`}
-            aria-describedby="resume-preview-description"
           >
         <DialogHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0 pb-4">
           <div className="flex flex-col space-y-1">
@@ -707,9 +756,6 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
               <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
               <span className="text-base sm:text-lg">Resume Preview & PDF Export</span>
             </DialogTitle>
-            <p id="resume-preview-description" className="text-xs sm:text-sm text-muted-foreground">
-              Preview your resume and export as PDF using your browser's print function
-            </p>
           </div>
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
             {/* Zoom Controls - Hide on mobile to save space */}
@@ -826,8 +872,8 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
           ) : (
             <div className="h-full overflow-auto">
               {/* Google PDF Viewer Style Container */}
-              <div className="min-h-full bg-gray-100 py-8">
-                <div className="max-w-5xl mx-auto px-4">
+              <div className={`min-h-full ${isMobile ? '' : 'bg-gray-100 py-8'}`}>
+                <div className={isMobile ? 'w-full' : 'max-w-5xl mx-auto px-4'}>
                   {/* PDF Viewer Header */}
                   <div className="bg-white border border-gray-200 rounded-t-lg shadow-sm">
                     <div className="bg-gray-50 border-b px-4 py-3 flex items-center justify-between">
@@ -849,19 +895,20 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
                     </div>
 
                     {/* Document Container */}
-                    <div className="bg-gray-100 p-8 overflow-auto max-h-[calc(100vh-200px)]">
-                      <div 
-                        className="mx-auto bg-white shadow-lg border border-gray-200"
-                        style={{
-                          transform: `scale(${zoom / 100})`,
-                          transformOrigin: 'top center',
-                          transition: 'transform 0.2s ease-in-out',
-                          width: '210mm',
-                          minHeight: '297mm',
-                          padding: '2mm',
-                          boxSizing: 'border-box'
-                        }}
-                      >
+                    <div className={`overflow-auto max-h-[calc(100vh-200px)] ${isMobile ? 'w-full' : 'bg-gray-100 p-8'}`}>
+                      <div className={isMobile ? 'w-full' : 'flex justify-center items-start min-h-full'}>
+                        <div 
+                          className={`bg-white shadow-lg border border-gray-200 ${isMobile ? 'w-full' : ''}`}
+                          style={{
+                            transform: `scale(${zoom / 100})`,
+                            transformOrigin: isMobile ? 'top left' : 'top center',
+                            transition: 'transform 0.2s ease-in-out',
+                            width: isMobile ? `${100 / (zoom / 100)}%` : '210mm',
+                            minHeight: '297mm',
+                            padding: '2mm',
+                            boxSizing: 'border-box'
+                          }}
+                        >
                         {htmlContent ? (
                           <div 
                             dangerouslySetInnerHTML={{ __html: htmlContent }}
@@ -876,6 +923,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
                           </div>
                         )}
                       </div>
+                      </div>
                     </div>
 
                     {/* PDF Viewer Footer */}
@@ -883,7 +931,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
                       <div className="flex items-center space-x-4 text-xs text-gray-500">
                         <span>Zoom: {zoom}%</span>
                         <span>•</span>
-                        <span>A4 Format (210 × 297 mm)</span>
+                        <span>A4 Format ({isMobile ? '420' : '210'} × 297 mm)</span>
                         <span>•</span>
                         <span>Ready to print</span>
                         <span>•</span>
@@ -894,7 +942,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({
                           variant="ghost"
                           size="sm"
                           onClick={() => adjustZoom(-10)}
-                          disabled={zoom <= 50}
+                          disabled={zoom <= (isMobile ? 25 : 50)}
                           className="h-7 w-7 p-0 hover:bg-gray-200"
                         >
                           <ZoomOut className="h-3 w-3" />
