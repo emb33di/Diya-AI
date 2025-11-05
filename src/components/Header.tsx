@@ -363,7 +363,7 @@ const Header = () => {
             <>
               <Link 
                 to="/auth?mode=signin" 
-                className={`text-sm font-medium transition-colors duration-200 cursor-pointer ${
+                className={`hidden md:block text-sm font-medium transition-colors duration-200 cursor-pointer ${
                   isBlogPage 
                     ? 'text-black hover:text-gray-700' 
                     : 'text-white hover:text-white/80'
