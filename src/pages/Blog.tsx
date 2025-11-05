@@ -157,30 +157,32 @@ const Blog = () => {
                   ))}
                 </div>
 
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <Tag className="h-5 w-5" />
-                  Tags
-                </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-1 gap-2">
-                  <Button
-                    variant={selectedTag === "" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSelectedTag("")}
-                    className="w-full justify-start text-xs sm:text-sm"
-                  >
-                    All Tags
-                  </Button>
-                  {allTags.map(tag => (
+                <div className="hidden lg:block">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Tag className="h-5 w-5" />
+                    Tags
+                  </h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-1 gap-2">
                     <Button
-                      key={tag}
-                      variant={selectedTag === tag ? "default" : "outline"}
+                      variant={selectedTag === "" ? "default" : "outline"}
                       size="sm"
-                      onClick={() => setSelectedTag(tag)}
+                      onClick={() => setSelectedTag("")}
                       className="w-full justify-start text-xs sm:text-sm"
                     >
-                      {tag.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                      All Tags
                     </Button>
-                  ))}
+                    {allTags.map(tag => (
+                      <Button
+                        key={tag}
+                        variant={selectedTag === tag ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setSelectedTag(tag)}
+                        className="w-full justify-start text-xs sm:text-sm"
+                      >
+                        {tag.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>

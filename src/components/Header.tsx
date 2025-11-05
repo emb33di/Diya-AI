@@ -95,7 +95,9 @@ const Header = () => {
   
   return (
     <header className="sticky top-0 z-50 w-full backdrop-blur-md bg-transparent">
-      <div className="container mx-auto flex h-20 items-center justify-between px-6">
+      <div className={`container mx-auto flex h-20 items-center px-6 relative ${
+        isAuthenticated ? 'justify-between md:justify-between' : 'justify-between'
+      }`}>
         {/* Logo */}
         <Link to={loading ? "/" : (isAuthenticated ? "/dashboard" : "/")} className="flex items-center space-x-2 flex-shrink-0">
           <img 
@@ -263,8 +265,8 @@ const Header = () => {
               </TooltipProvider>
             </nav>
             
-            {/* Mobile Navigation */}
-            <div className="md:hidden">
+            {/* Mobile Navigation - Centered */}
+            <div className="md:hidden absolute left-1/2 transform -translate-x-1/2">
               <MobileNavigation />
             </div>
           </>
