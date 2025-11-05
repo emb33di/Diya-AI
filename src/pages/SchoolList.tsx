@@ -711,13 +711,13 @@ const SchoolList = () => {
   };
 
   // Droppable Area Component for each category
-  const DroppableArea = ({ category, children }: { category: 'reach' | 'target' | 'safety', children: React.ReactNode }) => {
+  const DroppableArea = ({ category, children, isEmpty }: { category: 'reach' | 'target' | 'safety', children: React.ReactNode, isEmpty: boolean }) => {
     const { setNodeRef, isOver } = useDroppable({ id: category });
 
     return (
       <div 
         ref={setNodeRef}
-        className={`space-y-3 lg:space-y-4 min-h-[150px] lg:min-h-[200px] p-3 lg:p-4 rounded-lg transition-colors ${
+        className={`space-y-3 lg:space-y-4 ${isEmpty ? 'min-h-0' : 'min-h-[150px]'} lg:min-h-[200px] p-3 lg:p-4 rounded-lg transition-colors ${
           isOver ? 'bg-primary/10 border-2 border-dashed border-primary' : ''
         }`}
       >
@@ -802,14 +802,14 @@ const SchoolList = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
           {/* Reach Schools */}
-          <div className="space-y-4">
+          <div className={`${reachSchools.length === 0 ? 'lg:space-y-4' : 'space-y-4'}`}>
             <div className="flex items-center space-x-2 mb-4">
               <Star className="h-5 w-5 text-blue-500" />
               <h2 className="text-lg lg:text-xl font-semibold">Reach Schools</h2>
               <Badge variant="secondary">{reachSchools.length}</Badge>
             </div>
             
-            <DroppableArea category="reach">
+            <DroppableArea category="reach" isEmpty={reachSchools.length === 0}>
               {reachSchools.map((school) => (
                 <DraggableSchoolCard key={school.id} school={school} />
               ))}
@@ -817,14 +817,14 @@ const SchoolList = () => {
           </div>
 
           {/* Target Schools */}
-          <div className="space-y-4">
+          <div className={`${targetSchools.length === 0 ? 'lg:space-y-4' : 'space-y-4'}`}>
             <div className="flex items-center space-x-2 mb-4">
               <Target className="h-5 w-5 text-orange-500" />
               <h2 className="text-lg lg:text-xl font-semibold">Target Schools</h2>
               <Badge variant="secondary">{targetSchools.length}</Badge>
             </div>
             
-            <DroppableArea category="target">
+            <DroppableArea category="target" isEmpty={targetSchools.length === 0}>
               {targetSchools.map((school) => (
                 <DraggableSchoolCard key={school.id} school={school} />
               ))}
@@ -832,14 +832,14 @@ const SchoolList = () => {
           </div>
 
           {/* Safety Schools */}
-          <div className="space-y-4">
+          <div className={`${safetySchools.length === 0 ? 'lg:space-y-4' : 'space-y-4'}`}>
             <div className="flex items-center space-x-2 mb-4">
               <Shield className="h-5 w-5 text-green-500" />
               <h2 className="text-lg lg:text-xl font-semibold">Safety Schools</h2>
               <Badge variant="secondary">{safetySchools.length}</Badge>
             </div>
             
-            <DroppableArea category="safety">
+            <DroppableArea category="safety" isEmpty={safetySchools.length === 0}>
               {safetySchools.map((school) => (
                 <DraggableSchoolCard key={school.id} school={school} />
               ))}
