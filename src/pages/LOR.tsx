@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -53,6 +53,68 @@ const LOR = () => {
     internalDeadline2: undefined as Date | undefined,
     internalDeadline3: undefined as Date | undefined
   });
+
+  // Refs for dialog content to scroll to top on open
+  const addDialogRef = useRef<HTMLDivElement>(null);
+  const editDialogRef = useRef<HTMLDivElement>(null);
+  const allocationDialogRef = useRef<HTMLDivElement>(null);
+
+  // Scroll dialogs to top when they open
+  useEffect(() => {
+    if (isAddDialogOpen) {
+      // Small delay to ensure dialog is rendered, especially on mobile
+      setTimeout(() => {
+        if (addDialogRef.current) {
+          addDialogRef.current.scrollTop = 0;
+        } else {
+          // Fallback: find scrollable element by querying for overflow-y-auto
+          const dialogElement = document.querySelector('[role="dialog"]');
+          if (dialogElement) {
+            const scrollable = dialogElement.querySelector('.overflow-y-auto') as HTMLElement;
+            if (scrollable) {
+              scrollable.scrollTop = 0;
+            }
+          }
+        }
+      }, 150);
+    }
+  }, [isAddDialogOpen]);
+
+  useEffect(() => {
+    if (isEditDialogOpen) {
+      setTimeout(() => {
+        if (editDialogRef.current) {
+          editDialogRef.current.scrollTop = 0;
+        } else {
+          const dialogElement = document.querySelector('[role="dialog"]');
+          if (dialogElement) {
+            const scrollable = dialogElement.querySelector('.overflow-y-auto') as HTMLElement;
+            if (scrollable) {
+              scrollable.scrollTop = 0;
+            }
+          }
+        }
+      }, 150);
+    }
+  }, [isEditDialogOpen]);
+
+  useEffect(() => {
+    if (isAllocationDialogOpen) {
+      setTimeout(() => {
+        if (allocationDialogRef.current) {
+          allocationDialogRef.current.scrollTop = 0;
+        } else {
+          const dialogElement = document.querySelector('[role="dialog"]');
+          if (dialogElement) {
+            const scrollable = dialogElement.querySelector('.overflow-y-auto') as HTMLElement;
+            if (scrollable) {
+              scrollable.scrollTop = 0;
+            }
+          }
+        }
+      }, 150);
+    }
+  }, [isAllocationDialogOpen]);
 
   // Fetch data on component mount
   useEffect(() => {
@@ -406,7 +468,10 @@ const LOR = () => {
                         Add Recommender
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto mx-4 sm:mx-0">
+                    <DialogContent 
+                      ref={addDialogRef}
+                      className="w-[calc(100%-1rem)] sm:w-full max-w-4xl max-h-[90vh] overflow-y-auto sm:mx-0"
+                    >
                       <DialogHeader>
                         <DialogTitle className="flex items-center space-x-2">
                           <User className="h-5 w-5 text-primary" />
@@ -845,7 +910,10 @@ const LOR = () => {
 
               {/* Edit Dialog */}
               <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto mx-4 sm:mx-0">
+                <DialogContent 
+                  ref={editDialogRef}
+                  className="w-[calc(100%-1rem)] sm:w-full max-w-4xl max-h-[90vh] overflow-y-auto sm:mx-0"
+                >
                   <DialogHeader>
                     <DialogTitle className="flex items-center space-x-2">
                       <Edit className="h-5 w-5 text-primary" />
@@ -1007,7 +1075,10 @@ const LOR = () => {
 
               {/* School Allocation Dialog */}
               <Dialog open={isAllocationDialogOpen} onOpenChange={setIsAllocationDialogOpen}>
-                <DialogContent className="max-w-2xl mx-4 sm:mx-0">
+                <DialogContent 
+                  ref={allocationDialogRef}
+                  className="w-[calc(100%-1rem)] sm:w-full max-w-2xl sm:mx-0"
+                >
                   <DialogHeader>
                     <DialogTitle className="flex items-center space-x-2">
                       <Target className="h-5 w-5 text-primary" />
