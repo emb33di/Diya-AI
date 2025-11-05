@@ -31,13 +31,13 @@ const HeroSection = () => {
     return () => clearInterval(typingInterval);
   }, [headerVisible, fullText]);
 
-  return <section className="min-h-screen flex items-center px-4 sm:px-6 pt-8 sm:pt-12 pb-2 sm:pb-12">
-      <div className="max-w-7xl mx-auto w-full">
-        <div className="flex flex-col items-center justify-center min-h-[70vh]">
+  return <section className="min-h-screen flex items-center px-4 sm:px-6 pt-6 sm:pt-12 pb-6 sm:pb-12">
+      <div className="max-w-7xl mx-auto w-full flex-1 flex items-center justify-center">
+        <div className="flex flex-col items-center justify-center w-full">
           {/* Top Center - Heading */}
-          <div className="text-center mb-8 sm:mb-12">
+          <div className="text-center mb-0 sm:mb-12">
             {/* Meet Diya AI Header */}
-            <div ref={headerRef} className={`scroll-fade-in ${headerVisible ? 'animate' : ''} mb-4`}>
+            <div ref={headerRef} className={`scroll-fade-in ${headerVisible ? 'animate' : ''} mb-0 sm:mb-4`}>
               <span className="meet-diya-text text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-semibold tracking-wider font-cursive">
                 {displayedText}
                 {showCursor && <span className="animate-pulse">|</span>}
@@ -52,7 +52,7 @@ const HeroSection = () => {
             </div>
 
             {/* Credentials */}
-            <div className={`text-center scroll-fade-in scroll-stagger-1 ${contentVisible ? 'animate' : ''} mt-4 sm:mt-6`}>
+            <div className={`text-center scroll-fade-in scroll-stagger-1 ${contentVisible ? 'animate' : ''} mt-0 sm:mt-6`}>
               <p className="text-base sm:text-lg md:text-xl lg:text-2xl gold-shimmer font-medium">
                 Built by Indian alumni from Harvard and UChicago.
               </p>
