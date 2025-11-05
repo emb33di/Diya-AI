@@ -49,7 +49,7 @@ const HeroSection = () => {
     return () => clearInterval(typingInterval);
   }, [headerVisible, fullText]);
 
-  return <section className="min-h-screen flex items-center px-4 sm:px-6 pt-20 sm:pt-24 pb-8 sm:pb-12">
+  return <section className="min-h-screen flex items-center px-4 sm:px-6 pt-8 sm:pt-12 pb-2 sm:pb-12">
       <div className="max-w-7xl mx-auto w-full">
         <div className="flex flex-col items-center justify-center min-h-[70vh]">
           {/* Top Center - Heading */}
@@ -64,15 +64,22 @@ const HeroSection = () => {
 
             {/* Hero Headline */}
             <div ref={contentRef} className={`scroll-fade-in ${contentVisible ? 'animate' : ''}`}>
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-foreground leading-tight tracking-tight font-inter">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-foreground leading-tight tracking-tight font-inter">
                 India's AI Admissions Counselor
               </h1>
+            </div>
+
+            {/* Credentials */}
+            <div className={`text-center scroll-fade-in scroll-stagger-1 ${contentVisible ? 'animate' : ''} mt-4 sm:mt-6`}>
+              <p className="text-base sm:text-lg md:text-xl gold-shimmer font-medium">
+                Built by Indian alumni from Harvard and UChicago.
+              </p>
             </div>
           </div>
 
           {/* Video - Directly Below Heading */}
-          <div ref={containerRef} className={`flex justify-center scroll-fade-in ${videoVisible ? 'animate' : ''} relative z-40 w-full mb-8 sm:mb-12`}>
-            <div className="w-full max-w-[90%] sm:max-w-md md:max-w-2xl lg:max-w-3xl xl:max-w-4xl 2xl:max-w-5xl">
+          <div ref={containerRef} className={`flex justify-center scroll-fade-in ${videoVisible ? 'animate' : ''} relative z-40 w-full mb-2 sm:mb-12`}>
+            <div className="w-full max-w-[90%] sm:max-w-md md:max-w-2xl lg:max-w-2xl xl:max-w-3xl 2xl:max-w-4xl">
               <div className="relative rounded-xl sm:rounded-2xl overflow-hidden bg-black shadow-[0_0_40px_hsl(var(--primary)/0.4)] hover:shadow-[0_0_60px_hsl(var(--primary)/0.6)] transition-all duration-500">
                 <div className="aspect-video bg-black relative group">
                   <video
@@ -99,13 +106,6 @@ const HeroSection = () => {
                 </div>
               </div>
             </div>
-          </div>
-
-          {/* Credentials */}
-          <div className={`text-center scroll-fade-in scroll-stagger-1 ${contentVisible ? 'animate' : ''}`}>
-            <p className="text-lg sm:text-xl md:text-2xl gold-shimmer font-medium">
-              Built by Indian alumni from Harvard and UChicago for Indian students.
-            </p>
           </div>
         </div>
       </div>
