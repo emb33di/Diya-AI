@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getUserDisplayName, fetchUserProfileData } from "@/utils/userNameUtils";
 import { getUserProgramType } from "@/utils/userProfileUtils";
 import { getDraftStatusLabel } from "@/utils/statusUtils";
+import { fetchSchoolRecommendations } from "@/utils/supabaseUtils";
 import { PenTool, MessageSquare, FileText, Clock, CheckCircle2, Plus, ArrowLeft, ChevronRight, Trash2, ChevronDown } from "lucide-react";
 import SemanticEssayEditor from "@/components/essay/SemanticEssayEditor";
 import { CreateEssayModal } from "@/components/essay/CreateEssayModal";
@@ -302,15 +303,15 @@ const Essays = () => {
       } = await supabase.auth.getUser();
       if (!user) return [];
 
-      const {
-        data: recommendations,
-        error
-      } = await supabase.from('school_recommendations').select('*').eq('student_id', user.id).order('created_at', {
-        ascending: false
-      });
+      // Use timeout utility to prevent hanging queries
+      const { data: recommendations, error } = await fetchSchoolRecommendations(user.id);
       
       if (error) {
-        throw error;
+        throw new Error(error);
+      }
+      
+      if (!recommendations) {
+        return [];
       }
       
       const transformedSchools: School[] = recommendations.map((rec: any) => ({
@@ -407,7 +408,152 @@ const Essays = () => {
     }
   };
 
-  // Fetch user's schools and user data
+  // Explicit fetch functions for user actions
+  const fetchEssaysForSchool = async (schoolName: string) => {
+    if (!schoolName) {
+      setNewEssays([]);
+      setIsLoadingEssays(false);
+      persistEssaySelection(null);
+      return;
+    }
+
+    setIsLoadingEssays(true);
+    try {
+      const essays = await EssayService.getEssaysForSchool(schoolName);
+      setNewEssays(essays);
+      
+      // Special handling for Common Application
+      if (schoolName === 'Common Application') {
+        if (essays.length > 0) {
+          setCommonAppEssay(essays[0]);
+        }
+      }
+      
+      // Validate persisted essay selection - MUST clear if essay doesn't exist
+      const persistedEssayId = localStorage.getItem('essays_selected_new_essay_id');
+      if (persistedEssayId && !essays.find(e => e.id === persistedEssayId)) {
+        console.log('[ESSAYS] Clearing invalid persisted essay ID:', persistedEssayId);
+        persistEssaySelection(null);
+      }
+    } catch (error) {
+      console.error('[ESSAYS_ERROR] Failed to load essays for school:', {
+        schoolId: schoolName,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User cannot see their essays for the selected school'
+      });
+      setNewEssays([]);
+      toast({
+        title: "Failed to load essays",
+        description: "Could not load essays for this school. Your current selection has been preserved. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingEssays(false);
+    }
+  };
+
+  const fetchPromptsForSchool = async (schoolName: string) => {
+    if (!schoolName) {
+      setEssayPrompts([]);
+      setUserSelections([]);
+      setEssays([]);
+      return;
+    }
+
+    try {
+      let prompts: EssayPrompt[] = [];
+      
+      // Handle Common Application and UCAS specially
+      if (schoolName === 'Common Application') {
+        prompts = await EssayPromptService.getPromptsForCollegeForUser('Common Application');
+      } else if (schoolName === 'UCAS (UK Schools)') {
+        prompts = await EssayPromptService.getPromptsForCollegeForUser('UCAS (UK Schools)');
+      } else {
+        // Check if this is a UK school - redirect to UCAS prompts
+        const ukSchools = [
+          'University of Oxford',
+          'University of Cambridge', 
+          'Imperial College London',
+          'University College London (UCL)',
+          'London School of Economics and Political Science (LSE)'
+        ];
+        
+        if (ukSchools.includes(schoolName)) {
+          prompts = await EssayPromptService.getPromptsForCollegeForUser('UCAS (UK Schools)');
+        } else {
+          prompts = await EssayPromptService.getPromptsForCollegeForUser(schoolName);
+          
+          // If no prompts found, try common variations
+          if (prompts.length === 0) {
+            const variations = [
+              schoolName.replace(' University', ''),
+              schoolName.replace(' College', ''),
+              schoolName.replace(' Institute', '')
+            ];
+
+            for (const variation of variations) {
+              prompts = await EssayPromptService.getPromptsForCollegeForUser(variation);
+              if (prompts.length > 0) break;
+            }
+          }
+        }
+      }
+
+      setEssayPrompts(prompts);
+      
+      // Clear Common App prompts when selecting a different school
+      if (schoolName !== 'Common Application' && schoolName !== 'Coalition Application' && schoolName !== 'UCAS (UK Schools)') {
+        setCommonAppPrompts([]);
+        setSelectedCommonAppPrompt(null);
+      }
+      
+      // Fetch user's existing selections for this school
+      const selections = await EssayPromptService.getUserSelectionsForSchool(schoolName);
+      setUserSelections(selections);
+
+      // Convert prompts to essays format
+      const essaysFromPrompts: Essay[] = prompts.map((prompt, index) => {
+        const existingSelection = selections.find(s => s.prompt_number === prompt.prompt_number);
+        const wordCount = existingSelection?.essay_content?.split(' ').length || 0;
+        const hasExistingContent = existingSelection?.essay_content?.trim().length > 0;
+        
+        return {
+          id: `${schoolName}-${prompt.prompt_number}`,
+          title: prompt.title || `${schoolName} - ${prompt.prompt_number}`,
+          prompt: prompt.prompt,
+          wordCount: wordCount,
+          wordLimit: parseWordLimit(prompt.word_limit),
+          status: hasExistingContent ? 'draft' : 'not_started',
+          lastEdited: existingSelection ? 'Recently' : 'Never',
+          feedback: 0,
+          schoolName: schoolName,
+          promptNumber: prompt.prompt_number
+        };
+      });
+
+      setEssays(essaysFromPrompts);
+    } catch (error) {
+      console.error('[ESSAYS_ERROR] Failed to load essay prompts:', {
+        schoolId: schoolName,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User cannot see essay prompts for the selected school'
+      });
+      
+      setEssayPrompts([]);
+      setUserSelections([]);
+      setEssays([]);
+      
+      toast({
+        title: "Error",
+        description: "Failed to load essay prompts for this school. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Single useEffect to fetch everything on initial load only
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -429,7 +575,7 @@ const Essays = () => {
         const schools = await fetchSchools();
         setSchools(schools);
         
-        // Fetch essay counts for all schools (for mobile view)
+        // Fetch essay counts for all schools (for mobile view) - only on mount
         if (isMobile && schools.length > 0) {
           const counts: Record<string, { total: number; inProgress: number }> = {};
           await Promise.all(
@@ -450,21 +596,26 @@ const Essays = () => {
           setSchoolEssayCounts(counts);
         }
         
-        // Clear selectedSchool if it doesn't exist in the schools list
+        // Handle persisted school selection - fetch data explicitly if valid
         const persistedSchool = localStorage.getItem('essays_selected_school');
-        if (persistedSchool && schools.length === 0) {
+        if (persistedSchool && schools.length > 0) {
+          const schoolExists = schools.find(s => s.name === persistedSchool);
+          if (schoolExists) {
+            // School is valid, fetch data for it explicitly
+            await Promise.all([
+              fetchEssaysForSchool(persistedSchool),
+              fetchPromptsForSchool(persistedSchool)
+            ]);
+          } else {
+            // School doesn't exist, clear it
+            localStorage.removeItem('essays_selected_school');
+            setSelectedSchool('');
+            persistEssaySelection(null);
+          }
+        } else if (persistedSchool && schools.length === 0) {
           localStorage.removeItem('essays_selected_school');
           setSelectedSchool('');
-          // Also clear essay selection if no schools
           persistEssaySelection(null);
-        } else if (persistedSchool && !schools.find(s => s.name === persistedSchool)) {
-          localStorage.removeItem('essays_selected_school');
-          setSelectedSchool('');
-          // Also clear essay selection if school doesn't exist
-          persistEssaySelection(null);
-        } else if (persistedSchool) {
-          // If school is valid, trigger essay loading for validation
-          // The useEffect at line 354 will handle this
         }
 
         // Fetch onboarding transcript separately to avoid blocking
@@ -483,7 +634,6 @@ const Essays = () => {
             timestamp: new Date().toISOString(),
             message: 'User onboarding conversation could not be loaded for essay context'
           });
-          // Don't block the main flow for this
         }
         
       } catch (error) {
@@ -492,195 +642,13 @@ const Essays = () => {
           timestamp: new Date().toISOString(),
           message: 'User cannot access essays page - schools and data loading failed'
         });
-        // Set empty schools array to prevent UI crashes
         setSchools([]);
       } finally {
         setLoading(false);
       }
     };
     fetchData();
-  }, [isMobile]);
-
-  // Fetch new essays when school is selected
-  useEffect(() => {
-    if (selectedSchool) {
-      const fetchNewEssays = async () => {
-        setIsLoadingEssays(true);
-        try {
-          const essays = await EssayService.getEssaysForSchool(selectedSchool);
-          setNewEssays(essays);
-          
-          // Special handling for Common Application
-          if (selectedSchool === 'Common Application') {
-            // Check if user already has a Common App essay
-            const existingCommonAppEssay = await EssayService.getEssaysForSchool('Common Application');
-            if (existingCommonAppEssay.length > 0) {
-              setCommonAppEssay(existingCommonAppEssay[0]);
-            }
-          }
-          
-          // Validate persisted essay selection - MUST clear if essay doesn't exist
-          // Only validate after essays have finished loading to avoid race conditions
-          const persistedEssayId = localStorage.getItem('essays_selected_new_essay_id');
-          if (persistedEssayId && !essays.find(e => e.id === persistedEssayId)) {
-            // If persisted essay doesn't exist for this school, clear it immediately
-            console.log('[ESSAYS] Clearing invalid persisted essay ID:', persistedEssayId);
-            persistEssaySelection(null);
-          }
-        } catch (error) {
-          console.error('[ESSAYS_ERROR] Failed to load essays for school:', {
-            schoolId: selectedSchool,
-            error: error instanceof Error ? error.message : 'Unknown error',
-            timestamp: new Date().toISOString(),
-            message: 'User cannot see their essays for the selected school'
-          });
-          // Keep essay selection on fetch errors - don't clear until we confirm essay doesn't exist
-          // Only clear selection after successful fetch that proves essay ID is invalid
-          setNewEssays([]);
-          toast({
-            title: "Failed to load essays",
-            description: "Could not load essays for this school. Your current selection has been preserved. Please try again.",
-            variant: "destructive"
-          });
-        } finally {
-          setIsLoadingEssays(false);
-        }
-      };
-      fetchNewEssays();
-    } else {
-      setNewEssays([]);
-      setIsLoadingEssays(false);
-      persistEssaySelection(null);
-    }
-  }, [selectedSchool]);
-
-  // Fetch Common App prompts for undergraduate students
-  useEffect(() => {
-    const fetchCommonAppPrompts = async () => {
-      try {
-        const prompts = await EssayPromptService.getPromptsForCollegeForUser('Common Application');
-        setCommonAppPrompts(prompts);
-        
-        // Check if user already has a Common App essay
-        const existingCommonAppEssay = await EssayService.getEssaysForSchool('Common Application');
-        if (existingCommonAppEssay.length > 0) {
-          setCommonAppEssay(existingCommonAppEssay[0]);
-        }
-      } catch (error) {
-        console.error('[ESSAYS_ERROR] Failed to load Common App prompts:', {
-          error: error instanceof Error ? error.message : 'Unknown error',
-          timestamp: new Date().toISOString(),
-          message: 'User cannot see Common Application essay prompts'
-        });
-      }
-    };
-
-    fetchCommonAppPrompts();
-  }, []);
-
-  // Fetch essay prompts when a school is selected
-  useEffect(() => {
-    if (selectedSchool) {
-      const fetchPrompts = async () => {
-        try {
-          let prompts: EssayPrompt[] = [];
-          
-          // Handle Common Application and UCAS specially
-          if (selectedSchool === 'Common Application') {
-            prompts = await EssayPromptService.getPromptsForCollegeForUser('Common Application');
-          } else if (selectedSchool === 'UCAS (UK Schools)') {
-            prompts = await EssayPromptService.getPromptsForCollegeForUser('UCAS (UK Schools)');
-          } else {
-            // Check if this is a UK school - redirect to UCAS prompts
-            const ukSchools = [
-              'University of Oxford',
-              'University of Cambridge', 
-              'Imperial College London',
-              'University College London (UCL)',
-              'London School of Economics and Political Science (LSE)'
-            ];
-            
-            if (ukSchools.includes(selectedSchool)) {
-              // Redirect UK schools to UCAS prompts
-              prompts = await EssayPromptService.getPromptsForCollegeForUser('UCAS (UK Schools)');
-            } else {
-              // Try to find prompts for the school name, filtered by user's program type
-              prompts = await EssayPromptService.getPromptsForCollegeForUser(selectedSchool);
-              
-              // If no prompts found, try common variations (no fallback to other application systems)
-              if (prompts.length === 0) {
-                // Try removing "University" or "College" from the name
-                const variations = [
-                  selectedSchool.replace(' University', ''),
-                  selectedSchool.replace(' College', ''),
-                  selectedSchool.replace(' Institute', '')
-                ];
-
-                for (const variation of variations) {
-                  prompts = await EssayPromptService.getPromptsForCollegeForUser(variation);
-                  if (prompts.length > 0) break;
-                }
-              }
-            }
-          }
-
-          setEssayPrompts(prompts);
-          
-          // Clear Common App prompts when selecting a different school
-          if (selectedSchool !== 'Common Application' && selectedSchool !== 'Coalition Application' && selectedSchool !== 'UCAS (UK Schools)') {
-            setCommonAppPrompts([]);
-            setSelectedCommonAppPrompt(null);
-          }
-          
-          // Fetch user's existing selections for this school
-          const selections = await EssayPromptService.getUserSelectionsForSchool(selectedSchool);
-          setUserSelections(selections);
-
-          // Convert prompts to essays format
-          const essaysFromPrompts: Essay[] = prompts.map((prompt, index) => {
-            const existingSelection = selections.find(s => s.prompt_number === prompt.prompt_number);
-            const wordCount = existingSelection?.essay_content?.split(' ').length || 0;
-            const hasExistingContent = existingSelection?.essay_content?.trim().length > 0;
-            
-            return {
-              id: `${selectedSchool}-${prompt.prompt_number}`,
-              title: prompt.title || `${selectedSchool} - ${prompt.prompt_number}`, // Use database title, fallback to generated title
-              prompt: prompt.prompt,
-              wordCount: wordCount,
-              wordLimit: parseWordLimit(prompt.word_limit),
-              status: hasExistingContent ? 'draft' : 'not_started',
-              lastEdited: existingSelection ? 'Recently' : 'Never',
-              feedback: 0,
-              schoolName: selectedSchool,
-              promptNumber: prompt.prompt_number
-            };
-          });
-
-          setEssays(essaysFromPrompts);
-        } catch (error) {
-          console.error('[ESSAYS_ERROR] Failed to load essay prompts:', {
-            schoolId: selectedSchool,
-            error: error instanceof Error ? error.message : 'Unknown error',
-            timestamp: new Date().toISOString(),
-            message: 'User cannot see essay prompts for the selected school'
-          });
-          
-          // Set empty arrays to prevent UI crashes
-          setEssayPrompts([]);
-          setUserSelections([]);
-          setEssays([]);
-          
-          toast({
-            title: "Error",
-            description: "Failed to load essay prompts for this school. Please try again.",
-            variant: "destructive"
-          });
-        }
-      };
-
-      fetchPrompts();
-    }
-  }, [selectedSchool, toast]);
+  }, []); // Mount only - no dependencies
 
 
 
@@ -709,9 +677,8 @@ const Essays = () => {
     try {
       const newEssay = await EssayService.createEssay(essayData);
       
-      // Refresh the essays list
-      const updatedEssays = await EssayService.getEssaysForSchool(selectedSchool);
-      setNewEssays(updatedEssays);
+      // Refresh the essays list using explicit fetch function
+      await fetchEssaysForSchool(selectedSchool);
       
       // Select the new essay
       persistEssaySelection(newEssay.id);
@@ -743,9 +710,8 @@ const Essays = () => {
     try {
       await EssayService.deleteEssay(essayToDelete.id);
       
-      // Refresh the essays list
-      const updatedEssays = await EssayService.getEssaysForSchool(selectedSchool);
-      setNewEssays(updatedEssays);
+      // Refresh the essays list using explicit fetch function
+      await fetchEssaysForSchool(selectedSchool);
       
       // If the deleted essay was selected, clear selection
       if (selectedNewEssayId === essayToDelete.id) {
@@ -902,7 +868,7 @@ const Essays = () => {
     }
   };
 
-  const handleSchoolChange = (schoolName: string) => {
+  const handleSchoolChange = async (schoolName: string) => {
     setSelectedSchool(schoolName);
     setSelectedEssay(null);
     setEssayContent('');
@@ -925,6 +891,21 @@ const Essays = () => {
     
     // Persist to localStorage
     localStorage.setItem('essays_selected_school', schoolName);
+    
+    // Explicitly fetch data for the selected school (user action)
+    if (schoolName) {
+      await Promise.all([
+        fetchEssaysForSchool(schoolName),
+        fetchPromptsForSchool(schoolName)
+      ]);
+    } else {
+      // Clear data if no school selected
+      setNewEssays([]);
+      setEssayPrompts([]);
+      setUserSelections([]);
+      setEssays([]);
+      setIsLoadingEssays(false);
+    }
   };
 
   // Handle adding a single school

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from './useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -25,7 +25,7 @@ export interface ApplicationProgressData {
   error: string | null;
 }
 
-export const useApplicationProgress = () => {
+export const useApplicationProgress = (autoFetch: boolean = true) => {
   const { user } = useAuth();
   const [data, setData] = useState<ApplicationProgressData>({
     tasks: [],
@@ -33,26 +33,14 @@ export const useApplicationProgress = () => {
     completedTasks: 0,
     progressPercentage: 0,
     schoolsWithTasks: 0,
-    loading: true,
+    loading: autoFetch, // Start with loading: true only if autoFetch is enabled
     error: null,
   });
+  const isMountedRef = useRef(true);
 
   const userId = user?.id;
 
-  useEffect(() => {
-    console.log('[APPLICATION_PROGRESS] Effect triggered', {
-      userId,
-      hasUser: Boolean(userId),
-    });
-    if (!userId) {
-      console.log('[APPLICATION_PROGRESS] No user ID available, skipping fetch');
-      setData(prev => ({ ...prev, loading: false }));
-      return;
-    }
-
-    let isMounted = true;
-
-    const fetchApplicationProgress = async () => {
+  const fetchApplicationProgress = async () => {
       console.log('[APPLICATION_PROGRESS] Fetch start', {
         userId,
         timestamp: new Date().toISOString(),
@@ -61,8 +49,8 @@ export const useApplicationProgress = () => {
         setData(prev => ({ ...prev, loading: true, error: null }));
 
         // Fetch tasks with school information
-        // Removed timeout wrapper - let query complete naturally and handle errors properly
-        const { data: tasksData, error } = await supabase
+        // Add timeout to prevent hanging indefinitely
+        const fetchPromise = supabase
           .from('school_application_tasks')
           .select(`
             id,
@@ -80,11 +68,20 @@ export const useApplicationProgress = () => {
           `)
           .eq('school_recommendations.student_id', userId as any);
 
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Application progress fetch timeout after 30 seconds')), 30000)
+        );
+
+        const { data: tasksData, error } = await Promise.race([
+          fetchPromise,
+          timeoutPromise
+        ]) as any;
+
         if (error) {
           throw error;
         }
 
-        if (isMounted) {
+        if (isMountedRef.current) {
           // Transform the data to include school information
           const tasks: SchoolApplicationTask[] = (tasksData as any[])?.map(task => ({
             id: task.id,
@@ -137,7 +134,7 @@ export const useApplicationProgress = () => {
           timestamp: new Date().toISOString(),
         });
 
-        if (isMounted) {
+        if (isMountedRef.current) {
           setData(prev => ({
             ...prev,
             loading: false,
@@ -147,13 +144,31 @@ export const useApplicationProgress = () => {
       }
     };
 
+  useEffect(() => {
+    isMountedRef.current = true;
+    
+    if (!autoFetch) {
+      // Loading state is already initialized correctly, no need to update
+      return;
+    }
+
+    console.log('[APPLICATION_PROGRESS] Effect triggered', {
+      userId,
+      hasUser: Boolean(userId),
+    });
+    if (!userId) {
+      console.log('[APPLICATION_PROGRESS] No user ID available, skipping fetch');
+      setData(prev => ({ ...prev, loading: false }));
+      return;
+    }
+
     fetchApplicationProgress();
 
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
       console.log('[APPLICATION_PROGRESS] Cleanup invoked', { userId });
     };
-  }, [userId]);
+  }, [userId, autoFetch]);
 
   // Function to update task completion
   const updateTaskCompletion = async (taskId: string, completed: boolean): Promise<boolean> => {
@@ -197,8 +212,27 @@ export const useApplicationProgress = () => {
     }
   };
 
+  const refetch = () => {
+    if (userId) {
+      console.log('[APPLICATION_PROGRESS] Refetch called', { userId });
+      fetchApplicationProgress().catch(error => {
+        console.error('[APPLICATION_PROGRESS] Refetch error:', error);
+        if (isMountedRef.current) {
+          setData(prev => ({
+            ...prev,
+            loading: false,
+            error: error instanceof Error ? error.message : 'Failed to fetch application progress',
+          }));
+        }
+      });
+    } else {
+      console.warn('[APPLICATION_PROGRESS] Refetch called but userId is not available');
+    }
+  };
+
   return {
     ...data,
     updateTaskCompletion,
+    refetch,
   };
 };

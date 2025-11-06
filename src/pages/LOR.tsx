@@ -116,26 +116,60 @@ const LOR = () => {
     }
   }, [isAllocationDialogOpen]);
 
-  // Fetch data on component mount
+  // Fetch data on component mount - single useEffect to prevent multiple loads
   useEffect(() => {
-    fetchData();
-    loadLORTemplates();
-  }, []);
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setError("User not authenticated");
+          setLoading(false);
+          return;
+        }
 
-  const loadLORTemplates = async () => {
-    try {
-      const allTemplates = await loadAllTemplates();
-      const lorTemplatesFiltered = allTemplates.filter(template => template.category === 'lor');
-      setLorTemplates(lorTemplatesFiltered);
-    } catch (error) {
-      console.error('Error loading LOR templates:', error);
-      setLorTemplates([]);
-    }
-  };
+        // Load all data in parallel
+        const [recommendersData, deadlinesData, statsData, schoolOptionsData, allTemplates] = await Promise.all([
+          LORService.getUserRecommenders(user.id),
+          LORService.getUserLORDeadlines(user.id),
+          LORService.getUserLORStats(user.id),
+          LORService.getUserSchoolOptions(user.id),
+          loadAllTemplates().catch(err => {
+            console.error('Error loading LOR templates:', err);
+            return [];
+          })
+        ]);
+
+        setRecommenders(recommendersData);
+        setDeadlines(deadlinesData);
+        setStats(statsData);
+        setSchoolOptions(schoolOptionsData);
+        
+        // Filter LOR templates
+        const lorTemplatesFiltered = allTemplates.filter(template => template.category === 'lor');
+        setLorTemplates(lorTemplatesFiltered);
+      } catch (err) {
+        const { data: { user } } = await supabase.auth.getUser();
+        console.error('[LOR_ERROR] Failed to load LOR data:', {
+          userId: user?.id || 'unknown',
+          userEmail: user?.email || 'unknown',
+          error: err instanceof Error ? err.message : 'Unknown error',
+          timestamp: new Date().toISOString(),
+          message: 'User cannot see their letters of recommendation data'
+        });
+        setError("Failed to load LOR data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
 
   const fetchData = async () => {
     try {
-      setLoading(true);
       setError(null);
       
       const { data: { user } } = await supabase.auth.getUser();
@@ -165,8 +199,6 @@ const LOR = () => {
         message: 'User cannot see their letters of recommendation data'
       });
       setError("Failed to load LOR data");
-    } finally {
-      setLoading(false);
     }
   };
 

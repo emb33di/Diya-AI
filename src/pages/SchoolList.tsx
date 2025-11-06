@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -63,7 +63,7 @@ interface School {
 const SchoolList = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const [schools, setSchools] = useState<School[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -113,29 +113,29 @@ const SchoolList = () => {
   }, [contextMenu.visible]);
 
   // Fetch school recommendations from Supabase
-  const fetchSchoolRecommendationsData = async () => {
+  const fetchSchoolRecommendationsData = useCallback(async () => {
+    if (!user) {
+      setError("User not authenticated");
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
-      
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setError("User not authenticated");
-        return;
-      }
+      setError(null);
 
       // Fetch school recommendations with timeout handling
-      const { data: recommendations, error } = await fetchSchoolRecommendations(user.id);
+      const { data: recommendations, error: fetchError } = await fetchSchoolRecommendations(user.id);
 
-      if (error) {
+      if (fetchError) {
         console.error('[SCHOOLS_ERROR] Failed to load school recommendations:', {
           userId: user?.id || 'unknown',
           userEmail: user?.email || 'unknown',
-          error: error instanceof Error ? error.message : 'Unknown error',
+          error: fetchError instanceof Error ? fetchError.message : 'Unknown error',
           timestamp: new Date().toISOString(),
           message: 'User cannot see their school list'
         });
-        setError(error);
+        setError(fetchError);
         return;
       }
 
@@ -168,11 +168,14 @@ const SchoolList = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
+  // Load all data on component mount - single useEffect pattern like Resume page
   useEffect(() => {
-    fetchSchoolRecommendationsData();
-  }, []);
+    if (user) {
+      fetchSchoolRecommendationsData();
+    }
+  }, [user, fetchSchoolRecommendationsData]);
 
 
   const capitalizeSchoolType = (schoolType: string) => {
@@ -249,8 +252,6 @@ const SchoolList = () => {
 
   const addSchool = async (schoolData: any) => {
     try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         console.error('[SCHOOLS_ERROR] User not authenticated:', {
           timestamp: new Date().toISOString(),
@@ -372,8 +373,6 @@ const SchoolList = () => {
 
   const addMultipleSchools = async (schoolsData: any[]) => {
     try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         console.error('[SCHOOLS_ERROR] User not authenticated:', {
           timestamp: new Date().toISOString(),

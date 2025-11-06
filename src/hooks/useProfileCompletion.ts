@@ -57,7 +57,7 @@ const ADDITIONAL_FIELDS = [
   { key: 'has_geographic_preferences', category: 'College Preferences', weight: 0 },
 ];
 
-export const useProfileCompletion = () => {
+export const useProfileCompletion = (autoFetch: boolean = true) => {
   const { user } = useAuth();
   const [completionData, setCompletionData] = useState<ProfileCompletionData>({
     completionPercentage: 0,
@@ -65,7 +65,7 @@ export const useProfileCompletion = () => {
     totalFields: 0,
     missingFields: [],
   });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(autoFetch); // Start with loading: true only if autoFetch is enabled
   const [error, setError] = useState<string | null>(null);
 
   const calculateCompletion = useCallback(async () => {
@@ -208,6 +208,11 @@ export const useProfileCompletion = () => {
   }, [user]);
 
   useEffect(() => {
+    if (!autoFetch) {
+      // Loading state is already initialized correctly, no need to update
+      return;
+    }
+
     let isMounted = true;
 
     const runCalculation = async () => {
@@ -235,12 +240,21 @@ export const useProfileCompletion = () => {
       isMounted = false;
       window.removeEventListener('profileUpdated', handleProfileUpdate);
     };
-  }, [user, calculateCompletion]);
+  }, [user, calculateCompletion, autoFetch]);
+
+  const refetch = useCallback(() => {
+    console.log('[PROFILE_COMPLETION] Refetch called', { userId: user?.id });
+    calculateCompletion().catch(error => {
+      console.error('[PROFILE_COMPLETION] Refetch error:', error);
+      setLoading(false);
+      setError(error instanceof Error ? error.message : 'Failed to calculate profile completion');
+    });
+  }, [calculateCompletion, user?.id]);
 
   return {
     ...completionData,
     loading,
     error,
-    refetch: calculateCompletion,
+    refetch,
   };
 };

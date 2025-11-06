@@ -9,7 +9,7 @@ import { useDashboardData } from "@/hooks/useDashboardData";
 import { useProfileCompletion } from "@/hooks/useProfileCompletion";
 import { useApplicationProgress } from "@/hooks/useApplicationProgress";
 import { Link, useNavigate } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 import { BookOpen, Calendar, CheckCircle, Target, Users, PenTool, Clock, AlertCircle } from "lucide-react";
 
@@ -23,23 +23,26 @@ const Dashboard = () => {
     upcomingDeadlines,
     upcomingLorDeadlines,
     loading, 
-    error 
-  } = useDashboardData();
+    error,
+    refetch: refetchDashboardData
+  } = useDashboardData(false);
   const { 
     completionPercentage: profileCompletion, 
     completedFields, 
     totalFields, 
     missingFields, 
     loading: profileLoading, 
-    error: profileError 
-  } = useProfileCompletion();
+    error: profileError,
+    refetch: refetchProfileCompletion
+  } = useProfileCompletion(false);
   const { 
     progressPercentage: applicationProgressPercentage,
     completedTasks,
     totalTasks,
     schoolsWithTasks,
-    loading: applicationProgressLoading 
-  } = useApplicationProgress();
+    loading: applicationProgressLoading,
+    refetch: refetchApplicationProgress
+  } = useApplicationProgress(false);
 
   // Get user's display name with consistent fallback logic
   const displayName = (() => {
@@ -54,43 +57,22 @@ const Dashboard = () => {
     return 'Student';
   })();
 
-  useEffect(() => {
-    console.log('[DASHBOARD_DEBUG] Loading flags snapshot', {
-      authLoading,
-      dashboardDataLoading: loading,
-      profileLoading,
-      applicationProgressLoading,
-    });
-  }, [authLoading, loading, profileLoading, applicationProgressLoading]);
+  // Track if we've already fetched data to prevent multiple fetches
+  const hasFetchedRef = useRef(false);
 
+  // Single useEffect to fetch all data once when auth is ready
   useEffect(() => {
-    console.log('[DASHBOARD_DEBUG] Data snapshot', {
-      essaysCount: essays.length,
-      deadlinesCount: deadlines.length,
-      schoolCategoriesCount: schoolCategories.length,
-      upcomingDeadlinesCount: upcomingDeadlines.length,
-      upcomingLorDeadlinesCount: upcomingLorDeadlines.length,
-    });
-  }, [essays, deadlines, schoolCategories, upcomingDeadlines, upcomingLorDeadlines]);
-
-  useEffect(() => {
-    if (authError || error) {
-      console.log('[DASHBOARD_DEBUG] Error state detected', {
-        authError,
-        dashboardError: error,
+    // Only fetch data if user is authenticated, auth is not loading, and we haven't fetched yet
+    if (!authLoading && user?.id && !hasFetchedRef.current) {
+      console.log('[DASHBOARD] Fetching all dashboard data on mount', {
+        userId: user.id,
       });
+      hasFetchedRef.current = true;
+      refetchDashboardData();
+      refetchProfileCompletion();
+      refetchApplicationProgress();
     }
-  }, [authError, error]);
-
-  useEffect(() => {
-    if (!authLoading && !loading && !profileLoading && !applicationProgressLoading) {
-      console.log('[DASHBOARD_DEBUG] Ready to render dashboard content', {
-        userId: user?.id ?? null,
-        profileId: profile?.id ?? null,
-        displayName,
-      });
-    }
-  }, [authLoading, loading, profileLoading, applicationProgressLoading, user?.id, profile?.id, displayName]);
+  }, [authLoading, user?.id]); // Only run when auth state changes from loading to ready
 
   // Profile completion is now calculated by the useProfileCompletion hook
 

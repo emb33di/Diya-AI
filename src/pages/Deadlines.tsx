@@ -26,104 +26,112 @@ const Deadlines = () => {
   const [stats, setStats] = useState<any>(null);
   const [editingDeadline, setEditingDeadline] = useState<string | null>(null);
 
-  // Fetch user's deadlines
+  // Single useEffect to fetch everything on initial load
   useEffect(() => {
-    fetchDeadlines();
-  }, []);
-
-  // Auto-sync deadlines for existing schools that don't have them
-  useEffect(() => {
-    const syncExistingDeadlines = async () => {
+    const initializeDeadlines = async () => {
       try {
+        setLoading(true);
+        setError(null);
+        
+        // Get current user
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        if (!user) {
+          setError("User not authenticated");
+          setLoading(false);
+          return;
+        }
 
-        // Check if any schools don't have regular decision deadlines
+        // Step 1: Check if any schools need deadline syncing
         const { data: schoolRecommendations } = await supabase
           .from('school_recommendations')
           .select('id, school, regular_decision_deadline')
+          // @ts-ignore - Supabase type inference issue with student_id column
           .eq('student_id', user.id)
           .is('regular_decision_deadline', null);
 
+        // Step 2: Auto-sync deadlines if needed (before fetching)
         if (schoolRecommendations && schoolRecommendations.length > 0) {
-          // Auto-sync deadlines for schools that don't have them
-          const { data: deadlineSyncData, error: deadlineSyncError } = await supabase.functions.invoke('auto-sync-deadlines', {
-            body: { user_id: user.id },
-            headers: {
-              Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-            }
-          });
+          try {
+            const { data: deadlineSyncData, error: deadlineSyncError } = await supabase.functions.invoke('auto-sync-deadlines', {
+              body: { user_id: user.id },
+              headers: {
+                Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+              }
+            });
 
-          if (!deadlineSyncError && deadlineSyncData?.schools_updated > 0) {
-            console.log('Auto-synced deadlines for existing schools:', deadlineSyncData);
-            // Refresh the deadlines after syncing
-            fetchDeadlines();
+            if (!deadlineSyncError && deadlineSyncData?.schools_updated > 0) {
+              console.log('Auto-synced deadlines for existing schools:', deadlineSyncData);
+            }
+          } catch (syncError) {
+            console.warn('Error auto-syncing existing deadlines:', syncError);
+            // Continue with fetch even if sync fails
           }
         }
-      } catch (error) {
-        console.warn('Error auto-syncing existing deadlines:', error);
+
+        // Step 3: Fetch all deadlines once
+        const userDeadlinesResponse = await DeadlineService.getUserDeadlines(user.id);
+        if (userDeadlinesResponse.success) {
+          setDeadlines(userDeadlinesResponse.deadlines);
+          // Calculate stats from deadlines
+          const deadlineStats = {
+            total: userDeadlinesResponse.deadlines.length,
+            critical: userDeadlinesResponse.deadlines.filter(d => d.urgencyLevel === 'critical').length,
+            high: userDeadlinesResponse.deadlines.filter(d => d.urgencyLevel === 'high').length,
+            medium: userDeadlinesResponse.deadlines.filter(d => d.urgencyLevel === 'medium').length,
+            low: userDeadlinesResponse.deadlines.filter(d => d.urgencyLevel === 'low').length,
+            completed: userDeadlinesResponse.deadlines.filter(d => d.applicationStatus === 'completed').length,
+            inProgress: userDeadlinesResponse.deadlines.filter(d => d.applicationStatus === 'in_progress').length,
+            notStarted: userDeadlinesResponse.deadlines.filter(d => d.applicationStatus === 'not_started').length
+          };
+          setStats(deadlineStats);
+        } else {
+          setError(userDeadlinesResponse.error || "Failed to load deadlines");
+        }
+      } catch (err) {
+        console.error('Error initializing deadlines:', err);
+        setError("Failed to load deadlines");
+      } finally {
+        setLoading(false);
       }
     };
 
-    syncExistingDeadlines();
-  }, []);
-
-  const fetchDeadlines = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setError("User not authenticated");
-        return;
-      }
-
-      // Get user's deadlines
-      const userDeadlinesResponse = await DeadlineService.getUserDeadlines(user.id);
-      if (userDeadlinesResponse.success) {
-        setDeadlines(userDeadlinesResponse.deadlines);
-        // Calculate stats from deadlines
-        const deadlineStats = {
-          total: userDeadlinesResponse.deadlines.length,
-          critical: userDeadlinesResponse.deadlines.filter(d => d.urgencyLevel === 'critical').length,
-          high: userDeadlinesResponse.deadlines.filter(d => d.urgencyLevel === 'high').length,
-          medium: userDeadlinesResponse.deadlines.filter(d => d.urgencyLevel === 'medium').length,
-          low: userDeadlinesResponse.deadlines.filter(d => d.urgencyLevel === 'low').length,
-          completed: userDeadlinesResponse.deadlines.filter(d => d.applicationStatus === 'completed').length,
-          inProgress: userDeadlinesResponse.deadlines.filter(d => d.applicationStatus === 'in_progress').length,
-          notStarted: userDeadlinesResponse.deadlines.filter(d => d.applicationStatus === 'not_started').length
-        };
-        setStats(deadlineStats);
-      } else {
-        setError(userDeadlinesResponse.error || "Failed to load deadlines");
-      }
-    } catch (err) {
-      console.error('Error fetching deadlines:', err);
-      setError("Failed to load deadlines");
-    } finally {
-      setLoading(false);
-    }
-  };
+    initializeDeadlines();
+  }, []); // Only run once on mount
 
 
 
-  // Handle task completion toggle
+  // Handle task completion toggle - surgical update
   const handleTaskToggle = async (schoolId: string, taskType: string, completed: boolean) => {
     try {
       const success = await DeadlineService.updateTaskCompletion(schoolId, taskType, completed);
       
       if (success) {
-        // Update local state
-        setDeadlines(prev => prev.map(d => 
-          d.id === schoolId ? {
-            ...d,
-            tasks: d.tasks.map(task => 
-              task.type === taskType ? { ...task, completed } : task
-            )
-          } : d
-        ));
+        // Update local state surgically - only update the specific task
+        setDeadlines(prev => {
+          const updatedDeadlines = prev.map(d => 
+            d.id === schoolId ? {
+              ...d,
+              tasks: d.tasks.map(task => 
+                task.type === taskType ? { ...task, completed } : task
+              )
+            } : d
+          );
+          
+          // Recalculate stats surgically from updated deadlines (no server refetch)
+          const deadlineStats = {
+            total: updatedDeadlines.length,
+            critical: updatedDeadlines.filter(d => d.urgencyLevel === 'critical').length,
+            high: updatedDeadlines.filter(d => d.urgencyLevel === 'high').length,
+            medium: updatedDeadlines.filter(d => d.urgencyLevel === 'medium').length,
+            low: updatedDeadlines.filter(d => d.urgencyLevel === 'low').length,
+            completed: updatedDeadlines.filter(d => d.applicationStatus === 'completed').length,
+            inProgress: updatedDeadlines.filter(d => d.applicationStatus === 'in_progress').length,
+            notStarted: updatedDeadlines.filter(d => d.applicationStatus === 'not_started').length
+          };
+          setStats(deadlineStats);
+          
+          return updatedDeadlines;
+        });
       } else {
         setError("Failed to update task completion");
       }
@@ -161,7 +169,7 @@ const Deadlines = () => {
     }
   };
 
-  // Simple custom deadline handler
+  // Simple custom deadline handler - surgical update
   const handleUpdateCustomDeadline = async (schoolId: string, deadlineDate: Date | undefined) => {
     try {
       const dateString = deadlineDate ? deadlineDate.toISOString().split('T')[0] : null;

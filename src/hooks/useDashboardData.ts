@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from './useAuth';
 import { EssayService, Essay } from '@/services/essayService';
 import { DeadlineService, UserDeadline, UserDeadlinesResponse } from '@/services/deadlineService';
@@ -21,7 +21,7 @@ export interface DashboardData {
   error: string | null;
 }
 
-export const useDashboardData = () => {
+export const useDashboardData = (autoFetch: boolean = true) => {
   const { user } = useAuth();
   const [data, setData] = useState<DashboardData>({
     essays: [],
@@ -29,28 +29,15 @@ export const useDashboardData = () => {
     schoolCategories: [],
     upcomingDeadlines: [],
     upcomingLorDeadlines: [],
-    loading: true,
+    loading: autoFetch, // Start with loading: true only if autoFetch is enabled
     error: null,
   });
+  const isMountedRef = useRef(true);
 
   // Extract user ID to prevent unnecessary re-fetches when user object changes
   const userId = user?.id;
 
-  useEffect(() => {
-    console.log('[DASHBOARD_DATA] Effect triggered', {
-      userId,
-      hasUser: Boolean(userId),
-    });
-
-    if (!userId) {
-      console.log('[DASHBOARD_DATA] No user ID available, skipping dashboard fetch');
-      setData(prev => ({ ...prev, loading: false }));
-      return;
-    }
-
-    let isMounted = true; // Prevent state updates after component unmounts
-
-    const fetchDashboardData = async (userId: string) => {
+  const fetchDashboardData = async (userId: string) => {
       console.log('[DASHBOARD_DATA] Fetch start', {
         userId,
         timestamp: new Date().toISOString(),
@@ -59,8 +46,8 @@ export const useDashboardData = () => {
         setData(prev => ({ ...prev, loading: true, error: null }));
 
         // Fetch all data in parallel for better performance
-        // Removed timeout wrapper - let queries complete naturally and handle errors properly
-        const [essays, deadlineResponse, lorDeadlinesResult, schoolRecommendationsResult] = await Promise.allSettled([
+        // Add timeout to prevent hanging indefinitely
+        const fetchPromise = Promise.allSettled([
           EssayService.getUserEssays(),
           DeadlineService.getUserDeadlines(userId),
           LORService.getUserLORDeadlines(userId),
@@ -69,6 +56,15 @@ export const useDashboardData = () => {
             .select('school, category, application_status')
             .eq('student_id', userId as any)
         ]);
+
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Dashboard data fetch timeout after 30 seconds')), 30000)
+        );
+
+        const [essays, deadlineResponse, lorDeadlinesResult, schoolRecommendationsResult] = await Promise.race([
+          fetchPromise,
+          timeoutPromise
+        ]) as PromiseSettledResult<any>[];
 
         console.log('[DASHBOARD_DATA] Fetch results received', {
           essaysStatus: essays.status,
@@ -168,7 +164,7 @@ export const useDashboardData = () => {
           .sort((a, b) => a.daysRemaining - b.daysRemaining)
           .slice(0, 5);
 
-        if (isMounted) {
+        if (isMountedRef.current) {
           console.log('[DASHBOARD_DATA] Updating state with fetched data', {
             essaysCount: essaysData.length,
             deadlinesCount: deadlines.length,
@@ -199,7 +195,7 @@ export const useDashboardData = () => {
           timestamp: new Date().toISOString(),
           message: 'User cannot see their dashboard overview - essays, deadlines, and school progress'
         });
-        if (isMounted) {
+        if (isMountedRef.current) {
           setData(prev => ({
             ...prev,
             loading: false,
@@ -209,14 +205,51 @@ export const useDashboardData = () => {
       }
     };
 
+  useEffect(() => {
+    isMountedRef.current = true;
+    
+    if (!autoFetch) {
+      // Loading state is already initialized correctly, no need to update
+      return;
+    }
+
+    console.log('[DASHBOARD_DATA] Effect triggered', {
+      userId,
+      hasUser: Boolean(userId),
+    });
+
+    if (!userId) {
+      console.log('[DASHBOARD_DATA] No user ID available, skipping dashboard fetch');
+      setData(prev => ({ ...prev, loading: false }));
+      return;
+    }
+
     fetchDashboardData(userId);
 
     // Cleanup function to prevent state updates after unmount
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
       console.log('[DASHBOARD_DATA] Cleanup invoked', { userId });
     };
-  }, [userId]);
+  }, [userId, autoFetch]);
 
-  return data;
+  const refetch = () => {
+    if (userId) {
+      console.log('[DASHBOARD_DATA] Refetch called', { userId });
+      fetchDashboardData(userId).catch(error => {
+        console.error('[DASHBOARD_DATA] Refetch error:', error);
+        if (isMountedRef.current) {
+          setData(prev => ({
+            ...prev,
+            loading: false,
+            error: error instanceof Error ? error.message : 'Failed to fetch dashboard data',
+          }));
+        }
+      });
+    } else {
+      console.warn('[DASHBOARD_DATA] Refetch called but userId is not available');
+    }
+  };
+
+  return { ...data, refetch };
 };
