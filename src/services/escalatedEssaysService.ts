@@ -601,6 +601,74 @@ export class EscalatedEssaysService {
   }
 
   /**
+   * Fetch a single escalated essay by ID (user-facing)
+   * Used for users to view their own escalation details
+   */
+  static async getEscalatedEssayByIdForUser(escalationId: string): Promise<EscalatedEssay | null> {
+    try {
+      // Verify user is authenticated
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Fetch escalated essay
+      const { data: essayData, error: essayError } = await supabase
+        .from('escalated_essays' as any)
+        .select('*')
+        .eq('id' as any, escalationId)
+        .single();
+
+      if (essayError) {
+        console.error('Error fetching escalated essay:', essayError);
+        throw essayError;
+      }
+
+      if (!essayData) {
+        return null;
+      }
+
+      // Verify the escalation belongs to the user
+      if ((essayData as any).user_id !== user.id) {
+        throw new Error('Access denied: You can only view your own escalations');
+      }
+
+      // Parse JSONB fields and transform to EscalatedEssay type
+      const essayItem = essayData as any;
+      const essay: EscalatedEssay = {
+        id: essayItem.id,
+        essay_id: essayItem.essay_id,
+        user_id: essayItem.user_id,
+        student_name: null, // Not needed for user view
+        student_email: null, // Not needed for user view
+        essay_title: essayItem.essay_title,
+        essay_content: essayItem.essay_content as SemanticDocument,
+        essay_prompt: essayItem.essay_prompt,
+        word_limit: essayItem.word_limit,
+        word_count: essayItem.word_count || 0,
+        character_count: essayItem.character_count || 0,
+        ai_comments_snapshot: (essayItem.ai_comments_snapshot || []) as EscalatedEssayComment[],
+        ai_summary: (essayItem.ai_summary || null) as EssaySummary | null,
+        semantic_document_id: essayItem.semantic_document_id,
+        status: essayItem.status as EscalatedEssayStatus,
+        founder_feedback: essayItem.founder_feedback,
+        founder_edited_content: essayItem.founder_edited_content as SemanticDocument | null,
+        founder_comments: (essayItem.founder_comments || []) as EscalatedEssayComment[],
+        escalated_at: essayItem.escalated_at,
+        reviewed_at: essayItem.reviewed_at,
+        sent_back_at: essayItem.sent_back_at,
+        created_at: essayItem.created_at,
+        updated_at: essayItem.updated_at,
+      };
+
+      return essay;
+    } catch (error) {
+      console.error('EscalatedEssaysService: Error fetching escalated essay for user', error);
+      throw error;
+    }
+  }
+
+  /**
    * Fetch ALL escalations for a specific essay (for version management)
    * Returns all escalations that have been sent back, ordered by most recent first
    */

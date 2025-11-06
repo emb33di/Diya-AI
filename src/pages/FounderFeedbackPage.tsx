@@ -77,7 +77,16 @@ const FounderFeedbackPage: React.FC = () => {
       // Default to the most recent escalation (first in array)
       const mostRecentEscalation = escalations[0];
       setSelectedEscalationId(mostRecentEscalation.id);
-      await loadFeedbackForEscalation(mostRecentEscalation.id);
+      
+      // Load feedback for the most recent escalation directly (don't wait for state update)
+      setEscalation(mostRecentEscalation);
+      
+      // Fetch founder comments for this specific escalation
+      const comments = await EscalatedEssaysService.getFounderCommentsByEscalationIdForUser(mostRecentEscalation.id);
+      setFounderComments(comments);
+      
+      // Build document
+      buildDocument(mostRecentEscalation, comments);
     } catch (error) {
       console.error('Error loading founder feedback:', error);
       toast({
@@ -99,8 +108,8 @@ const FounderFeedbackPage: React.FC = () => {
       const escalationData = allEscalations.find(e => e.id === escalationId);
       
       if (!escalationData) {
-        // If not in list, fetch it directly
-        const fetched = await EscalatedEssaysService.getEscalatedEssayById(escalationId);
+        // If not in list, fetch it directly (shouldn't happen, but handle gracefully)
+        const fetched = await EscalatedEssaysService.getEscalatedEssayByIdForUser(escalationId);
         if (!fetched) {
           throw new Error('Escalation not found');
         }
