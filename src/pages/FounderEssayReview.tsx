@@ -24,7 +24,7 @@ import {
   AlertCircle,
   Sparkles
 } from 'lucide-react';
-import { EscalatedEssaysService, EscalatedEssay, EscalatedEssayComment, ParagraphSummary } from '@/services/escalatedEssaysService';
+import { EscalatedEssaysService, EscalatedEssay, EscalatedEssayComment, EssaySummary } from '@/services/escalatedEssaysService';
 import { SemanticDocument, Annotation, AnnotationType } from '@/types/semanticDocument';
 import { semanticDocumentService } from '@/services/semanticDocumentService';
 import { useToast } from '@/hooks/use-toast';
@@ -44,6 +44,7 @@ const FounderEssayReview: React.FC = () => {
   const [document, setDocument] = useState<SemanticDocument | null>(null);
   const [initialHtml, setInitialHtml] = useState<string>('');
   const [displaySaveTime, setDisplaySaveTime] = useState<Date | null>(null);
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastActualSaveTimeRef = useRef<Date | null>(null);
 
@@ -436,6 +437,39 @@ const FounderEssayReview: React.FC = () => {
     }
   };
 
+  const handleGenerateAISummary = async () => {
+    if (!escalationId || !essay || !document) return;
+
+    try {
+      setIsGeneratingSummary(true);
+      
+      // Call the service method to generate summaries
+      await EscalatedEssaysService.generateFounderSummary(
+        escalationId,
+        document,
+        essay.essay_prompt,
+        essay.user_id
+      );
+
+      // Reload the essay to get the updated summaries
+      await loadEssay();
+
+      toast({
+        title: 'Success',
+        description: 'AI summary generated successfully.',
+      });
+    } catch (error) {
+      console.error('Error generating AI summary:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to generate AI summary. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsGeneratingSummary(false);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       pending: { label: 'Pending', variant: 'default' as const },
@@ -568,66 +602,77 @@ const FounderEssayReview: React.FC = () => {
             )}
 
             {/* AI Summary Section */}
-            {essay.ai_summary && essay.ai_summary.length > 0 && (
-              <Card className="mb-6 border-blue-200 bg-gradient-to-br from-blue-50 to-purple-50">
-                <CardHeader>
+            <Card className="mb-6 border-blue-200 bg-gradient-to-br from-blue-50 to-purple-50">
+              <CardHeader>
+                <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
                     <Sparkles className="h-5 w-5 text-blue-600" />
-                    AI Paragraph Analysis
+                    AI Essay Analysis
                   </CardTitle>
-                </CardHeader>
+                  {!essay.ai_summary && (
+                    <Button
+                      onClick={handleGenerateAISummary}
+                      disabled={isGeneratingSummary}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      {isGeneratingSummary ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          Generate AI Summary
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              {essay.ai_summary ? (
                 <CardContent>
-                  <div className="space-y-6">
-                    {essay.ai_summary.map((summary, index) => (
-                      <div key={index} className="bg-white p-4 rounded-lg border border-blue-100 shadow-sm">
-                        <div className="flex items-start gap-3 mb-3">
-                          <div className="flex-shrink-0 w-8 h-8 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-semibold text-sm">
-                            {summary.paragraph_index}
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-semibold text-gray-800 mb-2">Paragraph {summary.paragraph_index}</h4>
-                            <p className="text-sm text-gray-600 italic mb-3 line-clamp-2">
-                              "{summary.paragraph_content.substring(0, 150)}{summary.paragraph_content.length > 150 ? '...' : ''}"
-                            </p>
-                          </div>
-                        </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                          <div className="space-y-3">
-                            <div>
-                              <div className="text-xs font-semibold text-gray-500 uppercase mb-1">Study Target</div>
-                              <div className="text-sm text-gray-700 bg-blue-50 p-2 rounded">{summary.study_target}</div>
-                            </div>
-                            <div>
-                              <div className="text-xs font-semibold text-gray-500 uppercase mb-1">Goals & Background</div>
-                              <div className="text-sm text-gray-700 bg-blue-50 p-2 rounded">{summary.goals_background}</div>
-                            </div>
-                            <div>
-                              <div className="text-xs font-semibold text-green-600 uppercase mb-1">Strengths</div>
-                              <div className="text-sm text-gray-700 bg-green-50 p-2 rounded">{summary.strengths}</div>
-                            </div>
-                          </div>
-                          <div className="space-y-3">
-                            <div>
-                              <div className="text-xs font-semibold text-red-600 uppercase mb-1">Weaknesses</div>
-                              <div className="text-sm text-gray-700 bg-red-50 p-2 rounded">{summary.weaknesses}</div>
-                            </div>
-                            <div>
-                              <div className="text-xs font-semibold text-orange-600 uppercase mb-1">Grammar Mistakes</div>
-                              <div className="text-sm text-gray-700 bg-orange-50 p-2 rounded">{summary.grammar_mistakes}</div>
-                            </div>
-                            <div>
-                              <div className="text-xs font-semibold text-purple-600 uppercase mb-1">Improvement Areas</div>
-                              <div className="text-sm text-gray-700 bg-purple-50 p-2 rounded">{summary.improvement_areas}</div>
-                            </div>
-                          </div>
-                        </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-3">
+                      <div>
+                        <div className="text-xs font-semibold text-gray-500 uppercase mb-1">Study Target</div>
+                        <div className="text-sm text-gray-700 bg-blue-50 p-3 rounded">{essay.ai_summary.study_target}</div>
                       </div>
-                    ))}
+                      <div>
+                        <div className="text-xs font-semibold text-gray-500 uppercase mb-1">Goals & Background</div>
+                        <div className="text-sm text-gray-700 bg-blue-50 p-3 rounded">{essay.ai_summary.goals_background}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold text-green-600 uppercase mb-1">Strengths</div>
+                        <div className="text-sm text-gray-700 bg-green-50 p-3 rounded">{essay.ai_summary.strengths}</div>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <div>
+                        <div className="text-xs font-semibold text-red-600 uppercase mb-1">Weaknesses</div>
+                        <div className="text-sm text-gray-700 bg-red-50 p-3 rounded">{essay.ai_summary.weaknesses}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold text-orange-600 uppercase mb-1">Grammar Mistakes</div>
+                        <div className="text-sm text-gray-700 bg-orange-50 p-3 rounded">{essay.ai_summary.grammar_mistakes}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold text-purple-600 uppercase mb-1">Improvement Areas</div>
+                        <div className="text-sm text-gray-700 bg-purple-50 p-3 rounded">{essay.ai_summary.improvement_areas}</div>
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
-              </Card>
-            )}
+              ) : (
+                <CardContent>
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Sparkles className="h-12 w-12 mx-auto mb-4 text-blue-300" />
+                    <p className="mb-2">No AI analysis available yet.</p>
+                    <p className="text-sm">Click "Generate AI Summary" to analyze the essay.</p>
+                  </div>
+                </CardContent>
+              )}
+            </Card>
           </div>
 
           {/* Editor */}
