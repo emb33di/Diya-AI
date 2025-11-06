@@ -456,6 +456,33 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
       .join('\n\n');
   }, [state.document.blocks]);
 
+  // Copy essay text to clipboard
+  const copyEssayText = useCallback(async () => {
+    try {
+      const text = getDocumentPlainText();
+      if (!text.trim()) {
+        toast({
+          title: 'Nothing to copy',
+          description: 'The essay is empty.',
+          variant: 'destructive'
+        });
+        return;
+      }
+      await navigator.clipboard.writeText(text);
+      toast({
+        title: 'Copied!',
+        description: 'Essay text has been copied to your clipboard.',
+      });
+    } catch (error) {
+      console.error('Failed to copy text:', error);
+      toast({
+        title: 'Copy failed',
+        description: 'Failed to copy text to clipboard. Please try again.',
+        variant: 'destructive'
+      });
+    }
+  }, [getDocumentPlainText, toast]);
+
   const normalizeText = (text: string) => text.replace(/\s+/g, ' ').trim();
 
   // Select all text across all blocks in the editor content
@@ -2890,6 +2917,19 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
                 ({activeSelection.text.length} chars selected)
               </span>
             )}
+          </div>
+
+          {/* Copy Button */}
+          <div className="flex items-center gap-2 ml-auto border-l pl-4">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={copyEssayText}
+              title="Copy essay text"
+            >
+              <Copy className="h-4 w-4 mr-1" />
+              Copy
+            </Button>
           </div>
         </div>
 

@@ -331,6 +331,33 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
       .join('\n\n');
   }, [state.document.blocks]);
 
+  // Copy essay text to clipboard
+  const copyEssayText = useCallback(async () => {
+    try {
+      const text = getDocumentPlainText();
+      if (!text.trim()) {
+        toast({
+          title: 'Nothing to copy',
+          description: 'The essay is empty.',
+          variant: 'destructive'
+        });
+        return;
+      }
+      await navigator.clipboard.writeText(text);
+      toast({
+        title: 'Copied!',
+        description: 'Essay text has been copied to your clipboard.',
+      });
+    } catch (error) {
+      console.error('Failed to copy text:', error);
+      toast({
+        title: 'Copy failed',
+        description: 'Failed to copy text to clipboard. Please try again.',
+        variant: 'destructive'
+      });
+    }
+  }, [getDocumentPlainText, toast]);
+
   const normalizeText = (text: string) => text.replace(/\s+/g, ' ').trim();
 
   // Select all text across all blocks in the editor content
@@ -1977,7 +2004,21 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
       {/* Main Editor Area */}
       <div className={`${showCommentSidebar ? 'flex-1 min-w-0 pr-4 lg:pr-4 pr-0' : 'w-full'} h-full overflow-y-auto`}> 
         {/* Editor Content */}
-        <div className="relative pl-4 lg:pl-12 pr-4 lg:pr-12 w-full" ref={contentContainerRef}>
+        <div className="relative pl-4 lg:pl-12 pr-4 lg:pr-12 w-full pt-10" ref={contentContainerRef}>
+          {/* Copy Button - Floating in top-right */}
+          <div className="absolute top-1 right-4 z-10">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={copyEssayText}
+              title="Copy essay text"
+              className="bg-white shadow-sm hover:bg-gray-50"
+            >
+              <Copy className="h-4 w-4 mr-1" />
+              Copy
+            </Button>
+          </div>
+
           {/* Render all blocks */}
           {useMemo(() => {
             const sortedBlocks = [...state.document.blocks].sort((a, b) => a.position - b.position);

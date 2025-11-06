@@ -5,7 +5,7 @@
  * Displays the founder's edited content with their comments in a sidebar.
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { 
   SemanticDocument, 
   DocumentBlock, 
@@ -13,9 +13,10 @@ import {
 } from '@/types/semanticDocument';
 import { Badge } from '@/components/ui/badge';
 import CommentSidebar from './CommentSidebar';
-import { MessageSquare, SidebarClose, User } from 'lucide-react';
+import { MessageSquare, SidebarClose, User, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 import './SemanticHighlighting.css';
 
 interface FounderFeedbackViewProps {
@@ -265,6 +266,42 @@ const FounderFeedbackView: React.FC<FounderFeedbackViewProps> = ({
   className = ''
 }) => {
   const [showCommentSidebar, setShowCommentSidebar] = useState(true);
+  const { toast } = useToast();
+
+  // Get plain text from all blocks
+  const getDocumentPlainText = useCallback(() => {
+    return [...blocks]
+      .sort((a, b) => a.position - b.position)
+      .map(b => b.content)
+      .join('\n\n');
+  }, [blocks]);
+
+  // Copy essay text to clipboard
+  const copyEssayText = useCallback(async () => {
+    try {
+      const text = getDocumentPlainText();
+      if (!text.trim()) {
+        toast({
+          title: 'Nothing to copy',
+          description: 'The essay is empty.',
+          variant: 'destructive'
+        });
+        return;
+      }
+      await navigator.clipboard.writeText(text);
+      toast({
+        title: 'Copied!',
+        description: 'Essay text has been copied to your clipboard.',
+      });
+    } catch (error) {
+      console.error('Failed to copy text:', error);
+      toast({
+        title: 'Copy failed',
+        description: 'Failed to copy text to clipboard. Please try again.',
+        variant: 'destructive'
+      });
+    }
+  }, [getDocumentPlainText, toast]);
 
   // Convert FounderComment[] to Annotation[] format for CommentSidebar
   // The blocks should already have annotations attached from the parent component
@@ -330,6 +367,16 @@ const FounderFeedbackView: React.FC<FounderFeedbackViewProps> = ({
                   <User className="h-3 w-3" />
                   Expert Review
                 </Badge>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={copyEssayText}
+                  title="Copy essay text"
+                  className="flex items-center gap-2"
+                >
+                  <Copy className="h-4 w-4" />
+                  Copy
+                </Button>
                 {!showCommentSidebar && (
                   <Button
                     variant="outline"
