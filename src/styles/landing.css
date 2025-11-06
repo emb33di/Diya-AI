@@ -266,9 +266,9 @@
     color: hsl(0 0% 100%) !important;
   }
 
-  /* Override for Meet Diya text - gold color */
+  /* Override for Meet Diya text - same as button color (slightly lighter orange) */
   .landing-page .meet-diya-text {
-    color: hsl(36, 100%, 61%) !important;
+    color: hsl(36, 100%, 48%) !important;
   }
 
   /* Muted text should be slightly lighter but still visible - only for landing page */
