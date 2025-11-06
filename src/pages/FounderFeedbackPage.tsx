@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, MessageSquare, FileText, Calendar, User as UserIcon } from 'lucide-react';
 import GradientBackground from '@/components/GradientBackground';
 import { Loader2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const FounderFeedbackPage: React.FC = () => {
   const { essayId } = useParams<{ essayId: string }>();
@@ -25,6 +26,8 @@ const FounderFeedbackPage: React.FC = () => {
   
   const [loading, setLoading] = useState(true);
   const [escalation, setEscalation] = useState<EscalatedEssay | null>(null);
+  const [allEscalations, setAllEscalations] = useState<EscalatedEssay[]>([]);
+  const [selectedEscalationId, setSelectedEscalationId] = useState<string | null>(null);
   const [founderComments, setFounderComments] = useState<FounderComment[]>([]);
   const [document, setDocument] = useState<SemanticDocument | null>(null);
   const [selectedAnnotation, setSelectedAnnotation] = useState<Annotation | null>(null);
@@ -43,16 +46,23 @@ const FounderFeedbackPage: React.FC = () => {
     loadFeedback();
   }, [essayId]);
 
+  // Reload feedback when selected escalation changes
+  useEffect(() => {
+    if (selectedEscalationId && essayId) {
+      loadFeedbackForEscalation(selectedEscalationId);
+    }
+  }, [selectedEscalationId, essayId]);
+
   const loadFeedback = async () => {
     if (!essayId) return;
 
     try {
       setLoading(true);
 
-      // Fetch escalation data
-      const escalationData = await EscalatedEssaysService.getEscalationByEssayId(essayId);
+      // Fetch ALL escalations for this essay
+      const escalations = await EscalatedEssaysService.getAllEscalationsByEssayId(essayId);
       
-      if (!escalationData) {
+      if (escalations.length === 0) {
         toast({
           title: 'No Feedback Available',
           description: 'No expert review has been provided for this essay yet.',
@@ -62,43 +72,12 @@ const FounderFeedbackPage: React.FC = () => {
         return;
       }
 
-      setEscalation(escalationData);
-
-      // Fetch founder comments
-      const comments = await EscalatedEssaysService.getFounderCommentsByEssayId(essayId);
-      setFounderComments(comments);
-
-      // Use founder_edited_content if available, otherwise use original essay_content
-      let contentToDisplay = escalationData.founder_edited_content || escalationData.essay_content;
+      setAllEscalations(escalations);
       
-      // IMPORTANT: Strip AI comments - user should only see founder comments, not AI comments
-      contentToDisplay = {
-        ...contentToDisplay,
-        blocks: contentToDisplay.blocks.map(block => ({
-          ...block,
-          annotations: (block.annotations || []).filter(ann => ann.author !== 'ai')
-        }))
-      };
-      
-      // Convert founder comments to annotations and attach to blocks
-      const blocksWithAnnotations = attachCommentsToBlocks(
-        contentToDisplay.blocks,
-        comments,
-        escalationData.semantic_document_id || ''
-      );
-
-      // Create document with annotated blocks (only founder comments, no AI)
-      const feedbackDocument: SemanticDocument = {
-        ...contentToDisplay,
-        blocks: blocksWithAnnotations,
-        title: escalationData.essay_title,
-        metadata: {
-          ...contentToDisplay.metadata,
-          essayId: essayId
-        }
-      };
-
-      setDocument(feedbackDocument);
+      // Default to the most recent escalation (first in array)
+      const mostRecentEscalation = escalations[0];
+      setSelectedEscalationId(mostRecentEscalation.id);
+      await loadFeedbackForEscalation(mostRecentEscalation.id);
     } catch (error) {
       console.error('Error loading founder feedback:', error);
       toast({
@@ -110,6 +89,84 @@ const FounderFeedbackPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadFeedbackForEscalation = async (escalationId: string) => {
+    if (!essayId) return;
+
+    try {
+      // Find the escalation from our list
+      const escalationData = allEscalations.find(e => e.id === escalationId);
+      
+      if (!escalationData) {
+        // If not in list, fetch it directly
+        const fetched = await EscalatedEssaysService.getEscalatedEssayById(escalationId);
+        if (!fetched) {
+          throw new Error('Escalation not found');
+        }
+        setEscalation(fetched);
+        
+        // Fetch founder comments for this specific escalation
+        const comments = await EscalatedEssaysService.getFounderCommentsByEscalationIdForUser(escalationId);
+        setFounderComments(comments);
+        
+        // Build document
+        buildDocument(fetched, comments);
+      } else {
+        setEscalation(escalationData);
+        
+        // Fetch founder comments for this specific escalation
+        const comments = await EscalatedEssaysService.getFounderCommentsByEscalationIdForUser(escalationId);
+        setFounderComments(comments);
+        
+        // Build document
+        buildDocument(escalationData, comments);
+      }
+    } catch (error) {
+      console.error('Error loading escalation feedback:', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to load feedback',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const buildDocument = (
+    escalationData: EscalatedEssay,
+    comments: FounderComment[]
+  ) => {
+    // Use founder_edited_content if available, otherwise use original essay_content
+    let contentToDisplay = escalationData.founder_edited_content || escalationData.essay_content;
+    
+    // IMPORTANT: Strip AI comments - user should only see founder comments, not AI comments
+    contentToDisplay = {
+      ...contentToDisplay,
+      blocks: contentToDisplay.blocks.map(block => ({
+        ...block,
+        annotations: (block.annotations || []).filter(ann => ann.author !== 'ai')
+      }))
+    };
+    
+    // Convert founder comments to annotations and attach to blocks
+    const blocksWithAnnotations = attachCommentsToBlocks(
+      contentToDisplay.blocks,
+      comments,
+      escalationData.semantic_document_id || ''
+    );
+
+    // Create document with annotated blocks (only founder comments, no AI)
+    const feedbackDocument: SemanticDocument = {
+      ...contentToDisplay,
+      blocks: blocksWithAnnotations,
+      title: escalationData.essay_title,
+      metadata: {
+        ...contentToDisplay.metadata,
+        essayId: essayId
+      }
+    };
+
+    setDocument(feedbackDocument);
   };
 
   /**
@@ -251,6 +308,56 @@ const FounderFeedbackPage: React.FC = () => {
               </div>
             </CardHeader>
             <CardContent>
+              {/* Escalation Version Dropdown */}
+              {allEscalations.length > 1 && (
+                <div className="mb-4">
+                  <label className="text-sm font-medium text-muted-foreground mb-2 block">
+                    Review Version
+                  </label>
+                  <Select 
+                    value={selectedEscalationId || ''} 
+                    onValueChange={(escalationId) => {
+                      setSelectedEscalationId(escalationId);
+                    }}
+                  >
+                    <SelectTrigger className="w-full max-w-md bg-white border-gray-300 shadow-sm">
+                      <SelectValue placeholder="Select review version">
+                        {selectedEscalationId && escalation ? (
+                          <div className="flex items-center space-x-2">
+                            <span>
+                              {formatDate(escalation.sent_back_at)}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              ({founderComments.length} comments)
+                            </span>
+                          </div>
+                        ) : null}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {allEscalations.map((esc, index) => {
+                        const hasEdits = !!esc.founder_edited_content;
+                        return (
+                          <SelectItem key={esc.id} value={esc.id}>
+                            <div className="flex items-center justify-between w-full">
+                              <div className="flex-1">
+                                <div className="font-medium">
+                                  Review #{allEscalations.length - index} - {formatDate(esc.sent_back_at)}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {hasEdits && 'Edited • '}
+                                  {formatDate(esc.escalated_at)} → {formatDate(esc.sent_back_at)}
+                                </div>
+                              </div>
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                 <div>
                   <span className="text-muted-foreground">Feedback Provided:</span>

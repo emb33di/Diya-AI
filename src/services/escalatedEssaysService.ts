@@ -601,10 +601,84 @@ export class EscalatedEssaysService {
   }
 
   /**
-   * Fetch founder comments for a specific essay
-   * Used by users to view founder feedback on their essays
+   * Fetch ALL escalations for a specific essay (for version management)
+   * Returns all escalations that have been sent back, ordered by most recent first
    */
-  static async getFounderCommentsByEssayId(essayId: string): Promise<FounderComment[]> {
+  static async getAllEscalationsByEssayId(essayId: string): Promise<EscalatedEssay[]> {
+    try {
+      // Verify user is authenticated
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Verify the essay belongs to the user
+      const { data: essayData } = await supabase
+        .from('essays' as any)
+        .select('user_id')
+        .eq('id' as any, essayId)
+        .maybeSingle();
+
+      if (!essayData || (essayData as any).user_id !== user.id) {
+        throw new Error('Access denied: You can only view escalations for your own essays');
+      }
+
+      // Fetch all escalations where status = 'sent_back', ordered by most recent first
+      const { data: escalationDataList, error: escalationError } = await supabase
+        .from('escalated_essays' as any)
+        .select('*')
+        .eq('essay_id' as any, essayId)
+        .eq('status' as any, 'sent_back')
+        .order('sent_back_at' as any, { ascending: false });
+
+      if (escalationError) {
+        console.error('Error fetching escalations:', escalationError);
+        throw escalationError;
+      }
+
+      if (!escalationDataList || escalationDataList.length === 0) {
+        return []; // No escalations found
+      }
+
+      // Transform escalation data to EscalatedEssay type
+      const escalations: EscalatedEssay[] = escalationDataList.map((essayItem: any) => ({
+        id: essayItem.id,
+        essay_id: essayItem.essay_id,
+        user_id: essayItem.user_id,
+        student_name: null, // Not needed for user view
+        student_email: null, // Not needed for user view
+        essay_title: essayItem.essay_title,
+        essay_content: essayItem.essay_content as SemanticDocument,
+        essay_prompt: essayItem.essay_prompt,
+        word_limit: essayItem.word_limit,
+        word_count: essayItem.word_count || 0,
+        character_count: essayItem.character_count || 0,
+        ai_comments_snapshot: (essayItem.ai_comments_snapshot || []) as EscalatedEssayComment[],
+        ai_summary: (essayItem.ai_summary || null) as EssaySummary | null,
+        semantic_document_id: essayItem.semantic_document_id,
+        status: essayItem.status as EscalatedEssayStatus,
+        founder_feedback: essayItem.founder_feedback,
+        founder_edited_content: essayItem.founder_edited_content as SemanticDocument | null,
+        founder_comments: (essayItem.founder_comments || []) as EscalatedEssayComment[],
+        escalated_at: essayItem.escalated_at,
+        reviewed_at: essayItem.reviewed_at,
+        sent_back_at: essayItem.sent_back_at,
+        created_at: essayItem.created_at,
+        updated_at: essayItem.updated_at,
+      }));
+
+      return escalations;
+    } catch (error) {
+      console.error('EscalatedEssaysService: Error fetching all escalations by essay ID', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch founder comments for a specific escalation (by escalation ID)
+   * Used when viewing a specific escalation version
+   */
+  static async getFounderCommentsByEscalationId(escalationId: string): Promise<FounderComment[]> {
     try {
       // Verify user is authenticated
       const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -653,6 +727,63 @@ export class EscalatedEssaysService {
       }));
     } catch (error) {
       console.error('EscalatedEssaysService: Error fetching founder comments', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch founder comments for a specific escalation (user-facing)
+   * Used when viewing a specific escalation version
+   */
+  static async getFounderCommentsByEscalationIdForUser(escalationId: string): Promise<FounderComment[]> {
+    try {
+      // Verify user is authenticated
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Verify the escalation belongs to the user
+      const { data: escalationData } = await supabase
+        .from('escalated_essays' as any)
+        .select('user_id')
+        .eq('id' as any, escalationId)
+        .maybeSingle();
+
+      if (!escalationData || (escalationData as any).user_id !== user.id) {
+        throw new Error('Access denied: You can only view comments for your own escalations');
+      }
+
+      // Fetch founder comments for this escalation
+      const { data: comments, error } = await supabase
+        .from('founder_comments' as any)
+        .select('*')
+        .eq('escalation_id' as any, escalationId)
+        .order('created_at' as any, { ascending: true });
+
+      if (error) {
+        console.error('Error fetching founder comments:', error);
+        throw error;
+      }
+
+      return (comments || []).map((comment: any) => ({
+        id: comment.id,
+        essay_id: comment.essay_id,
+        escalation_id: comment.escalation_id,
+        block_id: comment.block_id,
+        type: comment.type,
+        content: comment.content,
+        target_text: comment.target_text,
+        position_start: comment.position_start,
+        position_end: comment.position_end,
+        resolved: comment.resolved,
+        resolved_at: comment.resolved_at,
+        created_at: comment.created_at,
+        updated_at: comment.updated_at,
+        metadata: comment.metadata || {}
+      }));
+    } catch (error) {
+      console.error('EscalatedEssaysService: Error fetching founder comments by escalation ID', error);
       throw error;
     }
   }

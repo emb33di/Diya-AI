@@ -8,7 +8,7 @@
 import React, { useState, useEffect, startTransition, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SemanticDocument, Annotation } from '@/types/semanticDocument';
-import { semanticDocumentService } from '@/services/semanticDocumentService';
+import { semanticDocumentService, FeedbackSession } from '@/services/semanticDocumentService';
 import { ExportService } from '@/services/exportService';
 import { EssayVersionService, EssayVersion } from '@/services/essayVersionService';
 import { supabase } from '@/integrations/supabase/client';
@@ -131,6 +131,9 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
   } | null>(null);
   const [isLoadingEscalationStatus, setIsLoadingEscalationStatus] = useState(false);
   const [versionsWithAnnotations, setVersionsWithAnnotations] = useState<Set<string>>(new Set());
+  const [feedbackSessions, setFeedbackSessions] = useState<FeedbackSession[]>([]);
+  const [selectedFeedbackSession, setSelectedFeedbackSession] = useState<FeedbackSession | null>(null);
+  const [filteredDocument, setFilteredDocument] = useState<SemanticDocument | null>(null);
   
   // Track if document has been initially loaded to prevent false positives in safety check
   const isDocumentInitializedRef = useRef(false);
@@ -173,6 +176,42 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
 
     checkFeedback();
   }, [essayId]);
+
+  // Filter document annotations based on selected feedback session
+  useEffect(() => {
+    if (!document) {
+      setFilteredDocument(null);
+      return;
+    }
+
+    if (!selectedFeedbackSession) {
+      // Show all annotations if no session is selected
+      setFilteredDocument(document);
+      return;
+    }
+
+    // Filter annotations to show only those from the selected session
+    const filteredBlocks = document.blocks.map(block => ({
+      ...block,
+      annotations: (block.annotations || []).filter(annotation => {
+        // Keep user annotations and AI annotations from the selected session
+        if (annotation.author === 'user') {
+          return true; // Always show user annotations
+        }
+        if (annotation.author === 'ai') {
+          const createdAt = annotation.createdAt;
+          return createdAt >= selectedFeedbackSession.startTime && 
+                 createdAt <= selectedFeedbackSession.endTime;
+        }
+        return true;
+      })
+    }));
+
+    setFilteredDocument({
+      ...document,
+      blocks: filteredBlocks
+    });
+  }, [document, selectedFeedbackSession]);
 
   // Fetch escalation status (for Pro users)
   useEffect(() => {
@@ -253,13 +292,24 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
           setDocument(existingDocument);
           isDocumentInitializedRef.current = true; // Mark as initialized after first load
           
+          // Load feedback sessions
+          const sessions = await semanticDocumentService.getFeedbackSessions(existingDocument.id);
+          setFeedbackSessions(sessions);
+          // If there are multiple sessions, default to showing all (no filter)
+          if (sessions.length > 1) {
+            setSelectedFeedbackSession(null); // null means show all
+          } else if (sessions.length === 1) {
+            setSelectedFeedbackSession(sessions[0]);
+          }
+          
           // Debug: Log what we loaded
           console.log('[ESSAY_LOAD] Document loaded successfully', {
             documentId: existingDocument.id,
             blocksCount: existingDocument.blocks.length,
             hasContent: existingDocument.blocks.some(b => b.content && b.content.trim().length > 0),
             versionId: activeVersion?.id,
-            hasAIFeedback: activeVersion?.has_ai_feedback
+            hasAIFeedback: activeVersion?.has_ai_feedback,
+            feedbackSessions: sessions.length
           });
         } else {
           
@@ -897,6 +947,12 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
           }
         } catch (e) {
           console.warn('Failed to mark version has_ai_feedback:', e);
+        }
+
+        // Reload feedback sessions after generating new comments
+        if (updatedDocument) {
+          const sessions = await semanticDocumentService.getFeedbackSessions(updatedDocument.id);
+          setFeedbackSessions(sessions);
         }
       } else {
         // Handle case where generation failed but we still want to show an error
@@ -1671,6 +1727,62 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                             </SelectContent>
                           </Select>
                         )}
+
+                        {/* Feedback Sessions Dropdown */}
+                        {feedbackSessions.length > 1 && (
+                          <Select 
+                            value={selectedFeedbackSession?.id || 'all'} 
+                            onValueChange={(sessionId) => {
+                              if (sessionId === 'all') {
+                                setSelectedFeedbackSession(null);
+                              } else {
+                                const session = feedbackSessions.find(s => s.id === sessionId);
+                                setSelectedFeedbackSession(session || null);
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="w-auto min-w-[180px] bg-white border-gray-300 shadow-sm">
+                              <SelectValue placeholder="All feedback">
+                                {selectedFeedbackSession ? (
+                                  <div className="flex items-center space-x-2">
+                                    <span className="truncate">
+                                      {selectedFeedbackSession.sessionDate.toLocaleDateString()} {selectedFeedbackSession.sessionDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                    <span className="text-xs text-gray-500">
+                                      ({selectedFeedbackSession.annotationCount} comments)
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span>All Feedback</span>
+                                )}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">
+                                <div className="flex items-center space-x-2 w-full">
+                                  <span>All Feedback</span>
+                                  <span className="text-xs text-gray-500">
+                                    ({feedbackSessions.reduce((sum, s) => sum + s.annotationCount, 0)} total)
+                                  </span>
+                                </div>
+                              </SelectItem>
+                              {feedbackSessions.map((session) => (
+                                <SelectItem key={session.id} value={session.id}>
+                                  <div className="flex items-center space-x-2 w-full">
+                                    <div className="flex-1">
+                                      <div className="font-medium">
+                                        {session.sessionDate.toLocaleDateString()} {session.sessionDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                      </div>
+                                    </div>
+                                    <span className="text-xs text-gray-500">
+                                      ({session.annotationCount} comments)
+                                    </span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
                         
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -1824,7 +1936,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
               <div className="bg-white rounded-lg shadow-lg border border-gray-200 h-full min-h-[600px] mx-4">
                 <CommentSidebar
                   key={document.id}
-                  blocks={document.blocks}
+                  blocks={(filteredDocument || document).blocks}
                   documentId={document.id}
                   onAnnotationResolve={handleAnnotationResolve}
                   onAnnotationDelete={handleAnnotationDelete}

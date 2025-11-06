@@ -19,6 +19,17 @@ import { supabase } from '@/integrations/supabase/client';
 import { CommentEditService } from '@/services/commentEditService';
 import { EssayVersionService } from '@/services/essayVersionService';
 
+/**
+ * Feedback session interface
+ */
+export interface FeedbackSession {
+  id: string;
+  sessionDate: Date;
+  annotationCount: number;
+  startTime: Date;
+  endTime: Date;
+}
+
 export class SemanticDocumentService {
   private static instance: SemanticDocumentService;
   
@@ -332,6 +343,102 @@ export class SemanticDocumentService {
       console.error(`SemanticDocumentService: Error loading annotations for document ${documentId} - ${error.message}`);
       return [];
     }
+  }
+
+  /**
+   * Get feedback sessions for a document by grouping AI annotations by creation time
+   * Sessions are identified by clustering annotations created within 5 minutes of each other
+   */
+  async getFeedbackSessions(documentId: string): Promise<FeedbackSession[]> {
+    try {
+      const { data, error } = await supabase
+        .from('semantic_annotations')
+        .select('created_at')
+        .eq('document_id', documentId)
+        .eq('author', 'ai')
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error(`SemanticDocumentService: Failed to load annotations for feedback sessions - ${error.message}`);
+        return [];
+      }
+
+      if (!data || data.length === 0) {
+        return [];
+      }
+
+      // Group annotations into sessions (5 minute window)
+      const SESSION_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
+      const sessions: FeedbackSession[] = [];
+      let currentSession: {
+        startTime: Date;
+        endTime: Date;
+        annotations: Date[];
+      } | null = null;
+
+      for (const annotation of data) {
+        const createdAt = new Date(annotation.created_at);
+
+        if (!currentSession) {
+          // Start a new session
+          currentSession = {
+            startTime: createdAt,
+            endTime: createdAt,
+            annotations: [createdAt]
+          };
+        } else {
+          // Check if this annotation is within the session window
+          const timeSinceSessionStart = createdAt.getTime() - currentSession.startTime.getTime();
+          
+          if (timeSinceSessionStart <= SESSION_WINDOW_MS) {
+            // Add to current session
+            currentSession.endTime = createdAt;
+            currentSession.annotations.push(createdAt);
+          } else {
+            // Save current session and start a new one
+            sessions.push({
+              id: `session-${sessions.length + 1}`,
+              sessionDate: currentSession.startTime,
+              annotationCount: currentSession.annotations.length,
+              startTime: currentSession.startTime,
+              endTime: currentSession.endTime
+            });
+
+            currentSession = {
+              startTime: createdAt,
+              endTime: createdAt,
+              annotations: [createdAt]
+            };
+          }
+        }
+      }
+
+      // Add the last session
+      if (currentSession) {
+        sessions.push({
+          id: `session-${sessions.length + 1}`,
+          sessionDate: currentSession.startTime,
+          annotationCount: currentSession.annotations.length,
+          startTime: currentSession.startTime,
+          endTime: currentSession.endTime
+        });
+      }
+
+      return sessions.sort((a, b) => b.sessionDate.getTime() - a.sessionDate.getTime()); // Most recent first
+    } catch (error) {
+      console.error(`SemanticDocumentService: Error getting feedback sessions - ${error.message}`);
+      return [];
+    }
+  }
+
+  /**
+   * Filter annotations by feedback session time range
+   */
+  filterAnnotationsBySession(annotations: Annotation[], sessionStart: Date, sessionEnd: Date): Annotation[] {
+    return annotations.filter(annotation => {
+      const createdAt = annotation.createdAt;
+      return createdAt >= sessionStart && createdAt <= sessionEnd;
+    });
   }
 
   /**
