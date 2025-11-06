@@ -1,33 +1,50 @@
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { identifyUser, clearUser, isLogRocketReady } from "./init";
+import { initLogRocket, identifyUser, clearUser, isLogRocketReady } from "./init";
 
 /**
- * Tracks user authentication state and identifies users in LogRocket
- * This component should be placed in App.tsx to automatically identify users
- * when they log in and clear identification when they log out.
+ * Tracks user authentication state and initializes/identifies users in LogRocket
+ * This component should be placed in App.tsx to automatically initialize LogRocket
+ * only when users are authenticated, preventing recording on public pages.
  */
 const LogRocketUserTracker = () => {
   useEffect(() => {
-    if (!isLogRocketReady()) return;
-
     const setupAuthListener = async () => {
       // Get initial user
       const { data: { user } } = await supabase.auth.getUser();
+      
+      // Initialize LogRocket only if user is authenticated
       if (user) {
-        await identifyUserInLogRocket(user.id, user.email, user.user_metadata);
+        // Initialize LogRocket if not already initialized
+        if (!isLogRocketReady()) {
+          initLogRocket();
+        }
+        // Identify user after initialization (initLogRocket is synchronous)
+        if (isLogRocketReady()) {
+          await identifyUserInLogRocket(user.id, user.email, user.user_metadata);
+        }
       }
 
       // Listen for auth state changes
       const { data: { subscription } } = supabase.auth.onAuthStateChange(
         async (event, session) => {
           if (session?.user) {
-            await identifyUserInLogRocket(
-              session.user.id,
-              session.user.email,
-              session.user.user_metadata
-            );
+            // Initialize LogRocket if not already initialized
+            if (!isLogRocketReady()) {
+              initLogRocket();
+            }
+            // Identify user after initialization (initLogRocket is synchronous)
+            if (isLogRocketReady()) {
+              await identifyUserInLogRocket(
+                session.user.id,
+                session.user.email,
+                session.user.user_metadata
+              );
+            }
           } else {
+            // User logged out - clear identification
+            // Note: LogRocket will continue recording for the current session,
+            // but new sessions won't be initialized until user logs in again
             clearUser();
           }
         }

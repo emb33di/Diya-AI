@@ -22,7 +22,6 @@ import AboutDiya from "./pages/AboutDia";
 import NotFound from "./pages/NotFound";
 import Onboarding from "./pages/Onboarding";
 import Resume from "./pages/Resume";
-import Signup from "./pages/Signup";
 import EarlyAccessSignup from "./pages/EarlyAccessSignup";
 import LOR from "./pages/LOR";
 import FounderPortal from "./pages/FounderPortal";
@@ -78,7 +77,6 @@ const App = () => {
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/about" element={<About />} />
             <Route path="/about-diya" element={<AboutDiya />} />
-            <Route path="/signup" element={<Signup />} />
             <Route path="/earlyaccess" element={<EarlyAccessSignup />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/terms-of-service" element={<TermsOfService />} />

@@ -26,7 +26,8 @@ export const getLogRocketAppId = (): string | undefined => {
 
 /**
  * Initialize LogRocket
- * Should only be called once at app startup
+ * Should only be called when a user is authenticated
+ * This prevents recording interactions on public pages
  */
 export const initLogRocket = (): void => {
   if (initialized) return;
