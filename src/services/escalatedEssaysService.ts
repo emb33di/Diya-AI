@@ -1136,8 +1136,23 @@ export class EscalatedEssaysService {
   }
 
   /**
+   * Strip AI comments from a SemanticDocument
+   * Returns a clean copy with only non-AI annotations (user comments, founder comments)
+   */
+  static stripAIComments(document: SemanticDocument): SemanticDocument {
+    return {
+      ...document,
+      blocks: document.blocks.map(block => ({
+        ...block,
+        annotations: (block.annotations || []).filter(ann => ann.author !== 'ai')
+      })),
+      updatedAt: new Date()
+    };
+  }
+
+  /**
    * Escalate an essay to the founder portal
-   * Creates a snapshot of the current essay state including document content and AI comments
+   * Creates a snapshot of the current essay state including document content (WITHOUT AI comments)
    * Enforces Pro user requirement and escalation limits
    */
   static async escalateEssay(
@@ -1173,17 +1188,21 @@ export class EscalatedEssaysService {
           );
         }
 
+        // Strip AI comments from essay content before saving
+        // Founder should only see the essay text, not AI comments
+        const cleanEssayContent = this.stripAIComments(essayContent);
+
         // Calculate word and character counts
-        const wordCount = essayContent.blocks.reduce((total, block) => {
+        const wordCount = cleanEssayContent.blocks.reduce((total, block) => {
           const words = (block.content || '').split(/\s+/).filter(word => word.trim().length > 0);
           return total + words.length;
         }, 0);
 
-        const characterCount = essayContent.blocks.reduce((total, block) => {
+        const characterCount = cleanEssayContent.blocks.reduce((total, block) => {
           return total + (block.content || '').length;
         }, 0);
 
-        // Fetch current AI comments/annotations for this document
+        // Fetch current AI comments/annotations for this document (for snapshot only, not displayed)
         let aiCommentsSnapshot: EscalatedEssayComment[] = [];
         if (semanticDocumentId) {
           const { data: annotations, error: annotationsError } = await supabase
@@ -1208,19 +1227,19 @@ export class EscalatedEssaysService {
           }
         }
 
-        // Create escalation record
+        // Create escalation record with clean essay content (no AI comments)
         const { data: escalatedEssay, error: insertError } = await supabase
           .from('escalated_essays' as any)
           .insert({
             essay_id: essayId,
             user_id: user.id,
             essay_title: essayTitle,
-            essay_content: essayContent as any, // JSONB field
+            essay_content: cleanEssayContent as any, // JSONB field - NO AI COMMENTS
             essay_prompt: essayPrompt,
             word_limit: wordLimit,
             word_count: wordCount,
             character_count: characterCount,
-            ai_comments_snapshot: aiCommentsSnapshot as any, // JSONB field
+            ai_comments_snapshot: aiCommentsSnapshot as any, // JSONB field (for reference only, not displayed)
             semantic_document_id: semanticDocumentId,
             status: 'pending'
           })

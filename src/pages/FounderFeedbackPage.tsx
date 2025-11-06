@@ -69,7 +69,16 @@ const FounderFeedbackPage: React.FC = () => {
       setFounderComments(comments);
 
       // Use founder_edited_content if available, otherwise use original essay_content
-      const contentToDisplay = escalationData.founder_edited_content || escalationData.essay_content;
+      let contentToDisplay = escalationData.founder_edited_content || escalationData.essay_content;
+      
+      // IMPORTANT: Strip AI comments - user should only see founder comments, not AI comments
+      contentToDisplay = {
+        ...contentToDisplay,
+        blocks: contentToDisplay.blocks.map(block => ({
+          ...block,
+          annotations: (block.annotations || []).filter(ann => ann.author !== 'ai')
+        }))
+      };
       
       // Convert founder comments to annotations and attach to blocks
       const blocksWithAnnotations = attachCommentsToBlocks(
@@ -78,7 +87,7 @@ const FounderFeedbackPage: React.FC = () => {
         escalationData.semantic_document_id || ''
       );
 
-      // Create document with annotated blocks
+      // Create document with annotated blocks (only founder comments, no AI)
       const feedbackDocument: SemanticDocument = {
         ...contentToDisplay,
         blocks: blocksWithAnnotations,

@@ -69,6 +69,15 @@ const FounderEssayReview: React.FC = () => {
       // Use founder_edited_content if available, otherwise use essay_content snapshot
       let contentToUse: SemanticDocument = data.founder_edited_content || data.essay_content;
       
+      // IMPORTANT: Strip AI comments - founder should only see essay text and their own comments
+      contentToUse = {
+        ...contentToUse,
+        blocks: contentToUse.blocks.map(block => ({
+          ...block,
+          annotations: (block.annotations || []).filter(ann => ann.author !== 'ai')
+        }))
+      };
+      
       // Fetch founder comments from the new founder_comments table
       const founderComments = await EscalatedEssaysService.getFounderCommentsByEscalationId(escalationId);
       
@@ -96,7 +105,7 @@ const FounderEssayReview: React.FC = () => {
           founderCommentsMap.get(comment.block_id)!.push(annotation);
         });
         
-        // Merge founder comments into document blocks
+        // Merge founder comments into document blocks (only founder comments, no AI)
         contentToUse = {
           ...contentToUse,
           blocks: contentToUse.blocks.map(block => {
@@ -106,7 +115,7 @@ const FounderEssayReview: React.FC = () => {
             return {
               ...block,
               annotations: [
-                ...(block.annotations || []).filter(ann => ann.author !== 'mihir'), // Remove existing mihir comments
+                ...(block.annotations || []).filter(ann => ann.author !== 'mihir' && ann.author !== 'ai'), // Remove existing mihir comments and any AI comments
                 ...newMihirComments // Add saved founder comments
               ]
             };
