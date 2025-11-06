@@ -11,7 +11,7 @@ interface VerifyPaymentResult {
 
 /**
  * Create a Stripe Checkout session via Supabase Edge Function and redirect
- * @param options Optional overrides like price_id, success_url, cancel_url
+ * @param options Optional overrides like price_id, success_url, cancel_url, use_promo_price
  */
 export const createCheckoutSession = async (
   options?: {
@@ -19,6 +19,7 @@ export const createCheckoutSession = async (
     success_url?: string;
     cancel_url?: string;
     origin?: string;
+    use_promo_price?: boolean;
   }
 ): Promise<{ success: boolean; url?: string; message?: string }> => {
   try {
@@ -30,13 +31,43 @@ export const createCheckoutSession = async (
 
     const origin = options?.origin || window.location.origin;
 
-    const { data, error } = await supabase.functions.invoke('create-stripe-checkout', {
-      body: {
-        price_id: options?.price_id || DEFAULT_STRIPE_PRICE_ID,
-        success_url: options?.success_url,
-        cancel_url: options?.cancel_url,
-        origin,
+    // Determine cancel URL based on current route if not provided
+    let cancelUrl = options?.cancel_url;
+    if (!cancelUrl) {
+      const currentPath = window.location.pathname;
+      // If on subscription page, return to subscription; if on pricing, return to pricing; otherwise default to subscription
+      if (currentPath === '/subscription') {
+        cancelUrl = `${origin}/subscription`;
+      } else if (currentPath === '/pricing') {
+        cancelUrl = `${origin}/pricing`;
+      } else {
+        // Default to subscription page for logged-in users
+        cancelUrl = `${origin}/subscription`;
       }
+    }
+
+    // If use_promo_price is true, we'll let the edge function handle getting the promo price ID
+    // Only include price_id when NOT using promo price to avoid any conflicts
+    const requestBody: Record<string, any> = {
+      success_url: options?.success_url,
+      cancel_url: cancelUrl,
+      origin,
+      use_promo_price: options?.use_promo_price || false,
+    };
+
+    // Only include price_id if NOT using promo price
+    if (!requestBody.use_promo_price) {
+      requestBody.price_id = options?.price_id || DEFAULT_STRIPE_PRICE_ID;
+    }
+
+    console.log('[Checkout] Creating session with:', {
+      use_promo_price: requestBody.use_promo_price,
+      has_price_id: !!requestBody.price_id,
+      price_id: requestBody.price_id
+    });
+
+    const { data, error } = await supabase.functions.invoke('create-stripe-checkout', {
+      body: requestBody
     });
 
     if (error) {

@@ -17,7 +17,7 @@ const CTASection = () => {
   };
 
   return (
-    <section className="py-16 sm:py-20 md:py-24 lg:py-28 px-4 sm:px-6 bg-gradient-to-b from-background via-muted/5 to-background">
+    <section className="py-16 sm:py-20 md:py-24 lg:py-28 px-4 sm:px-6">
       <div className="max-w-7xl mx-auto">
         {/* CTA Section */}
         <div ref={ctaRef} className={`text-center scroll-fade-in ${ctaVisible ? 'animate' : ''}`}>

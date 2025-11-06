@@ -5,7 +5,7 @@
  * Provides Google Docs-like commenting experience with stable AI integration.
  */
 
-import React, { useState, useEffect, startTransition } from 'react';
+import React, { useState, useEffect, startTransition, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SemanticDocument, Annotation } from '@/types/semanticDocument';
 import { semanticDocumentService } from '@/services/semanticDocumentService';
@@ -130,6 +130,14 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
     canEscalate: boolean;
   } | null>(null);
   const [isLoadingEscalationStatus, setIsLoadingEscalationStatus] = useState(false);
+  const [versionsWithAnnotations, setVersionsWithAnnotations] = useState<Set<string>>(new Set());
+  
+  // Track if document has been initially loaded to prevent false positives in safety check
+  const isDocumentInitializedRef = useRef(false);
+  // Track if we're currently reloading to prevent infinite loops
+  const isReloadingRef = useRef(false);
+  // Track the last reload attempt to debounce rapid reloads
+  const lastReloadAttemptRef = useRef<number>(0);
 
   // Toast for user feedback
   const { toast } = useToast();
@@ -226,6 +234,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
   useEffect(() => {
     const initializeDocument = async () => {
       setIsLoading(true);
+      isDocumentInitializedRef.current = false; // Reset initialization flag when loading new essay
       
       try {
         // Check if there's an active version for this essay first
@@ -242,6 +251,16 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
         
         if (existingDocument) {
           setDocument(existingDocument);
+          isDocumentInitializedRef.current = true; // Mark as initialized after first load
+          
+          // Debug: Log what we loaded
+          console.log('[ESSAY_LOAD] Document loaded successfully', {
+            documentId: existingDocument.id,
+            blocksCount: existingDocument.blocks.length,
+            hasContent: existingDocument.blocks.some(b => b.content && b.content.trim().length > 0),
+            versionId: activeVersion?.id,
+            hasAIFeedback: activeVersion?.has_ai_feedback
+          });
         } else {
           
           // Check if there's any localStorage backup we should preserve
@@ -342,6 +361,63 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
 
   // Handle document changes
   const handleDocumentChange = (updatedDocument: SemanticDocument) => {
+    // If we're currently reloading, accept the update without safety checks
+    if (isReloadingRef.current) {
+      isReloadingRef.current = false; // Reset flag after accepting reloaded document
+      setDocument(updatedDocument);
+      
+      // Convert back to HTML for parent component
+      if (onContentChange) {
+        const htmlContent = semanticDocumentService.convertBlocksToHtml(updatedDocument.blocks);
+        onContentChange(htmlContent);
+      }
+      return;
+    }
+
+    // Safety check: If document becomes empty but we know it should have content, reload from DB
+    // BUT: Only check AFTER initial load is complete to prevent infinite loops during initialization
+    // AND: Debounce rapid reload attempts (max once per 2 seconds)
+    if (isDocumentInitializedRef.current && document) {
+      const hasContent = updatedDocument.blocks.some(block => block.content && block.content.trim().length > 0);
+      const shouldHaveContent = document.blocks.some(block => block.content && block.content.trim().length > 0);
+      
+      if (!hasContent && shouldHaveContent && updatedDocument.id === document.id) {
+        const now = Date.now();
+        const timeSinceLastReload = now - lastReloadAttemptRef.current;
+        
+        // Debounce: only reload if it's been at least 2 seconds since last attempt
+        if (timeSinceLastReload < 2000) {
+          console.warn('[ESSAY_EDITOR] Skipping reload attempt - too soon after last reload', {
+            timeSinceLastReload
+          });
+          return; // Don't update state with empty document, but don't trigger reload either
+        }
+        
+        lastReloadAttemptRef.current = now;
+        isReloadingRef.current = true; // Set flag to prevent loops
+        
+        console.warn('[ESSAY_EDITOR] Document state became empty but should have content. Reloading from database...', {
+          documentId: updatedDocument.id,
+          previousBlocksCount: document.blocks.length,
+          newBlocksCount: updatedDocument.blocks.length
+        });
+        
+        // Reload from database
+        semanticDocumentService.loadDocument(updatedDocument.id).then(reloadedDoc => {
+          if (reloadedDoc && reloadedDoc.blocks.some(b => b.content && b.content.trim().length > 0)) {
+            setDocument(reloadedDoc);
+          } else {
+            isReloadingRef.current = false; // Reset if reload failed
+          }
+        }).catch(err => {
+          console.error('[ESSAY_EDITOR] Failed to reload document after detecting empty state:', err);
+          isReloadingRef.current = false; // Reset on error
+        });
+        
+        return; // Don't update state with empty document
+      }
+    }
+    
     setDocument(updatedDocument);
     
     // Convert back to HTML for parent component
@@ -471,6 +547,35 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
       const versions = await EssayVersionService.getEssayVersions(essayId);
       setEssayVersions(versions);
       
+      // Check which versions have annotations (clean versions won't have any)
+      const annotationChecks = await Promise.all(
+        versions.map(async (version) => {
+          try {
+            const { data, error } = await (supabase as any)
+              .from('semantic_annotations')
+              .select('id')
+              .eq('document_id', version.semantic_document_id)
+              .limit(1);
+            
+            return {
+              versionId: version.id,
+              hasAnnotations: !error && data && data.length > 0
+            };
+          } catch (err) {
+            console.warn(`Failed to check annotations for version ${version.id}:`, err);
+            return { versionId: version.id, hasAnnotations: false };
+          }
+        })
+      );
+      
+      // Create a set of version IDs that have annotations
+      const versionsWithAnnoSet = new Set(
+        annotationChecks
+          .filter(check => check.hasAnnotations)
+          .map(check => check.versionId)
+      );
+      setVersionsWithAnnotations(versionsWithAnnoSet);
+      
       // Find the active version
       const activeVersion = versions.find(v => v.is_active);
       setCurrentVersion(activeVersion || null);
@@ -487,42 +592,84 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
     }
   };
 
-  // Create a new version (clone text + comments, editable)
-  const createNewVersion = async () => {
-    if (!document) return;
+  // Helper function to prepare document and get next version number
+  const prepareForVersionCreation = async () => {
+    if (!document) throw new Error('No document available');
 
-    setIsCreatingVersion(true);
+    // Critical fix: Ensure all pending changes are saved before creating new version
+    // BUT: Only save if document has actual content (prevents saving empty state from HMR)
+    const hasContent = document.blocks.some(block => block.content && block.content.trim().length > 0);
     
-    try {
-      // Critical fix: Ensure all pending changes are saved before creating new version
-      // Force a save of the current document to ensure we're cloning the latest version
+    if (hasContent) {
       try {
         await semanticDocumentService.saveDocument(document);
         // Give autosave a moment to complete if it's in progress
         await new Promise(resolve => setTimeout(resolve, 500));
       } catch (saveError) {
         console.warn('Failed to save document before creating new version:', saveError);
-        // Continue anyway - we'll use current state
-      }
-
-      // Get the next version number from the database (for naming only)
-      const versions = await EssayVersionService.getEssayVersions(essayId);
-      const nextVersionNumber = versions.length > 0 
-        ? Math.max(...versions.map(v => v.version_number)) + 1 
-        : 1;
-
-      // Reload document from DB to ensure we have the absolute latest saved version
-      let latestDocument = document;
-      try {
-        if (document.id) {
-          const dbDocument = await semanticDocumentService.loadDocument(document.id);
-          if (dbDocument) {
-            latestDocument = dbDocument;
-          }
+        // If save was blocked by safety check (empty document), that's fine - we'll reload from DB
+        if (saveError instanceof Error && saveError.message.includes('empty document over existing')) {
+          console.log('[CREATE_VERSION] Current document state is empty, will reload from database');
+        } else {
+          // For other errors, log but continue
         }
-      } catch (reloadError) {
-        console.warn('Failed to reload document before creating version, using current state:', reloadError);
       }
+    } else {
+      console.log('[CREATE_VERSION] Document appears empty, skipping save and reloading from database');
+    }
+
+    // Get the next version number from the database (for naming only)
+    const versions = await EssayVersionService.getEssayVersions(essayId);
+    const nextVersionNumber = versions.length > 0 
+      ? Math.max(...versions.map(v => v.version_number)) + 1 
+      : 1;
+
+    // ALWAYS reload document from DB to ensure we have the absolute latest saved version
+    // This is critical because the current state might be empty due to HMR
+    let latestDocument = document;
+    try {
+      if (document.id) {
+        const dbDocument = await semanticDocumentService.loadDocument(document.id);
+        if (dbDocument) {
+          latestDocument = dbDocument;
+          console.log('[CREATE_VERSION] Reloaded document from database', {
+            documentId: document.id,
+            blocksCount: dbDocument.blocks.length,
+            hasContent: dbDocument.blocks.some(b => b.content && b.content.trim().length > 0)
+          });
+        }
+      } else {
+        // If no document ID, try loading by essay ID
+        const dbDocument = await semanticDocumentService.loadDocumentByEssayId(essayId);
+        if (dbDocument) {
+          latestDocument = dbDocument;
+          console.log('[CREATE_VERSION] Reloaded document by essay ID from database', {
+            essayId,
+            blocksCount: dbDocument.blocks.length
+          });
+        }
+      }
+    } catch (reloadError) {
+      console.warn('Failed to reload document before creating version, using current state:', reloadError);
+    }
+
+    // Verify we have content before creating version
+    const finalHasContent = latestDocument.blocks.some(block => block.content && block.content.trim().length > 0);
+    if (!finalHasContent) {
+      throw new Error('Cannot create new version: document has no content. Please add content to your essay first.');
+    }
+
+    return { latestDocument, nextVersionNumber };
+  };
+
+  // Create a new version (clone text + comments, editable)
+  const createNewVersionWithComments = async () => {
+    if (!document) return;
+
+    setIsCreatingVersion(true);
+    
+    try {
+      const { latestDocument, nextVersionNumber } = await prepareForVersionCreation();
 
       // Create new version cloning text + comments, mark has_ai_feedback=false
       const versionId = await EssayVersionService.createClonedVersionWithComments(
@@ -551,6 +698,9 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
         setDocument(newDocument);
       }
 
+      // Reload versions to update annotations state
+      await loadEssayVersions();
+
       toast({
         title: "New Version Created",
         description: "Version cloned with comments and highlights. You can edit now.",
@@ -560,7 +710,63 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
       console.error('Failed to create new version:', error);
       toast({
         title: "Error",
-        description: "Failed to create new version. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to create new version. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingVersion(false);
+    }
+  };
+
+  // Create a new version with clean text only (no comments or highlighting)
+  const createNewVersionClean = async () => {
+    if (!document) return;
+
+    setIsCreatingVersion(true);
+    
+    try {
+      const { latestDocument, nextVersionNumber } = await prepareForVersionCreation();
+
+      // Create new version with only text content, no annotations
+      const versionId = await EssayVersionService.createCleanVersion(
+        essayId,
+        latestDocument,
+        `Version ${nextVersionNumber}`,
+        undefined
+      );
+
+      // Batch all updates together to minimize re-renders
+      const [updatedVersions, activeVersion] = await Promise.all([
+        EssayVersionService.getEssayVersions(essayId),
+        EssayVersionService.getActiveVersion(essayId)
+      ]);
+
+      // Load the new document
+      let newDocument = null;
+      if (activeVersion) {
+        newDocument = await semanticDocumentService.loadDocument(activeVersion.semantic_document_id);
+      }
+
+      // Update all state at once to prevent intermediate re-renders
+      if (newDocument) {
+        setEssayVersions(updatedVersions);
+        setCurrentVersion(activeVersion);
+        setDocument(newDocument);
+      }
+
+      // Reload versions to update annotations state
+      await loadEssayVersions();
+
+      toast({
+        title: "New Version Created",
+        description: "Clean version created with text only. No comments or highlighting.",
+      });
+
+    } catch (error) {
+      console.error('Failed to create clean version:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create clean version. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -591,6 +797,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
       if (activeVersion) {
         const newDocument = await semanticDocumentService.loadDocument(activeVersion.semantic_document_id);
         if (newDocument) {
+          isDocumentInitializedRef.current = true; // Mark as initialized after loading new version
           startTransition(() => {
             setDocument(newDocument);
             setCurrentVersion(activeVersion);
@@ -657,6 +864,27 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
         const updatedDocument = await semanticDocumentService.loadDocument(document.id);
         if (updatedDocument) {
           setDocument(updatedDocument);
+          
+          // Verify comments were actually loaded
+          const totalComments = updatedDocument.blocks.reduce((sum, block) => sum + (block.annotations?.length || 0), 0);
+          console.log('[ESSAY_DEBUG] Document reloaded after AI comments generation', {
+            documentId: document.id,
+            totalComments,
+            commentsGenerated: response.comments?.length || 0,
+            blocksWithComments: updatedDocument.blocks.filter(b => b.annotations && b.annotations.length > 0).length
+          });
+          
+          if (totalComments === 0 && (response.comments?.length || 0) > 0) {
+            console.warn('[ESSAY_DEBUG] Comments were generated but not found in reloaded document. Retrying reload...');
+            // Retry reload after a longer delay
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            const retryDocument = await semanticDocumentService.loadDocument(document.id);
+            if (retryDocument) {
+              setDocument(retryDocument);
+            }
+          }
+        } else {
+          console.error('[ESSAY_ERROR] Failed to reload document after AI comments generation');
         }
 
         // Mark current active version as having AI feedback (read-only)
@@ -670,6 +898,23 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
         } catch (e) {
           console.warn('Failed to mark version has_ai_feedback:', e);
         }
+      } else {
+        // Handle case where generation failed but we still want to show an error
+        console.error('[ESSAY_ERROR] AI comments generation returned success=false', {
+          message: response.message,
+          commentsCount: response.comments?.length || 0
+        });
+        
+        // Reset loading state
+        setIsGeneratingAIComments(false);
+        setLoadingStep(0);
+        
+        toast({
+          title: "AI Comments Generation Failed",
+          description: response.message || "Failed to generate AI comments. Please try again.",
+          variant: "destructive"
+        });
+        return;
       }
 
       // Mark as complete
@@ -690,6 +935,17 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
           console.warn('[ESSAY_DEBUG] Potential strengths agent parsing issue detected. Please share logs above and server logs for ai_agent_strengths.');
         }
       } catch (_) {}
+      
+      // Reset loading state on error so user can try again
+      setIsGeneratingAIComments(false);
+      setLoadingStep(0);
+      
+      // Show error toast to user
+      toast({
+        title: "AI Comments Generation Failed",
+        description: error instanceof Error ? error.message : "Failed to generate AI comments. Please try again.",
+        variant: "destructive"
+      });
     }
     // Note: Don't auto-close the loading pane - let user click "See AI Comments" button
   };
@@ -1091,7 +1347,24 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
   const upgradeModalTitle = upgradeTitleMap[selectedUpgradeKey] || 'Upgrade to Pro';
   const upgradeModalDescription = upgradeDescriptionMap[selectedUpgradeKey] || 'Unlock premium features and take your application to the next level.';
 
-  
+  // Check if AI comments exist for the current version
+  // This must be before any early returns to follow Rules of Hooks
+  const hasAICommentsForCurrentVersion = useMemo(() => {
+    // Primary check: version has_ai_feedback flag
+    if (currentVersion?.has_ai_feedback) {
+      return true;
+    }
+    
+    // Fallback check: check if document has any AI annotations
+    if (document) {
+      const hasAIAnnotations = document.blocks.some(block => 
+        block.annotations?.some(annotation => annotation.author === 'ai')
+      );
+      return hasAIAnnotations;
+    }
+    
+    return false;
+  }, [currentVersion, document]);
 
   if (isLoading || migrationStatus.isMigrating) {
     return (
@@ -1357,43 +1630,75 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                                       currentVersion.is_active ? 'bg-blue-500' : 'bg-gray-400'
                                     }`} />
                                       <span className="truncate flex items-center space-x-1">
-                                      <span>{currentVersion.version_name || `Version ${currentVersion.version_number}`}</span>
+                                      <span>
+                                        {currentVersion.version_name || `Version ${currentVersion.version_number}`}
+                                        {!versionsWithAnnotations.has(currentVersion.id) && (
+                                          <span className="text-gray-500 ml-1">(Clean)</span>
+                                        )}
+                                      </span>
                                     </span>
                                   </div>
                                 ) : null}
                               </SelectValue>
                             </SelectTrigger>
                             <SelectContent>
-                              {essayVersions.map((version) => (
-                                <SelectItem key={version.id} value={version.id}>
-                                  <div className="flex items-center space-x-2 w-full">
-                                    <div className={`w-2 h-2 rounded-full ${
-                                      version.is_active ? 'bg-blue-500' : 'bg-gray-400'
-                                    }`} />
-                                    <div className="flex-1">
-                                      <div className="font-medium flex items-center space-x-2">
-                                        <span>{version.version_name || `Version ${version.version_number}`}</span>
+                              {essayVersions.map((version) => {
+                                const isClean = !versionsWithAnnotations.has(version.id);
+                                const versionName = version.version_name || `Version ${version.version_number}`;
+                                
+                                return (
+                                  <SelectItem key={version.id} value={version.id}>
+                                    <div className="flex items-center space-x-2 w-full">
+                                      <div className={`w-2 h-2 rounded-full ${
+                                        version.is_active ? 'bg-blue-500' : 'bg-gray-400'
+                                      }`} />
+                                      <div className="flex-1">
+                                        <div className="font-medium flex items-center space-x-2">
+                                          <span>
+                                            {versionName}
+                                            {isClean && (
+                                              <span className="text-gray-500 ml-1">(Clean)</span>
+                                            )}
+                                          </span>
+                                        </div>
+                                        {/* Hide version description to remove 'Fresh draft without previous comments.' */}
+                                        <div className="text-xs text-gray-500"></div>
                                       </div>
-                                      {/* Hide version description to remove 'Fresh draft without previous comments.' */}
-                                      <div className="text-xs text-gray-500"></div>
                                     </div>
-                                  </div>
-                                </SelectItem>
-                              ))}
+                                  </SelectItem>
+                                );
+                              })}
                             </SelectContent>
                           </Select>
                         )}
                         
-                        <Button 
-                          onClick={createNewVersion} 
-                          disabled={isCreatingVersion}
-                          variant="outline"
-                          size="sm"
-                          className="border-purple-200 text-purple-700 hover:bg-purple-50"
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          {isCreatingVersion ? 'Creating...' : 'New Version'}
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button 
+                              disabled={isCreatingVersion}
+                              variant="outline"
+                              size="sm"
+                              className="border-purple-200 text-purple-700 hover:bg-purple-50"
+                            >
+                              <Plus className="h-4 w-4 mr-2" />
+                              {isCreatingVersion ? 'Creating...' : 'New Version'}
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem 
+                              onClick={createNewVersionWithComments}
+                              disabled={!hasAICommentsForCurrentVersion}
+                              className={!hasAICommentsForCurrentVersion ? 'opacity-50 cursor-not-allowed' : ''}
+                            >
+                              <MessageSquare className="h-4 w-4 mr-2" />
+                              New Version with AI Comments
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={createNewVersionClean}>
+                              <FileText className="h-4 w-4 mr-2" />
+                              New Version Clean
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                         <PaywallGuard 
                           featureKey="unlimited_essay_feedback"
                           fallback={

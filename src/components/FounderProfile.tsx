@@ -3,6 +3,7 @@ import { useScrollAnimation } from "@/hooks/use-scroll-animation";
 const FounderProfile = () => {
   const { elementRef: headerRef, isVisible: headerVisible } = useScrollAnimation();
   const { elementRef: profileRef, isVisible: profileVisible } = useScrollAnimation();
+  const { elementRef: videoRef, isVisible: videoVisible } = useScrollAnimation();
 
   return (
     <section id="founder" className="py-8 sm:py-12 md:py-16 px-4 sm:px-6">
@@ -16,9 +17,9 @@ const FounderProfile = () => {
             </h2>
           </div>
           
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 sm:gap-8">
+          <div className="flex flex-col sm:flex-row items-center sm:items-center gap-6 sm:gap-8">
           {/* Left Side: Photo, Name, and Schools */}
-          <div className="flex-shrink-0 text-center">
+          <div className="flex-shrink-0 text-center w-full sm:w-auto">
             <div className="w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 rounded-full overflow-hidden border-2 border-border/30 shadow-sm mx-auto mb-4">
               <img 
                 src="/founder_pic.jpeg"
@@ -66,10 +67,28 @@ const FounderProfile = () => {
 
           {/* Right Side: Body Text */}
           <div className="flex-1 text-left sm:text-left">
-            <p className="text-sm sm:text-base text-white leading-relaxed">
+            <p className="text-base sm:text-lg text-white leading-relaxed">
             Raised in Delhi and a graduate of DPS R.K. Puram, Mihir studied Economics at the University of Chicago and is now pursuing his law degree at Harvard Law School. Having navigated the competitive admissions process himself twice, Mihir brings first-hand insight into what top global universities seek. He founded Diya AI to make world-class admissions guidance affordable, transparent, and accessible to every student in India.
             </p>
           </div>
+          </div>
+        </div>
+
+        {/* Demo Video Section */}
+        <div ref={videoRef} className={`mt-8 sm:mt-12 scroll-fade-in ${videoVisible ? 'animate' : ''} flex justify-center`}>
+          <div className="w-full max-w-[90%] sm:max-w-md md:max-w-2xl lg:max-w-2xl xl:max-w-3xl 2xl:max-w-4xl">
+            <div className="relative rounded-xl sm:rounded-2xl overflow-hidden bg-black shadow-[0_0_40px_hsl(var(--primary)/0.4)] hover:shadow-[0_0_60px_hsl(var(--primary)/0.6)] transition-all duration-500">
+              <div className="aspect-video bg-black relative">
+                <iframe
+                  className="w-full h-full"
+                  src="https://www.youtube.com/embed/UNiRgMcLbfY?rel=0&modestbranding=1"
+                  title="Website demo video"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  loading="lazy"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>

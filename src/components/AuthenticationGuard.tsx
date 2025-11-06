@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -9,6 +9,14 @@ interface AuthenticationGuardProps {
 const AuthenticationGuard: React.FC<AuthenticationGuardProps> = ({ children }) => {
   const { user, loading, isFounder } = useAuth();
   const location = useLocation();
+
+  useEffect(() => {
+    console.log('[AUTH_GUARD] Auth state changed', {
+      loading,
+      hasUser: Boolean(user),
+      path: location.pathname,
+    });
+  }, [loading, user, location.pathname]);
 
   // Show loading state while checking authentication
   if (loading) {

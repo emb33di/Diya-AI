@@ -9,6 +9,7 @@ import { useDashboardData } from "@/hooks/useDashboardData";
 import { useProfileCompletion } from "@/hooks/useProfileCompletion";
 import { useApplicationProgress } from "@/hooks/useApplicationProgress";
 import { Link, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 
 import { BookOpen, Calendar, CheckCircle, Target, Users, PenTool, Clock, AlertCircle } from "lucide-react";
 
@@ -40,7 +41,6 @@ const Dashboard = () => {
     loading: applicationProgressLoading 
   } = useApplicationProgress();
 
-
   // Get user's display name with consistent fallback logic
   const displayName = (() => {
     // Priority order: full_name -> email username -> 'Student'
@@ -53,6 +53,44 @@ const Dashboard = () => {
     }
     return 'Student';
   })();
+
+  useEffect(() => {
+    console.log('[DASHBOARD_DEBUG] Loading flags snapshot', {
+      authLoading,
+      dashboardDataLoading: loading,
+      profileLoading,
+      applicationProgressLoading,
+    });
+  }, [authLoading, loading, profileLoading, applicationProgressLoading]);
+
+  useEffect(() => {
+    console.log('[DASHBOARD_DEBUG] Data snapshot', {
+      essaysCount: essays.length,
+      deadlinesCount: deadlines.length,
+      schoolCategoriesCount: schoolCategories.length,
+      upcomingDeadlinesCount: upcomingDeadlines.length,
+      upcomingLorDeadlinesCount: upcomingLorDeadlines.length,
+    });
+  }, [essays, deadlines, schoolCategories, upcomingDeadlines, upcomingLorDeadlines]);
+
+  useEffect(() => {
+    if (authError || error) {
+      console.log('[DASHBOARD_DEBUG] Error state detected', {
+        authError,
+        dashboardError: error,
+      });
+    }
+  }, [authError, error]);
+
+  useEffect(() => {
+    if (!authLoading && !loading && !profileLoading && !applicationProgressLoading) {
+      console.log('[DASHBOARD_DEBUG] Ready to render dashboard content', {
+        userId: user?.id ?? null,
+        profileId: profile?.id ?? null,
+        displayName,
+      });
+    }
+  }, [authLoading, loading, profileLoading, applicationProgressLoading, user?.id, profile?.id, displayName]);
 
   // Profile completion is now calculated by the useProfileCompletion hook
 
@@ -147,6 +185,12 @@ const Dashboard = () => {
   };
 
   if (authLoading || loading || profileLoading || applicationProgressLoading) {
+    console.log('[DASHBOARD_DEBUG] Rendering loading fallback', {
+      authLoading,
+      dashboardDataLoading: loading,
+      profileLoading,
+      applicationProgressLoading,
+    });
     return (
       <OnboardingGuard pageName="Dashboard">
         <GradientBackground>
@@ -164,6 +208,7 @@ const Dashboard = () => {
   }
 
   if (authError) {
+    console.log('[DASHBOARD_DEBUG] Rendering auth error state', { authError });
     return (
       <OnboardingGuard pageName="Dashboard">
         <GradientBackground>
@@ -181,6 +226,7 @@ const Dashboard = () => {
   }
 
   if (error) {
+    console.log('[DASHBOARD_DEBUG] Rendering dashboard error state', { error });
     return (
       <OnboardingGuard pageName="Dashboard">
         <GradientBackground>
@@ -204,7 +250,7 @@ const Dashboard = () => {
         {/* Welcome Section */}
         <div className="mb-8">
           <h1 className="text-3xl font-display font-bold mb-2">Welcome back, {displayName}!</h1>
-          <p className="text-muted-foreground text-lg">
+          <p className="hidden md:block text-muted-foreground text-lg">
             You're making great progress on your college applications. Keep up the momentum!
           </p>
         </div>
@@ -213,29 +259,31 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4 mb-6">
           {/* Left Side - Progress Ring */}
           <div className="flex flex-col items-center">
-            <Card className="bg-gradient-card shadow-lg w-full h-[400px]">
-              <CardHeader className="text-center pb-4">
+            <Card className="bg-gradient-card shadow-lg w-full h-[400px] flex flex-col">
+              <CardHeader className="text-center pb-4 flex-shrink-0">
                 <CardTitle className="text-xl font-semibold">
                   Application Progress
                 </CardTitle>
               </CardHeader>
-              <CardContent className="flex flex-col items-center space-y-4">
-                <CircularProgress 
-                  value={overallProgress} 
-                  size={160} 
-                  strokeWidth={12}
-                  className="text-primary"
-                >
-                  <div className="text-center">
-                    <div className="text-2xl lg:text-3xl font-bold text-primary">
-                      {overallProgress}%
+              <CardContent className="flex flex-col items-center md:space-y-4 flex-1">
+                <div className="flex-1 flex items-center justify-center md:flex-initial">
+                  <CircularProgress 
+                    value={overallProgress} 
+                    size={160} 
+                    strokeWidth={12}
+                    className="text-primary"
+                  >
+                    <div className="text-center">
+                      <div className="text-2xl lg:text-3xl font-bold text-primary">
+                        {overallProgress}%
+                      </div>
+                      <div className="text-xs lg:text-sm text-muted-foreground">
+                        Complete
+                      </div>
                     </div>
-                    <div className="text-xs lg:text-sm text-muted-foreground">
-                      Complete
-                    </div>
-                  </div>
-                </CircularProgress>
-                <div className="text-center">
+                  </CircularProgress>
+                </div>
+                <div className="text-center mt-auto md:mt-0">
                   <p className="text-xs lg:text-sm text-muted-foreground">
                     {completedTasks}/{totalTasks} tasks completed across {schoolsWithTasks} schools
                   </p>

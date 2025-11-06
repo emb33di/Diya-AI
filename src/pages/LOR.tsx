@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { InlineDatePicker } from "@/components/ui/inline-date-picker";
-import { Calendar, Clock, CheckCircle2, AlertCircle, Star, Target, Shield, Filter, RefreshCw, Loader2, Plus, Edit, Trash2, Mail, Phone, User } from "lucide-react";
+import { Calendar, Clock, CheckCircle2, AlertCircle, Star, Target, Shield, Filter, RefreshCw, Loader2, Plus, Edit, Trash2, Mail, Phone, User, FileText, ExternalLink } from "lucide-react";
 import OnboardingGuard from "@/components/OnboardingGuard";
 import GradientBackground from "@/components/GradientBackground";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +22,7 @@ import {
   type SchoolOption
 } from "@/services/lorService";
 import { LORTrackingButtons } from "@/components/LORTrackingButtons";
+import { loadAllTemplates, type TemplateDocument } from "@/services/templateService";
 
 const LOR = () => {
   const [recommenders, setRecommenders] = useState<LORRecommender[]>([]);
@@ -31,6 +32,7 @@ const LOR = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>('all');
+  const [lorTemplates, setLorTemplates] = useState<TemplateDocument[]>([]);
   
   // School allocation state
   const [isAllocationDialogOpen, setIsAllocationDialogOpen] = useState(false);
@@ -52,10 +54,84 @@ const LOR = () => {
     internalDeadline3: undefined as Date | undefined
   });
 
+  // Refs for dialog content to scroll to top on open
+  const addDialogRef = useRef<HTMLDivElement>(null);
+  const editDialogRef = useRef<HTMLDivElement>(null);
+  const allocationDialogRef = useRef<HTMLDivElement>(null);
+
+  // Scroll dialogs to top when they open
+  useEffect(() => {
+    if (isAddDialogOpen) {
+      // Small delay to ensure dialog is rendered, especially on mobile
+      setTimeout(() => {
+        if (addDialogRef.current) {
+          addDialogRef.current.scrollTop = 0;
+        } else {
+          // Fallback: find scrollable element by querying for overflow-y-auto
+          const dialogElement = document.querySelector('[role="dialog"]');
+          if (dialogElement) {
+            const scrollable = dialogElement.querySelector('.overflow-y-auto') as HTMLElement;
+            if (scrollable) {
+              scrollable.scrollTop = 0;
+            }
+          }
+        }
+      }, 150);
+    }
+  }, [isAddDialogOpen]);
+
+  useEffect(() => {
+    if (isEditDialogOpen) {
+      setTimeout(() => {
+        if (editDialogRef.current) {
+          editDialogRef.current.scrollTop = 0;
+        } else {
+          const dialogElement = document.querySelector('[role="dialog"]');
+          if (dialogElement) {
+            const scrollable = dialogElement.querySelector('.overflow-y-auto') as HTMLElement;
+            if (scrollable) {
+              scrollable.scrollTop = 0;
+            }
+          }
+        }
+      }, 150);
+    }
+  }, [isEditDialogOpen]);
+
+  useEffect(() => {
+    if (isAllocationDialogOpen) {
+      setTimeout(() => {
+        if (allocationDialogRef.current) {
+          allocationDialogRef.current.scrollTop = 0;
+        } else {
+          const dialogElement = document.querySelector('[role="dialog"]');
+          if (dialogElement) {
+            const scrollable = dialogElement.querySelector('.overflow-y-auto') as HTMLElement;
+            if (scrollable) {
+              scrollable.scrollTop = 0;
+            }
+          }
+        }
+      }, 150);
+    }
+  }, [isAllocationDialogOpen]);
+
   // Fetch data on component mount
   useEffect(() => {
     fetchData();
+    loadLORTemplates();
   }, []);
+
+  const loadLORTemplates = async () => {
+    try {
+      const allTemplates = await loadAllTemplates();
+      const lorTemplatesFiltered = allTemplates.filter(template => template.category === 'lor');
+      setLorTemplates(lorTemplatesFiltered);
+    } catch (error) {
+      console.error('Error loading LOR templates:', error);
+      setLorTemplates([]);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -392,7 +468,10 @@ const LOR = () => {
                         Add Recommender
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto mx-4 sm:mx-0">
+                    <DialogContent 
+                      ref={addDialogRef}
+                      className="w-[calc(100%-1rem)] sm:w-full max-w-4xl max-h-[90vh] overflow-y-auto sm:mx-0"
+                    >
                       <DialogHeader>
                         <DialogTitle className="flex items-center space-x-2">
                           <User className="h-5 w-5 text-primary" />
@@ -831,7 +910,10 @@ const LOR = () => {
 
               {/* Edit Dialog */}
               <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto mx-4 sm:mx-0">
+                <DialogContent 
+                  ref={editDialogRef}
+                  className="w-[calc(100%-1rem)] sm:w-full max-w-4xl max-h-[90vh] overflow-y-auto sm:mx-0"
+                >
                   <DialogHeader>
                     <DialogTitle className="flex items-center space-x-2">
                       <Edit className="h-5 w-5 text-primary" />
@@ -993,7 +1075,10 @@ const LOR = () => {
 
               {/* School Allocation Dialog */}
               <Dialog open={isAllocationDialogOpen} onOpenChange={setIsAllocationDialogOpen}>
-                <DialogContent className="max-w-2xl mx-4 sm:mx-0">
+                <DialogContent 
+                  ref={allocationDialogRef}
+                  className="w-[calc(100%-1rem)] sm:w-full max-w-2xl sm:mx-0"
+                >
                   <DialogHeader>
                     <DialogTitle className="flex items-center space-x-2">
                       <Target className="h-5 w-5 text-primary" />
@@ -1077,6 +1162,53 @@ const LOR = () => {
                   </div>
                 </DialogContent>
               </Dialog>
+
+              {/* LOR Templates Section */}
+              {lorTemplates.length > 0 && (
+                <Card className="mt-8">
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <FileText className="h-5 w-5 text-purple-600" />
+                      <CardTitle>LOR Templates</CardTitle>
+                      <Badge variant="secondary" className="bg-purple-100 text-purple-800">
+                        {lorTemplates.length}
+                      </Badge>
+                    </div>
+                    <CardDescription>
+                      Email templates to help you reach out to recommenders and manage your LOR requests
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {lorTemplates.map(template => (
+                        <Card key={template.id} className="group hover:shadow-lg transition-all duration-300 cursor-pointer bg-white flex flex-col h-full">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-base leading-tight group-hover:text-primary transition-colors">
+                              {template.title}
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="pt-0 flex flex-col flex-1">
+                            <CardDescription className="text-sm mb-4">
+                              {template.description}
+                            </CardDescription>
+                            <div className="mt-auto">
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="w-full group-hover:border-primary group-hover:text-primary transition-colors"
+                                onClick={() => window.open(template.url, '_blank')}
+                              >
+                                <ExternalLink className="h-3 w-3 mr-1" />
+                                View Template
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </main>
         </GradientBackground>
     </OnboardingGuard>

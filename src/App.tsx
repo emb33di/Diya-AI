@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
+import { AuthProvider } from "@/contexts/AuthContext";
 import Header from "./components/Header";
 import AuthenticationGuard from "./components/AuthenticationGuard";
 import FounderGuard from "./components/FounderGuard";
@@ -41,6 +42,8 @@ import PasswordReset from "./pages/PasswordReset";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import { initAnalytics } from "./lib/ga/init";
 import RouteTracker from "./lib/ga/RouteTracker";
+import LogRocketRouteTracker from "./lib/logrocket/LogRocketRouteTracker";
+import LogRocketUserTracker from "./lib/logrocket/LogRocketUserTracker";
 
 
 const queryClient = new QueryClient();
@@ -52,19 +55,22 @@ const App = () => {
   return (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter
-          future={{
-            v7_startTransition: true,
-            v7_relativeSplatPath: true,
-          }}
-        >
-          <ScrollToTop />
-          <RouteTracker />
-          <Header />
-          <Routes>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter
+            future={{
+              v7_startTransition: true,
+              v7_relativeSplatPath: true,
+            }}
+          >
+            <ScrollToTop />
+            <RouteTracker />
+            <LogRocketRouteTracker />
+            <LogRocketUserTracker />
+            <Header />
+            <Routes>
             {/* Public routes */}
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
@@ -107,6 +113,7 @@ const App = () => {
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   </HelmetProvider>
   );

@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import HeroSection from "@/components/HeroSection";
-import StarryBackground from "@/components/StarryBackground";
-import FeaturesSection from "@/components/FeaturesSection";
+import DemoVideoSection from "@/components/DemoVideoSection";
+import DynamicBackground from "@/components/DynamicBackground";
 import MBASection from "@/components/MBASection";
 import FAQSection from "@/components/FAQSection";
 import PricingSection from "@/components/PricingSection";
@@ -44,11 +44,11 @@ const Index = () => {
 
   // Landing page content for non-authenticated users
   return (
-    <div className="landing-page min-h-screen bg-black font-inter relative">
-      <StarryBackground />
+    <div className="landing-page min-h-screen bg-black font-instrument-sans relative">
+      <DynamicBackground />
       <div className="relative z-10">
         <HeroSection />
-        <FeaturesSection />
+        <DemoVideoSection />
         <MBASection />
         <PricingSection />
         <FounderProfile />

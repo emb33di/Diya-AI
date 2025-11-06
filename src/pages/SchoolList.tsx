@@ -33,7 +33,17 @@ import {
   CSS,
 } from '@dnd-kit/utilities';
 
-import { Plus, Star, Target, Shield, MapPin, Users, GraduationCap, X, FileText, Loader2, Archive, GripVertical } from "lucide-react";
+import { Plus, Star, Target, Shield, MapPin, Users, GraduationCap, X, FileText, Loader2, Archive, GripVertical, AlertTriangle } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface School {
   id: string;
@@ -59,6 +69,8 @@ const SchoolList = () => {
   const [error, setError] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
+  const [showRemoveConfirmDialog, setShowRemoveConfirmDialog] = useState(false);
+  const [schoolToRemove, setSchoolToRemove] = useState<School | null>(null);
   const [contextMenu, setContextMenu] = useState<{
     visible: boolean;
     x: number;
@@ -219,7 +231,10 @@ const SchoolList = () => {
 
   const handleContextMenuAction = async (action: string) => {
     if (action === 'archive') {
-      await removeSchool(contextMenu.schoolId);
+      const school = schools.find(s => s.id === contextMenu.schoolId);
+      if (school) {
+        handleRemoveSchoolClick(school);
+      }
     }
     setContextMenu({
       visible: false,
@@ -472,6 +487,11 @@ const SchoolList = () => {
     }
   };
 
+  const handleRemoveSchoolClick = (school: School) => {
+    setSchoolToRemove(school);
+    setShowRemoveConfirmDialog(true);
+  };
+
   const removeSchool = async (id: string) => {
     try {
       // Archive the school instead of deleting
@@ -480,8 +500,18 @@ const SchoolList = () => {
       if (result.success) {
         // Remove from local state for responsive UI
         setSchools(schools.filter(school => school.id !== id));
+        toast({
+          title: "School Removed",
+          description: "The school and its associated essays have been removed from your list.",
+          variant: "default",
+        });
       } else {
         setError(result.message || 'Failed to archive school');
+        toast({
+          title: "Error",
+          description: result.message || 'Failed to remove school',
+          variant: "destructive",
+        });
       }
     } catch (err) {
       console.error('[SCHOOLS_ERROR] Failed to archive school:', {
@@ -493,6 +523,20 @@ const SchoolList = () => {
         message: 'User cannot remove school from their list'
       });
       setError('Failed to archive school');
+      toast({
+        title: "Error",
+        description: "Failed to remove school. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setShowRemoveConfirmDialog(false);
+      setSchoolToRemove(null);
+    }
+  };
+
+  const handleConfirmRemove = () => {
+    if (schoolToRemove) {
+      removeSchool(schoolToRemove.id);
     }
   };
 
@@ -608,7 +652,7 @@ const SchoolList = () => {
                 variant="ghost"
                 onClick={(e) => {
                   e.stopPropagation();
-                  removeSchool(school.id);
+                  handleRemoveSchoolClick(school);
                 }}
                 className="h-8 w-8 p-0 touch-manipulation"
               >
@@ -667,13 +711,13 @@ const SchoolList = () => {
   };
 
   // Droppable Area Component for each category
-  const DroppableArea = ({ category, children }: { category: 'reach' | 'target' | 'safety', children: React.ReactNode }) => {
+  const DroppableArea = ({ category, children, isEmpty }: { category: 'reach' | 'target' | 'safety', children: React.ReactNode, isEmpty: boolean }) => {
     const { setNodeRef, isOver } = useDroppable({ id: category });
 
     return (
       <div 
         ref={setNodeRef}
-        className={`space-y-3 lg:space-y-4 min-h-[150px] lg:min-h-[200px] p-3 lg:p-4 rounded-lg transition-colors ${
+        className={`space-y-3 lg:space-y-4 ${isEmpty ? 'min-h-0' : 'min-h-[150px]'} lg:min-h-[200px] p-3 lg:p-4 rounded-lg transition-colors ${
           isOver ? 'bg-primary/10 border-2 border-dashed border-primary' : ''
         }`}
       >
@@ -737,7 +781,7 @@ const SchoolList = () => {
           <div className="flex-1">
             <h1 className="text-2xl lg:text-3xl font-display font-bold mb-2">Schools</h1>
             <p className="text-muted-foreground text-base lg:text-lg">
-              Organize your target schools into Reach, Target, and Safety categories
+              Drag and drop to organize your schools into Reach, Target, and Safety categories
             </p>
           </div>
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
@@ -758,14 +802,14 @@ const SchoolList = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
           {/* Reach Schools */}
-          <div className="space-y-4">
+          <div className={`${reachSchools.length === 0 ? 'lg:space-y-4' : 'space-y-4'}`}>
             <div className="flex items-center space-x-2 mb-4">
               <Star className="h-5 w-5 text-blue-500" />
               <h2 className="text-lg lg:text-xl font-semibold">Reach Schools</h2>
               <Badge variant="secondary">{reachSchools.length}</Badge>
             </div>
             
-            <DroppableArea category="reach">
+            <DroppableArea category="reach" isEmpty={reachSchools.length === 0}>
               {reachSchools.map((school) => (
                 <DraggableSchoolCard key={school.id} school={school} />
               ))}
@@ -773,14 +817,14 @@ const SchoolList = () => {
           </div>
 
           {/* Target Schools */}
-          <div className="space-y-4">
+          <div className={`${targetSchools.length === 0 ? 'lg:space-y-4' : 'space-y-4'}`}>
             <div className="flex items-center space-x-2 mb-4">
               <Target className="h-5 w-5 text-orange-500" />
               <h2 className="text-lg lg:text-xl font-semibold">Target Schools</h2>
               <Badge variant="secondary">{targetSchools.length}</Badge>
             </div>
             
-            <DroppableArea category="target">
+            <DroppableArea category="target" isEmpty={targetSchools.length === 0}>
               {targetSchools.map((school) => (
                 <DraggableSchoolCard key={school.id} school={school} />
               ))}
@@ -788,14 +832,14 @@ const SchoolList = () => {
           </div>
 
           {/* Safety Schools */}
-          <div className="space-y-4">
+          <div className={`${safetySchools.length === 0 ? 'lg:space-y-4' : 'space-y-4'}`}>
             <div className="flex items-center space-x-2 mb-4">
               <Shield className="h-5 w-5 text-green-500" />
               <h2 className="text-lg lg:text-xl font-semibold">Safety Schools</h2>
               <Badge variant="secondary">{safetySchools.length}</Badge>
             </div>
             
-            <DroppableArea category="safety">
+            <DroppableArea category="safety" isEmpty={safetySchools.length === 0}>
               {safetySchools.map((school) => (
                 <DraggableSchoolCard key={school.id} school={school} />
               ))}
@@ -852,6 +896,37 @@ const SchoolList = () => {
         fetchSchoolRecommendationsData();
       }}
     />
+
+    {/* Remove School Confirmation Dialog */}
+    <AlertDialog open={showRemoveConfirmDialog} onOpenChange={setShowRemoveConfirmDialog}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+            <AlertTriangle className="h-5 w-5" />
+            Remove School
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to remove <strong>"{schoolToRemove?.name}"</strong> from your school list?
+            <br /><br />
+            Any essays that you have written attached to this school will also be removed.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={() => {
+            setShowRemoveConfirmDialog(false);
+            setSchoolToRemove(null);
+          }}>
+            Cancel
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleConfirmRemove}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Remove School
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
 
     {/* Context Menu */}
     {contextMenu.visible && (

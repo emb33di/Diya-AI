@@ -13,13 +13,21 @@ import { supabase } from "@/integrations/supabase/client";
 import { getUserDisplayName, fetchUserProfileData } from "@/utils/userNameUtils";
 import { getUserProgramType } from "@/utils/userProfileUtils";
 import { getDraftStatusLabel } from "@/utils/statusUtils";
-import { PenTool, MessageSquare, FileText, Clock, CheckCircle2, Plus, ArrowLeft, ChevronRight, Trash2 } from "lucide-react";
+import { PenTool, MessageSquare, FileText, Clock, CheckCircle2, Plus, ArrowLeft, ChevronRight, Trash2, ChevronDown } from "lucide-react";
 import SemanticEssayEditor from "@/components/essay/SemanticEssayEditor";
 import { CreateEssayModal } from "@/components/essay/CreateEssayModal";
 import { DeleteEssayDialog } from "@/components/essay/DeleteEssayDialog";
 import { EssayService, CreateEssayData } from "@/services/essayService";
 import { useIsMobile } from "@/hooks/use-mobile";
 import PromptDropdown from "@/components/essay/PromptDropdown";
+import AddSchoolModal from "@/components/AddSchoolModal";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface School {
   id: string;
@@ -139,6 +147,7 @@ const Essays = () => {
   const [userName, setUserName] = useState<string>('');
   const [onboardingTranscript, setOnboardingTranscript] = useState<string>('');
   const [newEssays, setNewEssays] = useState<any[]>([]);
+  const [isLoadingEssays, setIsLoadingEssays] = useState(false);
   const [selectedNewEssayId, setSelectedNewEssayId] = useState<string | null>(() => {
     // Initialize from localStorage
     return localStorage.getItem('essays_selected_new_essay_id') || null;
@@ -151,6 +160,7 @@ const Essays = () => {
   const [selectedPromptId, setSelectedPromptId] = useState<string | undefined>(undefined);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
+  const [isAddSchoolModalOpen, setIsAddSchoolModalOpen] = useState(false);
   const { toast } = useToast();
 
   // Mobile-specific state management
@@ -158,6 +168,121 @@ const Essays = () => {
   const [mobileStep, setMobileStep] = useState<'school' | 'prompts' | 'editor'>('school');
   const [selectedMobilePrompt, setSelectedMobilePrompt] = useState<Essay | null>(null);
   const [showMobileEditor, setShowMobileEditor] = useState(false);
+  const [schoolEssayCounts, setSchoolEssayCounts] = useState<Record<string, { total: number; inProgress: number }>>({});
+  const [showDesktopMessage, setShowDesktopMessage] = useState(false);
+  const [expandedSchool, setExpandedSchool] = useState<string | null>(null);
+  const [schoolPrompts, setSchoolPrompts] = useState<Record<string, { prompts: EssayPrompt[]; essays: Essay[]; newEssays: any[] }>>({});
+  const [loadingPrompts, setLoadingPrompts] = useState<Record<string, boolean>>({});
+
+  // Fetch prompts for a school when expanded (mobile view)
+  const fetchSchoolPrompts = async (schoolName: string) => {
+    if (schoolPrompts[schoolName]) {
+      // Already loaded
+      return;
+    }
+
+    setLoadingPrompts(prev => ({ ...prev, [schoolName]: true }));
+    try {
+      let prompts: EssayPrompt[] = [];
+      
+      // Handle Common Application and UCAS specially
+      if (schoolName === 'Common Application') {
+        prompts = await EssayPromptService.getPromptsForCollegeForUser('Common Application');
+      } else if (schoolName === 'UCAS (UK Schools)') {
+        prompts = await EssayPromptService.getPromptsForCollegeForUser('UCAS (UK Schools)');
+      } else {
+        // Check if this is a UK school - redirect to UCAS prompts
+        const ukSchools = [
+          'University of Oxford',
+          'University of Cambridge', 
+          'Imperial College London',
+          'University College London (UCL)',
+          'London School of Economics and Political Science (LSE)'
+        ];
+        
+        if (ukSchools.includes(schoolName)) {
+          prompts = await EssayPromptService.getPromptsForCollegeForUser('UCAS (UK Schools)');
+        } else {
+          prompts = await EssayPromptService.getPromptsForCollegeForUser(schoolName);
+          
+          // If no prompts found, try common variations
+          if (prompts.length === 0) {
+            const variations = [
+              schoolName.replace(' University', ''),
+              schoolName.replace(' College', ''),
+              schoolName.replace(' Institute', '')
+            ];
+
+            for (const variation of variations) {
+              prompts = await EssayPromptService.getPromptsForCollegeForUser(variation);
+              if (prompts.length > 0) break;
+            }
+          }
+        }
+      }
+
+      // Fetch user's existing selections for this school
+      const selections = await EssayPromptService.getUserSelectionsForSchool(schoolName);
+      
+      // Fetch new essays for this school
+      const newEssays = await EssayService.getEssaysForSchool(schoolName);
+
+      // Convert prompts to essays format
+      const essaysFromPrompts: Essay[] = prompts.map((prompt) => {
+        const existingSelection = selections.find(s => s.prompt_number === prompt.prompt_number);
+        const wordCount = existingSelection?.essay_content?.split(' ').length || 0;
+        const hasExistingContent = existingSelection?.essay_content?.trim().length > 0;
+        
+        const associatedNewEssay = newEssays.find(e => 
+          e.prompt_id === prompt.id && !e.prompt_text
+        );
+        
+        return {
+          id: `${schoolName}-${prompt.prompt_number}`,
+          title: prompt.title || `${schoolName} - ${prompt.prompt_number}`,
+          prompt: prompt.prompt,
+          wordCount: associatedNewEssay ? associatedNewEssay.word_count : wordCount,
+          wordLimit: parseWordLimit(prompt.word_limit),
+          status: associatedNewEssay ? associatedNewEssay.status : (hasExistingContent ? 'draft' : 'not_started'),
+          lastEdited: existingSelection ? 'Recently' : 'Never',
+          feedback: 0,
+          schoolName: schoolName,
+          promptNumber: prompt.prompt_number
+        };
+      });
+
+      setSchoolPrompts(prev => ({
+        ...prev,
+        [schoolName]: {
+          prompts,
+          essays: essaysFromPrompts,
+          newEssays
+        }
+      }));
+    } catch (error) {
+      console.error(`[ESSAYS_ERROR] Failed to load prompts for ${schoolName}:`, error);
+      setSchoolPrompts(prev => ({
+        ...prev,
+        [schoolName]: {
+          prompts: [],
+          essays: [],
+          newEssays: []
+        }
+      }));
+    } finally {
+      setLoadingPrompts(prev => ({ ...prev, [schoolName]: false }));
+    }
+  };
+
+  // Handle school card click/toggle
+  const handleSchoolCardClick = (schoolName: string) => {
+    if (expandedSchool === schoolName) {
+      setExpandedSchool(null);
+    } else {
+      setExpandedSchool(schoolName);
+      fetchSchoolPrompts(schoolName);
+    }
+  };
 
   // Helper function to persist essay selection
   const persistEssaySelection = (essayId: string | null) => {
@@ -166,6 +291,119 @@ const Essays = () => {
       localStorage.setItem('essays_selected_new_essay_id', essayId);
     } else {
       localStorage.removeItem('essays_selected_new_essay_id');
+    }
+  };
+
+  // Fetch school recommendations with timeout and retry logic
+  const fetchSchools = async (retries = 3): Promise<School[]> => {
+    try {
+      const {
+        data: { user }
+      } = await supabase.auth.getUser();
+      if (!user) return [];
+
+      const {
+        data: recommendations,
+        error
+      } = await supabase.from('school_recommendations').select('*').eq('student_id', user.id).order('created_at', {
+        ascending: false
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      const transformedSchools: School[] = recommendations.map((rec: any) => ({
+        id: rec.id,
+        name: rec.school,
+        category: rec.category as 'reach' | 'target' | 'safety',
+        acceptanceRate: rec.acceptance_rate || 'N/A',
+        ranking: rec.school_ranking || 'N/A',
+        applicationDeadline: rec.first_round_deadline || 'TBD',
+        notes: rec.notes || rec.student_thesis || 'No notes available',
+        country: rec.country || undefined
+      }));
+      
+      // Add Common Application and UCAS as school options for undergraduate students
+      const userProgramType = await getUserProgramType();
+      if ((userProgramType || '').toLowerCase() === 'undergraduate') {
+        let hasUSSchools = false;
+        let hasUKSchools = false;
+
+        // Try to detect countries using the public undergraduate schools dataset
+        try {
+          const response = await fetch('/undergraduate-schools.json');
+          const data = await response.json();
+          const schoolsFromCatalog = Array.isArray(data?.schools) ? data.schools : [];
+
+          if (schoolsFromCatalog.length > 0) {
+            const countryByName = new Map<string, string>();
+            for (const s of schoolsFromCatalog) {
+              if (s?.name && s?.country) {
+                countryByName.set(s.name, s.country);
+              }
+            }
+
+            hasUSSchools = transformedSchools.some(s => countryByName.get(s.name) === 'USA');
+            hasUKSchools = transformedSchools.some(s => countryByName.get(s.name) === 'UK');
+          }
+        } catch (e) {
+          console.warn('[ESSAYS_WARN] Could not load undergraduate-schools.json to detect countries');
+        }
+
+        // Fallback: name-based detection for UK schools if not detected via catalog
+        if (!hasUKSchools) {
+          const ukSchools = [
+            'University of Oxford',
+            'University of Cambridge', 
+            'Imperial College London',
+            'University College London (UCL)',
+            'London School of Economics and Political Science (LSE)'
+          ];
+          hasUKSchools = transformedSchools.some(school => ukSchools.includes(school.name));
+        }
+
+        // Only add Common Application if the user has at least one US school
+        if (hasUSSchools) {
+          transformedSchools.unshift({
+            id: 'common-app',
+            name: 'Common Application',
+            category: 'target',
+            acceptanceRate: 'N/A',
+            ranking: 'N/A',
+            applicationDeadline: 'TBD',
+            notes: 'Required for all undergraduate applications'
+          });
+        }
+
+        // Only add UCAS if the user has at least one UK school
+        if (hasUKSchools) {
+          transformedSchools.unshift({
+            id: 'ucas-uk',
+            name: 'UCAS (UK Schools)',
+            category: 'target',
+            acceptanceRate: 'N/A',
+            ranking: 'N/A',
+            applicationDeadline: 'TBD',
+            notes: 'Required for all UK university applications'
+          });
+        }
+      }
+      
+      return transformedSchools;
+    } catch (error) {
+      console.error('[ESSAYS_ERROR] Failed to load school list:', {
+        attempt: 4 - retries,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        message: 'User cannot see their school list for essay writing'
+      });
+      if (retries > 1) {
+        // Wait before retry
+        await new Promise(resolve => setTimeout(resolve, 1000 * (4 - retries)));
+        return fetchSchools(retries - 1);
+      }
+      return [];
     }
   };
 
@@ -178,123 +416,56 @@ const Essays = () => {
             user
           }
         } = await supabase.auth.getUser();
-        if (!user) return;
+        if (!user) {
+          setLoading(false);
+          return;
+        }
 
         // Fetch user profile for name using centralized utility
         const profile = await fetchUserProfileData(user.id);
         const displayName = getUserDisplayName(profile, user, 'Student');
         setUserName(displayName);
 
-        // Fetch school recommendations with timeout and retry logic
-        const fetchSchools = async (retries = 3): Promise<School[]> => {
-          try {
-            const {
-              data: recommendations,
-              error
-            } = await supabase.from('school_recommendations').select('*').eq('student_id', user.id).order('created_at', {
-              ascending: false
-            });
-            
-            if (error) {
-              throw error;
-            }
-            
-            const transformedSchools: School[] = recommendations.map((rec: any) => ({
-              id: rec.id,
-              name: rec.school,
-              category: rec.category as 'reach' | 'target' | 'safety',
-              acceptanceRate: rec.acceptance_rate || 'N/A',
-              ranking: rec.school_ranking || 'N/A',
-              applicationDeadline: rec.first_round_deadline || 'TBD',
-              notes: rec.notes || rec.student_thesis || 'No notes available',
-              country: rec.country || undefined
-            }));
-            
-            // Add Common Application and UCAS as school options for undergraduate students
-            const userProgramType = await getUserProgramType();
-            if ((userProgramType || '').toLowerCase() === 'undergraduate') {
-              let hasUSSchools = false;
-              let hasUKSchools = false;
-
-              // Try to detect countries using the public undergraduate schools dataset
-              try {
-                const response = await fetch('/undergraduate-schools.json');
-                const data = await response.json();
-                const schoolsFromCatalog = Array.isArray(data?.schools) ? data.schools : [];
-
-                if (schoolsFromCatalog.length > 0) {
-                  const countryByName = new Map<string, string>();
-                  for (const s of schoolsFromCatalog) {
-                    if (s?.name && s?.country) {
-                      countryByName.set(s.name, s.country);
-                    }
-                  }
-
-                  hasUSSchools = transformedSchools.some(s => countryByName.get(s.name) === 'USA');
-                  hasUKSchools = transformedSchools.some(s => countryByName.get(s.name) === 'UK');
-                }
-              } catch (e) {
-                console.warn('[ESSAYS_WARN] Could not load undergraduate-schools.json to detect countries');
-              }
-
-              // Fallback: name-based detection for UK schools if not detected via catalog
-              if (!hasUKSchools) {
-                const ukSchools = [
-                  'University of Oxford',
-                  'University of Cambridge', 
-                  'Imperial College London',
-                  'University College London (UCL)',
-                  'London School of Economics and Political Science (LSE)'
-                ];
-                hasUKSchools = transformedSchools.some(school => ukSchools.includes(school.name));
-              }
-
-              // Only add Common Application if the user has at least one US school
-              if (hasUSSchools) {
-                transformedSchools.unshift({
-                  id: 'common-app',
-                  name: 'Common Application',
-                  category: 'target',
-                  acceptanceRate: 'N/A',
-                  ranking: 'N/A',
-                  applicationDeadline: 'TBD',
-                  notes: 'Required for all undergraduate applications'
-                });
-              }
-
-              // Only add UCAS if the user has at least one UK school
-              if (hasUKSchools) {
-                transformedSchools.unshift({
-                  id: 'ucas-uk',
-                  name: 'UCAS (UK Schools)',
-                  category: 'target',
-                  acceptanceRate: 'N/A',
-                  ranking: 'N/A',
-                  applicationDeadline: 'TBD',
-                  notes: 'Required for all UK university applications'
-                });
-              }
-            }
-            
-            return transformedSchools;
-          } catch (error) {
-            console.error('[ESSAYS_ERROR] Failed to load school list:', {
-              attempt: 4 - retries,
-              error: error instanceof Error ? error.message : 'Unknown error',
-              timestamp: new Date().toISOString(),
-              message: 'User cannot see their school list for essay writing'
-            });
-            if (retries > 1) {
-              // Wait before retry
-              await new Promise(resolve => setTimeout(resolve, 1000 * (4 - retries)));
-              return fetchSchools(retries - 1);
-            }
-            throw error;
-          }
-        };
-
         const schools = await fetchSchools();
         setSchools(schools);
+        
+        // Fetch essay counts for all schools (for mobile view)
+        if (isMobile && schools.length > 0) {
+          const counts: Record<string, { total: number; inProgress: number }> = {};
+          await Promise.all(
+            schools.map(async (school) => {
+              try {
+                const essays = await EssayService.getEssaysForSchool(school.name);
+                const inProgress = essays.filter(e => e.status === 'draft' || e.status === 'review').length;
+                counts[school.name] = {
+                  total: essays.length,
+                  inProgress: inProgress
+                };
+              } catch (error) {
+                console.error(`[ESSAYS_ERROR] Failed to load essay count for ${school.name}:`, error);
+                counts[school.name] = { total: 0, inProgress: 0 };
+              }
+            })
+          );
+          setSchoolEssayCounts(counts);
+        }
+        
+        // Clear selectedSchool if it doesn't exist in the schools list
+        const persistedSchool = localStorage.getItem('essays_selected_school');
+        if (persistedSchool && schools.length === 0) {
+          localStorage.removeItem('essays_selected_school');
+          setSelectedSchool('');
+          // Also clear essay selection if no schools
+          persistEssaySelection(null);
+        } else if (persistedSchool && !schools.find(s => s.name === persistedSchool)) {
+          localStorage.removeItem('essays_selected_school');
+          setSelectedSchool('');
+          // Also clear essay selection if school doesn't exist
+          persistEssaySelection(null);
+        } else if (persistedSchool) {
+          // If school is valid, trigger essay loading for validation
+          // The useEffect at line 354 will handle this
+        }
 
         // Fetch onboarding transcript separately to avoid blocking
         try {
@@ -328,12 +499,13 @@ const Essays = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [isMobile]);
 
   // Fetch new essays when school is selected
   useEffect(() => {
     if (selectedSchool) {
       const fetchNewEssays = async () => {
+        setIsLoadingEssays(true);
         try {
           const essays = await EssayService.getEssaysForSchool(selectedSchool);
           setNewEssays(essays);
@@ -347,10 +519,12 @@ const Essays = () => {
             }
           }
           
-          // Validate persisted essay selection
+          // Validate persisted essay selection - MUST clear if essay doesn't exist
+          // Only validate after essays have finished loading to avoid race conditions
           const persistedEssayId = localStorage.getItem('essays_selected_new_essay_id');
           if (persistedEssayId && !essays.find(e => e.id === persistedEssayId)) {
-            // If persisted essay doesn't exist for this school, clear it
+            // If persisted essay doesn't exist for this school, clear it immediately
+            console.log('[ESSAYS] Clearing invalid persisted essay ID:', persistedEssayId);
             persistEssaySelection(null);
           }
         } catch (error) {
@@ -360,11 +534,22 @@ const Essays = () => {
             timestamp: new Date().toISOString(),
             message: 'User cannot see their essays for the selected school'
           });
+          // Keep essay selection on fetch errors - don't clear until we confirm essay doesn't exist
+          // Only clear selection after successful fetch that proves essay ID is invalid
+          setNewEssays([]);
+          toast({
+            title: "Failed to load essays",
+            description: "Could not load essays for this school. Your current selection has been preserved. Please try again.",
+            variant: "destructive"
+          });
+        } finally {
+          setIsLoadingEssays(false);
         }
       };
       fetchNewEssays();
     } else {
       setNewEssays([]);
+      setIsLoadingEssays(false);
       persistEssaySelection(null);
     }
   }, [selectedSchool]);
@@ -742,6 +927,145 @@ const Essays = () => {
     localStorage.setItem('essays_selected_school', schoolName);
   };
 
+  // Handle adding a single school
+  const addSchool = async (schoolData: any) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Error",
+          description: "Please log in to add schools",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Check if school already exists
+      const existingSchool = schools.find(school => 
+        school.name.toLowerCase() === schoolData.school.toLowerCase()
+      );
+
+      if (existingSchool) {
+        toast({
+          title: "School Already Added",
+          description: `${schoolData.school} is already in your school list.`,
+          variant: "default",
+        });
+        return;
+      }
+
+      // Create new school in database
+      const insertData = {
+        student_id: user.id,
+        ...schoolData
+      };
+      
+      const { data: newSchoolData, error } = await supabase
+        .from('school_recommendations')
+        .insert(insertData)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[ESSAYS_ERROR] Failed to add school:', error);
+        toast({
+          title: "Error",
+          description: "Failed to add school. Please try again.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Refresh schools list
+      const updatedSchools = await fetchSchools();
+      setSchools(updatedSchools);
+
+      toast({
+        title: "School Added",
+        description: `${schoolData.school} has been added to your list.`,
+        variant: "default",
+      });
+    } catch (error) {
+      console.error('[ESSAYS_ERROR] Failed to add school:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add school. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Handle adding multiple schools
+  const addMultipleSchools = async (schoolsData: any[]) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Error",
+          description: "Please log in to add schools",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Filter out schools that already exist
+      const existingSchoolNames = schools.map(school => school.name.toLowerCase());
+      const newSchoolsData = schoolsData.filter(schoolData => 
+        !existingSchoolNames.includes(schoolData.school.toLowerCase())
+      );
+
+      const duplicateCount = schoolsData.length - newSchoolsData.length;
+      if (duplicateCount > 0) {
+        toast({
+          title: "Some Schools Already Added",
+          description: `${duplicateCount} school(s) were already in your list and were skipped.`,
+          variant: "default",
+        });
+      }
+
+      if (newSchoolsData.length === 0) {
+        return;
+      }
+
+      // Prepare data for bulk insert
+      const insertData = newSchoolsData.map(schoolData => ({
+        student_id: user.id,
+        ...schoolData
+      }));
+      
+      const { error } = await supabase
+        .from('school_recommendations')
+        .insert(insertData);
+
+      if (error) {
+        console.error('[ESSAYS_ERROR] Failed to add multiple schools:', error);
+        toast({
+          title: "Error",
+          description: "Failed to add schools. Please try again.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Refresh schools list
+      const updatedSchools = await fetchSchools();
+      setSchools(updatedSchools);
+
+      toast({
+        title: "Schools Added",
+        description: `${newSchoolsData.length} school(s) have been added to your list.`,
+        variant: "default",
+      });
+    } catch (error) {
+      console.error('[ESSAYS_ERROR] Failed to add multiple schools:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add schools. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   // Handle prompt selection from dropdown
   const handlePromptChange = async (promptId: string) => {
     setSelectedPromptId(promptId);
@@ -1015,49 +1339,207 @@ const Essays = () => {
           {mobileStep === 'school' && (
             <div className="p-4">
               <div className="mb-6">
-                <h1 className="text-2xl font-display font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent mb-2">
-                  Essay Workshop
+                <h1 className="text-2xl font-display font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                  Essay Dashboard
                 </h1>
-                <p className="text-muted-foreground text-sm">
-                  Select a school to see essay prompts
-                </p>
               </div>
 
-              
-              <Card className="shadow-sm">
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <div className="p-2 bg-primary/10 rounded-lg">
-                      <FileText className="h-4 w-4 text-primary" />
+              {schools.length === 0 ? (
+                <Card className="shadow-sm">
+                  <CardContent className="p-8 text-center">
+                    <div className="p-4 bg-primary/10 rounded-full mb-6 inline-block">
+                      <PenTool className="h-8 w-8 text-primary" />
                     </div>
-                    <span className="text-lg">Choose Your School</span>
-                  </CardTitle>
-                  <CardDescription>
-                    Select the school you want to write essays for
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <Select value={selectedSchool} onValueChange={handleSchoolChange}>
-                    <SelectTrigger className="w-full bg-card shadow-sm">
-                      <SelectValue placeholder="Select a school" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {schools.map(school => (
-                        <SelectItem key={school.id} value={school.name}>
-                          <div className="flex items-center space-x-2">
-                            <div className={`w-2 h-2 rounded-full ${
-                              school.category === 'reach' ? 'bg-red-500' : 
-                              school.category === 'target' ? 'bg-yellow-500' : 
-                              'bg-green-500'
-                            }`} />
-                            <span>{school.name}</span>
+                    <h3 className="text-lg font-semibold mb-3">No schools added. Please add a new school.</h3>
+                    <p className="text-sm text-muted-foreground mb-6">
+                      Add schools to your list to start writing essays for them
+                    </p>
+                    <Button onClick={() => setIsAddSchoolModalOpen(true)} className="w-full">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add new school
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-3">
+                  {schools.map(school => {
+                    const counts = schoolEssayCounts[school.name] || { total: 0, inProgress: 0 };
+                    const isExpanded = expandedSchool === school.name;
+                    const schoolData = schoolPrompts[school.name];
+                    const isLoading = loadingPrompts[school.name];
+                    const { requiredPrompts, optionalPrompts } = schoolData 
+                      ? categorizePrompts(schoolData.prompts) 
+                      : { requiredPrompts: [], optionalPrompts: [] };
+                    
+                    return (
+                      <Card
+                        key={school.id}
+                        className="bg-card"
+                      >
+                        <CardContent className="p-0">
+                          {/* School Header - Clickable */}
+                          <div
+                            className="cursor-pointer transition-all duration-200 hover:bg-muted/50 p-4"
+                            onClick={() => handleSchoolCardClick(school.name)}
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-2 mb-2">
+                                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                    school.category === 'reach' ? 'bg-red-500' : 
+                                    school.category === 'target' ? 'bg-yellow-500' : 
+                                    'bg-green-500'
+                                  }`} />
+                                  <h3 className="text-base font-semibold text-foreground">
+                                    {school.name}
+                                  </h3>
+                                </div>
+                                <div className="flex items-center space-x-4 text-sm text-muted-foreground ml-4">
+                                  <span>{counts.total} {counts.total === 1 ? 'essay' : 'essays'}</span>
+                                  <span>{counts.inProgress} in progress</span>
+                                </div>
+                              </div>
+                              <ChevronDown 
+                                className={`h-5 w-5 text-muted-foreground flex-shrink-0 transition-transform duration-200 ${
+                                  isExpanded ? 'rotate-180' : ''
+                                }`} 
+                              />
+                            </div>
                           </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </CardContent>
-              </Card>
+
+                          {/* Expanded Prompts Section */}
+                          {isExpanded && (
+                            <div className="border-t border-border">
+                              {isLoading ? (
+                                <div className="p-4 flex items-center justify-center">
+                                  <Clock className="h-5 w-5 animate-spin mr-2" />
+                                  <span className="text-sm text-muted-foreground">Loading prompts...</span>
+                                </div>
+                              ) : schoolData && (schoolData.prompts.length > 0 || schoolData.newEssays.filter(e => e.prompt_text).length > 0) ? (
+                                <div className="p-4 space-y-3">
+                                  {/* Required Prompts */}
+                                  {requiredPrompts.length > 0 && (
+                                    <div className="space-y-2">
+                                      <h4 className="text-xs font-medium text-red-600 flex items-center space-x-2">
+                                        <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                                        <span>Required Essays ({requiredPrompts.length})</span>
+                                      </h4>
+                                      {requiredPrompts.map((prompt) => {
+                                        return (
+                                          <div
+                                            key={prompt.id}
+                                            className="cursor-pointer p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setShowDesktopMessage(true);
+                                            }}
+                                          >
+                                            <div className="flex items-start justify-between">
+                                              <div className="flex-1">
+                                                <div className="mb-2">
+                                                  <span className="text-sm font-medium text-foreground">
+                                                    {prompt.title || `Prompt ${prompt.prompt_number}`}
+                                                  </span>
+                                                </div>
+                                                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                                                  {prompt.prompt}
+                                                </p>
+                                              </div>
+                                              <ChevronRight className="h-4 w-4 text-muted-foreground ml-2 flex-shrink-0 mt-1" />
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+
+                                  {/* Optional Prompts */}
+                                  {optionalPrompts.length > 0 && (
+                                    <div className="space-y-2">
+                                      <h4 className="text-xs font-medium text-blue-600 flex items-center space-x-2">
+                                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                        <span>{getSelectionText(optionalPrompts)} ({optionalPrompts.length} prompts)</span>
+                                      </h4>
+                                      {optionalPrompts.map((prompt) => {
+                                        return (
+                                          <div
+                                            key={prompt.id}
+                                            className="cursor-pointer p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setShowDesktopMessage(true);
+                                            }}
+                                          >
+                                            <div className="flex items-start justify-between">
+                                              <div className="flex-1">
+                                                <div className="mb-2">
+                                                  <span className="text-sm font-medium text-foreground">
+                                                    {prompt.title || `Prompt ${prompt.prompt_number}`}
+                                                  </span>
+                                                </div>
+                                                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                                                  {prompt.prompt}
+                                                </p>
+                                              </div>
+                                              <ChevronRight className="h-4 w-4 text-muted-foreground ml-2 flex-shrink-0 mt-1" />
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+
+                                  {/* Custom Essays */}
+                                  {schoolData.newEssays.filter(e => e.prompt_text).length > 0 && (
+                                    <div className="space-y-2">
+                                      <h4 className="text-xs font-medium text-purple-600 flex items-center space-x-2">
+                                        <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                        <span>Custom Essays</span>
+                                      </h4>
+                                      {schoolData.newEssays.filter(e => e.prompt_text).map((essay) => {
+                                        return (
+                                          <div
+                                            key={essay.id}
+                                            className="cursor-pointer p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setShowDesktopMessage(true);
+                                            }}
+                                          >
+                                            <div className="flex items-start justify-between">
+                                              <div className="flex-1">
+                                                <div className="mb-2">
+                                                  <span className="text-sm font-medium text-foreground">
+                                                    {essay.title}
+                                                  </span>
+                                                </div>
+                                                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                                                  {essay.prompt_text}
+                                                </p>
+                                              </div>
+                                              <ChevronRight className="h-4 w-4 text-muted-foreground ml-2 flex-shrink-0 mt-1" />
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="p-4 text-center">
+                                  <p className="text-sm text-muted-foreground">
+                                    No prompts found for this school
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
@@ -1280,7 +1762,14 @@ const Essays = () => {
                   </div>
                   
                   <div className="flex-1 overflow-hidden">
-                    {selectedNewEssayId ? (
+                    {selectedNewEssayId && isLoadingEssays ? (
+                      <div className="flex items-center justify-center h-full">
+                        <div className="flex items-center space-x-2">
+                          <Clock className="h-6 w-6 animate-spin" />
+                          <span>Loading essay...</span>
+                        </div>
+                      </div>
+                    ) : selectedNewEssayId && newEssays.find(e => e.id === selectedNewEssayId) ? (
                       <SemanticEssayEditor 
                         essayId={selectedNewEssayId}
                         title={newEssays.find(e => e.id === selectedNewEssayId)?.title || 'Untitled Essay'}
@@ -1467,7 +1956,27 @@ const Essays = () => {
             </>
           )}
 
-        </GradientBackground>
+        {/* Add School Modal */}
+        <AddSchoolModal
+          isOpen={isAddSchoolModalOpen}
+          onClose={() => setIsAddSchoolModalOpen(false)}
+          onAddSchool={addSchool}
+          onAddMultipleSchools={addMultipleSchools}
+          existingSchools={schools.map(school => school.name)}
+        />
+
+        {/* Desktop Message Dialog */}
+        <Dialog open={showDesktopMessage} onOpenChange={setShowDesktopMessage}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Best Viewing Experience</DialogTitle>
+              <DialogDescription>
+                For best viewing please use the website on your laptop or desktop for editing essays.
+              </DialogDescription>
+            </DialogHeader>
+          </DialogContent>
+        </Dialog>
+      </GradientBackground>
     </OnboardingGuard>;
   }
 
@@ -1487,19 +1996,25 @@ const Essays = () => {
                 </p>
               </div>
               <div className="flex items-center space-x-4">
-                <Select value={selectedSchool} onValueChange={handleSchoolChange}>
-                  <SelectTrigger className="w-64 bg-card shadow-sm">
-                    <SelectValue placeholder="Select a school" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {schools.map(school => <SelectItem key={school.id} value={school.name}>
-                        <div className="flex items-center space-x-2">
-                          <div className={`w-2 h-2 rounded-full ${school.category === 'reach' ? 'bg-red-500' : school.category === 'target' ? 'bg-yellow-500' : 'bg-green-500'}`} />
-                          <span>{school.name}</span>
-                        </div>
-                      </SelectItem>)}
-                  </SelectContent>
-                </Select>
+                {schools.length > 0 ? (
+                  <Select value={selectedSchool} onValueChange={handleSchoolChange}>
+                    <SelectTrigger className="w-64 bg-card shadow-sm">
+                      <SelectValue placeholder="Select a school" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {schools.map(school => <SelectItem key={school.id} value={school.name}>
+                          <div className="flex items-center space-x-2">
+                            <div className={`w-2 h-2 rounded-full ${school.category === 'reach' ? 'bg-red-500' : school.category === 'target' ? 'bg-yellow-500' : 'bg-green-500'}`} />
+                            <span>{school.name}</span>
+                          </div>
+                        </SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="text-sm text-muted-foreground">
+                    No schools added
+                  </div>
+                )}
                 <Select 
                   value={(() => {
                     if (selectedPromptId) return selectedPromptId;
@@ -1553,7 +2068,16 @@ const Essays = () => {
           <div className="w-full min-h-[calc(100vh-200px)]">
             {/* Essay Editor */}
             <div className="w-full min-h-full">
-              {selectedNewEssayId ? (
+              {selectedNewEssayId && isLoadingEssays ? (
+                <Card className="min-h-full shadow-sm bg-card">
+                  <CardContent className="p-12 text-center min-h-full flex flex-col items-center justify-center">
+                    <div className="flex items-center space-x-2">
+                      <Clock className="h-6 w-6 animate-spin" />
+                      <span>Loading essay...</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : selectedNewEssayId && newEssays.find(e => e.id === selectedNewEssayId) ? (
                 <SemanticEssayEditor 
                   essayId={selectedNewEssayId}
                   title={newEssays.find(e => e.id === selectedNewEssayId)?.title || 'Untitled Essay'}
@@ -1788,6 +2312,22 @@ const Essays = () => {
                     <Textarea placeholder="Start writing your essay here..." className="h-full min-h-[500px] resize-none border-0 rounded-none focus:ring-0 text-base leading-relaxed p-6" value={essayContent} onChange={e => handleEssayContentChange(e.target.value)} />
                   </CardContent>
                 </Card>
+              ) : schools.length === 0 ? (
+                <Card className="min-h-full shadow-sm bg-gradient-to-br from-muted/30 to-muted/10">
+                  <CardContent className="p-12 text-center min-h-full flex flex-col items-center justify-center">
+                    <div className="p-4 bg-primary/10 rounded-full mb-6">
+                      <PenTool className="h-12 w-12 text-primary" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-3">No schools added. Please add a new school.</h3>
+                    <p className="text-muted-foreground max-w-md mb-6">
+                      Add schools to your list to start writing essays for them
+                    </p>
+                    <Button onClick={() => setIsAddSchoolModalOpen(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add new school
+                    </Button>
+                  </CardContent>
+                </Card>
               ) : selectedSchool ? (
                 // Show prompt dropdown when school is selected but no essay is chosen
                 <div className="min-h-full overflow-y-auto p-6">
@@ -1857,7 +2397,7 @@ const Essays = () => {
                     <div className="p-4 bg-primary/10 rounded-full mb-6">
                       <PenTool className="h-12 w-12 text-primary" />
                     </div>
-                    <h3 className="text-xl font-semibold mb-3">Select a School</h3>
+                    <h3 className="text-xl font-semibold mb-3">Select a school to start writing</h3>
                     <p className="text-muted-foreground max-w-md">
                       Choose a school from the dropdown above to see available essay prompts and start writing
                     </p>
@@ -1888,6 +2428,15 @@ const Essays = () => {
           onConfirm={handleDeleteEssay}
           essayTitle={essayToDelete?.title || ''}
           isDeleting={deletingEssay}
+        />
+
+        {/* Add School Modal */}
+        <AddSchoolModal
+          isOpen={isAddSchoolModalOpen}
+          onClose={() => setIsAddSchoolModalOpen(false)}
+          onAddSchool={addSchool}
+          onAddMultipleSchools={addMultipleSchools}
+          existingSchools={schools.map(school => school.name)}
         />
       </GradientBackground>
     </OnboardingGuard>;

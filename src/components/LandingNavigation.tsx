@@ -73,7 +73,7 @@ const Navigation = () => {
           <div className="flex items-center space-x-4 sm:space-x-6">
             <button 
               onClick={() => navigate('/auth?mode=signin')} 
-              className="text-sm font-medium text-white hover:text-white/80 transition-colors duration-200 cursor-pointer"
+              className="hidden md:block text-sm font-medium text-white hover:text-white/80 transition-colors duration-200 cursor-pointer"
             >
               Sign In
             </button>

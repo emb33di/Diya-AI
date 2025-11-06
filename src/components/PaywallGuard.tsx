@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Lock, Crown, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { createCheckoutSession } from '@/services/stripePaymentService';
+import { PromoCodeModal } from '@/components/PromoCodeModal';
 
 interface PaywallGuardProps {
   children: React.ReactNode;
@@ -46,8 +47,17 @@ const PaywallGuard: React.FC<PaywallGuardProps> = ({
   const feature = getFeatureInfo(featureKey);
   const upgradeMessage = getUpgradeMessage(featureKey);
 
-  const handleUpgrade = async () => {
-    await createCheckoutSession();
+  const [showPromoCodeModal, setShowPromoCodeModal] = useState(false);
+
+  const handleUpgrade = () => {
+    setShowPromoCodeModal(true);
+  };
+
+  const handlePromoCodeProceed = async (hasPromoCode: boolean) => {
+    setShowPromoCodeModal(false);
+    await createCheckoutSession({
+      use_promo_price: hasPromoCode,
+    });
   };
 
   return (
@@ -96,6 +106,13 @@ const PaywallGuard: React.FC<PaywallGuardProps> = ({
           </Card>
         </div>
       </div>
+
+      {/* Promo Code Modal */}
+      <PromoCodeModal
+        isOpen={showPromoCodeModal}
+        onClose={() => setShowPromoCodeModal(false)}
+        onProceed={handlePromoCodeProceed}
+      />
     </>
   );
 };

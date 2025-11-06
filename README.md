@@ -2,6 +2,8 @@
 
 A comprehensive AI-powered college counseling platform that provides 24/7 voice-based guidance for college applications, essay writing, and school selection.
 
+> Deployment trigger - November 2024 (updated)
+
 ## 🎯 Overview
 
 Diya transforms the college application process by offering personalized voice conversations with an AI counselor. Users can speak naturally about their goals, concerns, and questions, receiving real-time guidance and personalized school recommendations.

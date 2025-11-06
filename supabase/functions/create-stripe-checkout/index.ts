@@ -77,8 +77,40 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get price ID from request body or environment variable
-    const priceId = requestBody?.price_id || Deno.env.get('STRIPE_PRICE_ID');
+    // Determine price ID based on promo code usage or request body
+    let priceId: string | undefined;
+    
+    // Handle both boolean true and string "true" for use_promo_price
+    const usePromoPrice = requestBody?.use_promo_price === true || requestBody?.use_promo_price === 'true';
+    
+    console.log('[Edge Function] Received request:', {
+      use_promo_price: requestBody?.use_promo_price,
+      use_promo_price_type: typeof requestBody?.use_promo_price,
+      usePromoPrice: usePromoPrice,
+      has_price_id: !!requestBody?.price_id,
+      price_id: requestBody?.price_id
+    });
+    
+    // If use_promo_price is true, use the early access price ID
+    if (usePromoPrice) {
+      priceId = Deno.env.get('STRIPE_EA_PRICE_ID');
+      if (!priceId) {
+        console.error('STRIPE_EA_PRICE_ID not configured for promo pricing');
+        return new Response(
+          JSON.stringify({ 
+            error: 'Promo price ID not configured',
+            details: 'Please set STRIPE_EA_PRICE_ID in Supabase secrets for promo pricing'
+          }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      console.log('[Edge Function] Using promo price ID:', priceId);
+    } else {
+      // Use regular price ID from request body or environment variable
+      priceId = requestBody?.price_id || Deno.env.get('STRIPE_PRICE_ID');
+      console.log('[Edge Function] Using regular price ID:', priceId);
+    }
+    
     if (!priceId) {
       console.error('Missing price_id: not in request body and STRIPE_PRICE_ID not set in environment');
       return new Response(
@@ -96,13 +128,25 @@ Deno.serve(async (req) => {
     
     // Construct success and cancel URLs
     const successUrl = requestBody.success_url || `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}`;
-    const cancelUrl = requestBody.cancel_url || `${origin}/pricing`;
+    // Default to subscription page (logged-in users manage subscription there)
+    const cancelUrl = requestBody.cancel_url || `${origin}/subscription`;
 
     console.log(`Creating checkout session with:
       - Price ID: ${priceId}
       - Customer Email: ${customerEmail}
       - Success URL: ${successUrl}
       - Cancel URL: ${cancelUrl}`);
+
+    // Build metadata with promo code tracking if applicable
+    const metadata: Record<string, string> = {
+      user_id: user.id,
+      email: customerEmail,
+    };
+    
+    if (usePromoPrice) {
+      metadata.promo_code = 'early-access';
+      metadata.is_promo = 'true';
+    }
 
     // Create Stripe checkout session
     const stripeResponse = await fetch('https://api.stripe.com/v1/checkout/sessions', {
@@ -119,8 +163,10 @@ Deno.serve(async (req) => {
         'client_reference_id': user.id,
         'line_items[0][price]': priceId,
         'line_items[0][quantity]': '1',
-        'metadata[user_id]': user.id,
-        'metadata[email]': customerEmail,
+        ...Object.entries(metadata).reduce((acc, [key, value]) => {
+          acc[`metadata[${key}]`] = value;
+          return acc;
+        }, {} as Record<string, string>),
       }),
     });
 

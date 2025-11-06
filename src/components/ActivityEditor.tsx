@@ -303,7 +303,6 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
       languages: '' // No title field for simple categories
     };
     const result = fieldLabels.hasOwnProperty(category) ? fieldLabels[category] : 'Title';
-    console.log(`getFieldLabel for ${category}: "${result}"`);
     return result;
   }, []);
 
@@ -400,7 +399,6 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
             {/* Field Label - Only show for categories that need titles */}
             {(() => {
               const fieldLabel = getFieldLabel(category);
-              console.log(`Rendering field label for ${category}: "${fieldLabel}", should show: ${!!fieldLabel}`);
               return fieldLabel && (
                 <div 
                   className="text-base lg:text-lg font-semibold capitalize mb-2"
@@ -419,7 +417,6 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
             {/* Text Input Field - Only show for categories that need titles */}
             {(() => {
               const fieldLabel = getFieldLabel(category);
-              console.log(`Rendering input field for ${category}: "${fieldLabel}", should show: ${!!fieldLabel}`);
               return fieldLabel && (
                 <div className="space-y-2">
                   <Input

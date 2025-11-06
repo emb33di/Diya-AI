@@ -25,65 +25,27 @@ import MobileNavigation from "@/components/MobileNavigation";
 const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [userFirstName, setUserFirstName] = useState<string>('');
-  const { onboardingCompleted, loading: onboardingLoading } = useAuth();
+  const { user, profile, loading: authLoading, onboardingCompleted, signOut } = useAuth();
   const { userTier, isPro } = usePaywall();
   
-  const fetchUserProfile = async (userId: string) => {
-    try {
-      // Get user data for metadata fallback
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      // Fetch profile data using centralized utility
-      const profile = await fetchUserProfileData(userId);
-      
-      // Get first name using centralized logic
-      const firstName = getUserFirstName(profile, user, '');
-      setUserFirstName(firstName);
-    } catch (error) {
-      console.error('Error fetching user profile:', error);
-      setUserFirstName('');
-    }
-  };
+  // Derive state from useAuth hook instead of maintaining separate state
+  const isAuthenticated = !!user;
+  const loading = authLoading;
+  
+  // Get first name from profile
+  const userFirstName = profile?.full_name?.split(' ')[0] || user?.user_metadata?.first_name || '';
 
+  // Debug logging for auth state
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        setIsAuthenticated(!!user);
-        
-        // Don't await profile fetch to avoid blocking the UI
-        if (user) {
-          fetchUserProfile(user.id);
-        } else {
-          setUserFirstName('');
-        }
-      } catch (error) {
-        console.error('Error checking auth status:', error);
-        setIsAuthenticated(false);
-        setUserFirstName('');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    checkAuth();
-    
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setIsAuthenticated(!!session?.user);
-      
-      if (session?.user) {
-        fetchUserProfile(session.user.id);
-      } else {
-        setUserFirstName('');
-      }
+    console.log('[HEADER] Auth state:', {
+      hasUser: Boolean(user),
+      userId: user?.id,
+      hasProfile: Boolean(profile),
+      loading: authLoading,
+      isAuthenticated,
+      path: location.pathname
     });
-    
-    return () => subscription.unsubscribe();
-  }, []);
+  }, [user, profile, authLoading, isAuthenticated, location.pathname]);
 
   // Handle hash scrolling when navigating from other pages
   useEffect(() => {
@@ -133,9 +95,11 @@ const Header = () => {
   
   return (
     <header className="sticky top-0 z-50 w-full backdrop-blur-md bg-transparent">
-      <div className="container mx-auto flex h-20 items-center justify-between px-6">
+      <div className={`container mx-auto flex h-20 items-center px-6 relative ${
+        isAuthenticated ? 'justify-between md:justify-between' : 'justify-between'
+      }`}>
         {/* Logo */}
-        <Link to={loading ? "/" : (isAuthenticated ? "/dashboard" : "/")} className="flex items-center space-x-2">
+        <Link to={loading ? "/" : (isAuthenticated ? "/dashboard" : "/")} className="flex items-center space-x-2 flex-shrink-0">
           <img 
             src={location.pathname === "/" || location.pathname === "/auth" ? "/DiyaLogo White.svg" : "/DiyaLogo.svg"} 
             alt="Diya Logo" 
@@ -147,7 +111,7 @@ const Header = () => {
         {isAuthenticated && (
           <>
             {/* Desktop Navigation */}
-            <nav className={`hidden md:flex items-center space-x-8 px-4 py-2 rounded-full border transition-all duration-200 ${
+            <nav className={`hidden md:flex items-center space-x-4 lg:space-x-6 xl:space-x-8 px-2 py-1.5 lg:px-3 xl:px-4 lg:py-2 rounded-full border transition-all duration-200 flex-shrink min-w-0 ${
               location.pathname === '/onboarding' || location.pathname === '/dashboard' || 
               location.pathname === '/schools' || location.pathname === '/resume' || 
               location.pathname === '/essays' || location.pathname === '/lor' || 
@@ -155,13 +119,13 @@ const Header = () => {
                 ? 'border-primary/50' 
                 : 'border-gray-300/30'
             }`}>
-              {onboardingLoading ? (
-                <span className="text-sm font-medium text-gray-400 px-3 py-1">
+              {loading ? (
+                <span className="text-xs lg:text-sm font-medium text-gray-400 px-2 py-0.5 lg:px-3 lg:py-1">
                   Onboarding
                 </span>
               ) : onboardingCompleted === true ? (
                 <button 
-                  className="text-sm font-medium transition-colors text-gray-400 cursor-not-allowed px-3 py-1"
+                  className="text-xs lg:text-sm font-medium transition-colors text-gray-400 cursor-not-allowed px-2 py-0.5 lg:px-3 lg:py-1"
                   disabled
                 >
                   Onboarding
@@ -169,7 +133,7 @@ const Header = () => {
               ) : (
                 <Link 
                   to="/onboarding" 
-                  className={`text-sm font-medium transition-colors px-3 py-1 ${
+                  className={`text-xs lg:text-sm font-medium transition-colors px-2 py-0.5 lg:px-3 lg:py-1 ${
                     isActive('/onboarding') 
                       ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
                       : 'text-black hover:text-black'
@@ -183,7 +147,7 @@ const Header = () => {
                   <TooltipTrigger asChild>
                     <Link 
                       to="/dashboard" 
-                      className={`text-sm font-medium transition-colors px-3 py-1 ${
+                      className={`text-xs lg:text-sm font-medium transition-colors px-2 py-0.5 lg:px-3 lg:py-1 ${
                         isActive('/dashboard') 
                           ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
                           : 'text-black hover:text-black'
@@ -199,7 +163,7 @@ const Header = () => {
                   <TooltipTrigger asChild>
                     <Link 
                       to="/schools" 
-                      className={`text-sm font-medium transition-colors px-3 py-1 ${
+                      className={`text-xs lg:text-sm font-medium transition-colors px-2 py-0.5 lg:px-3 lg:py-1 ${
                         isActive('/schools') 
                           ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
                           : 'text-black hover:text-black'
@@ -215,7 +179,7 @@ const Header = () => {
                   <TooltipTrigger asChild>
                     <Link 
                       to="/resume" 
-                      className={`text-sm font-medium transition-colors px-3 py-1 ${
+                      className={`text-xs lg:text-sm font-medium transition-colors px-2 py-0.5 lg:px-3 lg:py-1 ${
                         isActive('/resume') 
                           ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
                           : 'text-black hover:text-black'
@@ -231,7 +195,7 @@ const Header = () => {
                   <TooltipTrigger asChild>
                     <Link 
                       to="/essays" 
-                      className={`text-sm font-medium transition-colors px-3 py-1 ${
+                      className={`text-xs lg:text-sm font-medium transition-colors px-2 py-0.5 lg:px-3 lg:py-1 ${
                         isActive('/essays') 
                           ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
                           : 'text-black hover:text-black'
@@ -247,7 +211,7 @@ const Header = () => {
                   <TooltipTrigger asChild>
                     <Link 
                       to="/lor" 
-                      className={`text-sm font-medium transition-colors px-3 py-1 ${
+                      className={`text-xs lg:text-sm font-medium transition-colors px-2 py-0.5 lg:px-3 lg:py-1 ${
                         isActive('/lor') 
                           ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
                           : 'text-black hover:text-black'
@@ -263,7 +227,7 @@ const Header = () => {
                   <TooltipTrigger asChild>
                     <Link 
                       to="/deadlines" 
-                      className={`text-sm font-medium transition-colors px-3 py-1 ${
+                      className={`text-xs lg:text-sm font-medium transition-colors px-2 py-0.5 lg:px-3 lg:py-1 ${
                         isActive('/deadlines') 
                           ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
                           : 'text-black hover:text-black'
@@ -279,13 +243,13 @@ const Header = () => {
                   <TooltipTrigger asChild>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <button className={`text-sm font-medium transition-colors px-3 py-1 flex items-center gap-1 ${
+                        <button className={`text-xs lg:text-sm font-medium transition-colors px-2 py-0.5 lg:px-3 lg:py-1 flex items-center gap-1 ${
                           isActive('/blog')
                             ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
                             : 'text-black hover:text-black'
                         }`}>
                           Resources
-                          <ChevronDown className="h-3 w-3" />
+                          <ChevronDown className="h-2.5 w-2.5 lg:h-3 lg:w-3" />
                         </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="w-48">
@@ -301,8 +265,8 @@ const Header = () => {
               </TooltipProvider>
             </nav>
             
-            {/* Mobile Navigation */}
-            <div className="md:hidden">
+            {/* Mobile Navigation - Centered */}
+            <div className="md:hidden absolute left-1/2 transform -translate-x-1/2">
               <MobileNavigation />
             </div>
           </>
@@ -396,12 +360,12 @@ const Header = () => {
         )}
         
         {/* Auth Buttons */}
-        <div className="flex items-center space-x-6">
+        <div className="flex items-center space-x-6 flex-shrink-0">
           {!isAuthenticated ? (
             <>
               <Link 
                 to="/auth?mode=signin" 
-                className={`text-sm font-medium transition-colors duration-200 cursor-pointer ${
+                className={`hidden md:block text-sm font-medium transition-colors duration-200 cursor-pointer ${
                   isBlogPage 
                     ? 'text-black hover:text-gray-700' 
                     : 'text-white hover:text-white/80'
@@ -456,7 +420,7 @@ const Header = () => {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
                   onClick={async () => {
-                    await supabase.auth.signOut();
+                    await signOut();
                     // Redirect to auth page after sign out
                     navigate('/auth', { replace: true });
                   }}

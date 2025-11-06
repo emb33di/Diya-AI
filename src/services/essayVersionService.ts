@@ -184,6 +184,67 @@ export class EssayVersionService {
   }
 
   /**
+   * Create a new version with ONLY text content (no annotations, comments, or highlighting)
+   * New version remains editable and has_ai_feedback is FALSE.
+   */
+  static async createCleanVersion(
+    essayId: string,
+    currentDocument: SemanticDocument,
+    versionName?: string,
+    versionDescription?: string
+  ): Promise<string> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    // Create a new semantic document for this version (remove all annotations)
+    const newSemanticDocument: SemanticDocument = {
+      id: crypto.randomUUID(),
+      title: currentDocument.title,
+      blocks: currentDocument.blocks.map(block => ({
+        ...block,
+        // Remove all annotations to create a clean version
+        annotations: []
+      })),
+      metadata: {
+        ...currentDocument.metadata,
+        essayId
+      },
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    // Save the new semantic document first
+    await semanticDocumentService.saveDocument(newSemanticDocument);
+
+    // Do NOT duplicate semantic_annotations - this creates a clean version without comments
+    // The document will have no annotations stored in the database
+
+    // Prepare version content
+    const versionContent = {
+      blocks: newSemanticDocument.blocks,
+      metadata: newSemanticDocument.metadata
+    };
+
+    // Use the fresh draft function so has_ai_feedback is false and new version becomes active
+    const { data: versionIdRaw, error } = await supabase.rpc('create_fresh_draft_essay_version', {
+      essay_uuid: essayId,
+      user_uuid: user.id,
+      semantic_document_uuid: newSemanticDocument.id,
+      version_content: versionContent,
+      version_name_param: versionName,
+      version_description_param: versionDescription
+    });
+
+    if (error) {
+      console.error('Error creating clean version:', error);
+      throw error;
+    }
+
+    const versionId = versionIdRaw as unknown as string;
+    return versionId;
+  }
+
+  /**
    * Create a version with AI feedback
    * Uses atomic database function to prevent race conditions
    */

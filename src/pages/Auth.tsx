@@ -8,8 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import DynamicBackground from "@/components/DynamicBackground";
 import { useAuth } from "@/hooks/useAuth";
-import StarryBackground from "@/components/StarryBackground";
 import { getValidApplyingToValues } from "@/utils/userProfileUtils";
 import "@/styles/landing.css";
 import { getProgramOptions } from "@/utils/programTypes";
@@ -36,6 +36,11 @@ const Auth = () => {
   
   // Set initial state based on URL parameter
   const [isSignIn, setIsSignIn] = useState(mode === 'signup' ? false : true);
+
+  // Update isSignIn when URL mode parameter changes
+  useEffect(() => {
+    setIsSignIn(mode === 'signup' ? false : true);
+  }, [mode]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -393,7 +398,7 @@ const Auth = () => {
 
   return (
     <div className="landing-page min-h-screen bg-black relative">
-      <StarryBackground />
+      <DynamicBackground />
       <div className="p-4 min-h-screen flex items-center justify-center relative z-10">
         <div className="w-full max-w-md">
 
