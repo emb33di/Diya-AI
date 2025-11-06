@@ -21,9 +21,10 @@ import {
   CheckCircle,
   Send,
   MessageSquare,
-  AlertCircle
+  AlertCircle,
+  Sparkles
 } from 'lucide-react';
-import { EscalatedEssaysService, EscalatedEssay, EscalatedEssayComment } from '@/services/escalatedEssaysService';
+import { EscalatedEssaysService, EscalatedEssay, EscalatedEssayComment, ParagraphSummary } from '@/services/escalatedEssaysService';
 import { SemanticDocument, Annotation, AnnotationType } from '@/types/semanticDocument';
 import { semanticDocumentService } from '@/services/semanticDocumentService';
 import { useToast } from '@/hooks/use-toast';
@@ -564,6 +565,68 @@ const FounderEssayReview: React.FC = () => {
                   </div>
                 )}
               </div>
+            )}
+
+            {/* AI Summary Section */}
+            {essay.ai_summary && essay.ai_summary.length > 0 && (
+              <Card className="mb-6 border-blue-200 bg-gradient-to-br from-blue-50 to-purple-50">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-blue-600" />
+                    AI Paragraph Analysis
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    {essay.ai_summary.map((summary, index) => (
+                      <div key={index} className="bg-white p-4 rounded-lg border border-blue-100 shadow-sm">
+                        <div className="flex items-start gap-3 mb-3">
+                          <div className="flex-shrink-0 w-8 h-8 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-semibold text-sm">
+                            {summary.paragraph_index}
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-gray-800 mb-2">Paragraph {summary.paragraph_index}</h4>
+                            <p className="text-sm text-gray-600 italic mb-3 line-clamp-2">
+                              "{summary.paragraph_content.substring(0, 150)}{summary.paragraph_content.length > 150 ? '...' : ''}"
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                          <div className="space-y-3">
+                            <div>
+                              <div className="text-xs font-semibold text-gray-500 uppercase mb-1">Study Target</div>
+                              <div className="text-sm text-gray-700 bg-blue-50 p-2 rounded">{summary.study_target}</div>
+                            </div>
+                            <div>
+                              <div className="text-xs font-semibold text-gray-500 uppercase mb-1">Goals & Background</div>
+                              <div className="text-sm text-gray-700 bg-blue-50 p-2 rounded">{summary.goals_background}</div>
+                            </div>
+                            <div>
+                              <div className="text-xs font-semibold text-green-600 uppercase mb-1">Strengths</div>
+                              <div className="text-sm text-gray-700 bg-green-50 p-2 rounded">{summary.strengths}</div>
+                            </div>
+                          </div>
+                          <div className="space-y-3">
+                            <div>
+                              <div className="text-xs font-semibold text-red-600 uppercase mb-1">Weaknesses</div>
+                              <div className="text-sm text-gray-700 bg-red-50 p-2 rounded">{summary.weaknesses}</div>
+                            </div>
+                            <div>
+                              <div className="text-xs font-semibold text-orange-600 uppercase mb-1">Grammar Mistakes</div>
+                              <div className="text-sm text-gray-700 bg-orange-50 p-2 rounded">{summary.grammar_mistakes}</div>
+                            </div>
+                            <div>
+                              <div className="text-xs font-semibold text-purple-600 uppercase mb-1">Improvement Areas</div>
+                              <div className="text-sm text-gray-700 bg-purple-50 p-2 rounded">{summary.improvement_areas}</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
             )}
           </div>
 

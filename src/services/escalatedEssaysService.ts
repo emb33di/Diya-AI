@@ -23,6 +23,17 @@ export interface EscalatedEssayComment {
   created_at?: string;
 }
 
+export interface ParagraphSummary {
+  paragraph_index: number;
+  paragraph_content: string;
+  study_target: string;
+  goals_background: string;
+  strengths: string;
+  weaknesses: string;
+  grammar_mistakes: string;
+  improvement_areas: string;
+}
+
 export interface EscalatedEssay {
   id: string;
   essay_id: string;
@@ -42,6 +53,9 @@ export interface EscalatedEssay {
   
   // AI comments snapshot
   ai_comments_snapshot: EscalatedEssayComment[];
+  
+  // AI summary for founder
+  ai_summary: ParagraphSummary[] | null;
   
   // Reference
   semantic_document_id: string | null;
@@ -278,6 +292,7 @@ export class EscalatedEssaysService {
         word_count: essayItem.word_count || 0,
         character_count: essayItem.character_count || 0,
         ai_comments_snapshot: (essayItem.ai_comments_snapshot || []) as EscalatedEssayComment[],
+        ai_summary: (essayItem.ai_summary || null) as ParagraphSummary[] | null,
         semantic_document_id: essayItem.semantic_document_id,
         status: essayItem.status as EscalatedEssayStatus,
         founder_feedback: essayItem.founder_feedback,
@@ -393,6 +408,7 @@ export class EscalatedEssaysService {
         word_count: essayItem.word_count || 0,
         character_count: essayItem.character_count || 0,
         ai_comments_snapshot: (essayItem.ai_comments_snapshot || []) as EscalatedEssayComment[],
+        ai_summary: (essayItem.ai_summary || null) as ParagraphSummary[] | null,
         semantic_document_id: essayItem.semantic_document_id,
         status: essayItem.status as EscalatedEssayStatus,
         founder_feedback: essayItem.founder_feedback,
@@ -566,6 +582,7 @@ export class EscalatedEssaysService {
         word_count: essayItem.word_count || 0,
         character_count: essayItem.character_count || 0,
         ai_comments_snapshot: (essayItem.ai_comments_snapshot || []) as EscalatedEssayComment[],
+        ai_summary: (essayItem.ai_summary || null) as ParagraphSummary[] | null,
         semantic_document_id: essayItem.semantic_document_id,
         status: essayItem.status as EscalatedEssayStatus,
         founder_feedback: essayItem.founder_feedback,
@@ -1151,6 +1168,111 @@ export class EscalatedEssaysService {
   }
 
   /**
+   * Generate AI summary for founder review
+   * Analyzes each paragraph and provides structured feedback
+   */
+  static async generateFounderSummary(
+    escalationId: string,
+    essayContent: SemanticDocument,
+    essayPrompt: string | null,
+    userId: string
+  ): Promise<void> {
+    try {
+      // Extract paragraphs from blocks
+      const paragraphs = essayContent.blocks
+        .map(block => block.content?.trim())
+        .filter(content => content && content.length > 0);
+
+      if (paragraphs.length === 0) {
+        console.log('No paragraphs found for summarization');
+        return;
+      }
+
+      // Fetch user profile data for context
+      const { data: profileData } = await supabase
+        .from('user_profiles')
+        .select('intended_majors, applying_to, career_interests, high_school_name, college_name')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      const profile = profileData as any;
+      
+      // Build school/major context
+      const schoolMajor = [
+        profile?.intended_majors,
+        profile?.applying_to ? `Applying to ${profile.applying_to}` : null
+      ].filter(Boolean).join(' - ') || 'Not specified';
+
+      // Build goals/background context
+      const goalsBackground = [
+        profile?.career_interests,
+        profile?.high_school_name ? `From ${profile.high_school_name}` : null,
+        profile?.college_name ? `Currently at ${profile.college_name}` : null
+      ].filter(Boolean).join('. ') || 'Not specified';
+
+      // Call the AI agent Edge Function
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        console.error('No session found for AI summary generation');
+        return;
+      }
+
+      // Get Supabase URL from environment or use default
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || (supabase as any).supabaseUrl;
+      
+      if (!supabaseUrl) {
+        console.error('Supabase URL not found');
+        return;
+      }
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/ai_agent_founder_summary`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          paragraphs,
+          essayPrompt,
+          schoolMajor,
+          goalsBackground
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error calling founder summary agent:', response.status, errorText);
+        return;
+      }
+
+      const result = await response.json();
+
+      if (!result.success || !result.summaries || result.summaries.length === 0) {
+        console.log('No summaries generated:', result.error || 'Unknown error');
+        return;
+      }
+
+      // Save summaries to database
+      const { error: updateError } = await supabase
+        .from('escalated_essays' as any)
+        .update({
+          ai_summary: result.summaries
+        })
+        .eq('id', escalationId);
+
+      if (updateError) {
+        console.error('Error saving AI summary:', updateError);
+      } else {
+        console.log(`Successfully saved ${result.summaries.length} paragraph summaries`);
+      }
+    } catch (error) {
+      console.error('Error generating founder summary:', error);
+      // Don't throw - this is a background process, shouldn't block escalation
+    }
+  }
+
+  /**
    * Escalate an essay to the founder portal
    * Creates a snapshot of the current essay state including document content (WITHOUT AI comments)
    * Enforces Pro user requirement and escalation limits
@@ -1254,6 +1376,18 @@ export class EscalatedEssaysService {
         if (!escalatedEssay) {
           throw new Error('Failed to create escalation record');
         }
+
+        // Generate AI summary asynchronously (don't block escalation)
+        // This runs in the background and updates the escalation record when complete
+        this.generateFounderSummary(
+          escalatedEssay.id,
+          cleanEssayContent,
+          essayPrompt,
+          user.id
+        ).catch(error => {
+          console.error('Background AI summary generation failed:', error);
+          // Fail silently - summary is optional
+        });
 
         return {
           id: escalatedEssay.id,
