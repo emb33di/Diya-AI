@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { getValidApplyingToValues } from "@/utils/userProfileUtils";
 import "@/styles/landing.css";
 import { getProgramOptions } from "@/utils/programTypes";
+import { GuestEssayMigrationService } from "@/services/guestEssayMigrationService";
 
 // Country codes for phone number dropdown
 const countryCodes = [
@@ -33,6 +34,9 @@ const countryCodes = [
 const Auth = () => {
   const [searchParams] = useSearchParams();
   const mode = searchParams.get('mode');
+  
+  // Get guest essay ID from URL params or localStorage (for migration after signup)
+  const guestEssayId = searchParams.get('guest_essay_id') || localStorage.getItem('pending_guest_essay_id');
   
   // Set initial state based on URL parameter
   const [isSignIn, setIsSignIn] = useState(mode === 'signup' ? false : true);
@@ -319,6 +323,34 @@ const Auth = () => {
           // Profile is automatically created by database trigger
           console.log(`[${signupId}] ✅ Profile will be created automatically by database trigger`);
           
+          // Migrate guest essay if one exists (before payment flow - this ensures essay is saved regardless of payment timing)
+          let migratedEssayId: string | undefined;
+          if (guestEssayId && authData.user) {
+            console.log(`[${signupId}] 📝 Migrating guest essay:`, guestEssayId);
+            try {
+              const migrationResult = await GuestEssayMigrationService.migrateGuestEssayToUser(
+                guestEssayId,
+                authData.user.id
+              );
+
+              if (migrationResult.success) {
+                migratedEssayId = migrationResult.essayId;
+                console.log(`[${signupId}] ✅ Guest essay migrated successfully:`, {
+                  essayId: migrationResult.essayId,
+                  semanticDocumentId: migrationResult.semanticDocumentId
+                });
+                // Clear localStorage after successful migration
+                localStorage.removeItem('pending_guest_essay_id');
+              } else {
+                console.warn(`[${signupId}] ⚠️ Guest essay migration failed:`, migrationResult.error);
+                // Don't fail signup if migration fails - essay will expire in 7 days anyway
+              }
+            } catch (migrationError) {
+              console.error(`[${signupId}] ⚠️ Error during guest essay migration:`, migrationError);
+              // Don't fail signup if migration fails
+            }
+          }
+          
           // Send custom confirmation email
         try {
             const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-signup-confirmation`, {
@@ -346,10 +378,21 @@ const Auth = () => {
           
           console.groupEnd(); // Close the debug group
           
-          toast({
-            title: "Account created!",
-            description: "Please check your email to confirm your account.",
-          });
+          // Show success message with essay migration info if applicable
+          if (migratedEssayId) {
+            toast({
+              title: "Account created!",
+              description: "Your preview essay and comments have been saved to your account.",
+            });
+            // Note: We don't redirect here because the user mentioned they'll add payment flow
+            // The redirect will happen after payment is completed
+            // For now, the essay is saved and user can access it from their dashboard
+          } else {
+            toast({
+              title: "Account created!",
+              description: "Please check your email to confirm your account.",
+            });
+          }
           
         } catch (signupError: any) {
           console.error(`❌ [${signupId}] Signup process failed:`, {

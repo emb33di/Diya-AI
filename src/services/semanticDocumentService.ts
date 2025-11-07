@@ -1123,12 +1123,13 @@ export class SemanticDocumentService {
     const startTime = Date.now();
     
     try {
-      // For anonymous users, skip authentication
+      // For anonymous users, skip authentication but still need API key
       if (request.isAnonymous) {
-        // Call the Supabase edge function without authentication
+        // Call the Supabase edge function with anon key (required by Supabase gateway)
+        // The edge function will handle the isAnonymous flag and skip auth checks
         const { data, error } = await supabase.functions.invoke('generate-semantic-comments', {
           body: request,
-          // No Authorization header for anonymous requests
+          // Use anon key for anonymous requests - edge function will handle isAnonymous flag
         });
 
         // Debug: log raw edge response summary

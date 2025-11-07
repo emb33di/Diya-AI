@@ -8,6 +8,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -24,10 +34,13 @@ import {
   Star,
   TrendingUp,
   MessageSquare,
-  CheckCircle
+  CheckCircle,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { GuestEssayMigrationService } from '@/services/guestEssayMigrationService';
 
 interface IvyReadinessReportProps {
   open: boolean;
@@ -50,6 +63,9 @@ const IvyReadinessReport: React.FC<IvyReadinessReportProps> = ({ open, onOpenCha
   const [hasAnalyzed, setHasAnalyzed] = useState(false);
   const [gradingScores, setGradingScores] = useState<GradingScores | null>(null);
   const [selectedAnnotation, setSelectedAnnotation] = useState<Annotation | null>(null);
+  const [guestEssayId, setGuestEssayId] = useState<string | null>(null);
+  const [showDiscardDialog, setShowDiscardDialog] = useState(false);
+  const [isDiscarding, setIsDiscarding] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const hasNotifiedRef = useRef(false);
@@ -73,14 +89,16 @@ const IvyReadinessReport: React.FC<IvyReadinessReportProps> = ({ open, onOpenCha
       setHasAnalyzed(false);
       setGradingScores(null);
       setSelectedAnnotation(null);
+      setGuestEssayId(null);
       hasNotifiedRef.current = false;
     }
   }, [open]);
 
-  // Notify webhook about feature usage
+  // Notify webhook about feature usage (optional - graceful failure if edge function doesn't exist)
   const notifyFeatureUsage = async () => {
     try {
-      // Call edge function to notify
+      // Call edge function to notify (if it exists)
+      // This is optional analytics - don't block the feature if it fails
       const { error } = await supabase.functions.invoke('notify-ivy-readiness-usage', {
         body: {
           timestamp: new Date().toISOString(),
@@ -92,10 +110,12 @@ const IvyReadinessReport: React.FC<IvyReadinessReportProps> = ({ open, onOpenCha
       });
 
       if (error) {
-        console.error('Failed to notify feature usage:', error);
+        // Silently fail - this is just analytics
+        console.debug('Feature usage notification failed (optional):', error.message);
       }
     } catch (error) {
-      console.error('Error notifying feature usage:', error);
+      // Silently fail - this is just analytics
+      console.debug('Feature usage notification error (optional):', error);
     }
   };
 
@@ -276,11 +296,37 @@ const IvyReadinessReport: React.FC<IvyReadinessReportProps> = ({ open, onOpenCha
       }
 
       // Round to 1 decimal place and set scores
-      setGradingScores({
+      const finalScores = {
         bigPicture: Math.round(bigPictureScore * 10) / 10,
         tone: Math.round(toneScore * 10) / 10,
         clarity: Math.round(clarityScore * 10) / 10
-      });
+      };
+      setGradingScores(finalScores);
+
+      // Save guest essay to database for migration after signup
+      if (document && annotations.length > 0) {
+        const essayContent = document.blocks.map(b => b.content).join('\n\n');
+        const savedGuestEssayId = await GuestEssayMigrationService.saveGuestEssay({
+          title: document.title,
+          schoolName: document.metadata.schoolName || null,
+          promptText: document.metadata.prompt || essayPrompt,
+          wordLimit: document.metadata.wordLimit?.toString() || '650',
+          essayContent: essayContent,
+          semanticDocument: {
+            ...document,
+            blocks: updatedBlocks
+          },
+          semanticAnnotations: annotations,
+          gradingScores: finalScores
+        });
+
+        if (savedGuestEssayId) {
+          setGuestEssayId(savedGuestEssayId);
+          console.log('[IvyReadinessReport] Guest essay saved:', savedGuestEssayId);
+        } else {
+          console.warn('[IvyReadinessReport] Failed to save guest essay');
+        }
+      }
 
       setHasAnalyzed(true);
       setLoadingStep(AI_COMMENTS_LOADING_STEPS.length);
@@ -309,8 +355,70 @@ const IvyReadinessReport: React.FC<IvyReadinessReportProps> = ({ open, onOpenCha
 
   // Handle sign up click
   const handleSignUp = () => {
-    navigate('/signup');
+    // Pass guest_essay_id to signup flow via URL params and localStorage
+    const signupUrl = guestEssayId 
+      ? `/signup?guest_essay_id=${guestEssayId}`
+      : '/signup';
+    
+    // Also store in localStorage as backup
+    if (guestEssayId) {
+      localStorage.setItem('pending_guest_essay_id', guestEssayId);
+    }
+    
+    navigate(signupUrl);
     onOpenChange(false);
+  };
+
+  // Handle discard essay
+  const handleDiscardEssay = async () => {
+    if (!guestEssayId) {
+      // If no guest essay ID, just reset the component
+      resetComponent();
+      return;
+    }
+
+    setIsDiscarding(true);
+    try {
+      const success = await GuestEssayMigrationService.deleteGuestEssay(guestEssayId);
+      
+      if (success) {
+        toast({
+          title: "Essay discarded",
+          description: "Your preview essay has been deleted.",
+        });
+        resetComponent();
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to discard essay. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error discarding essay:', error);
+      toast({
+        title: "Error",
+        description: "An error occurred while discarding the essay.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDiscarding(false);
+      setShowDiscardDialog(false);
+    }
+  };
+
+  // Reset component state
+  const resetComponent = () => {
+    setSchoolName('');
+    setEssayPrompt('');
+    setEssayText('');
+    setDocument(null);
+    setIsAnalyzing(false);
+    setHasAnalyzed(false);
+    setGradingScores(null);
+    setSelectedAnnotation(null);
+    setGuestEssayId(null);
+    hasNotifiedRef.current = false;
   };
 
   return (
@@ -423,6 +531,22 @@ const IvyReadinessReport: React.FC<IvyReadinessReportProps> = ({ open, onOpenCha
           {/* Results Section */}
           {hasAnalyzed && document && (
             <div className="space-y-6">
+              {/* Header with Discard Button */}
+              <div className="flex items-center justify-between">
+                <Badge variant="outline" className="text-sm">
+                  Essay saved temporarily • Expires in 7 days
+                </Badge>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowDiscardDialog(true)}
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Discard Essay
+                </Button>
+              </div>
+
               {/* Grading Scores */}
               {gradingScores && (
                 <Card>
@@ -479,6 +603,43 @@ const IvyReadinessReport: React.FC<IvyReadinessReportProps> = ({ open, onOpenCha
               </Card>
             </div>
           )}
+
+          {/* Discard Essay Confirmation Dialog */}
+          <AlertDialog open={showDiscardDialog} onOpenChange={setShowDiscardDialog}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+                  <AlertTriangle className="h-5 w-5" />
+                  Discard Essay
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to discard this essay? This action cannot be undone.
+                  <br /><br />
+                  Your preview essay and all AI feedback will be permanently deleted. If you want to save it, please sign up first.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={isDiscarding}>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDiscardEssay}
+                  disabled={isDiscarding}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  {isDiscarding ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Discarding...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Discard Essay
+                    </>
+                  )}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </DialogContent>
     </Dialog>
