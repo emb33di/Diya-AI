@@ -226,6 +226,7 @@ interface AICommentRequest {
     maxComments?: number;
     minConfidence?: number;
   };
+  isAnonymous?: boolean; // If true, skip authentication and database storage
 }
 
 interface AICommentResponse {
@@ -269,7 +270,51 @@ serve(async (req) => {
       });
     }
 
-    // Get user from Authorization header
+    const requestBody: AICommentRequest = await req.json();
+    const { documentId, blocks, context, options, isAnonymous } = requestBody;
+
+    // Handle anonymous requests (skip authentication and database storage)
+    if (isAnonymous) {
+      // Validate input
+      if (!documentId || !blocks || blocks.length === 0) {
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: 'Invalid request: documentId and blocks are required' 
+        }), {
+          status: 400,
+          headers: { 
+            'Content-Type': 'application/json',
+            ...corsHeaders
+          },
+        });
+      }
+
+      // Generate AI comments without storing in database
+      const startTime = Date.now();
+      const comments = await generateSpecializedSemanticComments(blocks, context, options, documentId, undefined);
+      const processingTime = Date.now() - startTime;
+
+      const response: AICommentResponse = {
+        success: true,
+        comments,
+        message: `Generated ${comments.length} AI comments`,
+        metadata: {
+          processingTime,
+          blocksAnalyzed: blocks.length,
+          commentsGenerated: comments.length
+        }
+      };
+
+      return new Response(JSON.stringify(response), {
+        status: 200,
+        headers: { 
+          'Content-Type': 'application/json',
+          ...corsHeaders
+        },
+      });
+    }
+
+    // Authenticated flow - require authorization
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ 
@@ -299,9 +344,6 @@ serve(async (req) => {
         },
       });
     }
-
-    const requestBody: AICommentRequest = await req.json();
-    const { documentId, blocks, context, options } = requestBody;
 
     // Validate input
     if (!documentId || !blocks || blocks.length === 0) {

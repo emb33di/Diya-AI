@@ -1123,13 +1123,49 @@ export class SemanticDocumentService {
     const startTime = Date.now();
     
     try {
+      // For anonymous users, skip authentication
+      if (request.isAnonymous) {
+        // Call the Supabase edge function without authentication
+        const { data, error } = await supabase.functions.invoke('generate-semantic-comments', {
+          body: request,
+          // No Authorization header for anonymous requests
+        });
+
+        // Debug: log raw edge response summary
+        try {
+          console.log('[AI_DEBUG] Edge response (generate-semantic-comments, anonymous)', {
+            hasError: Boolean(error),
+            errorMessage: error?.message,
+            dataSuccess: (data as any)?.success,
+            dataMessage: (data as any)?.message,
+            commentsCount: Array.isArray((data as any)?.comments) ? (data as any)?.comments.length : undefined
+          });
+        } catch (_) {}
+
+        if (error) {
+          console.error(`SemanticDocumentService: Edge function error generating AI comments (anonymous) for document ${request.documentId} - ${error.message}`);
+          throw new Error(`Edge Function error: ${error.message}`);
+        }
+
+        return {
+          success: true,
+          comments: data.comments || [],
+          message: data.message || 'AI comments generated successfully',
+          metadata: {
+            processingTime: Date.now() - startTime,
+            blocksAnalyzed: request.blocks.length,
+            commentsGenerated: data.comments?.length || 0
+          }
+        };
+      }
+
+      // Authenticated flow
       // Get the current user's session
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
         throw new Error('User not authenticated');
       }
-
 
       // Call the Supabase edge function for semantic comments
       const { data, error } = await supabase.functions.invoke('generate-semantic-comments', {

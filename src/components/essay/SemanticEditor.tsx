@@ -35,6 +35,7 @@ import { useToast } from '@/hooks/use-toast';
 import AICommentsLoadingPane, { AI_COMMENTS_LOADING_STEPS } from './AICommentsLoadingPane';
 import GrammarLoadingPane, { GRAMMAR_LOADING_STEPS } from './GrammarLoadingPane';
 import CommentSidebar from './CommentSidebar';
+import BlurredCommentSidebar from './BlurredCommentSidebar';
 import './SemanticHighlighting.css';
 
 interface CleanSemanticEditorProps {
@@ -52,6 +53,8 @@ interface CleanSemanticEditorProps {
   className?: string;
   readOnly?: boolean;
   hasGrammarCheckRun?: boolean;
+  blurComments?: boolean; // Use blurred comments for anonymous users
+  onSignUp?: () => void; // Callback for sign-up CTA
 }
 
 const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
@@ -60,6 +63,8 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
   title,
   initialContent = '',
   wordLimit = 650,
+  blurComments = false,
+  onSignUp,
   onDocumentChange,
   onAnnotationSelect,
   onSaveStatusChange,
@@ -2065,19 +2070,31 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
 
       {/* Comment Sidebar */}
       <div className={showCommentSidebar ? 'hidden lg:block w-96 shrink-0 border-l overflow-y-auto h-full' : 'hidden lg:hidden'}>
-        <CommentSidebar
-          key={state.document.id}
-          blocks={useMemo(() => [...state.document.blocks].sort((a, b) => a.position - b.position), [state.document.blocks])}
-          documentId={state.document.id}
-          onAnnotationResolve={resolveAnnotation}
-          onAnnotationDelete={deleteAnnotation}
-          onAnnotationSelect={onAnnotationSelect}
-          onDocumentReload={reloadDocument}
-          hasGrammarCheckRun={hasGrammarCheckRun}
-          selectedAnnotationId={selectedAnnotationId}
-          onHideSidebar={onHideSidebar}
-          className="h-full"
-        />
+        {blurComments ? (
+          <BlurredCommentSidebar
+            key={state.document.id}
+            blocks={useMemo(() => [...state.document.blocks].sort((a, b) => a.position - b.position), [state.document.blocks])}
+            onAnnotationSelect={onAnnotationSelect}
+            selectedAnnotationId={selectedAnnotationId}
+            onHideSidebar={onHideSidebar}
+            onSignUp={onSignUp}
+            className="h-full"
+          />
+        ) : (
+          <CommentSidebar
+            key={state.document.id}
+            blocks={useMemo(() => [...state.document.blocks].sort((a, b) => a.position - b.position), [state.document.blocks])}
+            documentId={state.document.id}
+            onAnnotationResolve={resolveAnnotation}
+            onAnnotationDelete={deleteAnnotation}
+            onAnnotationSelect={onAnnotationSelect}
+            onDocumentReload={reloadDocument}
+            hasGrammarCheckRun={hasGrammarCheckRun}
+            selectedAnnotationId={selectedAnnotationId}
+            onHideSidebar={onHideSidebar}
+            className="h-full"
+          />
+        )}
       </div>
 
       {/* AI Comments Loading Pane */}

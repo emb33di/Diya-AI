@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useScrollAnimation } from "@/hooks/use-scroll-animation";
 import MountainWaves from "@/components/MountainWaves";
+import { Button } from "@/components/ui/button";
+import IvyReadinessReport from "@/components/IvyReadinessReport";
 
 const HeroSection = () => {
   const { elementRef: headerRef, isVisible: headerVisible } = useScrollAnimation();
@@ -9,6 +11,7 @@ const HeroSection = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [displayedText, setDisplayedText] = useState("");
   const [showCursor, setShowCursor] = useState(true);
+  const [showIvyReport, setShowIvyReport] = useState(false);
   const fullText = "Meet Diya";
 
   // Typing animation effect - runs every 10 seconds
@@ -125,8 +128,27 @@ const HeroSection = () => {
               </div>
             </div>
           </div>
+
+          {/* Free Essay Scoring Button */}
+          <div className={`flex justify-center scroll-fade-in ${videoVisible ? 'animate' : ''} relative z-30 w-full mt-6 sm:mt-8`}>
+            <Button
+              onClick={() => setShowIvyReport(true)}
+              className="text-base sm:text-lg md:text-xl font-semibold text-white px-6 sm:px-8 py-3 sm:py-4 rounded-lg hover:opacity-90 transition-opacity shadow-lg"
+              style={{ backgroundColor: '#D07D00' }}
+            >
+              Score your essays for free using our Harvard-grade AI
+            </Button>
+          </div>
         </div>
       </div>
+      
+      {/* Ivy Readiness Report Modal */}
+      {showIvyReport && (
+        <IvyReadinessReport
+          open={showIvyReport}
+          onOpenChange={setShowIvyReport}
+        />
+      )}
     </section>;
 };
 export default HeroSection;

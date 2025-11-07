@@ -139,6 +139,7 @@ export interface AICommentRequest {
   blocks: DocumentBlock[];
   context: EssayContext;
   options?: AICommentOptions;
+  isAnonymous?: boolean; // If true, skip authentication and database storage
 }
 
 /**
