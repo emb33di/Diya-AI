@@ -12,7 +12,7 @@ const AboutDiya = () => {
     trackEvent('cta_click', {
       cta_type: 'get_started_for_free',
       page: 'about',
-      button_text: 'Get Started For Free'
+      button_text: 'Get Started'
     });
     navigate('/auth?mode=signup');
   };
@@ -198,7 +198,7 @@ const AboutDiya = () => {
             className="bg-white text-primary hover:bg-white/90"
             onClick={handleGetStartedClick}
           >
-            Get Started For Free
+            Get Started
           </Button>
         </section>
       </div>

@@ -23,7 +23,7 @@ const Navigation = () => {
     trackEvent('cta_click', {
       cta_type: 'get_started_for_free',
       page: 'landing_navigation',
-      button_text: 'Get Started For Free'
+      button_text: 'Get Started'
     });
     navigate('/auth?mode=signup');
   };
@@ -81,7 +81,7 @@ const Navigation = () => {
               onClick={handleGetStartedClick} 
               className="text-sm sm:text-base rounded-lg sm:rounded-xl font-semibold text-white shadow-lg hover:shadow-[0_0_30px_hsl(var(--primary)/0.6)] transition-all duration-200 my-0 mx-1 sm:mx-2 px-2 sm:px-3 py-2 sm:py-[10px] touch-manipulation"
             >
-              Get Started For Free
+              Get Started
             </Button>
           </div>
         </div>

@@ -99,7 +99,9 @@ const HeroSection = () => {
             {/* Hero Headline */}
             <div ref={contentRef} className={`scroll-fade-in ${contentVisible ? 'animate' : ''}`}>
               <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-foreground leading-tight tracking-tight font-inter">
-                India's AI Admissions Counselor
+                Beat the January Deadline
+                <br />
+                Fix your application in minutes
               </h1>
             </div>
 
@@ -136,7 +138,7 @@ const HeroSection = () => {
               className="text-base sm:text-lg md:text-xl font-semibold text-white px-6 sm:px-8 py-3 sm:py-4 rounded-lg hover:opacity-90 transition-opacity shadow-lg"
               style={{ backgroundColor: '#D07D00' }}
             >
-              Score your essays for free using our Harvard-grade AI
+              Upload your essay and get Harvard-grade feedback for free
             </Button>
           </div>
         </div>

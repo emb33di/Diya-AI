@@ -376,7 +376,7 @@ const Header = () => {
               </Link>
               <Link to="/auth?mode=signup">
                 <Button size="lg" className="hover:shadow-[0_0_30px_hsl(var(--primary)/0.6)] transition-all duration-200 hover:bg-primary text-white">
-                  Get Started For Free
+                  Get Started
                 </Button>
               </Link>
             </>

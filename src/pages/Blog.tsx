@@ -24,7 +24,7 @@ const Blog = () => {
     trackEvent('cta_click', {
       cta_type: 'get_started_for_free',
       page: 'blog',
-      button_text: 'Get Started For Free'
+      button_text: 'Get Started'
     });
     navigate('/auth?mode=signup');
   };
@@ -270,7 +270,7 @@ const Blog = () => {
               style={{ backgroundColor: '#D07D00', color: 'white' }}
               onClick={handleGetStartedClick}
             >
-              Get Started For Free
+              Get Started
             </Button>
           </div>
         </div>
