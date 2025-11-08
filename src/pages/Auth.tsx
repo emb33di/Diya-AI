@@ -14,6 +14,7 @@ import { getValidApplyingToValues } from "@/utils/userProfileUtils";
 import "@/styles/landing.css";
 import { getProgramOptions } from "@/utils/programTypes";
 import { GuestEssayMigrationService } from "@/services/guestEssayMigrationService";
+import { createCheckoutSession } from "@/services/stripePaymentService";
 
 // Country codes for phone number dropdown
 const countryCodes = [
@@ -59,16 +60,18 @@ const Auth = () => {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
   const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
+  const [signupSuccess, setSignupSuccess] = useState(false);
+  const [paymentLoading, setPaymentLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, isFounder, loading: authLoading } = useAuth();
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated (but not if we're showing the payment button after signup)
   useEffect(() => {
-    if (!authLoading && user) {
+    if (!authLoading && user && !signupSuccess) {
       navigate(isFounder ? '/founder-portal' : '/dashboard', { replace: true });
     }
-  }, [user, isFounder, authLoading, navigate]);
+  }, [user, isFounder, authLoading, navigate, signupSuccess]);
 
   const validatePhoneNumber = (phone: string): boolean => {
     // Remove any non-digit characters for validation
@@ -320,10 +323,67 @@ const Auth = () => {
             confirmed: authData.user.confirmed_at ? 'Yes' : 'No (needs email verification)'
           });
 
-          // Profile is automatically created by database trigger
-          console.log(`[${signupId}] ✅ Profile will be created automatically by database trigger`);
+          // Step 2: Use atomic function to ensure profile consistency with all signup data
+          console.log(`[${signupId}] Step 2 - Creating user profile with atomic function`);
+          try {
+            // Normalize applyingTo to lowercase for atomic function (it expects lowercase)
+            const normalizedApplyingTo = applyingTo.toLowerCase();
+            const { data: signupResult, error: signupError } = await supabase.rpc('create_user_profiles_atomic', {
+              p_user_id: authData.user.id,
+              p_email: email,
+              p_first_name: firstName,
+              p_last_name: lastName,
+              p_applying_to: normalizedApplyingTo
+            });
+
+            if (signupError) {
+              console.error(`❌ [${signupId}] Atomic profile creation error:`, signupError);
+              // Don't fail signup - trigger should have created basic profile
+            } else if (signupResult?.success) {
+              console.log(`✅ [${signupId}] Profile created successfully via atomic function:`, signupResult);
+            } else {
+              console.warn(`⚠️ [${signupId}] Atomic function returned non-success:`, signupResult);
+            }
+          } catch (atomicError) {
+            console.error(`❌ [${signupId}] Error calling atomic function:`, atomicError);
+            // Don't fail signup - trigger should have created basic profile
+          }
+
+          // Step 3: Update profile with additional fields (phone, hear_about_us, etc.)
+          console.log(`[${signupId}] Step 3 - Updating profile with additional fields`);
+          try {
+            const updateData: any = {};
+            if (phoneNumber) {
+              updateData.phone_number = phoneNumber;
+            }
+            if (countryCode) {
+              updateData.country_code = countryCode;
+            }
+            if (hearAboutUs) {
+              updateData.hear_about_us = hearAboutUs;
+            }
+            if (hearAboutOther) {
+              updateData.hear_about_other = hearAboutOther;
+            }
+
+            if (Object.keys(updateData).length > 0) {
+              const { error: updateError } = await supabase
+                .from('user_profiles')
+                .update(updateData)
+                .eq('user_id', authData.user.id);
+
+              if (updateError) {
+                console.warn(`⚠️ [${signupId}] Failed to update additional profile fields:`, updateError);
+              } else {
+                console.log(`✅ [${signupId}] Additional profile fields updated successfully`);
+              }
+            }
+          } catch (updateError) {
+            console.warn(`⚠️ [${signupId}] Error updating additional profile fields:`, updateError);
+            // Don't fail signup if additional fields fail to update
+          }
           
-          // Migrate guest essay if one exists (before payment flow - this ensures essay is saved regardless of payment timing)
+          // Step 4: Migrate guest essay if one exists (before payment flow - this ensures essay is saved regardless of payment timing)
           let migratedEssayId: string | undefined;
           if (guestEssayId && authData.user) {
             console.log(`[${signupId}] 📝 Migrating guest essay:`, guestEssayId);
@@ -382,16 +442,41 @@ const Auth = () => {
           if (migratedEssayId) {
             toast({
               title: "Account created!",
-              description: "Your preview essay and comments have been saved to your account.",
+              description: "Your preview essay and comments have been saved. Redirecting to payment...",
             });
-            // Note: We don't redirect here because the user mentioned they'll add payment flow
-            // The redirect will happen after payment is completed
-            // For now, the essay is saved and user can access it from their dashboard
           } else {
             toast({
               title: "Account created!",
-              description: "Please check your email to confirm your account.",
+              description: "Redirecting to payment...",
             });
+          }
+          
+          // Automatically proceed to payment after successful signup
+          try {
+            const result = await createCheckoutSession({
+              success_url: `${window.location.origin}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+              cancel_url: `${window.location.origin}/auth?mode=signup`,
+            });
+
+            if (!result.success) {
+              toast({
+                title: "Payment Error",
+                description: result.message || "Failed to initiate payment. Please try again.",
+                variant: "destructive",
+              });
+              // Set signup success state to show payment button as fallback
+              setSignupSuccess(true);
+            }
+            // If successful, createCheckoutSession will redirect to Stripe
+          } catch (paymentError: any) {
+            console.error("Error initiating payment:", paymentError);
+            toast({
+              title: "Payment Error",
+              description: paymentError.message || "Failed to initiate payment. Please try again.",
+              variant: "destructive",
+            });
+            // Set signup success state to show payment button as fallback
+            setSignupSuccess(true);
           }
           
         } catch (signupError: any) {
@@ -439,6 +524,34 @@ const Auth = () => {
     }
   };
 
+  const handleProceedToPayment = async () => {
+    setPaymentLoading(true);
+    try {
+      const result = await createCheckoutSession({
+        success_url: `${window.location.origin}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${window.location.origin}/auth?mode=signup`,
+      });
+
+      if (!result.success) {
+        toast({
+          title: "Payment Error",
+          description: result.message || "Failed to initiate payment. Please try again.",
+          variant: "destructive",
+        });
+      }
+      // If successful, createCheckoutSession will redirect to Stripe
+    } catch (error: any) {
+      console.error("Error initiating payment:", error);
+      toast({
+        title: "Payment Error",
+        description: error.message || "Failed to initiate payment. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
+
   return (
     <div className="landing-page min-h-screen bg-black relative">
       <DynamicBackground />
@@ -458,7 +571,43 @@ const Auth = () => {
             </CardHeader>
             
             <CardContent className="space-y-6">
-              <form onSubmit={handleSubmit} className="space-y-4">
+              {signupSuccess ? (
+                <div className="space-y-4 text-center">
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-semibold text-white">Account Created Successfully!</h3>
+                    <p className="text-muted-foreground">
+                      Your account has been created. Proceed to payment to unlock all features.
+                    </p>
+                  </div>
+                  <Button
+                    onClick={handleProceedToPayment}
+                    disabled={paymentLoading}
+                    className="w-full h-12 text-base font-medium text-white"
+                  >
+                    {paymentLoading ? "Loading..." : "Proceed to Payment"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setSignupSuccess(false);
+                      // Reset form
+                      setEmail("");
+                      setPassword("");
+                      setFirstName("");
+                      setLastName("");
+                      setPhoneNumber("");
+                      setApplyingTo("");
+                      setHearAboutUs("");
+                      setHearAboutOther("");
+                    }}
+                    className="w-full h-12 text-base font-medium"
+                  >
+                    Back to Sign Up
+                  </Button>
+                </div>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-4">
                 {!isSignIn && (
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -612,9 +761,10 @@ const Auth = () => {
                   className="w-full h-12 text-base font-medium text-white"
                   disabled={loading}
                 >
-                  {loading ? "Loading..." : (isSignIn ? "Sign In" : "Create Account")}
+                  {loading ? "Loading..." : (isSignIn ? "Sign In" : "Proceed to Payment")}
                 </Button>
               </form>
+              )}
 
               {/* Forgot Password Modal */}
               {showForgotPassword && (
@@ -672,30 +822,34 @@ const Auth = () => {
                 </div>
               )}
 
-              <div className="text-center">
-                <p className="text-sm text-muted-foreground">
-                  {isSignIn ? "Don't have an account?" : "Already have an account?"}{" "}
-                  <button
-                    type="button"
-                    onClick={() => setIsSignIn(!isSignIn)}
-                    className="text-primary hover:text-primary/80 font-medium transition-colors"
-                  >
-                    {isSignIn ? "Sign up" : "Sign in"}
-                  </button>
-                </p>
-              </div>
+              {!signupSuccess && (
+                <>
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">
+                      {isSignIn ? "Don't have an account?" : "Already have an account?"}{" "}
+                      <button
+                        type="button"
+                        onClick={() => setIsSignIn(!isSignIn)}
+                        className="text-primary hover:text-primary/80 font-medium transition-colors"
+                      >
+                        {isSignIn ? "Sign up" : "Sign in"}
+                      </button>
+                    </p>
+                  </div>
 
-              {!isSignIn && (
-                <p className="text-xs text-muted-foreground text-center leading-relaxed">
-                  By creating an account, you agree to our{" "}
-                  <Link to="/terms-of-service" className="text-primary hover:text-primary/80">
-                    Terms of Service
-                  </Link>{" "}
-                  and{" "}
-                  <Link to="/privacy-policy" className="text-primary hover:text-primary/80">
-                    Privacy Policy
-                  </Link>
-                </p>
+                  {!isSignIn && (
+                    <p className="text-xs text-muted-foreground text-center leading-relaxed">
+                      By creating an account, you agree to our{" "}
+                      <Link to="/terms-of-service" className="text-primary hover:text-primary/80">
+                        Terms of Service
+                      </Link>{" "}
+                      and{" "}
+                      <Link to="/privacy-policy" className="text-primary hover:text-primary/80">
+                        Privacy Policy
+                      </Link>
+                    </p>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>
