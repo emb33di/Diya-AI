@@ -75,17 +75,19 @@ const BlurredComment: React.FC<BlurredCommentProps> = ({
             {restOfComment}
           </p>
 
-          {/* Sign-up CTA overlay - appears on hover */}
-          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-white/80 rounded-lg">
-            <Button
-              onClick={onSignUp}
-              className="flex items-center gap-2 shadow-lg"
-              style={{ backgroundColor: '#D07D00' }}
+          {/* Hover overlay - shows "See full feedback" text */}
+          <div 
+            className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-white/90 rounded-lg cursor-pointer"
+            onClick={onSignUp}
+            data-signup-action="true"
+          >
+            <div 
+              className="flex items-center gap-2 text-primary font-semibold text-sm sm:text-base px-4 py-2 rounded-lg hover:bg-primary/10 transition-colors"
+              data-signup-action="true"
             >
               <Lock className="h-4 w-4" />
-              <span>Sign up with Diya to get detailed feedback and make your essays ready for your dream school</span>
-              <ArrowRight className="h-4 w-4" />
-            </Button>
+              <span data-signup-action="true">See full feedback</span>
+            </div>
           </div>
         </div>
       )}

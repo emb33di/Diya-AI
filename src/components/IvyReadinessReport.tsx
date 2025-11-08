@@ -325,6 +325,10 @@ const IvyReadinessReport: React.FC<IvyReadinessReportProps> = ({ open, onOpenCha
         if (savedGuestEssayId) {
           setGuestEssayId(savedGuestEssayId);
           console.log('[IvyReadinessReport] Guest essay saved:', savedGuestEssayId);
+          
+          // Navigate to ivyreadiness page with guest essay ID
+          navigate(`/ivyreadiness?guestEssayId=${savedGuestEssayId}`);
+          onOpenChange(false);
         } else {
           console.warn('[IvyReadinessReport] Failed to save guest essay');
         }
