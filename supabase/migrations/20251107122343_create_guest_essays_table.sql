@@ -45,9 +45,14 @@ $$ LANGUAGE plpgsql;
 -- Grant execute permission on cleanup function
 GRANT EXECUTE ON FUNCTION cleanup_expired_guest_essays() TO authenticated;
 
--- Note: This table should NOT have RLS enabled (or have a permissive policy) 
--- since it's for anonymous users who don't have authentication
+-- Explicitly disable RLS for guest_essays table
+-- This table is for anonymous users who don't have authentication
 -- We'll rely on session_id and expiration for security instead
+ALTER TABLE public.guest_essays DISABLE ROW LEVEL SECURITY;
+
+-- Grant permissions for anonymous access
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.guest_essays TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.guest_essays TO authenticated;
 
 -- Add comment to table
 COMMENT ON TABLE public.guest_essays IS 'Temporary storage for anonymous user preview essays. Data expires after 7 days and is migrated to user accounts upon signup.';

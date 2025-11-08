@@ -134,6 +134,11 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
 
   // Auto-save functionality
   useEffect(() => {
+    // Skip auto-save for read-only mode (e.g., guest users previewing essays)
+    if (isReadOnly()) {
+      return;
+    }
+
     if (!state.pendingChanges) return;
 
     // Critical safeguard: Don't autosave if document appears empty but we're tracking a loaded document
@@ -181,7 +186,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     }, 1000);
 
     return () => clearTimeout(autoSaveTimer);
-  }, [state.document, state.pendingChanges, onSaveStatusChange, documentId, essayId]);
+  }, [state.document, state.pendingChanges, onSaveStatusChange, documentId, essayId, isReadOnly]);
 
   // Track the last documentId we loaded to prevent unnecessary reloads
   // Use a stable key to persist across HMR - store in window to survive hot reloads
@@ -196,6 +201,13 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
   // Load existing document
   useEffect(() => {
     const loadDocument = async () => {
+      // Skip loading from database for read-only mode (e.g., guest users)
+      // Guest users get their document content via initialContent prop
+      if (isReadOnly()) {
+        console.log('[SEMANTIC_EDITOR] Skipping database load for read-only mode (guest user)');
+        return;
+      }
+
       try {
         const targetDocumentId = documentId || essayId;
         
@@ -319,7 +331,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
 
     loadDocument();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [documentId, essayId]); // Note: intentionally not including state to prevent unnecessary reloads
+  }, [documentId, essayId, isReadOnly]); // Note: intentionally not including state to prevent unnecessary reloads
 
   // Notify parent of document changes
   useEffect(() => {

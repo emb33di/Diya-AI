@@ -405,3 +405,4 @@ if (guestEssayId && user) {
 - The expiration time (7 days) can be adjusted based on business needs
 - Consider adding analytics to track conversion rate (guest essays → signups)
 
+

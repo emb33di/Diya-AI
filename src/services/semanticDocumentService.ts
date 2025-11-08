@@ -853,10 +853,66 @@ export class SemanticDocumentService {
   /**
    * Convert HTML content to semantic blocks
    * Only used for initial document creation - blocks become immutable after creation
+   * Also handles plain text by automatically splitting on paragraph breaks
    */
   convertHtmlToBlocks(htmlContent: string, isInitialCreation: boolean = true): DocumentBlock[] {
+    // If content is plain text (no HTML tags), convert it to HTML first
+    // by splitting on paragraph breaks (double newlines or single newlines)
+    let processedContent = htmlContent;
+    
+    // Check if content is plain text (no HTML tags)
+    const hasHtmlTags = /<[a-z][\s\S]*>/i.test(htmlContent);
+    console.log('[convertHtmlToBlocks] Input analysis:', {
+      contentLength: htmlContent.length,
+      hasHtmlTags,
+      first100Chars: htmlContent.substring(0, 100),
+      newlineCount: (htmlContent.match(/\n/g) || []).length,
+      doubleNewlineCount: (htmlContent.match(/\n\n/g) || []).length
+    });
+    
+    if (!hasHtmlTags && htmlContent.trim()) {
+      console.log('[convertHtmlToBlocks] Detected plain text - splitting into paragraphs');
+      
+      // Split by double newlines first (paragraph breaks)
+      // If no double newlines, split by single newlines
+      const hasDoubleNewlines = htmlContent.includes('\n\n');
+      const paragraphs = hasDoubleNewlines 
+        ? htmlContent.split(/\n\n+/)
+        : htmlContent.split(/\n+/);
+      
+      console.log('[convertHtmlToBlocks] Paragraph splitting:', {
+        splitMethod: hasDoubleNewlines ? 'double newlines (\\n\\n)' : 'single newlines (\\n)',
+        totalParagraphs: paragraphs.length,
+        paragraphLengths: paragraphs.map((p, i) => ({ index: i, length: p.trim().length, preview: p.trim().substring(0, 50) }))
+      });
+      
+      // Wrap each paragraph in <p> tags
+      const filteredParagraphs = paragraphs
+        .map(p => p.trim())
+        .filter(p => p.length > 0);
+      
+      console.log('[convertHtmlToBlocks] After filtering empty paragraphs:', {
+        originalCount: paragraphs.length,
+        filteredCount: filteredParagraphs.length
+      });
+      
+      processedContent = filteredParagraphs
+        .map(p => `<p>${p}</p>`)
+        .join('\n');
+      
+      // If no paragraphs were created (single block of text), wrap the whole thing
+      if (!processedContent) {
+        console.log('[convertHtmlToBlocks] No paragraphs found, wrapping entire content as single block');
+        processedContent = `<p>${htmlContent.trim()}</p>`;
+      } else {
+        console.log('[convertHtmlToBlocks] Created HTML with', filteredParagraphs.length, 'paragraphs');
+      }
+    } else if (hasHtmlTags) {
+      console.log('[convertHtmlToBlocks] Detected HTML content - processing as-is');
+    }
+
     const parser = new DOMParser();
-    const doc = parser.parseFromString(htmlContent, 'text/html');
+    const doc = parser.parseFromString(processedContent, 'text/html');
     const blocks: DocumentBlock[] = [];
 
     let position = 0;
@@ -933,10 +989,45 @@ export class SemanticDocumentService {
             Array.from(element.childNodes).forEach(processNode);
             break;
         }
+      } else if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) {
+        // Handle text nodes that aren't wrapped in elements
+        // This can happen if plain text is passed without any HTML structure
+        blocks.push({
+          id: crypto.randomUUID(),
+          type: 'paragraph',
+          content: node.textContent.trim(),
+          position: position++,
+          annotations: [],
+          isImmutable: true,
+          createdAt: new Date(),
+          lastUserEdit: undefined
+        });
       }
     };
 
     Array.from(doc.body.childNodes).forEach(processNode);
+    
+    // If no blocks were created but we have content, create a single block
+    if (blocks.length === 0 && htmlContent.trim()) {
+      console.log('[convertHtmlToBlocks] No blocks created from parsing, creating fallback single block');
+      blocks.push({
+        id: crypto.randomUUID(),
+        type: 'paragraph',
+        content: htmlContent.trim(),
+        position: 0,
+        annotations: [],
+        isImmutable: true,
+        createdAt: new Date(),
+        lastUserEdit: undefined
+      });
+    }
+    
+    console.log('[convertHtmlToBlocks] Final result:', {
+      totalBlocks: blocks.length,
+      blockTypes: blocks.map(b => b.type),
+      blockLengths: blocks.map(b => ({ id: b.id.substring(0, 8), type: b.type, length: b.content.length, preview: b.content.substring(0, 50) }))
+    });
+    
     return blocks;
   }
 
@@ -1123,18 +1214,21 @@ export class SemanticDocumentService {
     const startTime = Date.now();
     
     try {
-      // For anonymous users, skip authentication but still need API key
+      // For anonymous users, use the dedicated guest edge function
       if (request.isAnonymous) {
-        // Call the Supabase edge function with anon key (required by Supabase gateway)
-        // The edge function will handle the isAnonymous flag and skip auth checks
-        const { data, error } = await supabase.functions.invoke('generate-semantic-comments', {
-          body: request,
-          // Use anon key for anonymous requests - edge function will handle isAnonymous flag
+        // Call the dedicated guest edge function (no authentication required)
+        const { data, error } = await supabase.functions.invoke('generate-semantic-comments-guest', {
+          body: {
+            documentId: request.documentId,
+            blocks: request.blocks,
+            context: request.context,
+            options: request.options
+          }
         });
 
         // Debug: log raw edge response summary
         try {
-          console.log('[AI_DEBUG] Edge response (generate-semantic-comments, anonymous)', {
+          console.log('[AI_DEBUG] Edge response (generate-semantic-comments-guest)', {
             hasError: Boolean(error),
             errorMessage: error?.message,
             dataSuccess: (data as any)?.success,
@@ -1144,7 +1238,7 @@ export class SemanticDocumentService {
         } catch (_) {}
 
         if (error) {
-          console.error(`SemanticDocumentService: Edge function error generating AI comments (anonymous) for document ${request.documentId} - ${error.message}`);
+          console.error(`SemanticDocumentService: Edge function error generating AI comments (guest) for document ${request.documentId} - ${error.message}`);
           throw new Error(`Edge Function error: ${error.message}`);
         }
 
