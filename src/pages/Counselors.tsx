@@ -40,7 +40,7 @@ const Counselors = () => {
           {/* Features Section */}
           <div className="max-w-6xl mx-auto mb-12 sm:mb-16 md:mb-20 px-4">
             <div className="grid md:grid-cols-2 gap-6 sm:gap-8">
-              <Card className="hover:shadow-[0_0_40px_hsl(var(--primary)/0.2)] hover:border-primary/40 transition-all duration-300 backdrop-blur-xl bg-card/80 border-border/20 rounded-xl">
+              <Card className="hover:shadow-[0_0_40px_hsl(var(--primary)/0.2)] hover:border-primary/40 transition-all duration-300 backdrop-blur-xl bg-gradient-to-b from-primary/5 to-primary/10 border-primary rounded-xl">
                 <CardHeader className="pb-4">
                   <CardTitle className="text-xl sm:text-2xl font-bold leading-tight">
                     Manage all your students' materials
@@ -53,7 +53,7 @@ const Counselors = () => {
                 </CardContent>
               </Card>
 
-              <Card className="hover:shadow-[0_0_40px_hsl(var(--primary)/0.2)] hover:border-primary/40 transition-all duration-300 backdrop-blur-xl bg-card/80 border-border/20 rounded-xl">
+              <Card className="hover:shadow-[0_0_40px_hsl(var(--primary)/0.2)] hover:border-primary/40 transition-all duration-300 backdrop-blur-xl bg-gradient-to-b from-primary/5 to-primary/10 border-primary rounded-xl">
                 <CardHeader className="pb-4">
                   <CardTitle className="text-xl sm:text-2xl font-bold leading-tight">
                     AI-powered assistance
@@ -66,7 +66,7 @@ const Counselors = () => {
                 </CardContent>
               </Card>
 
-              <Card className="hover:shadow-[0_0_40px_hsl(var(--primary)/0.2)] hover:border-primary/40 transition-all duration-300 backdrop-blur-xl bg-card/80 border-border/20 rounded-xl">
+              <Card className="hover:shadow-[0_0_40px_hsl(var(--primary)/0.2)] hover:border-primary/40 transition-all duration-300 backdrop-blur-xl bg-gradient-to-b from-primary/5 to-primary/10 border-primary rounded-xl">
                 <CardHeader className="pb-4">
                   <CardTitle className="text-xl sm:text-2xl font-bold leading-tight">
                     Deeply Personalized Analytics
@@ -79,7 +79,7 @@ const Counselors = () => {
                 </CardContent>
               </Card>
 
-              <Card className="hover:shadow-[0_0_40px_hsl(var(--primary)/0.2)] hover:border-primary/40 transition-all duration-300 backdrop-blur-xl bg-card/80 border-border/20 rounded-xl">
+              <Card className="hover:shadow-[0_0_40px_hsl(var(--primary)/0.2)] hover:border-primary/40 transition-all duration-300 backdrop-blur-xl bg-gradient-to-b from-primary/5 to-primary/10 border-primary rounded-xl">
                 <CardHeader className="pb-4">
                   <CardTitle className="text-xl sm:text-2xl font-bold leading-tight">
                     Less Admin, More Time With Your Students
