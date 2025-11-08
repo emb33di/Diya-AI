@@ -27,6 +27,7 @@ import { Badge } from '@/components/ui/badge';
 import { SemanticDocument, Annotation, DocumentBlock } from '@/types/semanticDocument';
 import { semanticDocumentService } from '@/services/semanticDocumentService';
 import SemanticEditor from '@/components/essay/SemanticEditor';
+import GuestEssayPreview from '@/components/essay/GuestEssayPreview';
 import AICommentsLoadingPane, { AI_COMMENTS_LOADING_STEPS } from '@/components/essay/AICommentsLoadingPane';
 import { 
   Sparkles, 
@@ -235,9 +236,9 @@ const IvyReadinessReport: React.FC<IvyReadinessReportProps> = ({ open, onOpenCha
       });
 
       // Extract grading scores from comment metadata
-      // Big Picture: from metadata.qualityScore of big-picture agent (1-100 scale, convert to 1-10)
-      // Tone: from metadata.qualityScore of tone agent (1-10 scale)
-      // Clarity: from metadata.qualityScore of clarity agent (1-10 scale)
+      // Big Picture: from metadata.qualityScore of big-picture agent (1-100 scale)
+      // Tone: from metadata.qualityScore of tone agent (1-10 scale, convert to 1-100)
+      // Clarity: from metadata.qualityScore of clarity agent (1-10 scale, convert to 1-100)
       
       // Find comments with quality scores for each agent type
       // Note: All comments from the same agent have the same qualityScore (it's the overall score for that agent)
@@ -257,49 +258,50 @@ const IvyReadinessReport: React.FC<IvyReadinessReportProps> = ({ open, onOpenCha
         a.metadata?.qualityScore !== null
       );
 
-      // Extract scores
-      // Big Picture: Convert from 1-100 scale to 1-10 scale
+      // Extract scores - all on 1-100 scale
+      // Big Picture: Already on 1-100 scale
       let bigPictureScore: number;
       if (bigPictureComments.length > 0) {
-        const rawScore = bigPictureComments[0].metadata!.qualityScore!;
-        bigPictureScore = rawScore / 10; // Convert 1-100 to 1-10
-        // Clamp to valid range (1-10)
-        bigPictureScore = Math.max(1, Math.min(10, bigPictureScore));
-        console.log(`[IvyReadinessReport] Big Picture score: ${rawScore}/100 = ${bigPictureScore}/10`);
+        bigPictureScore = bigPictureComments[0].metadata!.qualityScore!;
+        // Clamp to valid range (1-100)
+        bigPictureScore = Math.max(1, Math.min(100, bigPictureScore));
+        console.log(`[IvyReadinessReport] Big Picture score: ${bigPictureScore}/100`);
       } else {
-        bigPictureScore = 7.5; // Default fallback
+        bigPictureScore = 75; // Default fallback (out of 100)
         console.warn('[IvyReadinessReport] No big-picture comments found, using default score:', bigPictureScore);
       }
       
-      // Tone: Already on 1-10 scale
+      // Tone: Convert from 1-10 scale to 1-100 scale
       let toneScore: number;
       if (toneComments.length > 0) {
-        toneScore = toneComments[0].metadata!.qualityScore!;
-        // Clamp to valid range (1-10)
-        toneScore = Math.max(1, Math.min(10, toneScore));
-        console.log(`[IvyReadinessReport] Tone score: ${toneScore}/10`);
+        const rawScore = toneComments[0].metadata!.qualityScore!;
+        toneScore = rawScore * 10; // Convert 1-10 to 1-100
+        // Clamp to valid range (1-100)
+        toneScore = Math.max(1, Math.min(100, toneScore));
+        console.log(`[IvyReadinessReport] Tone score: ${rawScore}/10 = ${toneScore}/100`);
       } else {
-        toneScore = 8.0; // Default fallback
+        toneScore = 80; // Default fallback (out of 100)
         console.warn('[IvyReadinessReport] No tone comments found, using default score:', toneScore);
       }
       
-      // Clarity: Already on 1-10 scale
+      // Clarity: Convert from 1-10 scale to 1-100 scale
       let clarityScore: number;
       if (clarityComments.length > 0) {
-        clarityScore = clarityComments[0].metadata!.qualityScore!;
-        // Clamp to valid range (1-10)
-        clarityScore = Math.max(1, Math.min(10, clarityScore));
-        console.log(`[IvyReadinessReport] Clarity score: ${clarityScore}/10`);
+        const rawScore = clarityComments[0].metadata!.qualityScore!;
+        clarityScore = rawScore * 10; // Convert 1-10 to 1-100
+        // Clamp to valid range (1-100)
+        clarityScore = Math.max(1, Math.min(100, clarityScore));
+        console.log(`[IvyReadinessReport] Clarity score: ${rawScore}/10 = ${clarityScore}/100`);
       } else {
-        clarityScore = 7.8; // Default fallback
+        clarityScore = 78; // Default fallback (out of 100)
         console.warn('[IvyReadinessReport] No clarity comments found, using default score:', clarityScore);
       }
 
-      // Round to 1 decimal place and set scores
+      // Round to whole numbers and set scores (out of 100)
       const finalScores = {
-        bigPicture: Math.round(bigPictureScore * 10) / 10,
-        tone: Math.round(toneScore * 10) / 10,
-        clarity: Math.round(clarityScore * 10) / 10
+        bigPicture: Math.round(bigPictureScore),
+        tone: Math.round(toneScore),
+        clarity: Math.round(clarityScore)
       };
       setGradingScores(finalScores);
 
@@ -560,19 +562,19 @@ const IvyReadinessReport: React.FC<IvyReadinessReportProps> = ({ open, onOpenCha
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="text-center p-4 border rounded-lg">
                         <div className="text-2xl font-bold" style={{ color: '#D07D00' }}>
-                          {gradingScores.bigPicture}/10
+                          {gradingScores.bigPicture}/100
                         </div>
                         <div className="text-sm text-muted-foreground mt-1">Big Picture</div>
                       </div>
                       <div className="text-center p-4 border rounded-lg">
                         <div className="text-2xl font-bold" style={{ color: '#D07D00' }}>
-                          {gradingScores.tone}/10
+                          {gradingScores.tone}/100
                         </div>
                         <div className="text-sm text-muted-foreground mt-1">Tone</div>
                       </div>
                       <div className="text-center p-4 border rounded-lg">
                         <div className="text-2xl font-bold" style={{ color: '#D07D00' }}>
-                          {gradingScores.clarity}/10
+                          {gradingScores.clarity}/100
                         </div>
                         <div className="text-sm text-muted-foreground mt-1">Clarity</div>
                       </div>
@@ -581,23 +583,18 @@ const IvyReadinessReport: React.FC<IvyReadinessReportProps> = ({ open, onOpenCha
                 </Card>
               )}
 
-              {/* Essay Editor with Blurred Comments */}
+              {/* Essay Preview with Blurred Comments (Guest-specific component) */}
               <Card>
                 <CardHeader>
                   <CardTitle>Your Essay with AI Feedback</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <SemanticEditor
-                    documentId={document.id}
-                    essayId={document.metadata.essayId || ''}
-                    title={document.title}
-                    initialContent={document.blocks.map(b => b.content).join('\n')}
-                    readOnly={true}
-                    showCommentSidebar={true}
+                <CardContent className="p-0">
+                  <GuestEssayPreview
+                    document={document}
                     selectedAnnotationId={selectedAnnotation?.id}
                     onAnnotationSelect={setSelectedAnnotation}
-                    blurComments={true}
                     onSignUp={handleSignUp}
+                    className="min-h-[600px]"
                   />
                 </CardContent>
               </Card>

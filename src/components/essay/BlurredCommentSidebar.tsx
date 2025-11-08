@@ -251,7 +251,7 @@ const BlurredCommentSidebar: React.FC<BlurredCommentSidebarProps> = ({
   const totalUnresolvedComments = Object.values(groupedComments).flat().length;
 
   return (
-    <div className={cn("flex-1 min-w-64 max-w-96 h-full max-h-screen border border-gray-300 bg-white flex-shrink-0 flex flex-col comment-sidebar", className)}>
+    <div className={cn("flex-1 min-w-64 max-w-96 h-full border border-gray-300 bg-white flex-shrink-0 flex flex-col comment-sidebar overflow-hidden", className)}>
       <div className="p-3 border-b border-gray-200 flex-shrink-0">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-base font-semibold flex items-center gap-2">
@@ -284,7 +284,7 @@ const BlurredCommentSidebar: React.FC<BlurredCommentSidebarProps> = ({
         </Tabs>
       </div>
 
-      <ScrollArea ref={scrollAreaRef} className="flex-1 h-[calc(100vh-200px)]">
+      <ScrollArea ref={scrollAreaRef} className="flex-1 overflow-y-auto">
         <div className="space-y-4 p-2 pb-4">
           {/* Overall Analysis Section - Always at top */}
           {groupedComments['overall-analysis'].length > 0 && (
