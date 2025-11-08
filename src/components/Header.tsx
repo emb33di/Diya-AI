@@ -102,7 +102,7 @@ const Header = () => {
         {/* Logo */}
         <Link to={loading ? "/" : (isAuthenticated ? "/dashboard" : "/")} className="flex items-center space-x-2 flex-shrink-0">
           <img 
-            src={location.pathname === "/" || location.pathname === "/auth" ? "/DiyaLogo White.svg" : "/DiyaLogo.svg"} 
+            src={location.pathname === "/" || location.pathname === "/auth" || location.pathname === "/counselors" ? "/DiyaLogo White.svg" : "/DiyaLogo.svg"} 
             alt="Diya Logo" 
             className="h-24 w-24" 
           />
@@ -291,21 +291,35 @@ const Header = () => {
             >
               About Diya
             </button>
-            <button 
-              onClick={() => {
-                if (location.pathname === '/') {
-                  const element = document.getElementById('programs');
-                  if (element) {
-                    element.scrollIntoView({ behavior: 'smooth' });
-                  }
-                } else {
-                  navigate('/#programs');
-                }
-              }} 
-              className="h-12 px-4 text-base font-medium text-white hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/10"
-            >
-              Students
-            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="h-12 px-4 text-base font-medium text-white hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/10 flex items-center gap-1">
+                  Students
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-48">
+                <DropdownMenuItem
+                  onClick={() => {
+                    if (location.pathname === '/') {
+                      const element = document.getElementById('programs');
+                      if (element) {
+                        element.scrollIntoView({ behavior: 'smooth' });
+                      }
+                    } else {
+                      navigate('/#programs');
+                    }
+                  }}
+                >
+                  Students
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/counselors" className="flex items-center">
+                    Counselors
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <button 
               onClick={() => {
                 if (location.pathname === '/') {

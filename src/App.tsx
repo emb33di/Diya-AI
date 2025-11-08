@@ -19,6 +19,7 @@ import Profile from "./pages/Profile";
 import Pricing from "./pages/Pricing";
 import About from "./pages/About";
 import AboutDiya from "./pages/AboutDia";
+import Counselors from "./pages/Counselors";
 import NotFound from "./pages/NotFound";
 import Onboarding from "./pages/Onboarding";
 import Resume from "./pages/Resume";
@@ -78,6 +79,7 @@ const App = () => {
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/about" element={<About />} />
             <Route path="/about-diya" element={<AboutDiya />} />
+            <Route path="/counselors" element={<Counselors />} />
             <Route path="/earlyaccess" element={<EarlyAccessSignup />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/terms-of-service" element={<TermsOfService />} />
