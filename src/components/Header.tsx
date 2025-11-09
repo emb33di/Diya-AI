@@ -65,10 +65,12 @@ const Header = () => {
   const isLandingPage = location.pathname === '/';
   const isPublicInfoPage = location.pathname === '/pricing' || location.pathname === '/about';
   const isBlogPage = location.pathname === '/blog' || location.pathname.startsWith('/blog/');
+  const isCounselorsPage = location.pathname === '/counselors';
   const isIvyReadinessPage = location.pathname === '/ivyreadiness' || location.pathname.startsWith('/ivyreadiness');
   const isEarlyAccessPage = location.pathname === '/earlyaccess';
   const isPasswordResetPage = location.pathname === '/password-reset';
   const isLoggedIn = !isLandingPage && !isPublicInfoPage && !isBlogPage && !isIvyReadinessPage && location.pathname !== '/auth';
+  const showUnauthenticatedNav = isLandingPage || isBlogPage || isCounselorsPage;
 
   // Create a simple name initials circle with blue-to-orange gradient
   const getInitialsAvatar = (firstName: string) => {
@@ -274,7 +276,7 @@ const Header = () => {
         )}
         
         {/* Unauthenticated Navigation - Centered */}
-        {!isAuthenticated && isLandingPage && (
+        {!isAuthenticated && showUnauthenticatedNav && (
           <div className="hidden md:flex items-center space-x-6">
             <button 
               onClick={() => {
@@ -294,11 +296,11 @@ const Header = () => {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="h-12 px-4 text-base font-medium text-white hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/10 flex items-center gap-1">
-                  Students
+                  {isCounselorsPage ? 'For Counselors' : 'For Students'}
                   <ChevronDown className="h-4 w-4" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-48">
+              <DropdownMenuContent align="start" className="w-48 bg-[hsl(220_25%_8%)] border-[hsl(220_25%_12%)]">
                 <DropdownMenuItem
                   onClick={() => {
                     if (location.pathname === '/') {
@@ -310,12 +312,13 @@ const Header = () => {
                       navigate('/#programs');
                     }
                   }}
+                  className="text-white focus:bg-[hsl(220_20%_15%)] focus:text-white"
                 >
-                  Students
+                  For Students
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link to="/counselors" className="flex items-center">
-                    Counselors
+                  <Link to="/counselors" className="flex items-center text-white focus:bg-[hsl(220_20%_15%)] focus:text-white">
+                    For Counselors
                   </Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -333,7 +336,7 @@ const Header = () => {
               }} 
               className="h-12 px-4 text-base font-medium text-white hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/10"
             >
-              Plans
+              Pricing
             </button>
             <button 
               onClick={() => {
