@@ -14,14 +14,17 @@ import { getUserDisplayName, fetchUserProfileData } from "@/utils/userNameUtils"
 import { getUserProgramType } from "@/utils/userProfileUtils";
 import { getDraftStatusLabel } from "@/utils/statusUtils";
 import { fetchSchoolRecommendations } from "@/utils/supabaseUtils";
-import { PenTool, MessageSquare, FileText, Clock, CheckCircle2, Plus, ArrowLeft, ChevronRight, Trash2, ChevronDown } from "lucide-react";
+import { PenTool, MessageSquare, FileText, Clock, CheckCircle2, Plus, ArrowLeft, ChevronRight, Trash2, ChevronDown, Download, Lock, Crown } from "lucide-react";
 import SemanticEssayEditor from "@/components/essay/SemanticEssayEditor";
 import { CreateEssayModal } from "@/components/essay/CreateEssayModal";
+import BlurredCommentSidebar from "@/components/essay/BlurredCommentSidebar";
 import { DeleteEssayDialog } from "@/components/essay/DeleteEssayDialog";
 import { EssayService, CreateEssayData } from "@/services/essayService";
 import { useIsMobile } from "@/hooks/use-mobile";
 import PromptDropdown from "@/components/essay/PromptDropdown";
 import AddSchoolModal from "@/components/AddSchoolModal";
+import { GuestEssayMigrationService, GuestEssay } from "@/services/guestEssayMigrationService";
+import { usePaywall } from "@/hooks/usePaywall";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +32,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import UpgradeModal from "@/components/UpgradeModal";
 
 interface School {
   id: string;
@@ -174,6 +179,14 @@ const Essays = () => {
   const [expandedSchool, setExpandedSchool] = useState<string | null>(null);
   const [schoolPrompts, setSchoolPrompts] = useState<Record<string, { prompts: EssayPrompt[]; essays: Essay[]; newEssays: any[] }>>({});
   const [loadingPrompts, setLoadingPrompts] = useState<Record<string, boolean>>({});
+  const [showGuestEssaysModal, setShowGuestEssaysModal] = useState(false);
+  const [guestEssays, setGuestEssays] = useState<GuestEssay[]>([]);
+  const [loadingGuestEssays, setLoadingGuestEssays] = useState(false);
+  const [selectedGuestEssay, setSelectedGuestEssay] = useState<GuestEssay | null>(null);
+  const [showGuestEssayViewer, setShowGuestEssayViewer] = useState(false);
+  const [migratingGuestEssay, setMigratingGuestEssay] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const { isPro } = usePaywall();
 
   // Fetch prompts for a school when expanded (mobile view)
   const fetchSchoolPrompts = async (schoolName: string) => {
@@ -1297,6 +1310,110 @@ const Essays = () => {
         return <Clock className="h-4 w-4" />;
     }
   };
+
+  // Fetch guest essays for the current user
+  const fetchGuestEssays = async () => {
+    setLoadingGuestEssays(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Error",
+          description: "Please sign in to retrieve your essays.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const essays = await GuestEssayMigrationService.getGuestEssaysByUserId(user.id);
+      setGuestEssays(essays);
+      
+      if (essays.length === 0) {
+        toast({
+          title: "No essays found",
+          description: "You don't have any essays from before you signed up.",
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching guest essays:', error);
+      toast({
+        title: "Error",
+        description: "Failed to retrieve your essays. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingGuestEssays(false);
+    }
+  };
+
+  // Handle opening guest essays modal
+  const handleOpenGuestEssaysModal = async () => {
+    setShowGuestEssaysModal(true);
+    await fetchGuestEssays();
+  };
+
+  // Handle viewing a guest essay
+  const handleViewGuestEssay = async (guestEssay: GuestEssay) => {
+    if (!isPro) {
+      // Show blurred view for unpaid users
+      setSelectedGuestEssay(guestEssay);
+      setShowGuestEssayViewer(true);
+      return;
+    }
+
+    // For paid users, migrate the essay first
+    setMigratingGuestEssay(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Error",
+          description: "Please sign in to migrate your essay.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const result = await GuestEssayMigrationService.migrateGuestEssayToUser(guestEssay.id, user.id);
+      
+      if (result.success && result.essayId) {
+        toast({
+          title: "Success",
+          description: "Your essay has been migrated successfully!",
+        });
+        
+        // Refresh essays list and select the migrated essay
+        if (guestEssay.school_name) {
+          await fetchEssaysForSchool(guestEssay.school_name);
+          persistEssaySelection(result.essayId);
+          setSelectedEssay(null);
+        }
+        
+        // Close modals
+        setShowGuestEssaysModal(false);
+        setShowGuestEssayViewer(false);
+        setSelectedGuestEssay(null);
+        
+        // Refresh guest essays list
+        await fetchGuestEssays();
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to migrate essay. Please try again.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error migrating guest essay:', error);
+      toast({
+        title: "Error",
+        description: "Failed to migrate essay. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setMigratingGuestEssay(false);
+    }
+  };
   if (loading) {
     return <OnboardingGuard pageName="Essays">
         <GradientBackground>
@@ -1323,6 +1440,14 @@ const Essays = () => {
                 <h1 className="text-2xl font-display font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
                   Essay Dashboard
                 </h1>
+                <Button 
+                  variant="outline"
+                  className="mt-4 w-full"
+                  onClick={handleOpenGuestEssaysModal}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Retrieve My Essays
+                </Button>
               </div>
 
               {schools.length === 0 ? (
@@ -2039,6 +2164,14 @@ const Essays = () => {
                   <Plus className="h-4 w-4 mr-2" />
                   {creatingEssay ? 'Creating...' : 'New Essay'}
                 </Button>
+                <Button 
+                  variant="outline"
+                  className="shadow-sm"
+                  onClick={handleOpenGuestEssaysModal}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Retrieve My Essays
+                </Button>
               </div>
             </div>
           </div>
@@ -2418,6 +2551,202 @@ const Essays = () => {
           onAddSchool={addSchool}
           onAddMultipleSchools={addMultipleSchools}
           existingSchools={schools.map(school => school.name)}
+        />
+
+        {/* Guest Essays Modal */}
+        <Dialog open={showGuestEssaysModal} onOpenChange={setShowGuestEssaysModal}>
+          <DialogContent className="max-w-3xl max-h-[80vh]">
+            <DialogHeader>
+              <DialogTitle>Retrieve My Essays</DialogTitle>
+              <DialogDescription>
+                These are essays you scored before signing up. {!isPro && "Upgrade to Pro to migrate them to your account with full access to comments."}
+              </DialogDescription>
+            </DialogHeader>
+            <ScrollArea className="max-h-[60vh]">
+              {loadingGuestEssays ? (
+                <div className="flex items-center justify-center py-8">
+                  <Clock className="h-6 w-6 animate-spin mr-2" />
+                  <span>Loading your essays...</span>
+                </div>
+              ) : guestEssays.length === 0 ? (
+                <div className="text-center py-8">
+                  <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+                  <p className="text-muted-foreground">No essays found from before you signed up.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {guestEssays.map((essay) => (
+                    <Card 
+                      key={essay.id} 
+                      className="cursor-pointer hover:shadow-md transition-shadow"
+                      onClick={() => handleViewGuestEssay(essay)}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <h3 className="font-semibold">{essay.title}</h3>
+                              {!isPro && (
+                                <Badge variant="outline" className="text-xs">
+                                  <Lock className="h-3 w-3 mr-1" />
+                                  Upgrade to migrate
+                                </Badge>
+                              )}
+                              {isPro && (
+                                <Badge variant="default" className="text-xs">
+                                  <Crown className="h-3 w-3 mr-1" />
+                                  Ready to migrate
+                                </Badge>
+                              )}
+                            </div>
+                            {essay.school_name && (
+                              <p className="text-sm text-muted-foreground mb-2">
+                                School: {essay.school_name}
+                              </p>
+                            )}
+                            <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+                              {essay.prompt_text}
+                            </p>
+                            <div className="flex items-center space-x-4 text-xs text-muted-foreground">
+                              <span>
+                                {essay.semantic_annotations?.length || 0} comments
+                              </span>
+                              <span>
+                                Created: {new Date(essay.created_at).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </div>
+                          <ChevronRight className="h-5 w-5 text-muted-foreground ml-4 flex-shrink-0" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </DialogContent>
+        </Dialog>
+
+        {/* Guest Essay Viewer (for unpaid users with blurred comments) */}
+        {selectedGuestEssay && (
+          <Dialog open={showGuestEssayViewer} onOpenChange={setShowGuestEssayViewer}>
+            <DialogContent className="max-w-7xl max-h-[90vh] p-0">
+              <div className="flex flex-col h-full">
+                <DialogHeader className="px-6 pt-6 pb-4 border-b">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <DialogTitle>{selectedGuestEssay.title}</DialogTitle>
+                      <DialogDescription className="mt-1">
+                        {selectedGuestEssay.school_name && `School: ${selectedGuestEssay.school_name}`}
+                      </DialogDescription>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setShowGuestEssayViewer(false);
+                        setSelectedGuestEssay(null);
+                      }}
+                    >
+                      Close
+                    </Button>
+                  </div>
+                </DialogHeader>
+                <div className="flex-1 overflow-hidden">
+                  {!isPro ? (
+                    <div className="h-full flex">
+                      <div className="flex-1 overflow-y-auto p-6">
+                        <div className="max-w-3xl mx-auto">
+                          <div className="mb-6 p-4 bg-muted rounded-lg">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <Lock className="h-5 w-5 text-primary" />
+                              <h3 className="font-semibold">Upgrade to Pro to see full comments</h3>
+                            </div>
+                            <p className="text-sm text-muted-foreground mb-4">
+                              Upgrade to Pro to migrate this essay to your account and see all feedback comments.
+                            </p>
+                            <Button onClick={() => {
+                              setShowUpgradeModal(true);
+                              setShowGuestEssayViewer(false);
+                            }}>
+                              Upgrade to Pro
+                            </Button>
+                          </div>
+                          <div className="prose max-w-none">
+                            <h3 className="text-lg font-semibold mb-4">Essay Prompt</h3>
+                            <p className="text-muted-foreground mb-6 whitespace-pre-wrap">
+                              {selectedGuestEssay.prompt_text}
+                            </p>
+                            <h3 className="text-lg font-semibold mb-4">Your Essay</h3>
+                            <div className="space-y-4">
+                              {selectedGuestEssay.semantic_document.blocks
+                                .sort((a, b) => a.position - b.position)
+                                .map((block) => {
+                                  // Attach annotations to this block
+                                  const blockAnnotations = selectedGuestEssay.semantic_annotations.filter(
+                                    ann => ann.targetBlockId === block.id
+                                  );
+                                  
+                                  return (
+                                    <div
+                                      key={block.id}
+                                      className="p-4 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
+                                      data-block-id={block.id}
+                                    >
+                                      <div className="text-base leading-relaxed whitespace-pre-wrap">
+                                        {block.content}
+                                      </div>
+                                      {blockAnnotations.length > 0 && (
+                                        <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+                                          <MessageSquare className="h-4 w-4" />
+                                          <span>{blockAnnotations.length} {blockAnnotations.length === 1 ? 'comment' : 'comments'}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="w-96 border-l overflow-y-auto">
+                        {/* Use BlurredCommentSidebar with guest essay document */}
+                        <BlurredCommentSidebar
+                          blocks={selectedGuestEssay.semantic_document.blocks.map(block => {
+                            // Attach annotations to each block
+                            const blockAnnotations = selectedGuestEssay.semantic_annotations.filter(
+                              ann => ann.targetBlockId === block.id
+                            );
+                            return {
+                              ...block,
+                              annotations: blockAnnotations
+                            };
+                          })}
+                          onSignUp={() => {
+                            setShowUpgradeModal(true);
+                            setShowGuestEssayViewer(false);
+                          }}
+                          className="h-full"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-6 text-center">
+                      <p className="text-muted-foreground">
+                        Click on an essay in the list to migrate it to your account.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {/* Upgrade Modal */}
+        <UpgradeModal
+          isOpen={showUpgradeModal}
+          onClose={() => setShowUpgradeModal(false)}
+          featureKey="unlimited_essay_feedback"
         />
       </GradientBackground>
     </OnboardingGuard>;

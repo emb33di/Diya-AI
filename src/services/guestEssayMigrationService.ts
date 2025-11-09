@@ -25,6 +25,7 @@ export interface GuestEssay {
   session_id: string | null;
   user_agent: string | null;
   ip_address: string | null;
+  user_id: string | null; // Set when user signs up, allows for backup matching
   expires_at: string;
   created_at: string;
   updated_at: string;
@@ -210,7 +211,19 @@ export class GuestEssayMigrationService {
         }
       }
 
-      // 5. Delete guest essay (only after successful migration)
+      // 5. Update guest essay with user_id before deletion (for historical tracking)
+      // This provides a backup matching mechanism if guestEssayId is lost
+      const { error: updateError } = await supabase
+        .from('guest_essays')
+        .update({ user_id: userId })
+        .eq('id', guestEssayId);
+
+      if (updateError) {
+        console.warn('Failed to update guest essay with user_id:', updateError);
+        // Don't fail the migration if update fails
+      }
+
+      // 6. Delete guest essay (only after successful migration and user_id update)
       const { error: deleteError } = await supabase
         .from('guest_essays')
         .delete()
@@ -219,6 +232,7 @@ export class GuestEssayMigrationService {
       if (deleteError) {
         console.warn('Failed to delete guest essay after migration:', deleteError);
         // Don't fail the migration if deletion fails - it will expire anyway
+        // The user_id is already set, so we can query by user_id later if needed
       }
 
       return {
@@ -308,6 +322,31 @@ export class GuestEssayMigrationService {
     } catch (error) {
       console.error('Error saving guest essay:', error);
       return null;
+    }
+  }
+
+  /**
+   * Get all guest essays for a user by user_id
+   * This is used to retrieve essays that were scored pre-authentication
+   */
+  static async getGuestEssaysByUserId(userId: string): Promise<GuestEssay[]> {
+    try {
+      const { data, error } = await supabase
+        .from('guest_essays')
+        .select('*')
+        .eq('user_id', userId)
+        .gt('expires_at', new Date().toISOString()) // Only get non-expired essays
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Failed to fetch guest essays by user_id:', error);
+        return [];
+      }
+
+      return (data || []) as GuestEssay[];
+    } catch (error) {
+      console.error('Error fetching guest essays by user_id:', error);
+      return [];
     }
   }
 
