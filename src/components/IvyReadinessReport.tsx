@@ -28,7 +28,8 @@ import { SemanticDocument, Annotation, DocumentBlock } from '@/types/semanticDoc
 import { semanticDocumentService } from '@/services/semanticDocumentService';
 import SemanticEditor from '@/components/essay/SemanticEditor';
 import GuestEssayPreview from '@/components/essay/GuestEssayPreview';
-import AICommentsLoadingPane, { AI_COMMENTS_LOADING_STEPS } from '@/components/essay/AICommentsLoadingPane';
+import LoadingPane from '@/components/ui/LoadingPane';
+import { cn } from '@/lib/utils';
 import { 
   Sparkles, 
   Lock, 
@@ -62,6 +63,30 @@ const IvyReadinessReport: React.FC<IvyReadinessReportProps> = ({ open, onOpenCha
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
   const [hasAnalyzed, setHasAnalyzed] = useState(false);
+  
+  // Loading steps for the loading pane
+  const LOADING_STEPS = [
+    {
+      id: 'analyzing',
+      label: 'Analyzing Content',
+      description: 'Diya is reading and understanding your essay structure'
+    },
+    {
+      id: 'processing',
+      label: 'AI Processing',
+      description: 'Diya is examining your essay from multiple angles'
+    },
+    {
+      id: 'generating',
+      label: 'Generating Comments',
+      description: 'Creating personalized feedback and suggestions'
+    },
+    {
+      id: 'finalizing',
+      label: 'Finalizing Results',
+      description: 'Diya is writing up some feedback for you now!'
+    }
+  ];
   const [gradingScores, setGradingScores] = useState<GradingScores | null>(null);
   const [selectedAnnotation, setSelectedAnnotation] = useState<Annotation | null>(null);
   const [guestEssayId, setGuestEssayId] = useState<string | null>(null);
@@ -120,8 +145,8 @@ const IvyReadinessReport: React.FC<IvyReadinessReportProps> = ({ open, onOpenCha
     }
   };
 
-  // Initialize document from essay text
-  const initializeDocument = () => {
+  // Initialize document from essay text and start analysis immediately
+  const initializeDocument = async () => {
     // Validate required fields
     if (!schoolName.trim()) {
       toast({
@@ -166,12 +191,16 @@ const IvyReadinessReport: React.FC<IvyReadinessReportProps> = ({ open, onOpenCha
     };
 
     setDocument(newDocument);
+    
+    // Immediately start analysis after initializing document
+    // Use the newDocument directly to avoid state timing issues
+    await analyzeEssay(newDocument);
   };
 
   // Analyze essay and generate comments
-  const analyzeEssay = async () => {
-    if (!document) {
-      initializeDocument();
+  const analyzeEssay = async (docToAnalyze?: SemanticDocument) => {
+    const doc = docToAnalyze || document;
+    if (!doc) {
       return;
     }
 
@@ -181,12 +210,12 @@ const IvyReadinessReport: React.FC<IvyReadinessReportProps> = ({ open, onOpenCha
     try {
       // Start AI generation in parallel with loading animation
       const aiGenerationPromise = semanticDocumentService.generateAIComments({
-        documentId: document.id,
-        blocks: document.blocks,
+        documentId: doc.id,
+        blocks: doc.blocks,
         context: {
-          prompt: document.metadata.prompt,
-          wordLimit: document.metadata.wordLimit,
-          targetSchools: document.metadata.schoolName ? [document.metadata.schoolName] : undefined
+          prompt: doc.metadata.prompt,
+          wordLimit: doc.metadata.wordLimit,
+          targetSchools: doc.metadata.schoolName ? [doc.metadata.schoolName] : undefined
         },
         isAnonymous: true // Anonymous mode - skip auth and database storage
       });
@@ -195,7 +224,7 @@ const IvyReadinessReport: React.FC<IvyReadinessReportProps> = ({ open, onOpenCha
       const stepDurations = [8000, 12000, 8000, 2000]; // Duration for each step in ms
       
       // Step through each loading phase
-      for (let i = 0; i < AI_COMMENTS_LOADING_STEPS.length; i++) {
+      for (let i = 0; i < LOADING_STEPS.length; i++) {
         setLoadingStep(i);
         await new Promise(resolve => setTimeout(resolve, stepDurations[i]));
       }
@@ -222,7 +251,7 @@ const IvyReadinessReport: React.FC<IvyReadinessReportProps> = ({ open, onOpenCha
       }));
 
       // Add comments to document
-      const updatedBlocks = document.blocks.map(block => {
+      const updatedBlocks = doc.blocks.map(block => {
         const blockComments = annotations.filter(c => c.targetBlockId === block.id);
         return {
           ...block,
@@ -230,10 +259,12 @@ const IvyReadinessReport: React.FC<IvyReadinessReportProps> = ({ open, onOpenCha
         };
       });
 
-      setDocument({
-        ...document,
+      const updatedDocument = {
+        ...doc,
         blocks: updatedBlocks
-      });
+      };
+
+      setDocument(updatedDocument);
 
       // Extract grading scores from comment metadata
       // Big Picture: from metadata.qualityScore of big-picture agent (1-100 scale)
@@ -306,18 +337,15 @@ const IvyReadinessReport: React.FC<IvyReadinessReportProps> = ({ open, onOpenCha
       setGradingScores(finalScores);
 
       // Save guest essay to database for migration after signup
-      if (document && annotations.length > 0) {
-        const essayContent = document.blocks.map(b => b.content).join('\n\n');
+      if (updatedDocument && annotations.length > 0) {
+        const essayContent = updatedDocument.blocks.map(b => b.content).join('\n\n');
         const savedGuestEssayId = await GuestEssayMigrationService.saveGuestEssay({
-          title: document.title,
-          schoolName: document.metadata.schoolName || null,
-          promptText: document.metadata.prompt || essayPrompt,
-          wordLimit: document.metadata.wordLimit?.toString() || '650',
+          title: updatedDocument.title,
+          schoolName: updatedDocument.metadata.schoolName || null,
+          promptText: updatedDocument.metadata.prompt || essayPrompt,
+          wordLimit: updatedDocument.metadata.wordLimit?.toString() || '650',
           essayContent: essayContent,
-          semanticDocument: {
-            ...document,
-            blocks: updatedBlocks
-          },
+          semanticDocument: updatedDocument,
           semanticAnnotations: annotations,
           gradingScores: finalScores
         });
@@ -335,7 +363,7 @@ const IvyReadinessReport: React.FC<IvyReadinessReportProps> = ({ open, onOpenCha
       }
 
       setHasAnalyzed(true);
-      setLoadingStep(AI_COMMENTS_LOADING_STEPS.length);
+      setLoadingStep(LOADING_STEPS.length);
     } catch (error) {
       console.error('Failed to analyze essay:', error);
       toast({
@@ -363,8 +391,8 @@ const IvyReadinessReport: React.FC<IvyReadinessReportProps> = ({ open, onOpenCha
   const handleSignUp = () => {
     // Pass guest_essay_id to signup flow via URL params and localStorage
     const signupUrl = guestEssayId 
-      ? `/signup?guest_essay_id=${guestEssayId}`
-      : '/signup';
+      ? `/auth?mode=signup&guest_essay_id=${guestEssayId}`
+      : '/auth?mode=signup';
     
     // Also store in localStorage as backup
     if (guestEssayId) {
@@ -429,19 +457,34 @@ const IvyReadinessReport: React.FC<IvyReadinessReportProps> = ({ open, onOpenCha
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-7xl max-h-[95vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-3xl font-bold text-center">
-            Ivy Readiness Report
-          </DialogTitle>
-          <DialogDescription className="text-center text-lg">
-            Check if your essay is at the Ivy-League Level
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className={cn(
+        "max-h-[95vh] overflow-y-auto",
+        isAnalyzing ? "max-w-2xl w-full" : "max-w-7xl"
+      )}>
+        {!isAnalyzing && (
+          <DialogHeader>
+            <DialogTitle className="text-3xl font-bold text-center">
+              Ivy Readiness Report
+            </DialogTitle>
+            <DialogDescription className="text-center text-lg">
+              Check if your essay is at the Ivy-League Level
+            </DialogDescription>
+          </DialogHeader>
+        )}
 
-        <div className="space-y-6 mt-4">
+        <div className={cn("space-y-6", isAnalyzing ? "mt-0" : "mt-4")}>
+          {/* Loading Pane - Show when analyzing */}
+          {isAnalyzing && (
+            <LoadingPane
+              isVisible={true}
+              steps={LOADING_STEPS}
+              currentStepIndex={loadingStep}
+              insideDialog={true}
+            />
+          )}
+
           {/* Essay Input Section */}
-          {!document && (
+          {!document && !isAnalyzing && (
             <Card>
               <CardHeader>
                 <CardTitle>Enter Your Essay Details</CardTitle>
@@ -503,35 +546,6 @@ const IvyReadinessReport: React.FC<IvyReadinessReportProps> = ({ open, onOpenCha
                 </Button>
               </CardContent>
             </Card>
-          )}
-
-          {/* Analysis Section */}
-          {document && !hasAnalyzed && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Ready to Analyze</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Button
-                  onClick={analyzeEssay}
-                  disabled={isAnalyzing}
-                  className="w-full"
-                  style={{ backgroundColor: '#D07D00' }}
-                >
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  {isAnalyzing ? 'Analyzing...' : 'Analyze Essay'}
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Loading Pane */}
-          {isAnalyzing && (
-            <AICommentsLoadingPane
-              isOpen={isAnalyzing}
-              currentStep={loadingStep}
-              onClose={() => {}}
-            />
           )}
 
           {/* Results Section */}

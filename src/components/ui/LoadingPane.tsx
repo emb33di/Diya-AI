@@ -14,6 +14,7 @@ interface LoadingPaneProps {
   currentStepIndex: number;
   onComplete?: () => void;
   className?: string;
+  insideDialog?: boolean; // When true, renders relative to parent instead of fixed to viewport
 }
 
 const LoadingPane: React.FC<LoadingPaneProps> = ({
@@ -21,7 +22,8 @@ const LoadingPane: React.FC<LoadingPaneProps> = ({
   steps,
   currentStepIndex,
   onComplete,
-  className
+  className,
+  insideDialog = false
 }) => {
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
 
@@ -49,12 +51,17 @@ const LoadingPane: React.FC<LoadingPaneProps> = ({
 
   return (
     <div className={cn(
-      "fixed inset-0 z-[99999] flex items-center justify-center",
-      "bg-black/50 backdrop-blur-sm",
+      insideDialog 
+        ? "relative w-full flex items-center justify-center"
+        : "fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 backdrop-blur-sm",
       "transition-all duration-300 ease-in-out",
       className
     )}>
-      <div className="rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 animate-in fade-in-0 zoom-in-95 duration-300" style={{ backgroundColor: '#F4EDE2' }}>
+      <div className={cn(
+        "w-full",
+        insideDialog ? "p-6" : "rounded-2xl shadow-2xl max-w-md mx-4 p-8",
+        "animate-in fade-in-0 zoom-in-95 duration-300"
+      )} style={{ backgroundColor: '#F4EDE2' }}>
         {/* Header */}
         <div className="text-center mb-8">
           <div className={cn(

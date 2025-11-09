@@ -383,31 +383,24 @@ const Auth = () => {
             // Don't fail signup if additional fields fail to update
           }
           
-          // Step 4: Migrate guest essay if one exists (before payment flow - this ensures essay is saved regardless of payment timing)
-          let migratedEssayId: string | undefined;
+          // Step 4: Set user_id on guest essay if one exists (before payment flow)
+          // This ensures the essay can be recovered later even if payment fails
+          // Migration will happen AFTER payment succeeds
           if (guestEssayId && authData.user) {
-            console.log(`[${signupId}] 📝 Migrating guest essay:`, guestEssayId);
+            console.log(`[${signupId}] 📝 Setting user_id on guest essay:`, guestEssayId);
             try {
-              const migrationResult = await GuestEssayMigrationService.migrateGuestEssayToUser(
+              const userIdSet = await GuestEssayMigrationService.setUserIdOnGuestEssay(
                 guestEssayId,
                 authData.user.id
               );
-
-              if (migrationResult.success) {
-                migratedEssayId = migrationResult.essayId;
-                console.log(`[${signupId}] ✅ Guest essay migrated successfully:`, {
-                  essayId: migrationResult.essayId,
-                  semanticDocumentId: migrationResult.semanticDocumentId
-                });
-                // Clear localStorage after successful migration
-                localStorage.removeItem('pending_guest_essay_id');
+              if (userIdSet) {
+                console.log(`[${signupId}] ✅ User ID set on guest essay - essay will be migrated after payment`);
               } else {
-                console.warn(`[${signupId}] ⚠️ Guest essay migration failed:`, migrationResult.error);
-                // Don't fail signup if migration fails - essay will expire in 7 days anyway
+                console.error(`[${signupId}] ❌ Failed to set user_id on guest essay - essay may be lost`);
               }
-            } catch (migrationError) {
-              console.error(`[${signupId}] ⚠️ Error during guest essay migration:`, migrationError);
-              // Don't fail signup if migration fails
+            } catch (error) {
+              console.error(`[${signupId}] ❌ Error setting user_id on guest essay:`, error);
+              // Don't fail signup if this fails
             }
           }
           
@@ -438,18 +431,11 @@ const Auth = () => {
           
           console.groupEnd(); // Close the debug group
           
-          // Show success message with essay migration info if applicable
-          if (migratedEssayId) {
-            toast({
-              title: "Account created!",
-              description: "Your preview essay and comments have been saved. Redirecting to payment...",
-            });
-          } else {
-            toast({
-              title: "Account created!",
-              description: "Redirecting to payment...",
-            });
-          }
+          // Show success message
+          toast({
+            title: "Account created!",
+            description: "Redirecting to payment...",
+          });
           
           // Automatically proceed to payment after successful signup
           try {

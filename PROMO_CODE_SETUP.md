@@ -45,7 +45,7 @@ The promo code validation is case-insensitive, so users can enter it in any case
 2. If valid, sets `use_promo_price: true` when calling `createCheckoutSession()`
 3. `create-stripe-checkout` edge function checks `use_promo_price`:
    - If `true`: Uses `STRIPE_EA_PRICE_ID` from Supabase secrets
-   - If `false`: Uses regular `STRIPE_PRICE_ID` (from request or env)
+   - If `false`: Uses regular `STRIPE_TEST_PRICE_ID` (from request or env)
 4. Stripe checkout session is created with appropriate price ID
 5. Metadata includes `promo_code` and `is_promo` for tracking
 

@@ -1,7 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
 
-const DEFAULT_STRIPE_PRICE_ID = 'price_1SO1k8Cl951Iw04Mg2LoqN97';
-
 interface VerifyPaymentResult {
   success: boolean;
   message: string;
@@ -55,10 +53,12 @@ export const createCheckoutSession = async (
       use_promo_price: options?.use_promo_price || false,
     };
 
-    // Only include price_id if NOT using promo price
-    if (!requestBody.use_promo_price) {
-      requestBody.price_id = options?.price_id || DEFAULT_STRIPE_PRICE_ID;
+    // Only include price_id if explicitly provided in options
+    // If not provided, let the edge function use STRIPE_TEST_PRICE_ID from environment
+    if (options?.price_id) {
+      requestBody.price_id = options.price_id;
     }
+    // Don't use DEFAULT_STRIPE_PRICE_ID - let edge function use test price ID from environment
 
     console.log('[Checkout] Creating session with:', {
       use_promo_price: requestBody.use_promo_price,

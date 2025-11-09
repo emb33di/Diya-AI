@@ -107,16 +107,16 @@ Deno.serve(async (req) => {
       console.log('[Edge Function] Using promo price ID:', priceId);
     } else {
       // Use regular price ID from request body or environment variable
-      priceId = requestBody?.price_id || Deno.env.get('STRIPE_PRICE_ID');
+      priceId = requestBody?.price_id || Deno.env.get('STRIPE_TEST_PRICE_ID');
       console.log('[Edge Function] Using regular price ID:', priceId);
     }
     
     if (!priceId) {
-      console.error('Missing price_id: not in request body and STRIPE_PRICE_ID not set in environment');
+      console.error('Missing price_id: not in request body and STRIPE_TEST_PRICE_ID not set in environment');
       return new Response(
         JSON.stringify({ 
-          error: 'Price ID not provided and STRIPE_PRICE_ID not configured',
-          details: 'Please set STRIPE_PRICE_ID in Supabase secrets or pass price_id in request body'
+          error: 'Price ID not provided and STRIPE_TEST_PRICE_ID not configured',
+          details: 'Please set STRIPE_TEST_PRICE_ID in Supabase secrets or pass price_id in request body'
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );

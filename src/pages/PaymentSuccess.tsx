@@ -6,7 +6,9 @@ import { CheckCircle2, ArrowRight, Mail, Shield, Sparkles as StarIcon, Loader2 }
 import GradientBackground from '@/components/GradientBackground';
 import AuthenticationGuard from '@/components/AuthenticationGuard';
 import { verifyAndActivateStripePayment } from '@/services/stripePaymentService';
+import { GuestEssayMigrationService } from '@/services/guestEssayMigrationService';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const PaymentSuccess = () => {
   const navigate = useNavigate();
@@ -35,6 +37,31 @@ const PaymentSuccess = () => {
         if (result.success) {
           setVerificationStatus('success');
           setVerificationMessage(result.message);
+          
+          // Migrate all guest essays for this user after payment succeeds
+          try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+              console.log('Migrating guest essays for user:', user.id);
+              const migrationResult = await GuestEssayMigrationService.migrateAllGuestEssaysForUser(user.id);
+              if (migrationResult.migratedCount > 0) {
+                console.log(`✅ Migrated ${migrationResult.migratedCount} guest essay(s)`);
+                // Clear localStorage after successful migration
+                localStorage.removeItem('pending_guest_essay_id');
+                toast({
+                  title: "Essays Migrated",
+                  description: `Successfully migrated ${migrationResult.migratedCount} preview essay(s) to your account.`,
+                });
+              }
+              if (migrationResult.errors.length > 0) {
+                console.warn('Some essays failed to migrate:', migrationResult.errors);
+              }
+            }
+          } catch (migrationError) {
+            console.error('Error migrating guest essays:', migrationError);
+            // Don't fail payment verification if migration fails
+          }
+          
           toast({
             title: "Payment Verified",
             description: "Your Pro subscription is now active!",

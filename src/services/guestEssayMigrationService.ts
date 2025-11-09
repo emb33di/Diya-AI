@@ -83,6 +83,63 @@ export class GuestEssayMigrationService {
   }
 
   /**
+   * Migrate all guest essays for a user (called after payment succeeds)
+   * This ensures all preview essays are migrated to the user's account
+   */
+  static async migrateAllGuestEssaysForUser(userId: string): Promise<{
+    success: boolean;
+    migratedCount: number;
+    errors: string[];
+  }> {
+    try {
+      // Get all guest essays for this user
+      const guestEssays = await this.getGuestEssaysByUserId(userId);
+      
+      if (guestEssays.length === 0) {
+        return {
+          success: true,
+          migratedCount: 0,
+          errors: []
+        };
+      }
+
+      const errors: string[] = [];
+      let migratedCount = 0;
+
+      // Migrate each guest essay
+      for (const guestEssay of guestEssays) {
+        try {
+          const result = await this.migrateGuestEssayToUser(guestEssay.id, userId);
+          if (result.success) {
+            migratedCount++;
+            console.log(`✅ Migrated guest essay ${guestEssay.id} for user ${userId}`);
+          } else {
+            errors.push(`Failed to migrate essay "${guestEssay.title}": ${result.error}`);
+            console.warn(`⚠️ Failed to migrate guest essay ${guestEssay.id}:`, result.error);
+          }
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          errors.push(`Error migrating essay "${guestEssay.title}": ${errorMessage}`);
+          console.error(`❌ Error migrating guest essay ${guestEssay.id}:`, error);
+        }
+      }
+
+      return {
+        success: errors.length === 0,
+        migratedCount,
+        errors
+      };
+    } catch (error) {
+      console.error('Error migrating all guest essays:', error);
+      return {
+        success: false,
+        migratedCount: 0,
+        errors: [error instanceof Error ? error.message : 'Unknown error']
+      };
+    }
+  }
+
+  /**
    * Migrate guest essay to user's account after signup
    */
   static async migrateGuestEssayToUser(
@@ -322,6 +379,32 @@ export class GuestEssayMigrationService {
     } catch (error) {
       console.error('Error saving guest essay:', error);
       return null;
+    }
+  }
+
+  /**
+   * Set user_id on a guest essay (fallback when migration fails)
+   * This ensures the guest essay can be recovered later even if migration fails
+   */
+  static async setUserIdOnGuestEssay(
+    guestEssayId: string,
+    userId: string
+  ): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('guest_essays')
+        .update({ user_id: userId })
+        .eq('id', guestEssayId);
+
+      if (error) {
+        console.error('Failed to set user_id on guest essay:', error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error setting user_id on guest essay:', error);
+      return false;
     }
   }
 

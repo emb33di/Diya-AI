@@ -113,6 +113,166 @@ async function findUserByEmail(
 }
 
 /**
+ * Migrate all guest essays for a user after payment succeeds
+ * This ensures preview essays are migrated to the user's account
+ */
+async function migrateGuestEssaysForUser(
+  supabase: ReturnType<typeof createClient>,
+  userId: string
+): Promise<{ migratedCount: number; errors: string[] }> {
+  try {
+    // Get all guest essays for this user
+    const { data: guestEssays, error: fetchError } = await supabase
+      .from('guest_essays')
+      .select('*')
+      .eq('user_id', userId)
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false });
+
+    if (fetchError) {
+      console.error('Error fetching guest essays:', fetchError);
+      return { migratedCount: 0, errors: [fetchError.message] };
+    }
+
+    if (!guestEssays || guestEssays.length === 0) {
+      return { migratedCount: 0, errors: [] };
+    }
+
+    const errors: string[] = [];
+    let migratedCount = 0;
+
+    // Migrate each guest essay
+    for (const guestEssay of guestEssays) {
+      try {
+        // Calculate word count
+        const essayContent = guestEssay.essay_content || '';
+        const wordCount = essayContent.trim().length > 0
+          ? essayContent.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().split(' ').filter(w => w.length > 0).length
+          : 0;
+        const characterCount = essayContent.length;
+
+        // Convert semantic document blocks to essay content format
+        const semanticDoc = guestEssay.semantic_document;
+        const essayContentData = {
+          blocks: semanticDoc.blocks.map((block: any) => ({
+            id: block.id,
+            type: block.type,
+            content: block.content,
+            metadata: block.metadata || {}
+          })),
+          metadata: {
+            totalWordCount: wordCount,
+            totalCharacterCount: characterCount,
+            lastSaved: new Date().toISOString()
+          }
+        };
+
+        // Create essay
+        const { data: essay, error: essayError } = await supabase
+          .from('essays')
+          .insert({
+            user_id: userId,
+            title: guestEssay.title,
+            school_name: guestEssay.school_name,
+            prompt_text: guestEssay.prompt_text,
+            word_limit: guestEssay.word_limit,
+            content: essayContentData,
+            word_count: wordCount,
+            character_count: characterCount,
+            status: 'draft'
+          })
+          .select()
+          .single();
+
+        if (essayError || !essay) {
+          errors.push(`Failed to create essay "${guestEssay.title}": ${essayError?.message || 'Unknown error'}`);
+          continue;
+        }
+
+        // Create semantic document
+        const semanticDocMetadata = {
+          ...semanticDoc.metadata,
+          essayId: essay.id,
+          author: userId
+        };
+
+        const { data: semanticDocData, error: docError } = await supabase
+          .from('semantic_documents')
+          .insert({
+            id: semanticDoc.id,
+            title: semanticDoc.title,
+            blocks: semanticDoc.blocks,
+            metadata: semanticDocMetadata,
+            created_at: semanticDoc.createdAt || new Date().toISOString(),
+            updated_at: semanticDoc.updatedAt || new Date().toISOString()
+          })
+          .select()
+          .single();
+
+        if (docError || !semanticDocData) {
+          // Clean up essay
+          await supabase.from('essays').delete().eq('id', essay.id);
+          errors.push(`Failed to create semantic document for "${guestEssay.title}": ${docError?.message || 'Unknown error'}`);
+          continue;
+        }
+
+        // Create semantic annotations
+        if (guestEssay.semantic_annotations && guestEssay.semantic_annotations.length > 0) {
+          const annotationsToInsert = guestEssay.semantic_annotations.map((annotation: any) => ({
+            id: annotation.id,
+            document_id: semanticDocData.id,
+            block_id: annotation.targetBlockId,
+            type: annotation.type,
+            author: annotation.author,
+            content: annotation.content,
+            target_text: annotation.targetText || null,
+            resolved: annotation.resolved || false,
+            resolved_at: annotation.resolvedAt ? annotation.resolvedAt : null,
+            resolved_by: annotation.resolvedBy || null,
+            created_at: annotation.createdAt || new Date().toISOString(),
+            updated_at: annotation.updatedAt || new Date().toISOString(),
+            action_type: annotation.actionType || 'none',
+            suggested_replacement: annotation.suggestedReplacement || null,
+            original_text: annotation.originalText || null,
+            metadata: annotation.metadata || {}
+          }));
+
+          const { error: annotationsError } = await supabase
+            .from('semantic_annotations')
+            .insert(annotationsToInsert);
+
+          if (annotationsError) {
+            // Clean up essay and semantic document
+            await supabase.from('semantic_documents').delete().eq('id', semanticDocData.id);
+            await supabase.from('essays').delete().eq('id', essay.id);
+            errors.push(`Failed to create annotations for "${guestEssay.title}": ${annotationsError.message}`);
+            continue;
+          }
+        }
+
+        // Delete guest essay after successful migration
+        await supabase.from('guest_essays').delete().eq('id', guestEssay.id);
+        migratedCount++;
+        console.log(`✅ Migrated guest essay ${guestEssay.id} for user ${userId}`);
+
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        errors.push(`Error migrating essay "${guestEssay.title}": ${errorMessage}`);
+        console.error(`❌ Error migrating guest essay ${guestEssay.id}:`, error);
+      }
+    }
+
+    return { migratedCount, errors };
+  } catch (error) {
+    console.error('Error migrating guest essays:', error);
+    return {
+      migratedCount: 0,
+      errors: [error instanceof Error ? error.message : 'Unknown error']
+    };
+  }
+}
+
+/**
  * Upgrade user to Pro tier
  */
 async function upgradeUserToPro(
@@ -321,6 +481,21 @@ Deno.serve(async (req) => {
 
         if (upgradeResult.success) {
           console.log(`✅ Successfully processed payment for user ${userId}`);
+          
+          // Migrate all guest essays for this user after payment succeeds
+          try {
+            const migrationResult = await migrateGuestEssaysForUser(supabase, userId);
+            if (migrationResult.migratedCount > 0) {
+              console.log(`✅ Migrated ${migrationResult.migratedCount} guest essay(s) for user ${userId}`);
+            }
+            if (migrationResult.errors.length > 0) {
+              console.warn(`⚠️ Some essays failed to migrate:`, migrationResult.errors);
+            }
+          } catch (migrationError) {
+            console.error('Error migrating guest essays:', migrationError);
+            // Don't fail webhook if migration fails
+          }
+          
           return new Response(
             JSON.stringify({
               received: true,

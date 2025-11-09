@@ -7,6 +7,8 @@ import { useNavigate } from 'react-router-dom';
 import GradientBackground from '@/components/GradientBackground';
 import AuthenticationGuard from '@/components/AuthenticationGuard';
 import { RazorpayService, RazorpayPaymentResponse } from '@/services/razorpayService';
+import { GuestEssayMigrationService } from '@/services/guestEssayMigrationService';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 const Payments = () => {
@@ -127,6 +129,30 @@ const Payments = () => {
           description: "Your Pro subscription is now active and verified",
           variant: "default"
         });
+
+        // Migrate all guest essays for this user after payment succeeds
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            console.log('Migrating guest essays for user:', user.id);
+            const migrationResult = await GuestEssayMigrationService.migrateAllGuestEssaysForUser(user.id);
+            if (migrationResult.migratedCount > 0) {
+              console.log(`✅ Migrated ${migrationResult.migratedCount} guest essay(s)`);
+              // Clear localStorage after successful migration
+              localStorage.removeItem('pending_guest_essay_id');
+              toast({
+                title: "Essays Migrated",
+                description: `Successfully migrated ${migrationResult.migratedCount} preview essay(s) to your account.`,
+              });
+            }
+            if (migrationResult.errors.length > 0) {
+              console.warn('Some essays failed to migrate:', migrationResult.errors);
+            }
+          }
+        } catch (migrationError) {
+          console.error('Error migrating guest essays:', migrationError);
+          // Don't fail payment if migration fails
+        }
 
         // Update payment status
         setPaymentStatus(prev => ({
