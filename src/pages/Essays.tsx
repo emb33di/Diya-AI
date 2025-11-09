@@ -2630,113 +2630,160 @@ const Essays = () => {
         {/* Guest Essay Viewer (for unpaid users with blurred comments) */}
         {selectedGuestEssay && (
           <Dialog open={showGuestEssayViewer} onOpenChange={setShowGuestEssayViewer}>
-            <DialogContent className="max-w-7xl max-h-[90vh] p-0">
-              <div className="flex flex-col h-full">
-                <DialogHeader className="px-6 pt-6 pb-4 border-b">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <DialogTitle>{selectedGuestEssay.title}</DialogTitle>
-                      <DialogDescription className="mt-1">
-                        {selectedGuestEssay.school_name && `School: ${selectedGuestEssay.school_name}`}
-                      </DialogDescription>
-                    </div>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setShowGuestEssayViewer(false);
-                        setSelectedGuestEssay(null);
-                      }}
-                    >
-                      Close
-                    </Button>
+            <DialogContent className="max-w-7xl h-[90vh] p-0 overflow-hidden flex flex-col">
+              <DialogHeader className="px-6 pt-6 pb-4 border-b flex-shrink-0">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <DialogTitle>{selectedGuestEssay.title}</DialogTitle>
+                    <DialogDescription className="mt-1">
+                      {selectedGuestEssay.school_name && `School: ${selectedGuestEssay.school_name}`}
+                    </DialogDescription>
                   </div>
-                </DialogHeader>
-                <div className="flex-1 overflow-hidden">
-                  {!isPro ? (
-                    <div className="h-full flex">
-                      <div className="flex-1 overflow-y-auto p-6">
-                        <div className="max-w-3xl mx-auto">
-                          <div className="mb-6 p-4 bg-muted rounded-lg">
-                            <div className="flex items-center space-x-2 mb-2">
-                              <Lock className="h-5 w-5 text-primary" />
-                              <h3 className="font-semibold">Upgrade to Pro to see full comments</h3>
-                            </div>
-                            <p className="text-sm text-muted-foreground mb-4">
-                              Upgrade to Pro to migrate this essay to your account and see all feedback comments.
-                            </p>
-                            <Button onClick={() => {
-                              setShowUpgradeModal(true);
-                              setShowGuestEssayViewer(false);
-                            }}>
-                              Upgrade to Pro
-                            </Button>
-                          </div>
-                          <div className="prose max-w-none">
-                            <h3 className="text-lg font-semibold mb-4">Essay Prompt</h3>
-                            <p className="text-muted-foreground mb-6 whitespace-pre-wrap">
-                              {selectedGuestEssay.prompt_text}
-                            </p>
-                            <h3 className="text-lg font-semibold mb-4">Your Essay</h3>
-                            <div className="space-y-4">
-                              {selectedGuestEssay.semantic_document.blocks
-                                .sort((a, b) => a.position - b.position)
-                                .map((block) => {
-                                  // Attach annotations to this block
-                                  const blockAnnotations = selectedGuestEssay.semantic_annotations.filter(
-                                    ann => ann.targetBlockId === block.id
-                                  );
-                                  
-                                  return (
-                                    <div
-                                      key={block.id}
-                                      className="p-4 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
-                                      data-block-id={block.id}
-                                    >
-                                      <div className="text-base leading-relaxed whitespace-pre-wrap">
-                                        {block.content}
-                                      </div>
-                                      {blockAnnotations.length > 0 && (
-                                        <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
-                                          <MessageSquare className="h-4 w-4" />
-                                          <span>{blockAnnotations.length} {blockAnnotations.length === 1 ? 'comment' : 'comments'}</span>
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="w-96 border-l overflow-y-auto">
-                        {/* Use BlurredCommentSidebar with guest essay document */}
-                        <BlurredCommentSidebar
-                          blocks={selectedGuestEssay.semantic_document.blocks.map(block => {
-                            // Attach annotations to each block
-                            const blockAnnotations = selectedGuestEssay.semantic_annotations.filter(
-                              ann => ann.targetBlockId === block.id
-                            );
-                            return {
-                              ...block,
-                              annotations: blockAnnotations
-                            };
-                          })}
-                          onSignUp={() => {
-                            setShowUpgradeModal(true);
-                            setShowGuestEssayViewer(false);
-                          }}
-                          className="h-full"
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="p-6 text-center">
-                      <p className="text-muted-foreground">
-                        Click on an essay in the list to migrate it to your account.
-                      </p>
-                    </div>
-                  )}
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowGuestEssayViewer(false);
+                      setSelectedGuestEssay(null);
+                    }}
+                  >
+                    Close
+                  </Button>
                 </div>
+              </DialogHeader>
+              <div className="flex-1 min-h-0 overflow-hidden flex">
+                {!isPro ? (
+                  <>
+                    <div className="flex-1 min-w-0 min-h-0 overflow-y-auto p-6 bg-muted/20">
+                      <div className="max-w-4xl mx-auto">
+                        {/* Upgrade CTA Card */}
+                        <Card className="mb-6 shadow-sm border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10">
+                          <CardContent className="p-4">
+                            <div className="flex items-start space-x-3">
+                              <div className="p-2 bg-primary/10 rounded-lg flex-shrink-0">
+                                <Lock className="h-5 w-5 text-primary" />
+                              </div>
+                              <div className="flex-1">
+                                <h3 className="font-semibold mb-1">Upgrade to Pro to see full comments</h3>
+                                <p className="text-sm text-muted-foreground mb-4">
+                                  Upgrade to Pro to migrate this essay to your account and see all feedback comments.
+                                </p>
+                                <Button onClick={() => {
+                                  setShowUpgradeModal(true);
+                                  setShowGuestEssayViewer(false);
+                                }}>
+                                  <Crown className="h-4 w-4 mr-2" />
+                                  Upgrade to Pro
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        {/* Essay Display Card */}
+                        <Card className="shadow-sm bg-card">
+                          <CardHeader className="border-b bg-muted/30">
+                            <div className="space-y-3">
+                              <CardTitle className="flex items-center space-x-3">
+                                <div className="p-2 bg-primary/10 rounded-lg">
+                                  <PenTool className="h-5 w-5 text-primary" />
+                                </div>
+                                <div>
+                                  <span className="text-lg">{selectedGuestEssay.title}</span>
+                                </div>
+                              </CardTitle>
+                              
+                              <CardDescription className="text-sm leading-relaxed bg-muted p-3 rounded-lg">
+                                <strong>Prompt:</strong> {selectedGuestEssay.prompt_text}
+                              </CardDescription>
+                              
+                              <div className="flex items-center justify-between pt-2">
+                                <div className="flex items-center space-x-2">
+                                  <Badge variant="outline" className="text-xs">
+                                    <MessageSquare className="h-3 w-3 mr-1" />
+                                    {selectedGuestEssay.semantic_annotations?.length || 0} comments
+                                  </Badge>
+                                </div>
+                                
+                                <div className="flex items-center space-x-2">
+                                  <div className="text-sm px-2 py-1 rounded-full bg-muted text-muted-foreground">
+                                    {(() => {
+                                      const allContent = selectedGuestEssay.semantic_document.blocks
+                                        .sort((a, b) => a.position - b.position)
+                                        .map(b => b.content)
+                                        .join(' ');
+                                      return getWordCount(allContent);
+                                    })()} words
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </CardHeader>
+                          
+                          <CardContent className="p-6">
+                            <div className="prose max-w-none">
+                              <div className="space-y-4">
+                                {selectedGuestEssay.semantic_document.blocks
+                                  .sort((a, b) => a.position - b.position)
+                                  .map((block) => {
+                                    // Attach annotations to this block
+                                    const blockAnnotations = selectedGuestEssay.semantic_annotations.filter(
+                                      ann => ann.targetBlockId === block.id
+                                    );
+                                    
+                                    return (
+                                      <div
+                                        key={block.id}
+                                        className="p-4 rounded-lg border border-border hover:border-primary/30 transition-colors bg-card"
+                                        data-block-id={block.id}
+                                      >
+                                        <div className="text-base leading-relaxed whitespace-pre-wrap text-foreground">
+                                          {block.content}
+                                        </div>
+                                        {blockAnnotations.length > 0 && (
+                                          <div className="mt-3 flex items-center gap-2 text-sm">
+                                            <Badge variant="secondary" className="text-xs">
+                                              <MessageSquare className="h-3 w-3 mr-1" />
+                                              {blockAnnotations.length} {blockAnnotations.length === 1 ? 'comment' : 'comments'}
+                                            </Badge>
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </div>
+                    <div className="w-96 border-l flex-shrink-0 min-h-0 overflow-y-auto bg-card">
+                      {/* Use BlurredCommentSidebar with guest essay document */}
+                      <BlurredCommentSidebar
+                        blocks={selectedGuestEssay.semantic_document.blocks.map(block => {
+                          // Attach annotations to each block
+                          const blockAnnotations = selectedGuestEssay.semantic_annotations.filter(
+                            ann => ann.targetBlockId === block.id
+                          );
+                          return {
+                            ...block,
+                            annotations: blockAnnotations
+                          };
+                        })}
+                        onSignUp={() => {
+                          setShowUpgradeModal(true);
+                          setShowGuestEssayViewer(false);
+                        }}
+                        className="h-full"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <div className="p-6 text-center overflow-y-auto flex-1">
+                    <p className="text-muted-foreground">
+                      Click on an essay in the list to migrate it to your account.
+                    </p>
+                  </div>
+                )}
               </div>
             </DialogContent>
           </Dialog>
