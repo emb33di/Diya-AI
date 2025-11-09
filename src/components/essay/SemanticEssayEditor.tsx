@@ -1324,8 +1324,8 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
         setEscalationStatus(status);
 
         toast({
-          title: "Essay Escalated",
-          description: "Your essay has been successfully escalated to the founder for review. You'll be notified when feedback is available.",
+          title: "Essay sent to your counselor!",
+          description: "Your essay has been successfully sent to your counselor for review. You'll be notified when feedback is available.",
         });
       } else {
         throw new Error('Escalation failed');
@@ -1553,18 +1553,13 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                         title={
                           escalationStatus && !escalationStatus.canEscalate
                             ? `You have reached your escalation limit of ${escalationStatus.max}`
-                            : "Escalate this essay to the founder for review"
+                            : "Send this essay to your counselor for review"
                         }
                       >
                         <ArrowUp className="h-4 w-4 mr-2" />
                         {isEscalating ? 'Escalating...' : (
                           <>
-                            Founder Review
-                            {escalationStatus && (
-                              <span className="ml-1">
-                                ({escalationStatus.remaining} remaining)
-                              </span>
-                            )}
+                            Send to My Counselor
                           </>
                         )}
                         <Crown className="h-3 w-3 ml-2 text-primary" />
@@ -2020,14 +2015,6 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
               Are you sure you want to escalate this essay to Mihir for review?
               <br /><br />
               Click continue to send the current version of your essay to Mihir.
-              {escalationStatus && (
-                <>
-                  <br /><br />
-                  <span className="font-medium">
-                    There {escalationStatus.remaining === 1 ? 'is' : 'are'} {escalationStatus.remaining} review{escalationStatus.remaining === 1 ? '' : 's'} remaining.
-                  </span>
-                </>
-              )}
             </DialogDescription>
           </DialogHeader>
 
