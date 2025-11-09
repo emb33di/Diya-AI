@@ -19,6 +19,26 @@ const Counselors = () => {
             </p>
           </div>
 
+          {/* Counselor Demo Video */}
+          <div className="flex flex-col items-center w-full mb-12 sm:mb-16">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-display font-semibold mb-6 sm:mb-8 text-center">
+              See it in action
+            </h2>
+            <div className="w-full max-w-[90%] sm:max-w-md md:max-w-2xl lg:max-w-2xl xl:max-w-3xl 2xl:max-w-4xl">
+              <div className="relative rounded-xl sm:rounded-2xl overflow-hidden bg-black shadow-[0_0_40px_hsl(var(--primary)/0.4)] hover:shadow-[0_0_60px_hsl(var(--primary)/0.6)] transition-all duration-500">
+                <video
+                  className="w-full h-auto block"
+                  src="/Website Previews/Counselor Demo.mp4"
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  aria-label="Counselor demo video"
+                />
+              </div>
+            </div>
+          </div>
+
           {/* Book Demo Button */}
           <div className="mb-12 sm:mb-16 md:mb-20">
             <Button
@@ -32,7 +52,7 @@ const Counselors = () => {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Book a Demo Today
+                Book a Meeting Today
               </a>
             </Button>
           </div>

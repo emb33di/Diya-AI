@@ -82,7 +82,7 @@ const DemoVideoSection = () => {
         {/* Section Header */}
         <div ref={headerRef} className={`text-center mb-8 sm:mb-10 md:mb-12 scroll-fade-in ${headerVisible ? 'animate' : ''}`}>
           <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold font-inter mb-4 sm:mb-5 leading-tight">
-            <span style={{ color: '#D07D00' }}>Perfect Your Materials Quickly Before Deadlines</span>
+            <span style={{ color: '#D07D00' }}>Perfect Your Materials Before Deadlines</span>
           </h2>
         </div>
 
