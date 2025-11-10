@@ -731,7 +731,7 @@ const SchoolList = () => {
           <div className="flex items-center justify-center h-64">
             <div className="flex items-center space-x-2">
               <Loader2 className="h-6 w-6 animate-spin" />
-              <span>Loading your school recommendations...</span>
+              <span>Loading Schools</span>
             </div>
           </div>
         </main>

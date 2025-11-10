@@ -10,13 +10,15 @@ const AuthenticationGuard: React.FC<AuthenticationGuardProps> = ({ children }) =
   const { user, loading, isFounder } = useAuth();
   const location = useLocation();
 
+  // Log only when auth state actually changes, not on route changes
   useEffect(() => {
     console.log('[AUTH_GUARD] Auth state changed', {
       loading,
       hasUser: Boolean(user),
-      path: location.pathname,
+      isFounder,
+      currentPath: location.pathname,
     });
-  }, [loading, user, location.pathname]);
+  }, [loading, user, isFounder]); // Only log when auth state changes, not route changes
 
   // Show loading state while checking authentication
   if (loading) {

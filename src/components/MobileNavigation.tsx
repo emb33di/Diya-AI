@@ -25,18 +25,6 @@ const MobileNavigation = () => {
 
   const navigationItems = [
     {
-      path: "/onboarding",
-      label: "Onboarding",
-      icon: <GraduationCap className="h-5 w-5" />,
-      disabled: onboardingLoading || onboardingCompleted === true,
-    },
-    {
-      path: "/dashboard",
-      label: "Dashboard",
-      icon: <Home className="h-5 w-5" />,
-      disabled: false,
-    },
-    {
       path: "/schools",
       label: "Schools",
       icon: <GraduationCap className="h-5 w-5" />,
@@ -58,12 +46,6 @@ const MobileNavigation = () => {
       path: "/lor",
       label: "LOR",
       icon: <Users className="h-5 w-5" />,
-      disabled: false,
-    },
-    {
-      path: "/deadlines",
-      label: "Progress",
-      icon: <Calendar className="h-5 w-5" />,
       disabled: false,
     },
   ];

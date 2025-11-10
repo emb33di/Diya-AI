@@ -115,52 +115,11 @@ const Header = () => {
           <>
             {/* Desktop Navigation */}
             <nav className={`hidden md:flex items-center space-x-4 lg:space-x-6 xl:space-x-8 px-2 py-1.5 lg:px-3 xl:px-4 lg:py-2 rounded-full border transition-all duration-200 flex-shrink min-w-0 ${
-              location.pathname === '/onboarding' || location.pathname === '/dashboard' || 
               location.pathname === '/schools' || location.pathname === '/resume' || 
-              location.pathname === '/essays' || location.pathname === '/lor' || 
-              location.pathname === '/deadlines'
+              location.pathname === '/essays' || location.pathname === '/lor'
                 ? 'border-primary/50' 
                 : 'border-gray-300/30'
             }`}>
-              {loading ? (
-                <span className="text-xs lg:text-sm font-medium text-gray-400 px-2 py-0.5 lg:px-3 lg:py-1">
-                  Onboarding
-                </span>
-              ) : onboardingCompleted === true ? (
-                <button 
-                  className="text-xs lg:text-sm font-medium transition-colors text-gray-400 cursor-not-allowed px-2 py-0.5 lg:px-3 lg:py-1"
-                  disabled
-                >
-                  Onboarding
-                </button>
-              ) : (
-                <Link 
-                  to="/onboarding" 
-                  className={`text-xs lg:text-sm font-medium transition-colors px-2 py-0.5 lg:px-3 lg:py-1 ${
-                    isActive('/onboarding') 
-                      ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
-                      : 'text-black hover:text-black'
-                  }`}
-                >
-                  Onboarding
-                </Link>
-              )}
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Link 
-                      to="/dashboard" 
-                      className={`text-xs lg:text-sm font-medium transition-colors px-2 py-0.5 lg:px-3 lg:py-1 ${
-                        isActive('/dashboard') 
-                          ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
-                          : 'text-black hover:text-black'
-                      }`}
-                    >
-                      Dashboard
-                    </Link>
-                  </TooltipTrigger>
-                </Tooltip>
-              </TooltipProvider>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -221,22 +180,6 @@ const Header = () => {
                       }`}
                     >
                       LOR
-                    </Link>
-                  </TooltipTrigger>
-                </Tooltip>
-              </TooltipProvider>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Link 
-                      to="/deadlines" 
-                      className={`text-xs lg:text-sm font-medium transition-colors px-2 py-0.5 lg:px-3 lg:py-1 ${
-                        isActive('/deadlines') 
-                          ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
-                          : 'text-black hover:text-black'
-                      }`}
-                    >
-                      Progress
                     </Link>
                   </TooltipTrigger>
                 </Tooltip>

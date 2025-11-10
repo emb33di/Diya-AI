@@ -6,7 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Header from "./components/Header";
-import AuthenticationGuard from "./components/AuthenticationGuard";
+import ProtectedLayout from "./components/ProtectedLayout";
 import FounderGuard from "./components/FounderGuard";
 import ScrollToTop from "./components/ScrollToTop";
 import Index from "./pages/Index";
@@ -91,20 +91,24 @@ const App = () => {
             {import.meta.env.DEV && <Route path="/debug-errors" element={<DebugErrors />} />}
 
             {/* Protected routes - require authentication */}
-            <Route path="/dashboard" element={<AuthenticationGuard><Dashboard /></AuthenticationGuard>} />
-            <Route path="/essays" element={<AuthenticationGuard><Essays /></AuthenticationGuard>} />
-            <Route path="/essays/:essayId/expert-reviews" element={<AuthenticationGuard><FounderFeedbackPage /></AuthenticationGuard>} />
-            <Route path="/schools" element={<AuthenticationGuard><SchoolList /></AuthenticationGuard>} />
-            <Route path="/deadlines" element={<AuthenticationGuard><Deadlines /></AuthenticationGuard>} />
-            <Route path="/profile" element={<AuthenticationGuard><Profile /></AuthenticationGuard>} />
-            <Route path="/settings" element={<AuthenticationGuard><Settings /></AuthenticationGuard>} />
-            <Route path="/subscription" element={<AuthenticationGuard><Subscription /></AuthenticationGuard>} />
-            <Route path="/payments" element={<AuthenticationGuard><Payments /></AuthenticationGuard>} />
-            <Route path="/checkout" element={<AuthenticationGuard><Payments /></AuthenticationGuard>} />
-            <Route path="/onboarding" element={<AuthenticationGuard><Onboarding /></AuthenticationGuard>} />
-            <Route path="/resume" element={<AuthenticationGuard><Resume /></AuthenticationGuard>} />
-            <Route path="/lor" element={<AuthenticationGuard><LOR /></AuthenticationGuard>} />
-            <Route path="/payment-success" element={<AuthenticationGuard><PaymentSuccess /></AuthenticationGuard>} />
+            {/* Using layout route pattern: single guard instance persists across all protected routes */}
+            <Route element={<ProtectedLayout />}>
+              {/* Temporarily disabled routes - keeping code but removing from navigation */}
+              {/* <Route path="/dashboard" element={<Dashboard />} /> */}
+              {/* <Route path="/onboarding" element={<Onboarding />} /> */}
+              {/* <Route path="/deadlines" element={<Deadlines />} /> */}
+              <Route path="/essays" element={<Essays />} />
+              <Route path="/essays/:essayId/expert-reviews" element={<FounderFeedbackPage />} />
+              <Route path="/schools" element={<SchoolList />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/subscription" element={<Subscription />} />
+              <Route path="/payments" element={<Payments />} />
+              <Route path="/checkout" element={<Payments />} />
+              <Route path="/resume" element={<Resume />} />
+              <Route path="/lor" element={<LOR />} />
+              <Route path="/payment-success" element={<PaymentSuccess />} />
+            </Route>
 
             {/* Founder Portal Routes */}
             <Route path="/founder-portal" element={<FounderGuard><FounderPortal /></FounderGuard>} />
