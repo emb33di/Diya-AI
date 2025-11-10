@@ -130,26 +130,18 @@ const LOR = () => {
           return;
         }
 
-        // Load all data in parallel
-        const [recommendersData, deadlinesData, statsData, schoolOptionsData, allTemplates] = await Promise.all([
+        // Load all critical data in parallel (templates loaded separately, non-blocking)
+        const [recommendersData, deadlinesData, statsData, schoolOptionsData] = await Promise.all([
           LORService.getUserRecommenders(user.id),
           LORService.getUserLORDeadlines(user.id),
           LORService.getUserLORStats(user.id),
-          LORService.getUserSchoolOptions(user.id),
-          loadAllTemplates().catch(err => {
-            console.error('Error loading LOR templates:', err);
-            return [];
-          })
+          LORService.getUserSchoolOptions(user.id)
         ]);
 
         setRecommenders(recommendersData);
         setDeadlines(deadlinesData);
         setStats(statsData);
         setSchoolOptions(schoolOptionsData);
-        
-        // Filter LOR templates
-        const lorTemplatesFiltered = allTemplates.filter(template => template.category === 'lor');
-        setLorTemplates(lorTemplatesFiltered);
       } catch (err) {
         const { data: { user } } = await supabase.auth.getUser();
         console.error('[LOR_ERROR] Failed to load LOR data:', {
@@ -165,7 +157,21 @@ const LOR = () => {
       }
     };
 
+    // Load templates separately, non-blocking
+    const loadTemplates = async () => {
+      try {
+        const allTemplates = await loadAllTemplates();
+        const lorTemplatesFiltered = allTemplates.filter(template => template.category === 'lor');
+        setLorTemplates(lorTemplatesFiltered);
+      } catch (err) {
+        console.error('Error loading LOR templates:', err);
+        // Don't set error state for templates - they're non-critical
+        setLorTemplates([]);
+      }
+    };
+
     loadData();
+    loadTemplates(); // Load templates independently, don't block page render
   }, []);
 
   const fetchData = async () => {
