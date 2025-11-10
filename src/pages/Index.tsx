@@ -21,8 +21,8 @@ const Index = () => {
   useEffect(() => {
     if (!authLoading) {
       if (user) {
-        // Redirect founders to founder portal, others to dashboard
-        navigate(isFounder ? '/founder-portal' : '/dashboard', { replace: true });
+        // Redirect founders to founder portal, others to schools
+        navigate(isFounder ? '/founder-portal' : '/schools', { replace: true });
       } else {
         // User is not logged in, show landing page
         setIsLoading(false);

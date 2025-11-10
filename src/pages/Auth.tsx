@@ -69,7 +69,7 @@ const Auth = () => {
   // Redirect if already authenticated (but not if we're showing the payment button after signup)
   useEffect(() => {
     if (!authLoading && user && !signupSuccess) {
-      navigate(isFounder ? '/founder-portal' : '/dashboard', { replace: true });
+      navigate(isFounder ? '/founder-portal' : '/schools', { replace: true });
     }
   }, [user, isFounder, authLoading, navigate, signupSuccess]);
 
@@ -217,6 +217,9 @@ const Auth = () => {
           title: "Welcome back!",
           description: "You've been signed in successfully.",
         });
+        
+        // Redirect to schools page after successful sign-in
+        navigate('/schools', { replace: true });
       } else {
         console.log(`[${signupId}] Starting signup process`);
         

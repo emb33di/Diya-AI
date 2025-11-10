@@ -92,10 +92,10 @@ const PaymentSuccess = () => {
     verifyPayment();
   }, [sessionId, toast]);
 
-  // Removed auto-redirect - user must manually click to go to dashboard
+  // Removed auto-redirect - user must manually click to go to schools
 
   const handleGoToDashboard = () => {
-    navigate('/dashboard');
+    navigate('/schools');
   };
 
   // Show loading state while verifying
@@ -205,7 +205,7 @@ const PaymentSuccess = () => {
                 className="w-full h-12 text-lg"
                 size="lg"
               >
-                Go to Dashboard
+                Go to Schools
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
               
