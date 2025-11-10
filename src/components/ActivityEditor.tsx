@@ -53,9 +53,15 @@ const ActivityEditor = ({ activity, category, onUpdate, onRemove }: ActivityEdit
 
   // Sync local state with prop changes
   useEffect(() => {
+    console.log('[RESUME_DEBUG] ActivityEditor received activity prop:', {
+      category,
+      activityId: activity.id,
+      title: activity.title || '(empty)',
+      timestamp: new Date().toISOString()
+    });
     setLocalActivity(activity);
     setHasUnsavedChanges(false); // Reset unsaved changes when activity prop changes
-  }, [activity]);
+  }, [activity, category]);
 
   // Check if there are unsaved changes
   const checkForUnsavedChanges = useCallback(() => {

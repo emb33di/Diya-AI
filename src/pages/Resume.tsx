@@ -36,6 +36,21 @@ const Resume = () => {
     removeActivity
   } = useResumeEditor();
 
+  // Debug: Log resumeData changes
+  useEffect(() => {
+    console.log('[RESUME_DEBUG] Resume page - resumeData state changed:', {
+      timestamp: new Date().toISOString(),
+      categories: Object.keys(resumeData),
+      activityCounts: Object.entries(resumeData).reduce((acc, [key, value]) => {
+        acc[key] = value.length;
+        return acc;
+      }, {} as Record<string, number>),
+      allActivityIds: Object.entries(resumeData).flatMap(([key, value]) => 
+        value.map(v => ({ category: key, id: v.id, title: v.title || '(empty)' }))
+      )
+    });
+  }, [resumeData]);
+
   // Load user profile on component mount
   useEffect(() => {
     loadUserProfile();
@@ -84,6 +99,20 @@ const Resume = () => {
   const previewResume = () => {
     setShowPreviewDialog(true);
   };
+
+  // Show loading state while resume data is being loaded
+  if (resumeLoading) {
+    return (
+      <GradientBackground>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading your resume...</p>
+          </div>
+        </div>
+      </GradientBackground>
+    );
+  }
 
   return (
     <GradientBackground>

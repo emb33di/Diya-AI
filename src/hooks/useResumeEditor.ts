@@ -48,6 +48,9 @@ export const useResumeEditor = () => {
   // Auto-save timeout ref
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialLoad = useRef(true);
+  const isSavingRef = useRef(false);
+  const pendingSaveRef = useRef<ResumeData | null>(null);
+  const hasLoadedRef = useRef(false);
   
   const { toast } = useToast();
 
@@ -65,9 +68,22 @@ export const useResumeEditor = () => {
 
   // Load resume data from Supabase
   const loadResumeData = useCallback(async () => {
+    console.log('[RESUME_DEBUG] Starting loadResumeData - page refresh/initial load');
     setLoading(true);
     try {
       const backendData = await resumeActivitiesService.getResumeData();
+      
+      console.log('[RESUME_DEBUG] Backend data received:', {
+        timestamp: new Date().toISOString(),
+        categories: Object.keys(backendData),
+        activityCounts: Object.entries(backendData).reduce((acc, [key, value]) => {
+          acc[key] = Array.isArray(value) ? value.length : 0;
+          return acc;
+        }, {} as Record<string, number>),
+        allActivityIds: Object.entries(backendData).flatMap(([key, value]) => 
+          Array.isArray(value) ? value.map((v: any) => ({ category: key, id: v.id, title: v.title })) : []
+        )
+      });
       
       // Convert backend data to frontend format
       const frontendData: ResumeData = {
@@ -82,8 +98,23 @@ export const useResumeEditor = () => {
         languages: backendData.languages.map(convertBackendToFrontend)
       };
       
+      console.log('[RESUME_DEBUG] Frontend data after conversion:', {
+        timestamp: new Date().toISOString(),
+        categories: Object.keys(frontendData),
+        activityCounts: Object.entries(frontendData).reduce((acc, [key, value]) => {
+          acc[key] = value.length;
+          return acc;
+        }, {} as Record<string, number>),
+        allActivityIds: Object.entries(frontendData).flatMap(([key, value]) => 
+          value.map(v => ({ category: key, id: v.id, title: v.title }))
+        )
+      });
+      
       setResumeData(frontendData);
       isInitialLoad.current = false; // Mark initial load as complete
+      hasLoadedRef.current = true; // Mark as loaded
+      
+      console.log('[RESUME_DEBUG] Resume data loaded and set in state');
     } catch (error) {
       const { data: { user } } = await supabase.auth.getUser();
       console.error('[RESUME_ERROR] Failed to load resume data:', {
@@ -105,6 +136,33 @@ export const useResumeEditor = () => {
 
   // Auto-save function with specific data
   const autoSaveWithData = useCallback(async (dataToSave: ResumeData) => {
+    // If already saving, queue this save
+    if (isSavingRef.current) {
+      console.log('[RESUME_DEBUG] Save already in progress, queueing this save:', {
+        timestamp: new Date().toISOString(),
+        categories: Object.keys(dataToSave),
+        activityCounts: Object.entries(dataToSave).reduce((acc, [key, value]) => {
+          acc[key] = value.length;
+          return acc;
+        }, {} as Record<string, number>)
+      });
+      pendingSaveRef.current = dataToSave;
+      return;
+    }
+
+    console.log('[RESUME_DEBUG] Starting autoSaveWithData:', {
+      timestamp: new Date().toISOString(),
+      categories: Object.keys(dataToSave),
+      activityCounts: Object.entries(dataToSave).reduce((acc, [key, value]) => {
+        acc[key] = value.length;
+        return acc;
+      }, {} as Record<string, number>),
+      allActivityIds: Object.entries(dataToSave).flatMap(([key, value]) => 
+        value.map(v => ({ category: key, id: v.id, isTemp: v.id.startsWith('temp-'), title: v.title }))
+      )
+    });
+
+    isSavingRef.current = true;
     setSaving(true);
     setSaveError(null);
     
@@ -124,8 +182,9 @@ export const useResumeEditor = () => {
 
       Object.entries(dataToSave).forEach(([category, activities]) => {
         backendData[category] = activities.map(activity => {
+          const isTempId = activity.id.startsWith('temp-');
           const backendActivity = {
-            id: activity.id.startsWith('temp-') ? null : activity.id,
+            id: isTempId ? null : activity.id,
             title: activity.title,
             position: activity.position,
             location: activity.location,
@@ -137,6 +196,15 @@ export const useResumeEditor = () => {
               bullet_order: index
             }))
           };
+          
+          console.log('[RESUME_DEBUG] Converting activity for save:', {
+            category,
+            frontendId: activity.id,
+            backendId: backendActivity.id,
+            isTempId,
+            title: activity.title,
+            timestamp: new Date().toISOString()
+          });
           
           // Debug log for location field
           if (activity.location && activity.location.trim() !== '') {
@@ -153,8 +221,37 @@ export const useResumeEditor = () => {
         });
       });
 
+      console.log('[RESUME_DEBUG] Backend data prepared for save:', {
+        timestamp: new Date().toISOString(),
+        categories: Object.keys(backendData),
+        activityCounts: Object.entries(backendData).reduce((acc, [key, value]) => {
+          acc[key] = Array.isArray(value) ? value.length : 0;
+          return acc;
+        }, {} as Record<string, number>),
+        allActivityIds: Object.entries(backendData).flatMap(([key, value]) => 
+          Array.isArray(value) ? value.map((v: any) => ({ category: key, id: v.id, title: v.title }))
+          : []
+        )
+      });
+
       await resumeActivitiesService.saveResumeData(backendData);
+      
+      console.log('[RESUME_DEBUG] Auto-save completed successfully:', {
+        timestamp: new Date().toISOString()
+      });
+      
       setLastSaved(new Date());
+      
+      // Check if there's a pending save and process it
+      if (pendingSaveRef.current) {
+        const pendingData = pendingSaveRef.current;
+        pendingSaveRef.current = null;
+        console.log('[RESUME_DEBUG] Processing queued save after previous save completed');
+        // Use setTimeout to allow state to update
+        setTimeout(() => {
+          autoSaveWithData(pendingData);
+        }, 100);
+      }
     } catch (error) {
       const { data: { user } } = await supabase.auth.getUser();
       console.error('[RESUME_ERROR] Failed to save resume data:', {
@@ -162,10 +259,27 @@ export const useResumeEditor = () => {
         userEmail: user?.email || 'unknown',
         error: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString(),
-        message: 'User resume changes were not saved automatically'
+        message: 'User resume changes were not saved automatically',
+        dataBeingSaved: {
+          categories: Object.keys(dataToSave),
+          activityCounts: Object.entries(dataToSave).reduce((acc, [key, value]) => {
+            acc[key] = value.length;
+            return acc;
+          }, {} as Record<string, number>)
+        }
       });
       setSaveError(error instanceof Error ? error.message : 'Failed to save');
+      
+      // Even on error, check for pending saves
+      if (pendingSaveRef.current) {
+        const pendingData = pendingSaveRef.current;
+        pendingSaveRef.current = null;
+        setTimeout(() => {
+          autoSaveWithData(pendingData);
+        }, 100);
+      }
     } finally {
+      isSavingRef.current = false;
       setSaving(false);
     }
   }, []);
@@ -189,10 +303,13 @@ export const useResumeEditor = () => {
     await autoSaveWithData(resumeData);
   }, [resumeData, autoSaveWithData]);
 
-  // Load data on mount
+  // Load data on mount - only once
   useEffect(() => {
-    loadResumeData();
-  }, []); // Remove loadResumeData dependency to prevent multiple loads
+    if (!hasLoadedRef.current) {
+      hasLoadedRef.current = true;
+      loadResumeData();
+    }
+  }, []); // Only run once on mount
 
   // Add a new activity
   const addActivity = useCallback((category: string) => {
@@ -207,20 +324,53 @@ export const useResumeEditor = () => {
       bullets: ['']
     };
 
+    console.log('[RESUME_DEBUG] Adding new activity:', {
+      category,
+      activityId: newActivity.id,
+      timestamp: new Date().toISOString(),
+      activity: newActivity
+    });
+
     setResumeData(prevData => {
+      const currentCategoryActivities = prevData[category as keyof ResumeData];
+      console.log('[RESUME_DEBUG] Current activities in category before add:', {
+        category,
+        currentCount: currentCategoryActivities.length,
+        currentIds: currentCategoryActivities.map(a => a.id),
+        timestamp: new Date().toISOString()
+      });
+
       const newData = {
         ...prevData,
-        [category]: [...prevData[category as keyof ResumeData], newActivity]
+        [category]: [...currentCategoryActivities, newActivity]
       };
       
+      console.log('[RESUME_DEBUG] New activities in category after add:', {
+        category,
+        newCount: newData[category as keyof ResumeData].length,
+        newIds: newData[category as keyof ResumeData].map(a => a.id),
+        timestamp: new Date().toISOString()
+      });
+      
+      // Clear any pending timeout
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+      
       // Trigger immediate auto-save with the new data
-      setTimeout(() => {
+      autoSaveTimeoutRef.current = setTimeout(() => {
+        console.log('[RESUME_DEBUG] Triggering autosave after addActivity:', {
+          category,
+          activityId: newActivity.id,
+          totalActivitiesInCategory: newData[category as keyof ResumeData].length,
+          timestamp: new Date().toISOString()
+        });
         autoSaveWithData(newData);
       }, 200);
       
       return newData;
     });
-  }, []);
+  }, [autoSaveWithData]);
 
   // Update an activity
   const updateActivity = useCallback((category: string, activityId: string, updatedActivity: Partial<ActivityData>) => {
@@ -232,8 +382,13 @@ export const useResumeEditor = () => {
         )
       };
       
+      // Clear any pending timeout
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+      
       // Save immediately when activity is updated (this is called from ActivityEditor on blur)
-      setTimeout(() => {
+      autoSaveTimeoutRef.current = setTimeout(() => {
         autoSaveWithData(newData);
       }, 100);
       
@@ -243,14 +398,47 @@ export const useResumeEditor = () => {
 
   // Remove an activity
   const removeActivity = useCallback((category: string, activityId: string) => {
+    console.log('[RESUME_DEBUG] Removing activity:', {
+      category,
+      activityId,
+      timestamp: new Date().toISOString()
+    });
+
     setResumeData(prevData => {
+      const currentCategoryActivities = prevData[category as keyof ResumeData];
+      console.log('[RESUME_DEBUG] Current activities in category before remove:', {
+        category,
+        currentCount: currentCategoryActivities.length,
+        currentIds: currentCategoryActivities.map(a => a.id),
+        activityToRemove: activityId,
+        timestamp: new Date().toISOString()
+      });
+
       const newData = {
         ...prevData,
-        [category]: prevData[category as keyof ResumeData].filter(activity => activity.id !== activityId)
+        [category]: currentCategoryActivities.filter(activity => activity.id !== activityId)
       };
       
+      console.log('[RESUME_DEBUG] New activities in category after remove:', {
+        category,
+        newCount: newData[category as keyof ResumeData].length,
+        newIds: newData[category as keyof ResumeData].map(a => a.id),
+        timestamp: new Date().toISOString()
+      });
+      
+      // Clear any pending timeout
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+      
       // Save immediately when activity is removed
-      setTimeout(() => {
+      autoSaveTimeoutRef.current = setTimeout(() => {
+        console.log('[RESUME_DEBUG] Triggering autosave after removeActivity:', {
+          category,
+          removedActivityId: activityId,
+          totalActivitiesInCategory: newData[category as keyof ResumeData].length,
+          timestamp: new Date().toISOString()
+        });
         autoSaveWithData(newData);
       }, 100);
       

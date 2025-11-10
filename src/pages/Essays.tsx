@@ -136,10 +136,7 @@ const Essays = () => {
     }
   };
   const [schools, setSchools] = useState<School[]>([]);
-  const [selectedSchool, setSelectedSchool] = useState<string>(() => {
-    // Initialize from localStorage
-    return localStorage.getItem('essays_selected_school') || '';
-  });
+  const [selectedSchool, setSelectedSchool] = useState<string>('');
   const [essayPrompts, setEssayPrompts] = useState<EssayPrompt[]>([]);
   const [userSelections, setUserSelections] = useState<EssayPromptSelection[]>([]);
   const [essays, setEssays] = useState<Essay[]>([]);
@@ -153,10 +150,7 @@ const Essays = () => {
   const [onboardingTranscript, setOnboardingTranscript] = useState<string>('');
   const [newEssays, setNewEssays] = useState<any[]>([]);
   const [isLoadingEssays, setIsLoadingEssays] = useState(false);
-  const [selectedNewEssayId, setSelectedNewEssayId] = useState<string | null>(() => {
-    // Initialize from localStorage
-    return localStorage.getItem('essays_selected_new_essay_id') || null;
-  });
+  const [selectedNewEssayId, setSelectedNewEssayId] = useState<string | null>(null);
   const [creatingEssay, setCreatingEssay] = useState(false);
   const [showCreateEssayModal, setShowCreateEssayModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -166,7 +160,12 @@ const Essays = () => {
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [isAddSchoolModalOpen, setIsAddSchoolModalOpen] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const currentUserIdRef = useRef<string | null>(null);
   const { toast } = useToast();
+
+  const getSchoolStorageKey = (userId: string | null) => (userId ? `essays_selected_school_${userId}` : null);
+  const getEssayStorageKey = (userId: string | null) => (userId ? `essays_selected_new_essay_id_${userId}` : null);
 
   // Mobile-specific state management
   const isMobile = useIsMobile();
@@ -310,10 +309,12 @@ const Essays = () => {
   // Helper function to persist essay selection
   const persistEssaySelection = (essayId: string | null) => {
     setSelectedNewEssayId(essayId);
+    const essayStorageKey = getEssayStorageKey(currentUserIdRef.current);
+    if (!essayStorageKey) return;
     if (essayId) {
-      localStorage.setItem('essays_selected_new_essay_id', essayId);
+      localStorage.setItem(essayStorageKey, essayId);
     } else {
-      localStorage.removeItem('essays_selected_new_essay_id');
+      localStorage.removeItem(essayStorageKey);
     }
   };
 
@@ -454,10 +455,21 @@ const Essays = () => {
         }
         
         // Validate persisted essay selection - MUST clear if essay doesn't exist
-        const persistedEssayId = localStorage.getItem('essays_selected_new_essay_id');
+        const essayStorageKey = getEssayStorageKey(currentUserIdRef.current);
+        const persistedEssayId = essayStorageKey ? localStorage.getItem(essayStorageKey) : null;
         if (persistedEssayId && !essays.find(e => e.id === persistedEssayId)) {
           console.log('[ESSAYS] Clearing invalid persisted essay ID:', persistedEssayId);
           persistEssaySelection(null);
+        }
+        
+        // Auto-select most recently updated essay if no valid selection exists
+        const currentSelection = essayStorageKey ? localStorage.getItem(essayStorageKey) : null;
+        const hasValidSelection = currentSelection && essays.find(e => e.id === currentSelection);
+        if (!hasValidSelection && essays.length > 0) {
+          // Essays are already sorted by updated_at descending, so first one is most recent
+          const mostRecentEssay = essays[0];
+          console.log('[ESSAYS] Auto-selecting most recently updated essay:', mostRecentEssay.id);
+          persistEssaySelection(mostRecentEssay.id);
         }
       }
     } catch (error) {
@@ -643,11 +655,13 @@ const Essays = () => {
       setSchoolEssayCounts(counts);
     };
 
-    const restorePersistedSchool = (persistedSchool: string, schoolsList: School[]) => {
+    const restorePersistedSchool = (persistedSchool: string, schoolsList: School[], storageKey: string | null) => {
       if (!isMountedRef.current) return;
 
       if (schoolsList.length === 0) {
-        localStorage.removeItem('essays_selected_school');
+        if (storageKey) {
+          localStorage.removeItem(storageKey);
+        }
         setSelectedSchool('');
         persistEssaySelection(null);
         return;
@@ -655,10 +669,13 @@ const Essays = () => {
 
       const schoolExists = schoolsList.some(s => s.name === persistedSchool);
       if (schoolExists) {
+        setSelectedSchool(persistedSchool);
         void fetchEssaysForSchool(persistedSchool);
         void fetchPromptsForSchool(persistedSchool);
       } else {
-        localStorage.removeItem('essays_selected_school');
+        if (storageKey) {
+          localStorage.removeItem(storageKey);
+        }
         setSelectedSchool('');
         persistEssaySelection(null);
       }
@@ -687,14 +704,51 @@ const Essays = () => {
         const displayName = getUserDisplayName(profile, user, 'Student');
         setUserName(displayName);
         setSchools(schoolsList);
+        currentUserIdRef.current = user.id;
+        setCurrentUserId(user.id);
 
         if (isMobile && schoolsList.length > 0) {
           void prefetchSchoolEssayCounts(schoolsList);
         }
 
-        const persistedSchool = localStorage.getItem('essays_selected_school');
+        const schoolStorageKey = getSchoolStorageKey(user.id);
+        const essayStorageKey = getEssayStorageKey(user.id);
+        const persistedSchool = schoolStorageKey ? localStorage.getItem(schoolStorageKey) : null;
+        const persistedEssayId = essayStorageKey ? localStorage.getItem(essayStorageKey) : null;
+
+        if (persistedEssayId) {
+          setSelectedNewEssayId(persistedEssayId);
+        }
+        
         if (persistedSchool) {
-          restorePersistedSchool(persistedSchool, schoolsList);
+          restorePersistedSchool(persistedSchool, schoolsList, schoolStorageKey);
+        } else if (!persistedEssayId) {
+          // No persisted school or essay - find and auto-select most recently updated essay
+          try {
+            const allEssays = await EssayService.getUserEssays();
+            if (allEssays.length > 0) {
+              // Essays are already sorted by updated_at descending
+              const mostRecentEssay = allEssays[0];
+              const essaySchool = mostRecentEssay.school_name;
+              
+              if (essaySchool && schoolsList.some(s => s.name === essaySchool)) {
+                console.log('[ESSAYS] Auto-selecting most recently updated essay across all schools:', {
+                  essayId: mostRecentEssay.id,
+                  school: essaySchool
+                });
+                setSelectedSchool(essaySchool);
+                if (schoolStorageKey) {
+                  localStorage.setItem(schoolStorageKey, essaySchool);
+                }
+                void fetchEssaysForSchool(essaySchool);
+                void fetchPromptsForSchool(essaySchool);
+                // The essay will be auto-selected in fetchEssaysForSchool
+              }
+            }
+          } catch (error) {
+            console.error('[ESSAYS_ERROR] Failed to load most recent essay:', error);
+            // Continue with normal flow if this fails
+          }
         }
 
         void loadOnboardingTranscript(user.id);
@@ -959,7 +1013,10 @@ const Essays = () => {
     }
     
     // Persist to localStorage
-    localStorage.setItem('essays_selected_school', schoolName);
+    const schoolStorageKey = getSchoolStorageKey(currentUserIdRef.current);
+    if (schoolStorageKey) {
+      localStorage.setItem(schoolStorageKey, schoolName);
+    }
     
     // Explicitly fetch data for the selected school (user action)
     if (schoolName) {

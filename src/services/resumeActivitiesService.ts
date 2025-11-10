@@ -5,17 +5,39 @@ export class ResumeActivitiesService {
    * Get all resume activities for the current user, organized by category
    */
   async getResumeData(): Promise<any> {
+    const { data: { user } } = await supabase.auth.getUser();
+    console.log('[RESUME_DEBUG] getResumeData called - fetching from database:', {
+      userId: user?.id || 'unknown',
+      timestamp: new Date().toISOString()
+    });
+
     const { data, error } = await supabase
       .from('resume_activities_with_bullets')
       .select('*')
       .order('display_order');
 
     if (error) {
-      console.error(`ResumeActivitiesService: Failed to fetch resume data - ${error.message}`);
+      console.error(`[RESUME_DEBUG] ResumeActivitiesService: Failed to fetch resume data - ${error.message}`, {
+        userId: user?.id || 'unknown',
+        timestamp: new Date().toISOString()
+      });
       throw new Error(`Failed to fetch resume data: ${error.message}`);
     }
 
+    console.log('[RESUME_DEBUG] Raw data from database:', {
+      userId: user?.id || 'unknown',
+      dataLength: data?.length || 0,
+      timestamp: new Date().toISOString(),
+      rawActivities: data?.map((a: any) => ({
+        id: a.id,
+        category: a.category,
+        title: a.title,
+        display_order: a.display_order
+      })) || []
+    });
+
     if (!data) {
+      console.log('[RESUME_DEBUG] No data returned from database, returning empty structure');
       return {
         academic: [],
         experience: [],
@@ -52,7 +74,21 @@ export class ResumeActivitiesService {
       resumeData[activity.category].push(activityWithBullets);
     });
 
-    console.log(`ResumeActivitiesService: Successfully loaded ${data.length} resume activities across ${Object.keys(resumeData).length} categories`);
+    console.log('[RESUME_DEBUG] ResumeActivitiesService: Successfully loaded and organized data:', {
+      userId: user?.id || 'unknown',
+      totalActivities: data.length,
+      categories: Object.keys(resumeData),
+      activityCounts: Object.entries(resumeData).reduce((acc, [key, value]) => {
+        acc[key] = Array.isArray(value) ? value.length : 0;
+        return acc;
+      }, {} as Record<string, number>),
+      allActivityIds: Object.entries(resumeData).flatMap(([key, value]) => 
+        Array.isArray(value) ? value.map((v: any) => ({ category: key, id: v.id, title: v.title }))
+        : []
+      ),
+      timestamp: new Date().toISOString()
+    });
+
     return resumeData;
   }
 
@@ -76,8 +112,9 @@ export class ResumeActivitiesService {
       throw new Error('No data returned from create activity');
     }
 
-    console.log(`ResumeActivitiesService: Successfully created activity "${data.title}" in category "${data.category}"`);
-    return data;
+    const activity = data as any;
+    console.log(`ResumeActivitiesService: Successfully created activity "${activity.title}" in category "${activity.category}"`);
+    return activity;
   }
 
   /**
@@ -101,8 +138,9 @@ export class ResumeActivitiesService {
       throw new Error('No data returned from update activity');
     }
 
-    console.log(`ResumeActivitiesService: Successfully updated activity "${data.title}"`);
-    return data;
+    const activity = data as any;
+    console.log(`ResumeActivitiesService: Successfully updated activity "${activity.title}"`);
+    return activity;
   }
 
   /**
@@ -229,8 +267,9 @@ export class ResumeActivitiesService {
       for (let i = 0; i < activities.length; i++) {
         const activity = activities[i];
         
-        // Check if this is an existing activity (has a valid UUID-like ID)
-        const isExistingActivity = activity.id && typeof activity.id === 'string' && activity.id.includes('-');
+        // Check if this is an existing activity (has a valid UUID-like ID that doesn't start with 'temp-')
+        // Note: activity.id will be null for new activities (temp IDs are converted to null in useResumeEditor)
+        const isExistingActivity = activity.id && typeof activity.id === 'string' && !activity.id.startsWith('temp-');
         
         if (isExistingActivity) {
           // Update existing activity
@@ -255,6 +294,15 @@ export class ResumeActivitiesService {
             });
           }
 
+          console.log('[RESUME_DEBUG] Updating existing activity:', {
+            userId: user.id,
+            category,
+            activityId: activity.id,
+            title: activity.title,
+            updateData: activityUpdate,
+            timestamp: new Date().toISOString()
+          });
+
           const { error: updateError } = await supabase
             .from('resume_activities')
             .update(activityUpdate as any)
@@ -262,9 +310,21 @@ export class ResumeActivitiesService {
             .eq('user_id' as any, user.id as any);
 
           if (updateError) {
-            console.error(`ResumeActivitiesService: Failed to update activity ${activity.id} for user ${user.id} - ${updateError.message}`);
+            console.error(`[RESUME_DEBUG] ResumeActivitiesService: Failed to update activity ${activity.id} for user ${user.id} - ${updateError.message}`, {
+              activityId: activity.id,
+              updateData: activityUpdate,
+              timestamp: new Date().toISOString()
+            });
             throw new Error(`Failed to update activity: ${updateError.message}`);
           }
+
+          console.log('[RESUME_DEBUG] Successfully updated activity:', {
+            userId: user.id,
+            category,
+            activityId: activity.id,
+            title: activity.title,
+            timestamp: new Date().toISOString()
+          });
 
           processedActivityIds.add(activity.id);
 
@@ -307,16 +367,34 @@ export class ResumeActivitiesService {
             .single();
 
           if (activityError) {
-            console.error(`ResumeActivitiesService: Failed to create activity in category "${category}" for user ${user.id} - ${activityError.message}`);
+            console.error(`[RESUME_DEBUG] ResumeActivitiesService: Failed to create activity in category "${category}" for user ${user.id} - ${activityError.message}`, {
+              category,
+              insertData: activityInsert,
+              timestamp: new Date().toISOString()
+            });
             throw new Error(`Failed to create activity: ${activityError.message}`);
           }
 
           if (!createdActivity) {
-            console.error(`ResumeActivitiesService: No activity created for user ${user.id} - database returned no data`);
+            console.error(`[RESUME_DEBUG] ResumeActivitiesService: No activity created for user ${user.id} - database returned no data`, {
+              category,
+              insertData: activityInsert,
+              timestamp: new Date().toISOString()
+            });
             throw new Error('No activity created');
           }
 
-          processedActivityIds.add((createdActivity as any).id);
+          const createdActivityId = (createdActivity as any).id;
+          console.log('[RESUME_DEBUG] Successfully created new activity:', {
+            userId: user.id,
+            category,
+            oldTempId: activity.id,
+            newDatabaseId: createdActivityId,
+            title: activity.title,
+            timestamp: new Date().toISOString()
+          });
+
+          processedActivityIds.add(createdActivityId);
 
           // Create bullets if they exist
           if (activity.bullets && Array.isArray(activity.bullets) && activity.bullets.length > 0) {
@@ -335,7 +413,30 @@ export class ResumeActivitiesService {
     const activitiesToDelete = Array.from(existingActivitiesMap.keys())
       .filter(id => !processedActivityIds.has(id));
 
+    console.log('[RESUME_DEBUG] Checking for activities to delete:', {
+      userId: user.id,
+      existingActivityIds: Array.from(existingActivitiesMap.keys()),
+      existingActivityDetails: Array.from(existingActivitiesMap.keys()).map(id => {
+        const activity = existingActivitiesMap.get(id);
+        return { id, category: activity?.category, title: activity?.title };
+      }),
+      processedActivityIds: Array.from(processedActivityIds),
+      activitiesToDelete,
+      activitiesToDeleteDetails: activitiesToDelete.map(id => {
+        const activity = existingActivitiesMap.get(id);
+        return { id, category: activity?.category, title: activity?.title };
+      }),
+      timestamp: new Date().toISOString()
+    });
+
     if (activitiesToDelete.length > 0) {
+      console.log('[RESUME_DEBUG] Deleting activities:', {
+        userId: user.id,
+        activityIdsToDelete: activitiesToDelete,
+        count: activitiesToDelete.length,
+        timestamp: new Date().toISOString()
+      });
+
       const { error: deleteError } = await supabase
         .from('resume_activities')
         .delete()
@@ -343,11 +444,22 @@ export class ResumeActivitiesService {
         .in('id' as any, activitiesToDelete);
 
       if (deleteError) {
-        console.error(`ResumeActivitiesService: Failed to delete ${activitiesToDelete.length} activities for user ${user.id} - ${deleteError.message}`);
+        console.error(`[RESUME_DEBUG] ResumeActivitiesService: Failed to delete ${activitiesToDelete.length} activities for user ${user.id} - ${deleteError.message}`, {
+          activityIdsToDelete: activitiesToDelete,
+          timestamp: new Date().toISOString()
+        });
         throw new Error(`Failed to delete removed activities: ${deleteError.message}`);
       }
       
-      console.log(`ResumeActivitiesService: Successfully deleted ${activitiesToDelete.length} outdated activities for user ${user.id}`);
+      console.log(`[RESUME_DEBUG] ResumeActivitiesService: Successfully deleted ${activitiesToDelete.length} outdated activities for user ${user.id}`, {
+        deletedActivityIds: activitiesToDelete,
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      console.log('[RESUME_DEBUG] No activities to delete', {
+        userId: user.id,
+        timestamp: new Date().toISOString()
+      });
     }
     
     console.log(`ResumeActivitiesService: Successfully saved resume data for user ${user.id} - processed ${processedActivityIds.size} activities across ${categories.length} categories`);
