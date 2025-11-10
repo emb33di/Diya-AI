@@ -25,8 +25,6 @@ import { getDraftStatusLabel, getDraftStatusColor } from '@/utils/statusUtils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { 
   FileText, 
   MessageSquare, 
@@ -43,15 +41,11 @@ import {
   Lock,
   ArrowUp,
   Star,
-  Edit2,
-  Check,
-  X,
 } from 'lucide-react';
 import PaywallGuard from '@/components/PaywallGuard';
 import UpgradeModal from '@/components/UpgradeModal';
 import { usePaywall } from '@/hooks/usePaywall';
 import { EscalatedEssaysService } from '@/services/escalatedEssaysService';
-import { EssayService } from '@/services/essayService';
 
 interface EssayPrompt {
   id: string;
@@ -140,12 +134,6 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
   const [feedbackSessions, setFeedbackSessions] = useState<FeedbackSession[]>([]);
   const [selectedFeedbackSession, setSelectedFeedbackSession] = useState<FeedbackSession | null>(null);
   const [filteredDocument, setFilteredDocument] = useState<SemanticDocument | null>(null);
-  const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [editingTitle, setEditingTitle] = useState('');
-  const [isEditingPrompt, setIsEditingPrompt] = useState(false);
-  const [editingPrompt, setEditingPrompt] = useState('');
-  const [isSavingTitle, setIsSavingTitle] = useState(false);
-  const [isSavingPrompt, setIsSavingPrompt] = useState(false);
   
   // Track if document has been initially loaded to prevent false positives in safety check
   const isDocumentInitializedRef = useRef(false);

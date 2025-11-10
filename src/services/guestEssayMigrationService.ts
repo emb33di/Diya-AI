@@ -50,6 +50,67 @@ export class GuestEssayMigrationService {
   }
 
   /**
+   * Normalize various date input formats (Date, ISO string, timestamp) to a Date object.
+   */
+  private static normalizeDateValue(value: unknown): Date | null {
+    if (!value) {
+      return null;
+    }
+
+    if (value instanceof Date) {
+      return isNaN(value.getTime()) ? null : value;
+    }
+
+    if (typeof value === 'string' || typeof value === 'number') {
+      const parsedDate = new Date(value);
+      return isNaN(parsedDate.getTime()) ? null : parsedDate;
+    }
+
+    // Support Supabase timestamp objects (if ever returned in structured form)
+    if (typeof value === 'object' && value !== null) {
+      const maybeSeconds = (value as { seconds?: number; milliseconds?: number }).seconds;
+      const maybeMilliseconds = (value as { milliseconds?: number; ms?: number }).milliseconds ?? (value as { ms?: number }).ms;
+      if (typeof maybeSeconds === 'number') {
+        const parsedFromSeconds = new Date(maybeSeconds * 1000);
+        return isNaN(parsedFromSeconds.getTime()) ? null : parsedFromSeconds;
+      }
+      if (typeof maybeMilliseconds === 'number') {
+        const parsedFromMs = new Date(maybeMilliseconds);
+        return isNaN(parsedFromMs.getTime()) ? null : parsedFromMs;
+      }
+    }
+
+    return null;
+  }
+
+  private static normalizeRequiredDate(value: unknown, context: string): string {
+    const normalized = this.normalizeDateValue(value);
+    if (normalized) {
+      return normalized.toISOString();
+    }
+    console.warn(`[GuestEssayMigration] Invalid date encountered for ${context}. Falling back to current timestamp.`, {
+      value,
+      context,
+    });
+    return new Date().toISOString();
+  }
+
+  private static normalizeOptionalDate(value: unknown, context: string): string | null {
+    if (!value) {
+      return null;
+    }
+    const normalized = this.normalizeDateValue(value);
+    if (normalized) {
+      return normalized.toISOString();
+    }
+    console.warn(`[GuestEssayMigration] Invalid optional date encountered for ${context}. Omitting value.`, {
+      value,
+      context,
+    });
+    return null;
+  }
+
+  /**
    * Get guest essay by ID (for preview before signup)
    */
   static async getGuestEssay(guestEssayId: string): Promise<GuestEssay | null> {
@@ -214,8 +275,14 @@ export class GuestEssayMigrationService {
           title: guestEssay.semantic_document.title,
           blocks: guestEssay.semantic_document.blocks,
           metadata: semanticDocMetadata,
-          created_at: guestEssay.semantic_document.createdAt.toISOString(),
-          updated_at: guestEssay.semantic_document.updatedAt.toISOString()
+          created_at: GuestEssayMigrationService.normalizeRequiredDate(
+            guestEssay.semantic_document.createdAt,
+            'semantic_document.createdAt'
+          ),
+          updated_at: GuestEssayMigrationService.normalizeRequiredDate(
+            guestEssay.semantic_document.updatedAt,
+            'semantic_document.updatedAt'
+          )
         })
         .select()
         .single();
@@ -241,10 +308,19 @@ export class GuestEssayMigrationService {
           content: annotation.content,
           target_text: annotation.targetText || null,
           resolved: annotation.resolved || false,
-          resolved_at: annotation.resolvedAt ? annotation.resolvedAt.toISOString() : null,
+          resolved_at: GuestEssayMigrationService.normalizeOptionalDate(
+            annotation.resolvedAt,
+            `annotation.resolvedAt (${annotation.id})`
+          ),
           resolved_by: annotation.resolvedBy || null,
-          created_at: annotation.createdAt.toISOString(), // Preserve original timestamps
-          updated_at: annotation.updatedAt.toISOString(),
+          created_at: GuestEssayMigrationService.normalizeRequiredDate(
+            annotation.createdAt,
+            `annotation.createdAt (${annotation.id})`
+          ), // Preserve original timestamps
+          updated_at: GuestEssayMigrationService.normalizeRequiredDate(
+            annotation.updatedAt,
+            `annotation.updatedAt (${annotation.id})`
+          ),
           // Optional edit-action fields
           action_type: annotation.actionType || 'none',
           suggested_replacement: annotation.suggestedReplacement || null,

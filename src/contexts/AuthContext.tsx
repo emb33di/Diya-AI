@@ -24,6 +24,7 @@ export interface AuthState {
   isFounder: boolean;
   markOnboardingCompleted: (skipped?: boolean) => Promise<boolean>;
   signOut: () => Promise<void>;
+  refreshProfile: (options?: { force?: boolean; invalidateCache?: boolean }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -81,12 +82,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   });
 
-  const fetchUserProfile = async (user: User, mountedRef: { current: boolean }) => {
+  const fetchUserProfile = async (
+    user: User,
+    mountedRef: { current: boolean },
+    options: { force?: boolean; invalidateCache?: boolean } = {}
+  ) => {
+    const { force = false, invalidateCache = false } = options;
+
+    if (invalidateCache) {
+      try {
+        localStorage.removeItem('user_profile');
+        authDebug('Invalidated cached user profile before fetch', { userId: user.id });
+        console.log('[AUTH_PROVIDER] Cached profile invalidated before fetch for user:', user.id);
+      } catch (cacheError) {
+        console.warn('[AUTH_PROVIDER] Failed to invalidate cached profile before fetch:', cacheError);
+      }
+    }
+
     // Fix #1: Prevent concurrent fetches, but allow retry if fetch is stuck (>5s)
     const existingFetchStartTime = fetchInProgressRef.current.get(user.id);
     if (existingFetchStartTime) {
       const fetchAge = Date.now() - existingFetchStartTime;
-      if (fetchAge < 5000) {
+      if (force) {
+        authDebug('Force refreshing user profile, overriding existing fetch', { 
+          userId: user.id, 
+          fetchAgeMs: fetchAge 
+        });
+        console.log('[AUTH_PROVIDER] Force refreshing profile - overriding in-progress fetch for user:', user.id);
+        fetchInProgressRef.current.delete(user.id);
+      } else if (fetchAge < 5000) {
         // Fetch started less than 5 seconds ago, skip duplicate
         authDebug('Profile fetch already in progress, skipping duplicate', { 
           userId: user.id, 
@@ -934,6 +958,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { error } = await supabase.auth.signOut();
       if (error) console.error('Error signing out:', error);
       // The onAuthStateChange listener will handle clearing the state
+    },
+    refreshProfile: async (options?: { force?: boolean; invalidateCache?: boolean }) => {
+      if (!state.user) {
+        console.warn('Cannot refresh profile: no authenticated user found.');
+        return;
+      }
+
+      const normalizedOptions = options ?? {};
+      const force = normalizedOptions.force ?? true;
+      const invalidateCache = normalizedOptions.invalidateCache ?? force;
+
+      const mountedRef = { current: true };
+      try {
+        sessionProcessedRef.current = { userId: state.user.id, processed: true };
+        await fetchUserProfile(state.user, mountedRef, { force, invalidateCache });
+      } catch (error) {
+        console.error('Error refreshing user profile:', error);
+      } finally {
+        mountedRef.current = false;
+      }
     },
   }), [state.user?.id, state.profile?.id, state.profile?.onboarding_complete]);
 

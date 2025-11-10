@@ -9,6 +9,7 @@ import { verifyAndActivateStripePayment } from '@/services/stripePaymentService'
 import { GuestEssayMigrationService } from '@/services/guestEssayMigrationService';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 const PaymentSuccess = () => {
   const navigate = useNavigate();
@@ -17,6 +18,7 @@ const PaymentSuccess = () => {
   const [verificationStatus, setVerificationStatus] = useState<'success' | 'error' | 'pending'>('pending');
   const [verificationMessage, setVerificationMessage] = useState('');
   const { toast } = useToast();
+  const { refreshProfile } = useAuthContext();
 
   const sessionId = searchParams.get('session_id');
 
@@ -37,6 +39,13 @@ const PaymentSuccess = () => {
         if (result.success) {
           setVerificationStatus('success');
           setVerificationMessage(result.message);
+
+          try {
+            await refreshProfile({ force: true, invalidateCache: true });
+            console.log('[PAYMENT_SUCCESS] Refreshed user profile after payment verification');
+          } catch (profileRefreshError) {
+            console.warn('[PAYMENT_SUCCESS] Failed to refresh profile after payment verification:', profileRefreshError);
+          }
           
           // Migrate all guest essays for this user after payment succeeds
           try {
@@ -90,7 +99,7 @@ const PaymentSuccess = () => {
     };
 
     verifyPayment();
-  }, [sessionId, toast]);
+  }, [sessionId, toast, refreshProfile]);
 
   // Removed auto-redirect - user must manually click to go to schools
 
@@ -219,21 +228,7 @@ const PaymentSuccess = () => {
             </div>
 
             {/* Information Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl mb-6">
-              <Card className="border-dashed">
-                <CardContent className="pt-6">
-                  <div className="flex items-start space-x-3">
-                    <Mail className="h-5 w-5 text-primary mt-0.5" />
-                    <div>
-                      <p className="font-semibold text-sm mb-1">Receipt Sent</p>
-                      <p className="text-xs text-muted-foreground">
-                        A confirmation email has been sent to your account
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
+            <div className="w-full max-w-2xl mb-6">
               <Card className="border-dashed">
                 <CardContent className="pt-6">
                   <div className="flex items-start space-x-3">

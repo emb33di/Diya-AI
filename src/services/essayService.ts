@@ -220,21 +220,6 @@ export class EssayService {
     if (error) throw error;
   }
 
-  // Update essay prompt text (for custom essays)
-  static async updateEssayPrompt(essayId: string, promptText: string, wordLimit?: string): Promise<void> {
-    const updateData: any = { prompt_text: promptText };
-    if (wordLimit !== undefined) {
-      updateData.word_limit = wordLimit;
-    }
-    
-    const { error } = await supabase
-      .from('essays')
-      .update(updateData)
-      .eq('id', essayId);
-
-    if (error) throw error;
-  }
-
   // Update essay status
   static async updateEssayStatus(essayId: string, status: Essay['status']): Promise<void> {
     const { error } = await supabase
