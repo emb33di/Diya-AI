@@ -12,6 +12,8 @@ export interface UserProfile {
   profile_saved: boolean;
   user_tier: string | null;
   is_founder?: boolean;
+  is_counselor?: boolean;
+  counselor_name?: string | null;
 }
 
 export interface AuthState {
@@ -22,6 +24,8 @@ export interface AuthState {
   onboardingCompleted: boolean | null;
   profileSaved: boolean | null;
   isFounder: boolean;
+  isCounselor: boolean;
+  counselorName: string | null;
   markOnboardingCompleted: (skipped?: boolean) => Promise<boolean>;
   signOut: () => Promise<void>;
   refreshProfile: (options?: { force?: boolean; invalidateCache?: boolean }) => Promise<void>;
@@ -143,7 +147,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       const queryPromise = supabase
         .from('user_profiles')
-        .select('id, full_name, email_address, onboarding_complete, skipped_onboarding, profile_saved, user_tier, is_founder')
+        .select('id, full_name, email_address, onboarding_complete, skipped_onboarding, profile_saved, user_tier, is_founder, is_counselor, counselor_name')
         .eq('user_id', user.id as any)
         .maybeSingle();
       let timeoutId: ReturnType<typeof setTimeout>;
@@ -220,7 +224,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             skipped_onboarding: false,
             profile_saved: false,
           } as any)
-          .select('id, full_name, email_address, onboarding_complete, skipped_onboarding, profile_saved, user_tier, is_founder')
+          .select('id, full_name, email_address, onboarding_complete, skipped_onboarding, profile_saved, user_tier, is_founder, is_counselor, counselor_name')
           .single();
 
         if (createError) {
@@ -252,6 +256,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         profile_saved: (finalProfile as any).profile_saved || false,
         user_tier: (finalProfile as any).user_tier || 'Free',
         is_founder: (finalProfile as any).is_founder || false,
+        is_counselor: (finalProfile as any).is_counselor || false,
+        counselor_name: (finalProfile as any).counselor_name || null,
       };
 
       console.log('[AUTH_PROVIDER] Setting auth state with user and profile:', {
@@ -290,6 +296,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 profile_saved: parsedProfile.profile_saved || false,
                 user_tier: parsedProfile.user_tier || 'Free',
                 is_founder: parsedProfile.is_founder || false,
+                is_counselor: parsedProfile.is_counselor || false,
+                counselor_name: parsedProfile.counselor_name || null,
               };
               setState({ user, profile: combinedProfile, loading: false, error: null });
               return; // Successfully used cached profile
@@ -986,6 +994,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     onboardingCompleted: state.profile?.onboarding_complete ?? null,
     profileSaved: state.profile?.profile_saved ?? null,
     isFounder: state.profile?.is_founder ?? false,
+    isCounselor: state.profile?.is_counselor ?? false,
+    counselorName: state.profile?.counselor_name ?? null,
     ...actions,
   }), [
     state.user?.id,
@@ -993,6 +1003,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     state.profile?.onboarding_complete,
     state.profile?.profile_saved,
     state.profile?.is_founder,
+    state.profile?.is_counselor,
+    state.profile?.counselor_name,
     state.loading,
     state.error,
     actions,

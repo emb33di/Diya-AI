@@ -40,6 +40,7 @@ export interface EscalatedEssay {
   // Student info (from user_profiles join)
   student_name: string | null;
   student_email: string | null;
+  applying_to: string | null; // Type of school/program (undergraduate, mba, llm, phd, masters)
   
   // Essay snapshot data
   essay_title: string;
@@ -117,6 +118,70 @@ interface EscalationSlotReservation {
 
 export class EscalatedEssaysService {
   /**
+   * Helper function to verify user has access to an escalated essay
+   * Returns true if user is founder OR counselor with matching partner_slug
+   * Throws error if access is denied
+   */
+  private static async verifyEscalationAccess(escalationId: string): Promise<void> {
+    // Verify user is authenticated
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      throw new Error('User not authenticated');
+    }
+
+    // Get user profile
+    const { data: profileData, error: profileError } = await supabase
+      .from('user_profiles')
+      .select('is_founder, is_counselor, counselor_name')
+      .eq('user_id', user.id as any)
+      .maybeSingle();
+
+    if (profileError) {
+      console.error('Error fetching user profile:', profileError);
+      throw new Error('Failed to verify access');
+    }
+
+    const profile = profileData as any;
+
+    // If user is founder, allow access
+    if (profile?.is_founder) {
+      return;
+    }
+
+    // If user is counselor, verify they have access to this specific escalation
+    if (profile?.is_counselor && profile?.counselor_name) {
+      // Fetch the escalation to check partner_slug
+      const { data: escalationData, error: escalationError } = await supabase
+        .from('escalated_essays' as any)
+        .select('partner_slug')
+        .eq('id' as any, escalationId)
+        .maybeSingle();
+
+      if (escalationError) {
+        console.error('Error fetching escalation:', escalationError);
+        throw new Error('Failed to verify escalation access');
+      }
+
+      if (!escalationData) {
+        throw new Error('Escalated essay not found');
+      }
+
+      // Case-insensitive comparison
+      const counselorName = profile.counselor_name.toLowerCase();
+      const escalationPartnerSlug = (escalationData as any).partner_slug?.toLowerCase() || null;
+
+      if (escalationPartnerSlug === counselorName) {
+        return; // Counselor has access
+      }
+
+      throw new Error('Access denied: Counselor does not have access to this escalation');
+    }
+
+    // User is neither founder nor counselor with matching access
+    throw new Error('Access denied: Founder or counselor access required');
+  }
+
+  /**
    * Fetch all escalated essays with student info for the founder dashboard
    * Includes join with user_profiles to get student name and email
    */
@@ -147,6 +212,8 @@ export class EscalatedEssaysService {
       }
 
       // Fetch escalated essays first
+      // Only show essays escalated to founder (partner_slug IS NULL)
+      // Essays with partner_slug are for partner counselors, not the founder
       let query = supabase
         .from('escalated_essays' as any)
         .select(`
@@ -158,6 +225,7 @@ export class EscalatedEssaysService {
           escalated_at,
           word_count
         `)
+        .is('partner_slug' as any, null) // Only essays for founder (no partner_slug)
         .order('escalated_at' as any, { ascending: false });
 
       // Apply filters
@@ -233,23 +301,8 @@ export class EscalatedEssaysService {
    */
   static async getEscalatedEssayById(escalationId: string): Promise<EscalatedEssay> {
     try {
-      // Verify user is authenticated
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        throw new Error('User not authenticated');
-      }
-
-      // Verify user is a founder
-      const { data: founderProfile } = await supabase
-        .from('user_profiles')
-        .select('is_founder')
-        .eq('user_id' as any, user.id)
-        .maybeSingle();
-
-      const founderProfileData = founderProfile as any;
-      if (!founderProfileData?.is_founder) {
-        throw new Error('Access denied: Founder access required');
-      }
+      // Verify user has access (founder or counselor)
+      await this.verifyEscalationAccess(escalationId);
 
       // Fetch escalated essay
       const { data: essayData, error: essayError } = await supabase
@@ -270,7 +323,7 @@ export class EscalatedEssaysService {
       // Fetch user profile separately
       const { data: userProfileData } = await supabase
         .from('user_profiles')
-        .select('user_id, full_name, email_address')
+        .select('user_id, full_name, email_address, applying_to')
         .eq('user_id', (essayData as any).user_id)
         .maybeSingle();
 
@@ -283,6 +336,7 @@ export class EscalatedEssaysService {
         user_id: essayItem.user_id,
         student_name: studentProfile?.full_name || null,
         student_email: studentProfile?.email_address || null,
+        applying_to: studentProfile?.applying_to || null,
         essay_title: essayItem.essay_title,
         essay_content: essayItem.essay_content as SemanticDocument,
         essay_prompt: essayItem.essay_prompt,
@@ -319,23 +373,8 @@ export class EscalatedEssaysService {
     updates: UpdateEscalatedEssayData
   ): Promise<EscalatedEssay> {
     try {
-      // Verify user is authenticated
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        throw new Error('User not authenticated');
-      }
-
-      // Verify user is a founder
-      const { data: founderProfile } = await supabase
-        .from('user_profiles')
-        .select('is_founder')
-        .eq('user_id' as any, user.id)
-        .maybeSingle();
-
-      const founderProfileData = founderProfile as any;
-      if (!founderProfileData?.is_founder) {
-        throw new Error('Access denied: Founder access required');
-      }
+      // Verify user has access (founder or counselor)
+      await this.verifyEscalationAccess(escalationId);
 
       // Build update object
       const updateData: any = {
@@ -386,7 +425,7 @@ export class EscalatedEssaysService {
       // Fetch user profile separately
       const { data: userProfileData } = await supabase
         .from('user_profiles')
-        .select('user_id, full_name, email_address')
+        .select('user_id, full_name, email_address, applying_to')
         .eq('user_id', (updatedEssayData as any).user_id)
         .maybeSingle();
 
@@ -399,6 +438,7 @@ export class EscalatedEssaysService {
         user_id: essayItem.user_id,
         student_name: studentProfile?.full_name || null,
         student_email: studentProfile?.email_address || null,
+        applying_to: studentProfile?.applying_to || null,
         essay_title: essayItem.essay_title,
         essay_content: essayItem.essay_content as SemanticDocument,
         essay_prompt: essayItem.essay_prompt,
@@ -502,12 +542,13 @@ export class EscalatedEssaysService {
       }
 
       // Get counts for each status
+      // Only count essays escalated to founder (partner_slug IS NULL)
       const [pendingResult, inReviewResult, reviewedResult, sentBackResult, totalResult] = await Promise.all([
-        supabase.from('escalated_essays' as any).select('id', { count: 'exact', head: true }).eq('status' as any, 'pending'),
-        supabase.from('escalated_essays' as any).select('id', { count: 'exact', head: true }).eq('status' as any, 'in_review'),
-        supabase.from('escalated_essays' as any).select('id', { count: 'exact', head: true }).eq('status' as any, 'reviewed'),
-        supabase.from('escalated_essays' as any).select('id', { count: 'exact', head: true }).eq('status' as any, 'sent_back'),
-        supabase.from('escalated_essays' as any).select('id', { count: 'exact', head: true }),
+        supabase.from('escalated_essays' as any).select('id', { count: 'exact', head: true }).eq('status' as any, 'pending').is('partner_slug' as any, null),
+        supabase.from('escalated_essays' as any).select('id', { count: 'exact', head: true }).eq('status' as any, 'in_review').is('partner_slug' as any, null),
+        supabase.from('escalated_essays' as any).select('id', { count: 'exact', head: true }).eq('status' as any, 'reviewed').is('partner_slug' as any, null),
+        supabase.from('escalated_essays' as any).select('id', { count: 'exact', head: true }).eq('status' as any, 'sent_back').is('partner_slug' as any, null),
+        supabase.from('escalated_essays' as any).select('id', { count: 'exact', head: true }).is('partner_slug' as any, null),
       ]);
 
       return {
@@ -573,6 +614,7 @@ export class EscalatedEssaysService {
         user_id: essayItem.user_id,
         student_name: null, // Not needed for user view
         student_email: null, // Not needed for user view
+        applying_to: null, // Not needed for user view
         essay_title: essayItem.essay_title,
         essay_content: essayItem.essay_content as SemanticDocument,
         essay_prompt: essayItem.essay_prompt,
@@ -641,6 +683,7 @@ export class EscalatedEssaysService {
         user_id: essayItem.user_id,
         student_name: null, // Not needed for user view
         student_email: null, // Not needed for user view
+        applying_to: null, // Not needed for user view
         essay_title: essayItem.essay_title,
         essay_content: essayItem.essay_content as SemanticDocument,
         essay_prompt: essayItem.essay_prompt,
@@ -715,6 +758,7 @@ export class EscalatedEssaysService {
         user_id: essayItem.user_id,
         student_name: null, // Not needed for user view
         student_email: null, // Not needed for user view
+        applying_to: null, // Not needed for user view
         essay_title: essayItem.essay_title,
         essay_content: essayItem.essay_content as SemanticDocument,
         essay_prompt: essayItem.essay_prompt,
@@ -738,63 +782,6 @@ export class EscalatedEssaysService {
       return escalations;
     } catch (error) {
       console.error('EscalatedEssaysService: Error fetching all escalations by essay ID', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Fetch founder comments for a specific escalation (by escalation ID)
-   * Used when viewing a specific escalation version
-   */
-  static async getFounderCommentsByEscalationId(escalationId: string): Promise<FounderComment[]> {
-    try {
-      // Verify user is authenticated
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        throw new Error('User not authenticated');
-      }
-
-      // Verify the essay belongs to the user
-      const { data: essayData } = await supabase
-        .from('essays' as any)
-        .select('user_id')
-        .eq('id' as any, essayId)
-        .maybeSingle();
-
-      if (!essayData || (essayData as any).user_id !== user.id) {
-        throw new Error('Access denied: You can only view comments for your own essays');
-      }
-
-      // Fetch founder comments for this essay
-      const { data: comments, error } = await supabase
-        .from('founder_comments' as any)
-        .select('*')
-        .eq('essay_id' as any, essayId)
-        .order('created_at' as any, { ascending: true });
-
-      if (error) {
-        console.error('Error fetching founder comments:', error);
-        throw error;
-      }
-
-      return (comments || []).map((comment: any) => ({
-        id: comment.id,
-        essay_id: comment.essay_id,
-        escalation_id: comment.escalation_id,
-        block_id: comment.block_id,
-        type: comment.type,
-        content: comment.content,
-        target_text: comment.target_text,
-        position_start: comment.position_start,
-        position_end: comment.position_end,
-        resolved: comment.resolved,
-        resolved_at: comment.resolved_at,
-        created_at: comment.created_at,
-        updated_at: comment.updated_at,
-        metadata: comment.metadata || {}
-      }));
-    } catch (error) {
-      console.error('EscalatedEssaysService: Error fetching founder comments', error);
       throw error;
     }
   }
@@ -866,22 +853,8 @@ export class EscalatedEssaysService {
     comments: EscalatedEssayComment[]
   ): Promise<void> {
     try {
-      // Verify user is authenticated and is founder
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        throw new Error('User not authenticated');
-      }
-
-      const { data: founderProfile } = await supabase
-        .from('user_profiles')
-        .select('is_founder')
-        .eq('user_id' as any, user.id)
-        .maybeSingle();
-
-      const founderProfileData = founderProfile as any;
-      if (!founderProfileData?.is_founder) {
-        throw new Error('Access denied: Founder access required');
-      }
+      // Verify user has access (founder or counselor)
+      await this.verifyEscalationAccess(escalationId);
 
       const commentsPayload = comments.map(comment => ({
         id: comment.id,
@@ -920,21 +893,8 @@ export class EscalatedEssaysService {
     updatedDocument: SemanticDocument
   ): Promise<void> {
     try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        throw new Error('User not authenticated');
-      }
-
-      const { data: founderProfile } = await supabase
-        .from('user_profiles')
-        .select('is_founder')
-        .eq('user_id' as any, user.id)
-        .maybeSingle();
-
-      const founderProfileData = founderProfile as any;
-      if (!founderProfileData?.is_founder) {
-        throw new Error('Access denied: Founder access required');
-      }
+      // Verify user has access (founder or counselor)
+      await this.verifyEscalationAccess(escalationId);
 
       // Step 1: Delete from founder_comments table
       const { error: deleteError } = await supabase
@@ -977,21 +937,8 @@ export class EscalatedEssaysService {
         updatedContent: updatedContent.substring(0, 50)
       });
 
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        throw new Error('User not authenticated');
-      }
-
-      const { data: founderProfile } = await supabase
-        .from('user_profiles')
-        .select('is_founder')
-        .eq('user_id' as any, user.id)
-        .maybeSingle();
-
-      const founderProfileData = founderProfile as any;
-      if (!founderProfileData?.is_founder) {
-        throw new Error('Access denied: Founder access required');
-      }
+      // Verify user has access (founder or counselor)
+      await this.verifyEscalationAccess(escalationId);
 
       // Step 1: Update the comment in founder_comments table
       const { error: updateError } = await supabase
@@ -1033,26 +980,12 @@ export class EscalatedEssaysService {
   }
 
   /**
-   * Fetch founder comments for an escalation (founder view)
+   * Fetch founder comments for an escalation (founder/counselor view)
    */
   static async getFounderCommentsByEscalationId(escalationId: string): Promise<FounderComment[]> {
     try {
-      // Verify user is authenticated and is founder
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        throw new Error('User not authenticated');
-      }
-
-      const { data: founderProfile } = await supabase
-        .from('user_profiles')
-        .select('is_founder')
-        .eq('user_id' as any, user.id)
-        .maybeSingle();
-
-      const founderProfileData = founderProfile as any;
-      if (!founderProfileData?.is_founder) {
-        throw new Error('Access denied: Founder access required');
-      }
+      // Verify user has access (founder or counselor)
+      await this.verifyEscalationAccess(escalationId);
 
       // Fetch founder comments for this escalation
       const { data: comments, error } = await supabase
@@ -1496,7 +1429,8 @@ export class EscalatedEssaysService {
     essayContent: SemanticDocument,
     essayPrompt: string | null,
     wordLimit: string | null,
-    semanticDocumentId: string | null
+    semanticDocumentId: string | null,
+    partnerSlug?: string | null
   ): Promise<{ id: string; success: boolean }> {
     try {
       // Verify user is authenticated
@@ -1576,7 +1510,8 @@ export class EscalatedEssaysService {
             character_count: characterCount,
             ai_comments_snapshot: aiCommentsSnapshot as any, // JSONB field (for reference only, not displayed)
             semantic_document_id: semanticDocumentId,
-            status: 'pending'
+            status: 'pending',
+            partner_slug: partnerSlug ? partnerSlug.toLowerCase() : null // Tag escalation with partner if provided (normalized to lowercase)
           })
           .select('id')
           .single();
@@ -1608,6 +1543,213 @@ export class EscalatedEssaysService {
       }
     } catch (error) {
       console.error('EscalatedEssaysService: Error escalating essay', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch escalated essays for a specific partner
+   * Filters by partner_slug
+   */
+  static async fetchEscalatedEssaysForPartner(
+    partnerSlug: string,
+    filters?: {
+      status?: EscalatedEssayStatus;
+      limit?: number;
+      offset?: number;
+    }
+  ): Promise<EscalatedEssayListItem[]> {
+    try {
+      // Verify user is authenticated
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Verify user is a counselor for this partner
+      const { data: profileData, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('is_counselor, counselor_name')
+        .eq('user_id', user.id as any)
+        .maybeSingle();
+
+      if (profileError) {
+        console.error('Error fetching user profile:', profileError);
+        throw new Error('Failed to verify counselor access');
+      }
+
+      // Case-insensitive comparison for counselor_name
+      const userCounselorName = (profileData as any)?.counselor_name?.toLowerCase();
+      const requestedPartnerSlug = partnerSlug.toLowerCase();
+      
+      if (!profileData || !(profileData as any).is_counselor || userCounselorName !== requestedPartnerSlug) {
+        throw new Error('User does not have access to this partner portal');
+      }
+
+      // Fetch escalated essays filtered by partner_slug
+      // Normalize to lowercase for consistent querying (database should store lowercase)
+      let query = supabase
+        .from('escalated_essays' as any)
+        .select(`
+          id,
+          essay_id,
+          user_id,
+          essay_title,
+          status,
+          escalated_at,
+          word_count
+        `)
+        .eq('partner_slug' as any, requestedPartnerSlug)
+        .order('escalated_at' as any, { ascending: false });
+
+      // Apply filters
+      if (filters?.status) {
+        query = query.eq('status' as any, filters.status);
+      }
+
+      if (filters?.limit) {
+        query = query.limit(filters.limit);
+      }
+
+      if (filters?.offset) {
+        query = query.range(filters.offset, filters.offset + (filters.limit || 50) - 1);
+      }
+
+      const { data: essaysData, error } = await query;
+
+      if (error) {
+        console.error('Error fetching partner escalated essays:', error);
+        throw error;
+      }
+
+      if (!essaysData || essaysData.length === 0) {
+        return [];
+      }
+
+      // Get unique user IDs
+      const userIds = [...new Set(essaysData.map((item: any) => item.user_id))];
+
+      // Fetch user profiles for these users
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('user_profiles')
+        .select('user_id, full_name, email_address')
+        .in('user_id', userIds);
+
+      if (profilesError) {
+        console.error('Error fetching user profiles:', profilesError);
+      }
+
+      // Create a map of user_id to profile data
+      const profilesMap = new Map();
+      (profilesData || []).forEach((profile: any) => {
+        profilesMap.set(profile.user_id, profile);
+      });
+
+      // Transform data to combine essays with profile data
+      const essays: EscalatedEssayListItem[] = essaysData.map((item: any) => {
+        const profile = profilesMap.get(item.user_id);
+        return {
+          id: item.id,
+          essay_id: item.essay_id,
+          user_id: item.user_id,
+          student_name: profile?.full_name || null,
+          student_email: profile?.email_address || null,
+          essay_title: item.essay_title,
+          status: item.status as EscalatedEssayStatus,
+          escalated_at: item.escalated_at,
+          word_count: item.word_count || 0,
+        };
+      });
+
+      return essays;
+    } catch (error) {
+      console.error('EscalatedEssaysService: Error fetching partner escalated essays', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get escalated essay counts for a specific partner
+   */
+  static async getEscalatedEssayCountsForPartner(partnerSlug: string): Promise<{
+    pending: number;
+    in_review: number;
+    reviewed: number;
+    sent_back: number;
+    total: number;
+  }> {
+    try {
+      // Verify user is authenticated
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Verify user is a counselor for this partner
+      const { data: profileData, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('is_counselor, counselor_name')
+        .eq('user_id', user.id as any)
+        .maybeSingle();
+
+      if (profileError) {
+        console.error('Error fetching user profile:', profileError);
+        throw new Error('Failed to verify counselor access');
+      }
+
+      // Case-insensitive comparison for counselor_name
+      const userCounselorName = (profileData as any).counselor_name?.toLowerCase();
+      const requestedPartnerSlug = partnerSlug.toLowerCase();
+      
+      if (!profileData || !(profileData as any).is_counselor || userCounselorName !== requestedPartnerSlug) {
+        throw new Error('User does not have access to this partner portal');
+      }
+
+      // Get counts for each status, filtered by partner_slug
+      // Normalize to lowercase for consistent querying (database should store lowercase)
+      const normalizedPartnerSlug = partnerSlug.toLowerCase();
+      const [pendingResult, inReviewResult, reviewedResult, sentBackResult, totalResult] = await Promise.all([
+        supabase.from('escalated_essays' as any).select('id', { count: 'exact', head: true }).eq('partner_slug' as any, normalizedPartnerSlug).eq('status' as any, 'pending'),
+        supabase.from('escalated_essays' as any).select('id', { count: 'exact', head: true }).eq('partner_slug' as any, normalizedPartnerSlug).eq('status' as any, 'in_review'),
+        supabase.from('escalated_essays' as any).select('id', { count: 'exact', head: true }).eq('partner_slug' as any, normalizedPartnerSlug).eq('status' as any, 'reviewed'),
+        supabase.from('escalated_essays' as any).select('id', { count: 'exact', head: true }).eq('partner_slug' as any, normalizedPartnerSlug).eq('status' as any, 'sent_back'),
+        supabase.from('escalated_essays' as any).select('id', { count: 'exact', head: true }).eq('partner_slug' as any, normalizedPartnerSlug),
+      ]);
+
+      return {
+        pending: pendingResult.count || 0,
+        in_review: inReviewResult.count || 0,
+        reviewed: reviewedResult.count || 0,
+        sent_back: sentBackResult.count || 0,
+        total: totalResult.count || 0,
+      };
+    } catch (error) {
+      console.error('EscalatedEssaysService: Error getting partner counts', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete an escalated essay
+   * Verifies user has access (founder or counselor) before deleting
+   */
+  static async deleteEscalatedEssay(escalationId: string): Promise<void> {
+    try {
+      // Verify user has access (founder or counselor)
+      await this.verifyEscalationAccess(escalationId);
+
+      // Delete the escalated essay
+      const { error: deleteError } = await supabase
+        .from('escalated_essays' as any)
+        .delete()
+        .eq('id' as any, escalationId);
+
+      if (deleteError) {
+        console.error('Error deleting escalated essay:', deleteError);
+        throw deleteError;
+      }
+    } catch (error) {
+      console.error('EscalatedEssaysService: Error deleting escalated essay', error);
       throw error;
     }
   }

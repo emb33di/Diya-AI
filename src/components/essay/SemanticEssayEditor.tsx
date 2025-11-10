@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useEffect, startTransition, useRef, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { SemanticDocument, Annotation } from '@/types/semanticDocument';
 import { semanticDocumentService, FeedbackSession } from '@/services/semanticDocumentService';
 import { ExportService } from '@/services/exportService';
@@ -88,6 +88,10 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
   onDelete,
   className = ''
 }) => {
+  const [searchParams] = useSearchParams();
+  const partnerParam = searchParams.get('partner');
+  const partnerSlug = partnerParam === 'ivysummit' ? 'ivysummit' : null;
+  
   const [document, setDocument] = useState<SemanticDocument | null>(null);
   const [selectedAnnotation, setSelectedAnnotation] = useState<Annotation | null>(null);
   const [showCommentSidebar, setShowCommentSidebar] = useState(true);
@@ -1308,14 +1312,15 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
       const currentPrompt = prompt || document.metadata?.prompt || null;
       const currentWordLimit = wordLimit ? String(wordLimit) : document.metadata?.wordLimit ? String(document.metadata.wordLimit) : null;
 
-      // Escalate the essay
+      // Escalate the essay (with partner slug if in URL)
       const result = await EscalatedEssaysService.escalateEssay(
         essayId,
         document.title,
         document,
         currentPrompt,
         currentWordLimit,
-        document.id
+        document.id,
+        partnerSlug || undefined
       );
 
       if (result.success) {
@@ -1325,7 +1330,9 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
 
         toast({
           title: "Essay Escalated",
-          description: "Your essay has been successfully escalated to the founder for review. You'll be notified when feedback is available.",
+          description: partnerSlug === 'ivysummit' 
+            ? "Your essay has been successfully escalated to IvySummit for review. You'll be notified when feedback is available."
+            : "Your essay has been successfully escalated to the founder for review. You'll be notified when feedback is available.",
         });
       } else {
         throw new Error('Escalation failed');

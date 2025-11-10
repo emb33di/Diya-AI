@@ -25,7 +25,7 @@ import MobileNavigation from "@/components/MobileNavigation";
 const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, profile, loading: authLoading, onboardingCompleted, signOut } = useAuth();
+  const { user, profile, loading: authLoading, onboardingCompleted, signOut, isFounder, isCounselor } = useAuth();
   const { userTier, isPro } = usePaywall();
   
   // Derive state from useAuth hook instead of maintaining separate state
@@ -34,6 +34,9 @@ const Header = () => {
   
   // Get first name from profile
   const userFirstName = profile?.full_name?.split(' ')[0] || user?.user_metadata?.first_name || '';
+  
+  // Counselors and founders should not see regular navigation links
+  const showRegularNavigation = isAuthenticated && !isFounder && !isCounselor;
 
   // Debug logging for auth state
   useEffect(() => {
@@ -69,6 +72,7 @@ const Header = () => {
   const isIvyReadinessPage = location.pathname === '/ivyreadiness' || location.pathname.startsWith('/ivyreadiness');
   const isEarlyAccessPage = location.pathname === '/earlyaccess';
   const isPasswordResetPage = location.pathname === '/password-reset';
+  const isIvySummitPortal = location.pathname.startsWith('/ivysummit-portal');
   const isLoggedIn = !isLandingPage && !isPublicInfoPage && !isBlogPage && !isIvyReadinessPage && location.pathname !== '/auth';
   const showUnauthenticatedNav = isLandingPage || isBlogPage || isCounselorsPage;
 
@@ -104,14 +108,20 @@ const Header = () => {
         {/* Logo */}
         <Link to={loading ? "/" : (isAuthenticated ? "/dashboard" : "/")} className="flex items-center space-x-2 flex-shrink-0">
           <img 
-            src={location.pathname === "/" || location.pathname === "/auth" || location.pathname === "/counselors" ? "/DiyaLogo White.svg" : "/DiyaLogo.svg"} 
-            alt="Diya Logo" 
+            src={
+              isIvySummitPortal 
+                ? "/DiyaLogo.svg" // TODO: Add IvySummit logo file at /IvySummitLogo.svg
+                : location.pathname === "/" || location.pathname === "/auth" || location.pathname === "/counselors" 
+                  ? "/DiyaLogo White.svg" 
+                  : "/DiyaLogo.svg"
+            } 
+            alt={isIvySummitPortal ? "IvySummit Logo" : "Diya Logo"} 
             className="h-24 w-24" 
           />
         </Link>
         
-        {/* Authenticated Navigation */}
-        {isAuthenticated && (
+        {/* Authenticated Navigation - Only show for regular users (not founders or counselors) */}
+        {showRegularNavigation && (
           <>
             {/* Desktop Navigation */}
             <nav className={`hidden md:flex items-center space-x-4 lg:space-x-6 xl:space-x-8 px-2 py-1.5 lg:px-3 xl:px-4 lg:py-2 rounded-full border transition-all duration-200 flex-shrink min-w-0 ${

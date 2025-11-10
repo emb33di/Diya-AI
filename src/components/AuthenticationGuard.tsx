@@ -6,8 +6,24 @@ interface AuthenticationGuardProps {
   children: React.ReactNode;
 }
 
+/**
+ * Helper function to get the counselor portal route based on counselor name
+ * Currently defaults to ivysummit-portal, but can be extended for other partners
+ */
+const getCounselorPortalRoute = (counselorName: string | null | undefined): string => {
+  if (!counselorName) return '/ivysummit-portal';
+  
+  // Map counselor names to portal routes
+  const portalRoutes: Record<string, string> = {
+    'ivysummit': '/ivysummit-portal',
+    // Add more partner routes here as needed
+  };
+  
+  return portalRoutes[counselorName.toLowerCase()] || '/ivysummit-portal';
+};
+
 const AuthenticationGuard: React.FC<AuthenticationGuardProps> = ({ children }) => {
-  const { user, loading, isFounder } = useAuth();
+  const { user, loading, isFounder, isCounselor, counselorName } = useAuth();
   const location = useLocation();
 
   // Log only when auth state actually changes, not on route changes
@@ -16,9 +32,11 @@ const AuthenticationGuard: React.FC<AuthenticationGuardProps> = ({ children }) =
       loading,
       hasUser: Boolean(user),
       isFounder,
+      isCounselor,
+      counselorName,
       currentPath: location.pathname,
     });
-  }, [loading, user, isFounder]); // Only log when auth state changes, not route changes
+  }, [loading, user, isFounder, isCounselor, counselorName]); // Only log when auth state changes, not route changes
 
   // Show loading state while checking authentication
   if (loading) {
@@ -42,7 +60,13 @@ const AuthenticationGuard: React.FC<AuthenticationGuardProps> = ({ children }) =
     return <Navigate to="/founder-portal" replace />;
   }
 
-  // If user is authenticated and not a founder, render the protected content
+  // If user is a counselor, redirect to counselor portal (counselors only see counselor portal)
+  if (isCounselor && counselorName) {
+    const portalRoute = getCounselorPortalRoute(counselorName);
+    return <Navigate to={portalRoute} replace />;
+  }
+
+  // If user is authenticated and not a founder or counselor, render the protected content
   return <>{children}</>;
 };
 

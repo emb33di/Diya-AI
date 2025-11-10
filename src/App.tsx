@@ -28,6 +28,9 @@ import LOR from "./pages/LOR";
 import FounderPortal from "./pages/FounderPortal";
 import FounderEssayReview from "./pages/FounderEssayReview";
 import FounderFeedbackPage from "./pages/FounderFeedbackPage";
+import IvySummitPortal from "./pages/IvySummitPortal";
+import IvySummitEssayReview from "./pages/IvySummitEssayReview";
+import IvySummitGuard from "./components/IvySummitGuard";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
 import RefundPolicy from "./pages/RefundPolicy";
@@ -46,6 +49,7 @@ import { initAnalytics } from "./lib/ga/init";
 import RouteTracker from "./lib/ga/RouteTracker";
 import LogRocketRouteTracker from "./lib/logrocket/LogRocketRouteTracker";
 import LogRocketUserTracker from "./lib/logrocket/LogRocketUserTracker";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 
 const queryClient = new QueryClient();
@@ -71,6 +75,7 @@ const App = () => {
             <RouteTracker />
             <LogRocketRouteTracker />
             <LogRocketUserTracker />
+            <SpeedInsights />
             <Header />
             <Routes>
             {/* Public routes */}
@@ -115,6 +120,10 @@ const App = () => {
             {/* Founder Portal Routes */}
             <Route path="/founder-portal" element={<FounderGuard><FounderPortal /></FounderGuard>} />
             <Route path="/founder-portal/:escalationId" element={<FounderGuard><FounderEssayReview /></FounderGuard>} />
+
+            {/* IvySummit Portal Routes */}
+            <Route path="/ivysummit-portal" element={<IvySummitGuard><IvySummitPortal /></IvySummitGuard>} />
+            <Route path="/ivysummit-portal/:escalationId" element={<IvySummitGuard><IvySummitEssayReview /></IvySummitGuard>} />
 
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

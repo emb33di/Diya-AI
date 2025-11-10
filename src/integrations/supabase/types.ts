@@ -47,6 +47,8 @@ export interface Database {
           user_tier: string | null
           escalation_slots: number | null
           is_founder: boolean
+          is_counselor: boolean
+          counselor_name: string | null
           created_at: string
           updated_at: string
         }
@@ -87,6 +89,8 @@ export interface Database {
           user_tier?: string | null
           escalation_slots?: number | null
           is_founder?: boolean
+          is_counselor?: boolean
+          counselor_name?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -127,6 +131,8 @@ export interface Database {
           user_tier?: string | null
           escalation_slots?: number | null
           is_founder?: boolean
+          is_counselor?: boolean
+          counselor_name?: string | null
           created_at?: string
           updated_at?: string
         }
