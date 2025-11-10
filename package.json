@@ -12,7 +12,9 @@
     "sync-schools": "node scripts/sync-schools-to-db.js",
     "sync-essay-prompts": "node scripts/sync-essay-prompts-to-db.js",
     "generate-template-index": "node scripts/generate-template-index.js",
-    "watch-templates": "node scripts/generate-template-index.js --watch"
+    "watch-templates": "node scripts/generate-template-index.js --watch",
+    "upload-videos": "node scripts/upload-videos-to-supabase.js",
+    "compress-video": "./scripts/compress-video-simple.sh"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

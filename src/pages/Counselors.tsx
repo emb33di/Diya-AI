@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import DynamicBackground from "@/components/DynamicBackground";
+import { getVideoUrlByKey } from "@/utils/videoUtils";
 import "@/styles/landing.css";
 
 const Counselors = () => {
@@ -28,7 +29,7 @@ const Counselors = () => {
               <div className="relative rounded-xl sm:rounded-2xl overflow-hidden bg-black shadow-[0_0_40px_hsl(var(--primary)/0.4)] hover:shadow-[0_0_60px_hsl(var(--primary)/0.6)] transition-all duration-500">
                 <video
                   className="w-full h-auto block"
-                  src="/Website Previews/Counselor Demo.mp4"
+                  src={getVideoUrlByKey('counselorDemo')}
                   autoPlay
                   loop
                   muted

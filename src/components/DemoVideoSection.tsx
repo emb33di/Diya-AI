@@ -3,6 +3,7 @@ import { useScrollAnimation } from "@/hooks/use-scroll-animation";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { trackEvent } from "@/utils/analytics";
+import { getVideoUrlByKey } from "@/utils/videoUtils";
 
 const DemoVideoSection = () => {
   const navigate = useNavigate();
@@ -111,7 +112,7 @@ const DemoVideoSection = () => {
                 <video
                   ref={resumeVideoRef}
                   className="w-full h-auto block"
-                  src="/Website Previews/resume-wide.mp4"
+                  src={getVideoUrlByKey('resumeWide')}
                   autoPlay
                   loop
                   muted
@@ -158,7 +159,7 @@ const DemoVideoSection = () => {
                 <video
                   ref={lorVideoRef}
                   className="w-full h-auto block"
-                  src="/Website Previews/lor-wide.mp4"
+                  src={getVideoUrlByKey('lorWide')}
                   autoPlay
                   loop
                   muted

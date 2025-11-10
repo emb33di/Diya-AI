@@ -3,6 +3,7 @@ import { useScrollAnimation } from "@/hooks/use-scroll-animation";
 import MountainWaves from "@/components/MountainWaves";
 import { Button } from "@/components/ui/button";
 import IvyReadinessReport from "@/components/IvyReadinessReport";
+import { getVideoUrlByKey } from "@/utils/videoUtils";
 
 const HeroSection = () => {
   const { elementRef: headerRef, isVisible: headerVisible } = useScrollAnimation();
@@ -118,7 +119,7 @@ const HeroSection = () => {
                 <video
                   ref={videoRef}
                   className="w-full h-auto block"
-                  src="/Website Previews/essays-wide.mp4"
+                  src={getVideoUrlByKey('essaysWide')}
                   autoPlay
                   loop
                   muted
