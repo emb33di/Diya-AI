@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -187,6 +187,15 @@ const Essays = () => {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [hasAvailableGuestEssays, setHasAvailableGuestEssays] = useState(false);
   const { isPro } = usePaywall();
+
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   // Fetch prompts for a school when expanded (mobile view)
   const fetchSchoolPrompts = async (schoolName: string) => {
@@ -424,29 +433,32 @@ const Essays = () => {
   // Explicit fetch functions for user actions
   const fetchEssaysForSchool = async (schoolName: string) => {
     if (!schoolName) {
-      setNewEssays([]);
-      setIsLoadingEssays(false);
-      persistEssaySelection(null);
+      if (isMountedRef.current) {
+        setNewEssays([]);
+        setIsLoadingEssays(false);
+        persistEssaySelection(null);
+      }
       return;
     }
 
     setIsLoadingEssays(true);
     try {
       const essays = await EssayService.getEssaysForSchool(schoolName);
-      setNewEssays(essays);
-      
-      // Special handling for Common Application
-      if (schoolName === 'Common Application') {
-        if (essays.length > 0) {
+
+      if (isMountedRef.current) {
+        setNewEssays(essays);
+        
+        // Special handling for Common Application
+        if (schoolName === 'Common Application' && essays.length > 0) {
           setCommonAppEssay(essays[0]);
         }
-      }
-      
-      // Validate persisted essay selection - MUST clear if essay doesn't exist
-      const persistedEssayId = localStorage.getItem('essays_selected_new_essay_id');
-      if (persistedEssayId && !essays.find(e => e.id === persistedEssayId)) {
-        console.log('[ESSAYS] Clearing invalid persisted essay ID:', persistedEssayId);
-        persistEssaySelection(null);
+        
+        // Validate persisted essay selection - MUST clear if essay doesn't exist
+        const persistedEssayId = localStorage.getItem('essays_selected_new_essay_id');
+        if (persistedEssayId && !essays.find(e => e.id === persistedEssayId)) {
+          console.log('[ESSAYS] Clearing invalid persisted essay ID:', persistedEssayId);
+          persistEssaySelection(null);
+        }
       }
     } catch (error) {
       console.error('[ESSAYS_ERROR] Failed to load essays for school:', {
@@ -455,19 +467,24 @@ const Essays = () => {
         timestamp: new Date().toISOString(),
         message: 'User cannot see their essays for the selected school'
       });
-      setNewEssays([]);
-      toast({
-        title: "Failed to load essays",
-        description: "Could not load essays for this school. Your current selection has been preserved. Please try again.",
-        variant: "destructive"
-      });
+      if (isMountedRef.current) {
+        setNewEssays([]);
+        toast({
+          title: "Failed to load essays",
+          description: "Could not load essays for this school. Your current selection has been preserved. Please try again.",
+          variant: "destructive"
+        });
+      }
     } finally {
-      setIsLoadingEssays(false);
+      if (isMountedRef.current) {
+        setIsLoadingEssays(false);
+      }
     }
   };
 
   const fetchPromptsForSchool = async (schoolName: string) => {
     if (!schoolName) {
+      if (!isMountedRef.current) return;
       setEssayPrompts([]);
       setUserSelections([]);
       setEssays([]);
@@ -513,6 +530,8 @@ const Essays = () => {
         }
       }
 
+      if (!isMountedRef.current) return;
+
       setEssayPrompts(prompts);
       
       // Clear Common App prompts when selecting a different school
@@ -523,6 +542,7 @@ const Essays = () => {
       
       // Fetch user's existing selections for this school
       const selections = await EssayPromptService.getUserSelectionsForSchool(schoolName);
+      if (!isMountedRef.current) return;
       setUserSelections(selections);
 
       // Convert prompts to essays format
@@ -545,6 +565,7 @@ const Essays = () => {
         };
       });
 
+      if (!isMountedRef.current) return;
       setEssays(essaysFromPrompts);
     } catch (error) {
       console.error('[ESSAYS_ERROR] Failed to load essay prompts:', {
@@ -554,6 +575,7 @@ const Essays = () => {
         message: 'User cannot see essay prompts for the selected school'
       });
       
+      if (!isMountedRef.current) return;
       setEssayPrompts([]);
       setUserSelections([]);
       setEssays([]);
@@ -568,102 +590,133 @@ const Essays = () => {
 
   // Single useEffect to fetch everything on initial load only
   useEffect(() => {
-    const fetchData = async () => {
+    const loadOnboardingTranscript = async (userId: string) => {
       try {
         const {
-          data: {
-            user
+          data: conversations
+        } = await supabase
+          .from('conversation_metadata')
+          .select('transcript')
+          .eq('user_id', userId)
+          .order('created_at', {
+            ascending: false
+          })
+          .limit(1);
+
+        if (!isMountedRef.current) return;
+
+        if (conversations && conversations.length > 0) {
+          setOnboardingTranscript(conversations[0].transcript || '');
+        }
+      } catch (error) {
+        console.error('[ESSAYS_ERROR] Failed to load onboarding transcript:', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          timestamp: new Date().toISOString(),
+          message: 'User onboarding conversation could not be loaded for essay context'
+        });
+      }
+    };
+
+    const prefetchSchoolEssayCounts = async (schoolsList: School[]) => {
+      if (!isMobile || schoolsList.length === 0) return;
+
+      const counts: Record<string, { total: number; inProgress: number }> = {};
+
+      await Promise.all(
+        schoolsList.map(async (school) => {
+          try {
+            const essaysForSchool = await EssayService.getEssaysForSchool(school.name);
+            const inProgress = essaysForSchool.filter(e => e.status === 'draft' || e.status === 'review').length;
+            counts[school.name] = {
+              total: essaysForSchool.length,
+              inProgress
+            };
+          } catch (error) {
+            console.error(`[ESSAYS_ERROR] Failed to load essay count for ${school.name}:`, error);
+            counts[school.name] = { total: 0, inProgress: 0 };
           }
+        })
+      );
+
+      if (!isMountedRef.current) return;
+
+      setSchoolEssayCounts(counts);
+    };
+
+    const restorePersistedSchool = (persistedSchool: string, schoolsList: School[]) => {
+      if (!isMountedRef.current) return;
+
+      if (schoolsList.length === 0) {
+        localStorage.removeItem('essays_selected_school');
+        setSelectedSchool('');
+        persistEssaySelection(null);
+        return;
+      }
+
+      const schoolExists = schoolsList.some(s => s.name === persistedSchool);
+      if (schoolExists) {
+        void fetchEssaysForSchool(persistedSchool);
+        void fetchPromptsForSchool(persistedSchool);
+      } else {
+        localStorage.removeItem('essays_selected_school');
+        setSelectedSchool('');
+        persistEssaySelection(null);
+      }
+    };
+
+    const loadInitialData = async () => {
+      try {
+        const {
+          data: { user }
         } = await supabase.auth.getUser();
+
         if (!user) {
-          setLoading(false);
+          if (isMountedRef.current) {
+            setLoading(false);
+          }
           return;
         }
 
-        // Fetch user profile for name using centralized utility
-        const profile = await fetchUserProfileData(user.id);
+        const [profile, schoolsList] = await Promise.all([
+          fetchUserProfileData(user.id),
+          fetchSchools()
+        ]);
+
+        if (!isMountedRef.current) return;
+
         const displayName = getUserDisplayName(profile, user, 'Student');
         setUserName(displayName);
+        setSchools(schoolsList);
 
-        const schools = await fetchSchools();
-        setSchools(schools);
-        
-        // Fetch essay counts for all schools (for mobile view) - only on mount
-        if (isMobile && schools.length > 0) {
-          const counts: Record<string, { total: number; inProgress: number }> = {};
-          await Promise.all(
-            schools.map(async (school) => {
-              try {
-                const essays = await EssayService.getEssaysForSchool(school.name);
-                const inProgress = essays.filter(e => e.status === 'draft' || e.status === 'review').length;
-                counts[school.name] = {
-                  total: essays.length,
-                  inProgress: inProgress
-                };
-              } catch (error) {
-                console.error(`[ESSAYS_ERROR] Failed to load essay count for ${school.name}:`, error);
-                counts[school.name] = { total: 0, inProgress: 0 };
-              }
-            })
-          );
-          setSchoolEssayCounts(counts);
+        if (isMobile && schoolsList.length > 0) {
+          void prefetchSchoolEssayCounts(schoolsList);
         }
-        
-        // Handle persisted school selection - fetch data explicitly if valid
+
         const persistedSchool = localStorage.getItem('essays_selected_school');
-        if (persistedSchool && schools.length > 0) {
-          const schoolExists = schools.find(s => s.name === persistedSchool);
-          if (schoolExists) {
-            // School is valid, fetch data for it explicitly
-            await Promise.all([
-              fetchEssaysForSchool(persistedSchool),
-              fetchPromptsForSchool(persistedSchool)
-            ]);
-          } else {
-            // School doesn't exist, clear it
-            localStorage.removeItem('essays_selected_school');
-            setSelectedSchool('');
-            persistEssaySelection(null);
-          }
-        } else if (persistedSchool && schools.length === 0) {
-          localStorage.removeItem('essays_selected_school');
-          setSelectedSchool('');
-          persistEssaySelection(null);
+        if (persistedSchool) {
+          restorePersistedSchool(persistedSchool, schoolsList);
         }
 
-        // Fetch onboarding transcript separately to avoid blocking
-        try {
-          const {
-            data: conversations
-          } = await supabase.from('conversation_metadata').select('transcript').eq('user_id', user.id).order('created_at', {
-            ascending: false
-          }).limit(1);
-          if (conversations && conversations.length > 0) {
-            setOnboardingTranscript(conversations[0].transcript || '');
-          }
-        } catch (error) {
-          console.error('[ESSAYS_ERROR] Failed to load onboarding transcript:', {
-            error: error instanceof Error ? error.message : 'Unknown error',
-            timestamp: new Date().toISOString(),
-            message: 'User onboarding conversation could not be loaded for essay context'
-          });
-        }
-
-        // Check for available guest essays
-        await checkAvailableGuestEssays();
-        
+        void loadOnboardingTranscript(user.id);
+        void checkAvailableGuestEssays(user.id);
       } catch (error) {
         console.error('[ESSAYS_ERROR] Failed to load essays page data:', {
           error: error instanceof Error ? error.message : 'Unknown error',
           timestamp: new Date().toISOString(),
           message: 'User cannot access essays page - schools and data loading failed'
         });
-        setSchools([]);
+
+        if (isMountedRef.current) {
+          setSchools([]);
+        }
       } finally {
-        setLoading(false);
+        if (isMountedRef.current) {
+          setLoading(false);
+        }
       }
     };
-    fetchData();
+
+    loadInitialData();
   }, []); // Mount only - no dependencies
 
 
@@ -1315,19 +1368,32 @@ const Essays = () => {
   };
 
   // Check if there are available guest essays (without showing toasts)
-  const checkAvailableGuestEssays = async () => {
+  const checkAvailableGuestEssays = async (userId?: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setHasAvailableGuestEssays(false);
+      let resolvedUserId = userId;
+
+      if (!resolvedUserId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        resolvedUserId = user?.id || undefined;
+      }
+
+      if (!resolvedUserId) {
+        if (isMountedRef.current) {
+          setHasAvailableGuestEssays(false);
+        }
         return;
       }
 
-      const essays = await GuestEssayMigrationService.getGuestEssaysByUserId(user.id);
-      setHasAvailableGuestEssays(essays.length > 0);
+      const essays = await GuestEssayMigrationService.getGuestEssaysByUserId(resolvedUserId);
+
+      if (isMountedRef.current) {
+        setHasAvailableGuestEssays(essays.length > 0);
+      }
     } catch (error) {
       console.error('Error checking guest essays:', error);
-      setHasAvailableGuestEssays(false);
+      if (isMountedRef.current) {
+        setHasAvailableGuestEssays(false);
+      }
     }
   };
 
@@ -1337,15 +1403,21 @@ const Essays = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        toast({
-          title: "Error",
-          description: "Please sign in to retrieve your essays.",
-          variant: "destructive"
-        });
+        if (isMountedRef.current) {
+          toast({
+            title: "Error",
+            description: "Please sign in to retrieve your essays.",
+            variant: "destructive"
+          });
+          setGuestEssays([]);
+          setHasAvailableGuestEssays(false);
+        }
         return;
       }
 
       const essays = await GuestEssayMigrationService.getGuestEssaysByUserId(user.id);
+      if (!isMountedRef.current) return;
+
       setGuestEssays(essays);
       setHasAvailableGuestEssays(essays.length > 0);
       
@@ -1357,13 +1429,17 @@ const Essays = () => {
       }
     } catch (error) {
       console.error('Error fetching guest essays:', error);
-      toast({
-        title: "Error",
-        description: "Failed to retrieve your essays. Please try again.",
-        variant: "destructive"
-      });
+      if (isMountedRef.current) {
+        toast({
+          title: "Error",
+          description: "Failed to retrieve your essays. Please try again.",
+          variant: "destructive"
+        });
+      }
     } finally {
-      setLoadingGuestEssays(false);
+      if (isMountedRef.current) {
+        setLoadingGuestEssays(false);
+      }
     }
   };
 

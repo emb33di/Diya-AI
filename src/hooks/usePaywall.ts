@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useAuthContext } from '@/contexts/AuthContext';
 
 export type UserTier = 'Free' | 'Pro';
@@ -95,22 +95,10 @@ export const usePaywall = () => {
   );
   const isPro = useMemo(() => userTier === 'Pro', [userTier]);
   const isFree = useMemo(() => userTier === 'Free', [userTier]);
-
-  useEffect(() => {
-    console.log('[PAYWALL_DEBUG] Paywall state snapshot', {
-      loading,
-      userTier,
-      isPro,
-      isFree,
-      hasProfile: Boolean(profile),
-      profileId: profile?.id ?? null,
-    });
-  }, [loading, userTier, isPro, isFree, profile?.id]);
   
   const hasAccess = (featureKey: string): boolean => {
     const feature = PAYWALL_FEATURES[featureKey];
     if (!feature) {
-      console.warn(`Unknown paywall feature: ${featureKey}`);
       return true; // Default to allowing access for unknown features
     }
     
