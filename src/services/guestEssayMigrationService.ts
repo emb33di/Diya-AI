@@ -201,6 +201,87 @@ export class GuestEssayMigrationService {
   }
 
   /**
+   * Check if a school already exists in the user's school list (case-insensitive)
+   */
+  private static async schoolExistsForUser(
+    userId: string,
+    schoolName: string
+  ): Promise<boolean> {
+    try {
+      if (!schoolName || !schoolName.trim()) {
+        return false;
+      }
+
+      const trimmedSchoolName = schoolName.trim().toLowerCase();
+
+      // Fetch all schools for the user and compare case-insensitively
+      const { data, error } = await supabase
+        .from('school_recommendations')
+        .select('school')
+        .eq('student_id', userId);
+
+      if (error) {
+        console.warn('Error checking if school exists:', error);
+        return false;
+      }
+
+      // Check if any school matches (case-insensitive)
+      return (data || []).some(
+        school => school.school?.toLowerCase() === trimmedSchoolName
+      );
+    } catch (error) {
+      console.warn('Error checking if school exists:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Add school to user's school list if it doesn't already exist
+   * This is a non-blocking operation - failures are logged but don't stop migration
+   */
+  private static async ensureSchoolInUserList(
+    userId: string,
+    schoolName: string | null
+  ): Promise<void> {
+    try {
+      // Skip if no school name provided
+      if (!schoolName || !schoolName.trim()) {
+        return;
+      }
+
+      const trimmedSchoolName = schoolName.trim();
+
+      // Check if school already exists
+      const exists = await this.schoolExistsForUser(userId, trimmedSchoolName);
+      if (exists) {
+        console.log(`School "${trimmedSchoolName}" already exists in user's list, skipping addition`);
+        return;
+      }
+
+      // Add school with default school_type
+      // Using 'research_university' as a safe default - user can update later
+      const { error } = await supabase
+        .from('school_recommendations')
+        .insert({
+          student_id: userId,
+          school: trimmedSchoolName,
+          school_type: 'research_university', // Default value, user can update later
+          category: 'target' // Default category
+        });
+
+      if (error) {
+        console.warn(`Failed to add school "${trimmedSchoolName}" to user's list:`, error);
+        // Don't throw - this is non-blocking
+      } else {
+        console.log(`✅ Added school "${trimmedSchoolName}" to user's school list`);
+      }
+    } catch (error) {
+      console.warn('Error ensuring school in user list:', error);
+      // Don't throw - this is non-blocking
+    }
+  }
+
+  /**
    * Migrate guest essay to user's account after signup
    */
   static async migrateGuestEssayToUser(
@@ -259,6 +340,12 @@ export class GuestEssayMigrationService {
           success: false,
           error: `Failed to create essay: ${essayError.message}`
         };
+      }
+
+      // 2.5. Automatically add school to user's school list if it doesn't exist
+      // This is non-blocking - if it fails, we still continue with the migration
+      if (guestEssay.school_name) {
+        await this.ensureSchoolInUserList(userId, guestEssay.school_name);
       }
 
       // 3. Create semantic document
