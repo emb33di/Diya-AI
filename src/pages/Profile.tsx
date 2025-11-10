@@ -17,7 +17,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
 import { cn } from "@/lib/utils";
-import OnboardingGuard from "@/components/OnboardingGuard";
 import GradientBackground from "@/components/GradientBackground";
 import { getValidApplyingToValues } from "@/utils/userProfileUtils";
 import { OnboardingApiService } from "@/services/onboarding.api";
@@ -481,8 +480,7 @@ export default function Profile() {
 
 
   return (
-    <OnboardingGuard pageName="Profile">
-      <GradientBackground>
+    <GradientBackground>
         <div className="container mx-auto py-8 max-w-4xl">
       <div className="mb-8">
         <h1 className="text-3xl font-bold">
@@ -526,7 +524,6 @@ export default function Profile() {
         </form>
       </Form>
       </div>
-        </GradientBackground>
-    </OnboardingGuard>
+    </GradientBackground>
   );
 }

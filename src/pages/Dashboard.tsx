@@ -2,7 +2,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { CircularProgress } from "@/components/ui/circular-progress";
-import OnboardingGuard from "@/components/OnboardingGuard";
 import GradientBackground from "@/components/GradientBackground";
 import { useAuth } from "@/hooks/useAuth";
 import { useDashboardData } from "@/hooks/useDashboardData";
@@ -174,59 +173,52 @@ const Dashboard = () => {
       applicationProgressLoading,
     });
     return (
-      <OnboardingGuard pageName="Dashboard">
-        <GradientBackground>
-          <div className="flex items-center justify-center min-h-screen">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-muted-foreground">
-                {authLoading ? 'Loading authentication...' : profileLoading ? 'Calculating profile completion...' : 'Loading your dashboard...'}
-              </p>
-            </div>
+      <GradientBackground>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">
+              {authLoading ? 'Loading authentication...' : profileLoading ? 'Calculating profile completion...' : 'Loading your dashboard...'}
+            </p>
           </div>
-        </GradientBackground>
-      </OnboardingGuard>
+        </div>
+      </GradientBackground>
     );
   }
 
   if (authError) {
     console.log('[DASHBOARD_DEBUG] Rendering auth error state', { authError });
     return (
-      <OnboardingGuard pageName="Dashboard">
-        <GradientBackground>
-          <div className="flex items-center justify-center min-h-screen">
-            <div className="text-center">
-              <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-              <h2 className="text-xl font-semibold mb-2">Authentication Error</h2>
-              <p className="text-muted-foreground mb-4">{authError}</p>
-              <Button onClick={() => navigate('/dashboard', { replace: true })}>Try Again</Button>
-            </div>
+      <GradientBackground>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Authentication Error</h2>
+            <p className="text-muted-foreground mb-4">{authError}</p>
+            <Button onClick={() => navigate('/dashboard', { replace: true })}>Try Again</Button>
           </div>
-        </GradientBackground>
-      </OnboardingGuard>
+        </div>
+      </GradientBackground>
     );
   }
 
   if (error) {
     console.log('[DASHBOARD_DEBUG] Rendering dashboard error state', { error });
     return (
-      <OnboardingGuard pageName="Dashboard">
-        <GradientBackground>
-          <div className="flex items-center justify-center min-h-screen">
-            <div className="text-center">
-              <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-              <h2 className="text-xl font-semibold mb-2">Error loading dashboard</h2>
-              <p className="text-muted-foreground mb-4">{error}</p>
-              <Button onClick={() => navigate('/dashboard', { replace: true })}>Try Again</Button>
-            </div>
+      <GradientBackground>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Error loading dashboard</h2>
+            <p className="text-muted-foreground mb-4">{error}</p>
+            <Button onClick={() => navigate('/dashboard', { replace: true })}>Try Again</Button>
           </div>
-        </GradientBackground>
-      </OnboardingGuard>
+        </div>
+      </GradientBackground>
     );
   }
 
   return (
-    <OnboardingGuard pageName="Dashboard">
         <GradientBackground>
           <main className="container mx-auto px-6 py-8">
         {/* Welcome Section */}
@@ -397,7 +389,6 @@ const Dashboard = () => {
         </div>
         </main>
         </GradientBackground>
-    </OnboardingGuard>
   );
 };
 

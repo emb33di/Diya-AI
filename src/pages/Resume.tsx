@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import OnboardingGuard from "@/components/OnboardingGuard";
 import GradientBackground from "@/components/GradientBackground";
 import MobileResponsiveWrapper from "@/components/MobileResponsiveWrapper";
 import ResumePreview from "@/components/ResumePreview";
@@ -87,8 +86,7 @@ const Resume = () => {
   };
 
   return (
-    <OnboardingGuard pageName="Resume">
-        <GradientBackground>
+    <GradientBackground>
           <MobileResponsiveWrapper>
             <main className="container mx-auto px-4 sm:px-6 py-4 lg:py-6">
             {/* Header */}
@@ -185,8 +183,7 @@ const Resume = () => {
         resumeData={resumeData}
         userProfile={userProfile}
       />
-        </GradientBackground>
-    </OnboardingGuard>
+    </GradientBackground>
   );
 };
 

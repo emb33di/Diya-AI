@@ -11,7 +11,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Separator } from "@/components/ui/separator";
 import GradientBackground from "@/components/GradientBackground";
-import OnboardingGuard from "@/components/OnboardingGuard";
 import { Eye, EyeOff, Lock, User } from "lucide-react";
 
 const passwordChangeSchema = z.object({
@@ -140,8 +139,7 @@ export default function Settings() {
   };
 
   return (
-    <OnboardingGuard pageName="Settings">
-      <GradientBackground>
+    <GradientBackground>
         <div className="container mx-auto py-8 max-w-2xl">
           <div className="mb-8">
             <h1 className="text-3xl font-bold">Settings</h1>
@@ -316,6 +314,5 @@ export default function Settings() {
           </div>
         </div>
       </GradientBackground>
-    </OnboardingGuard>
   );
 }

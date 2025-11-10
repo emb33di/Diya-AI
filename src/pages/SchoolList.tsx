@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import OnboardingGuard from "@/components/OnboardingGuard";
 import GradientBackground from "@/components/GradientBackground";
 import { supabase } from "@/integrations/supabase/client";
 import AddSchoolModal from "@/components/AddSchoolModal";
@@ -727,47 +726,43 @@ const SchoolList = () => {
 
   if (loading) {
     return (
-      <OnboardingGuard pageName="Schools">
-        <GradientBackground>
-          <main className="container mx-auto px-6 py-8">
-            <div className="flex items-center justify-center h-64">
-              <div className="flex items-center space-x-2">
-                <Loader2 className="h-6 w-6 animate-spin" />
-                <span>Loading your school recommendations...</span>
-              </div>
+      <GradientBackground>
+        <main className="container mx-auto px-6 py-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="flex items-center space-x-2">
+              <Loader2 className="h-6 w-6 animate-spin" />
+              <span>Loading your school recommendations...</span>
             </div>
-          </main>
-        </GradientBackground>
-      </OnboardingGuard>
+          </div>
+        </main>
+      </GradientBackground>
     );
   }
 
   if (error) {
     return (
-      <OnboardingGuard pageName="Schools">
-        <GradientBackground>
-          <main className="container mx-auto px-6 py-8">
-            <div className="flex items-center justify-center h-64">
-              <div className="text-center">
-                <p className="text-red-500 mb-4">{error}</p>
-                <Button onClick={() => {
-                  setError(null);
-                  setLoading(true);
-                  fetchSchoolRecommendationsData();
-                }}>
-                  Try Again
-                </Button>
-              </div>
+      <GradientBackground>
+        <main className="container mx-auto px-6 py-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <p className="text-red-500 mb-4">{error}</p>
+              <Button onClick={() => {
+                setError(null);
+                setLoading(true);
+                fetchSchoolRecommendationsData();
+              }}>
+                Try Again
+              </Button>
             </div>
-          </main>
-        </GradientBackground>
-      </OnboardingGuard>
+          </div>
+        </main>
+      </GradientBackground>
     );
   }
 
   return (
-    <OnboardingGuard pageName="Schools">
-        <DndContext
+    <>
+      <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
         onDragStart={handleDragStart}
@@ -877,7 +872,7 @@ const SchoolList = () => {
         </DragOverlay>
       </DndContext>
 
-    {/* Add School Modal */}
+      {/* Add School Modal */}
     <AddSchoolModal
       isOpen={isAddModalOpen}
       onClose={() => setIsAddModalOpen(false)}
@@ -946,7 +941,7 @@ const SchoolList = () => {
         </button>
       </div>
     )}
-    </OnboardingGuard>
+    </>
   );
 };
 

@@ -8,7 +8,6 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 import { Calendar, CheckCircle2, AlertCircle, Star, Target, Shield, Filter, Loader2, Edit3 } from "lucide-react";
-import OnboardingGuard from "@/components/OnboardingGuard";
 import GradientBackground from "@/components/GradientBackground";
 import { supabase } from "@/integrations/supabase/client";
 import { 
@@ -241,21 +240,18 @@ const Deadlines = () => {
 
   if (loading) {
     return (
-      <OnboardingGuard pageName="Deadlines">
-          <GradientBackground>
-            <div className="flex items-center justify-center min-h-screen">
-              <div className="text-center">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-                <p className="text-muted-foreground">Loading deadlines...</p>
-              </div>
-            </div>
-          </GradientBackground>
-      </OnboardingGuard>
+      <GradientBackground>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">Loading deadlines...</p>
+          </div>
+        </div>
+      </GradientBackground>
     );
   }
 
   return (
-    <OnboardingGuard pageName="Deadlines">
         <GradientBackground>
         <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8 space-y-4 lg:space-y-0">
@@ -479,7 +475,6 @@ const Deadlines = () => {
           )}
         </main>
         </GradientBackground>
-    </OnboardingGuard>
   );
 };
 
