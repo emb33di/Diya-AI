@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, Home, GraduationCap, FileText, PenTool, Users, Calendar, BookOpen, ChevronDown, FolderOpen } from "lucide-react";
+import { Menu, Home, GraduationCap, FileText, PenTool, Users, Calendar, BookOpen, ChevronDown, FolderOpen, Mail } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -55,6 +55,11 @@ const MobileNavigation = () => {
       path: "/blog",
       label: "Blog",
       icon: <BookOpen className="h-5 w-5" />,
+    },
+    {
+      path: "/contact",
+      label: "Contact",
+      icon: <Mail className="h-5 w-5" />,
     },
   ];
 

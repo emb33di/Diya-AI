@@ -33,6 +33,7 @@ import TermsOfService from "./pages/TermsOfService";
 import RefundPolicy from "./pages/RefundPolicy";
 import Blog from "./pages/Blog";
 import BlogPost from "./pages/BlogPost";
+import Contact from "./pages/Contact";
 import IvyReadiness from "./pages/IvyReadiness";
 import SuccessfulExamples from "./pages/SuccessfulExamples";
 import DebugErrors from "./pages/DebugErrors";
@@ -86,6 +87,7 @@ const App = () => {
             <Route path="/refund-policy" element={<RefundPolicy />} />
             <Route path="/blog" element={<Blog />} />
             <Route path="/blog/:slug" element={<BlogPost />} />
+            <Route path="/contact" element={<Contact />} />
             <Route path="/ivyreadiness" element={<IvyReadiness />} />
             <Route path="/successful-examples" element={<SuccessfulExamples />} />
             {import.meta.env.DEV && <Route path="/debug-errors" element={<DebugErrors />} />}
