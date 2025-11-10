@@ -33,6 +33,11 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import UpgradeModal from "@/components/UpgradeModal";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SchoolRecommendation } from "@/utils/supabaseUtils";
+import type { SemanticDocument, Annotation } from "@/types/semanticDocument";
+
+const supabaseClient = supabase as SupabaseClient<any>;
 
 interface School {
   id: string;
@@ -43,13 +48,15 @@ interface School {
   applicationDeadline: string;
   notes: string;
   country?: string;
+  schoolType?: string | null;
+  raw?: SchoolRecommendation;
 }
 interface Essay {
   id: string;
   title: string;
   prompt: string;
   wordCount: number;
-  wordLimit: number;
+  wordLimit: number | string | null;
   status: string;
   lastEdited: string;
   feedback: number;
@@ -323,7 +330,7 @@ const Essays = () => {
     try {
       const {
         data: { user }
-      } = await supabase.auth.getUser();
+      } = await supabaseClient.auth.getUser();
       if (!user) return [];
 
       // Use timeout utility to prevent hanging queries
@@ -333,19 +340,19 @@ const Essays = () => {
         throw new Error(error);
       }
       
-      if (!recommendations) {
-        return [];
-      }
+      const safeRecommendations = Array.isArray(recommendations) ? recommendations : [];
       
-      const transformedSchools: School[] = recommendations.map((rec: any) => ({
+      const transformedSchools: School[] = safeRecommendations.map((rec) => ({
         id: rec.id,
         name: rec.school,
-        category: rec.category as 'reach' | 'target' | 'safety',
+        category: (rec.category as 'reach' | 'target' | 'safety') ?? 'target',
         acceptanceRate: rec.acceptance_rate || 'N/A',
         ranking: rec.school_ranking || 'N/A',
         applicationDeadline: rec.first_round_deadline || 'TBD',
         notes: rec.notes || rec.student_thesis || 'No notes available',
-        country: rec.country || undefined
+        country: rec.country || undefined,
+        schoolType: rec.school_type ?? undefined,
+        raw: rec
       }));
       
       // Add Common Application and UCAS as school options for undergraduate students
@@ -606,7 +613,7 @@ const Essays = () => {
       try {
         const {
           data: conversations
-        } = await supabase
+        } = await supabaseClient
           .from('conversation_metadata')
           .select('transcript')
           .eq('user_id', userId)
@@ -685,7 +692,7 @@ const Essays = () => {
       try {
         const {
           data: { user }
-        } = await supabase.auth.getUser();
+        } = await supabaseClient.auth.getUser();
 
         if (!user) {
           if (isMountedRef.current) {
@@ -1037,7 +1044,7 @@ const Essays = () => {
   // Handle adding a single school
   const addSchool = async (schoolData: any) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await supabaseClient.auth.getUser();
       if (!user) {
         toast({
           title: "Error",
@@ -1067,7 +1074,7 @@ const Essays = () => {
         ...schoolData
       };
       
-      const { data: newSchoolData, error } = await supabase
+      const { data: newSchoolData, error } = await supabaseClient
         .from('school_recommendations')
         .insert(insertData)
         .select()
@@ -1105,7 +1112,7 @@ const Essays = () => {
   // Handle adding multiple schools
   const addMultipleSchools = async (schoolsData: any[]) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await supabaseClient.auth.getUser();
       if (!user) {
         toast({
           title: "Error",
@@ -1140,7 +1147,7 @@ const Essays = () => {
         ...schoolData
       }));
       
-      const { error } = await supabase
+      const { error } = await supabaseClient
         .from('school_recommendations')
         .insert(insertData);
 
@@ -1323,7 +1330,8 @@ const Essays = () => {
       if (wasNotStarted && hasContent) {
         try {
           // Create a semantic document for Version 1
-          const semanticDocument = {
+          const totalWordCount = content.split(' ').filter(w => w.length > 0).length;
+          const semanticDocument: SemanticDocument = {
             id: crypto.randomUUID(),
             title: selectedEssay.title,
             blocks: [
@@ -1331,14 +1339,16 @@ const Essays = () => {
                 id: `block_${Date.now()}`,
                 type: 'paragraph',
                 content: content,
+                position: 0,
+                annotations: [] as Annotation[],
                 metadata: {
-                  wordCount: content.split(' ').filter(w => w.length > 0).length,
+                  wordCount: totalWordCount,
                   lastModified: new Date().toISOString()
                 }
               }
             ],
             metadata: {
-              totalWordCount: content.split(' ').filter(w => w.length > 0).length,
+              totalWordCount,
               totalCharacterCount: content.length,
               lastSaved: new Date().toISOString(),
               version: 1,
@@ -1353,9 +1363,9 @@ const Essays = () => {
           await semanticDocumentService.saveDocument(semanticDocument);
 
           // Create Version 1 in essay_versions table
-          const { data: { user } } = await supabase.auth.getUser();
+          const { data: { user } } = await supabaseClient.auth.getUser();
           if (user) {
-            await supabase
+            await supabaseClient
               .from('essay_versions')
               .insert({
                 essay_id: selectedEssay.id,
@@ -1430,7 +1440,7 @@ const Essays = () => {
       let resolvedUserId = userId;
 
       if (!resolvedUserId) {
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await supabaseClient.auth.getUser();
         resolvedUserId = user?.id || undefined;
       }
 
@@ -1458,7 +1468,7 @@ const Essays = () => {
   const fetchGuestEssays = async () => {
     setLoadingGuestEssays(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await supabaseClient.auth.getUser();
       if (!user) {
         if (isMountedRef.current) {
           toast({
@@ -1518,7 +1528,7 @@ const Essays = () => {
     // For paid users, migrate the essay first
     setMigratingGuestEssay(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await supabaseClient.auth.getUser();
       if (!user) {
         toast({
           title: "Error",
@@ -2564,11 +2574,23 @@ const Essays = () => {
                         
                         <div className="flex items-center space-x-2">
                           <div className={`text-sm px-2 py-1 rounded-full ${(() => {
-                            const wordLimit = selectedEssay.wordLimit;
+                            const rawWordLimit = selectedEssay.wordLimit;
                             const currentCount = getWordCount(essayContent);
-                            if (!wordLimit || wordLimit === 'Not specified' || wordLimit === 'No limit') return 'bg-muted text-muted-foreground';
-                            const limitNum = typeof wordLimit === 'number' ? wordLimit : parseInt(wordLimit);
-                            if (isNaN(limitNum)) return 'bg-muted text-muted-foreground';
+
+                            const limitNum = (() => {
+                              if (rawWordLimit === null || rawWordLimit === undefined) return null;
+                              if (typeof rawWordLimit === 'number') return rawWordLimit;
+
+                              const normalized = rawWordLimit.trim().toLowerCase();
+                              if (normalized === '' || normalized === 'not specified' || normalized === 'no limit') {
+                                return null;
+                              }
+
+                              const parsed = parseInt(normalized, 10);
+                              return Number.isNaN(parsed) ? null : parsed;
+                            })();
+
+                            if (limitNum === null) return 'bg-muted text-muted-foreground';
                             if (currentCount > limitNum) return 'bg-destructive/10 text-destructive';
                             if (currentCount > limitNum * 0.9) return 'bg-warning/10 text-warning';
                             return 'bg-muted text-muted-foreground';

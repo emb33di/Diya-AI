@@ -15,6 +15,9 @@ import "@/styles/landing.css";
 import { getProgramOptions } from "@/utils/programTypes";
 import { GuestEssayMigrationService } from "@/services/guestEssayMigrationService";
 import { createCheckoutSession } from "@/services/stripePaymentService";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+const supabaseClient = supabase as SupabaseClient<any>;
 
 // Country codes for phone number dropdown
 const countryCodes = [
@@ -113,7 +116,7 @@ const Auth = () => {
     
     try {
       // Use Supabase's built-in password reset with Resend SMTP
-      const { error } = await supabase.auth.resetPasswordForEmail(forgotPasswordEmail, {
+      const { error } = await supabaseClient.auth.resetPasswordForEmail(forgotPasswordEmail, {
         redirectTo: 'https://www.meetdiya.com/password-reset'
       });
 
@@ -194,7 +197,7 @@ const Auth = () => {
     try {
       if (isSignIn) {
         console.log(`[${signupId}] Signing in user:`, { email });
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        const { data: signInData, error: signInError } = await supabaseClient.auth.signInWithPassword({
           email,
           password,
         });
@@ -274,7 +277,7 @@ const Auth = () => {
         console.log(`[${signupId}] Step 1 - Creating user via Supabase Auth`);
         try {
           // Use the authDataToSend we already prepared
-          const { data: authData, error: authError } = await supabase.auth.signUp(authDataToSend);
+          const { data: authData, error: authError } = await supabaseClient.auth.signUp(authDataToSend);
 
           // Log the response with more detailed error info
           console.log(`[${signupId}] Auth signup response:`, { 
@@ -331,7 +334,7 @@ const Auth = () => {
           try {
             // Normalize applyingTo to lowercase for atomic function (it expects lowercase)
             const normalizedApplyingTo = applyingTo.toLowerCase();
-            const { data: signupResult, error: signupError } = await supabase.rpc('create_user_profiles_atomic', {
+            const { data: signupResult, error: signupError } = await supabaseClient.rpc('create_user_profiles_atomic', {
               p_user_id: authData.user.id,
               p_email: email,
               p_first_name: firstName,
@@ -342,7 +345,12 @@ const Auth = () => {
             if (signupError) {
               console.error(`❌ [${signupId}] Atomic profile creation error:`, signupError);
               // Don't fail signup - trigger should have created basic profile
-            } else if (signupResult?.success) {
+            } else if (
+              signupResult &&
+              typeof signupResult === 'object' &&
+              'success' in signupResult &&
+              (signupResult as { success?: boolean }).success
+            ) {
               console.log(`✅ [${signupId}] Profile created successfully via atomic function:`, signupResult);
             } else {
               console.warn(`⚠️ [${signupId}] Atomic function returned non-success:`, signupResult);
@@ -370,7 +378,7 @@ const Auth = () => {
             }
 
             if (Object.keys(updateData).length > 0) {
-              const { error: updateError } = await supabase
+              const { error: updateError } = await supabaseClient
                 .from('user_profiles')
                 .update(updateData)
                 .eq('user_id', authData.user.id);

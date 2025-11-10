@@ -89,6 +89,10 @@ export interface DocumentMetadata {
   author?: string;
   version?: number;
   tags?: string[];
+  totalWordCount?: number;
+  totalCharacterCount?: number;
+  lastSaved?: string;
+  isReadOnly?: boolean;
 }
 
 /**
@@ -99,6 +103,7 @@ export interface BlockMetadata {
   characterCount?: number;
   readingTime?: number;
   complexity?: 'low' | 'medium' | 'high';
+  lastModified?: string;
 }
 
 /**

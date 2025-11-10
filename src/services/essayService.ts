@@ -1,4 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+const supabaseClient = supabase as SupabaseClient<any>;
 
 // Utility functions for content conversion
 export const convertHTMLToBlocks = (html: string): EssayBlock[] => {
@@ -92,7 +95,7 @@ export interface CreateEssayData {
 export class EssayService {
   // Create new essay
   static async createEssay(data: CreateEssayData): Promise<Essay> {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
     const initialContent: EssayContent = {
@@ -124,7 +127,7 @@ export class EssayService {
       }
     };
 
-    const { data: essay, error } = await supabase
+    const { data: essay, error } = await supabaseClient
       .from('essays')
       .insert({
         user_id: user.id,
@@ -146,7 +149,7 @@ export class EssayService {
 
   // Get essay by ID
   static async getEssay(essayId: string): Promise<Essay> {
-    const { data: essay, error } = await supabase
+    const { data: essay, error } = await supabaseClient
       .from('essays')
       .select('*')
       .eq('id', essayId)
@@ -158,10 +161,10 @@ export class EssayService {
 
   // Get all essays for current user
   static async getUserEssays(): Promise<Essay[]> {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    const { data: essays, error } = await supabase
+    const { data: essays, error } = await supabaseClient
       .from('essays')
       .select('*')
       .eq('user_id', user.id)
@@ -173,10 +176,10 @@ export class EssayService {
 
   // Get essays for a specific school
   static async getEssaysForSchool(schoolName: string): Promise<Essay[]> {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    const { data: essays, error } = await supabase
+    const { data: essays, error } = await supabaseClient
       .from('essays')
       .select('*')
       .eq('user_id', user.id)
@@ -197,7 +200,7 @@ export class EssayService {
       }
     };
 
-    const { error } = await supabase
+    const { error } = await supabaseClient
       .from('essays')
       .update({
         content: updatedContent,
@@ -212,7 +215,7 @@ export class EssayService {
 
   // Update essay title
   static async updateEssayTitle(essayId: string, title: string): Promise<void> {
-    const { error } = await supabase
+    const { error } = await supabaseClient
       .from('essays')
       .update({ title })
       .eq('id', essayId);
@@ -222,7 +225,7 @@ export class EssayService {
 
   // Update essay status
   static async updateEssayStatus(essayId: string, status: Essay['status']): Promise<void> {
-    const { error } = await supabase
+    const { error } = await supabaseClient
       .from('essays')
       .update({ status })
       .eq('id', essayId);
@@ -232,7 +235,7 @@ export class EssayService {
 
   // Delete essay
   static async deleteEssay(essayId: string): Promise<void> {
-    const { error } = await supabase
+    const { error } = await supabaseClient
       .from('essays')
       .delete()
       .eq('id', essayId);
@@ -242,7 +245,7 @@ export class EssayService {
 
   // Get essay versions (revision history)
   static async getEssayVersions(essayId: string) {
-    const { data: versions, error } = await supabase
+    const { data: versions, error } = await supabaseClient
       .from('essay_versions')
       .select('*')
       .eq('essay_id', essayId)

@@ -6,12 +6,13 @@ import GradientBackground from "@/components/GradientBackground";
 import { supabase } from "@/integrations/supabase/client";
 import AddSchoolModal from "@/components/AddSchoolModal";
 import ArchiveModal from "@/components/ArchiveModal";
-import { fetchSchoolRecommendations } from "@/utils/supabaseUtils";
+import { fetchSchoolRecommendations, type SchoolRecommendation } from "@/utils/supabaseUtils";
 import { useNavigate } from "react-router-dom";
 import { SchoolArchiveService } from "@/services/schoolArchiveService";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { analytics } from "@/utils/analytics";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   DndContext,
   DragOverlay,
@@ -57,9 +58,12 @@ interface School {
   earlyDecision2Deadline?: string;
   regularDecisionDeadline?: string;
   notes: string;
+  schoolType?: string | null;
+  raw?: SchoolRecommendation;
 }
 
 const SchoolList = () => {
+  const supabaseClient = supabase as SupabaseClient<any>;
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, profile } = useAuth();
@@ -127,31 +131,36 @@ const SchoolList = () => {
       const { data: recommendations, error: fetchError } = await fetchSchoolRecommendations(user.id);
 
       if (fetchError) {
+        const errorMessage = typeof fetchError === 'string' ? fetchError : 'Failed to load school recommendations';
         console.error('[SCHOOLS_ERROR] Failed to load school recommendations:', {
           userId: user?.id || 'unknown',
           userEmail: user?.email || 'unknown',
-          error: fetchError instanceof Error ? fetchError.message : 'Unknown error',
+          error: errorMessage,
           timestamp: new Date().toISOString(),
           message: 'User cannot see their school list'
         });
-        setError(fetchError);
+        setError(errorMessage);
         return;
       }
 
       // Transform the data to match the UI format
-      const transformedSchools: School[] = recommendations.map((rec, index) => ({
+      const safeRecommendations = Array.isArray(recommendations) ? recommendations : [];
+
+      const transformedSchools: School[] = safeRecommendations.map((rec) => ({
         id: rec.id,
         name: rec.school,
-        location: capitalizeSchoolType(rec.school_type), // Capitalize school type
-        category: rec.category as 'reach' | 'target' | 'safety',
+        location: formatSchoolTypeLabel(rec.school_type),
+        category: (rec.category as 'reach' | 'target' | 'safety') ?? 'target',
         acceptanceRate: rec.acceptance_rate || 'N/A',
         ranking: rec.school_ranking || 'N/A',
         applicationDeadline: rec.first_round_deadline || 'TBD',
-        earlyActionDeadline: rec.early_action_deadline || 'N/A',
-        earlyDecision1Deadline: rec.early_decision_1_deadline || 'N/A',
-        earlyDecision2Deadline: rec.early_decision_2_deadline || 'N/A',
-        regularDecisionDeadline: rec.regular_decision_deadline || 'N/A',
-        notes: rec.notes || rec.student_thesis || 'No notes available'
+        earlyActionDeadline: rec.early_action_deadline || undefined,
+        earlyDecision1Deadline: rec.early_decision_1_deadline || undefined,
+        earlyDecision2Deadline: rec.early_decision_2_deadline || undefined,
+        regularDecisionDeadline: rec.regular_decision_deadline || undefined,
+        notes: rec.notes || rec.student_thesis || 'No notes available',
+        schoolType: rec.school_type,
+        raw: rec
       }));
 
       setSchools(transformedSchools);
@@ -177,7 +186,7 @@ const SchoolList = () => {
   }, [user, fetchSchoolRecommendationsData]);
 
 
-  const capitalizeSchoolType = (schoolType: string) => {
+  const formatSchoolTypeLabel = (schoolType?: string | null) => {
     if (!schoolType) return 'University';
     
     // Handle special cases for proper display
@@ -189,7 +198,7 @@ const SchoolList = () => {
       case 'research_university':
         return 'Research';
       default:
-        return schoolType.charAt(0).toUpperCase() + schoolType.slice(1) + ' University';
+        return schoolType.charAt(0).toUpperCase() + schoolType.slice(1);
     }
   };
 
@@ -208,10 +217,10 @@ const SchoolList = () => {
   const handleSchoolClick = (school: School) => {
     // Track school click event
     analytics.trackSchoolEvent('clicked', school.name, {
-      school_category: school.category,
-      school_type: school.school_type,
-      school_ranking: school.school_ranking,
-      acceptance_rate: school.acceptance_rate
+      category: school.category,
+      school_type: school.schoolType ?? 'unknown',
+      school_ranking: school.ranking,
+      acceptance_rate: school.acceptanceRate
     });
     
     // Store the selected school in localStorage for the essays page
@@ -278,7 +287,7 @@ const SchoolList = () => {
         student_id: user.id,
         ...schoolData
       };
-      const { data: newSchoolData, error } = await supabase
+      const { data: newSchoolData, error } = await supabaseClient
         .from('school_recommendations')
         .insert(insertData)
         .select()
@@ -298,10 +307,10 @@ const SchoolList = () => {
 
       // Automatically sync regular decision deadline for the new school
       try {
-        const { data: deadlineSyncData, error: deadlineSyncError } = await supabase.functions.invoke('auto-sync-deadlines', {
+        const { data: deadlineSyncData, error: deadlineSyncError } = await supabaseClient.functions.invoke('auto-sync-deadlines', {
           body: { user_id: user.id },
           headers: {
-            Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+            Authorization: `Bearer ${(await supabaseClient.auth.getSession()).data.session?.access_token}`,
           }
         });
 
@@ -330,8 +339,8 @@ const SchoolList = () => {
       const newSchool: School = {
         id: newSchoolData.id,
         name: newSchoolData.school,
-        location: capitalizeSchoolType(newSchoolData.school_type),
-        category: newSchoolData.category as 'reach' | 'target' | 'safety',
+        location: formatSchoolTypeLabel(newSchoolData.school_type),
+        category: (newSchoolData.category as 'reach' | 'target' | 'safety') ?? 'target',
         acceptanceRate: newSchoolData.acceptance_rate || 'N/A',
         ranking: newSchoolData.school_ranking || 'N/A',
         applicationDeadline: newSchoolData.first_round_deadline || 'TBD',
@@ -339,14 +348,16 @@ const SchoolList = () => {
         earlyDecision1Deadline: newSchoolData.early_decision_1_deadline || 'N/A',
         earlyDecision2Deadline: newSchoolData.early_decision_2_deadline || 'N/A',
         regularDecisionDeadline: newSchoolData.regular_decision_deadline || 'N/A',
-        notes: newSchoolData.notes || newSchoolData.student_thesis || 'Add your notes here'
+        notes: newSchoolData.notes || newSchoolData.student_thesis || 'Add your notes here',
+        schoolType: newSchoolData.school_type,
+        raw: newSchoolData
       };
       
       setSchools([...schools, newSchool]);
       
       // Track school addition
-      analytics.trackSchoolEvent('added_to_list', newSchoolData.school, {
-        school_category: newSchoolData.category,
+      analytics.trackSchoolEvent('added', newSchoolData.school, {
+        category: (newSchoolData.category as 'reach' | 'target' | 'safety') ?? undefined,
         school_type: newSchoolData.school_type,
         school_ranking: newSchoolData.school_ranking,
         acceptance_rate: newSchoolData.acceptance_rate,
@@ -407,7 +418,7 @@ const SchoolList = () => {
         ...schoolData
       }));
       
-      const { data: newSchoolsDataResult, error } = await supabase
+      const { data: newSchoolsDataResult, error } = await supabaseClient
         .from('school_recommendations')
         .insert(insertData)
         .select();
@@ -426,10 +437,10 @@ const SchoolList = () => {
 
       // Automatically sync regular decision deadlines for the new schools
       try {
-        const { data: deadlineSyncData, error: deadlineSyncError } = await supabase.functions.invoke('auto-sync-deadlines', {
+        const { data: deadlineSyncData, error: deadlineSyncError } = await supabaseClient.functions.invoke('auto-sync-deadlines', {
           body: { user_id: user.id },
           headers: {
-            Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+            Authorization: `Bearer ${(await supabaseClient.auth.getSession()).data.session?.access_token}`,
           }
         });
 
@@ -455,11 +466,11 @@ const SchoolList = () => {
       }
 
       // Add to local state
-      const newSchools: School[] = newSchoolsDataResult.map(newSchoolData => ({
+      const newSchools: School[] = (newSchoolsDataResult ?? []).map(newSchoolData => ({
         id: newSchoolData.id,
         name: newSchoolData.school,
-        location: capitalizeSchoolType(newSchoolData.school_type),
-        category: newSchoolData.category as 'reach' | 'target' | 'safety',
+        location: formatSchoolTypeLabel(newSchoolData.school_type),
+        category: (newSchoolData.category as 'reach' | 'target' | 'safety') ?? 'target',
         acceptanceRate: newSchoolData.acceptance_rate || 'N/A',
         ranking: newSchoolData.school_ranking || 'N/A',
         applicationDeadline: newSchoolData.first_round_deadline || 'TBD',
@@ -467,7 +478,9 @@ const SchoolList = () => {
         earlyDecision1Deadline: newSchoolData.early_decision_1_deadline || 'N/A',
         earlyDecision2Deadline: newSchoolData.early_decision_2_deadline || 'N/A',
         regularDecisionDeadline: newSchoolData.regular_decision_deadline || 'N/A',
-        notes: newSchoolData.notes || newSchoolData.student_thesis || 'Add your notes here'
+        notes: newSchoolData.notes || newSchoolData.student_thesis || 'Add your notes here',
+        schoolType: newSchoolData.school_type,
+        raw: newSchoolData
       }));
       
       setSchools([...schools, ...newSchools]);
@@ -571,7 +584,7 @@ const SchoolList = () => {
 
     // Update in database
     try {
-      const { error } = await supabase
+      const { error } = await supabaseClient
         .from('school_recommendations')
         .update({ category: newCategory })
         .eq('id', schoolId);
