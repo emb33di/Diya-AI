@@ -186,6 +186,7 @@ const Essays = () => {
   const [showGuestEssayViewer, setShowGuestEssayViewer] = useState(false);
   const [migratingGuestEssay, setMigratingGuestEssay] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [hasAvailableGuestEssays, setHasAvailableGuestEssays] = useState(false);
   const { isPro } = usePaywall();
 
   // Fetch prompts for a school when expanded (mobile view)
@@ -648,6 +649,9 @@ const Essays = () => {
             message: 'User onboarding conversation could not be loaded for essay context'
           });
         }
+
+        // Check for available guest essays
+        await checkAvailableGuestEssays();
         
       } catch (error) {
         console.error('[ESSAYS_ERROR] Failed to load essays page data:', {
@@ -1311,6 +1315,23 @@ const Essays = () => {
     }
   };
 
+  // Check if there are available guest essays (without showing toasts)
+  const checkAvailableGuestEssays = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setHasAvailableGuestEssays(false);
+        return;
+      }
+
+      const essays = await GuestEssayMigrationService.getGuestEssaysByUserId(user.id);
+      setHasAvailableGuestEssays(essays.length > 0);
+    } catch (error) {
+      console.error('Error checking guest essays:', error);
+      setHasAvailableGuestEssays(false);
+    }
+  };
+
   // Fetch guest essays for the current user
   const fetchGuestEssays = async () => {
     setLoadingGuestEssays(true);
@@ -1327,6 +1348,7 @@ const Essays = () => {
 
       const essays = await GuestEssayMigrationService.getGuestEssaysByUserId(user.id);
       setGuestEssays(essays);
+      setHasAvailableGuestEssays(essays.length > 0);
       
       if (essays.length === 0) {
         toast({
@@ -1394,7 +1416,7 @@ const Essays = () => {
         setShowGuestEssayViewer(false);
         setSelectedGuestEssay(null);
         
-        // Refresh guest essays list
+        // Refresh guest essays list (this also updates hasAvailableGuestEssays)
         await fetchGuestEssays();
       } else {
         toast({
@@ -1440,14 +1462,16 @@ const Essays = () => {
                 <h1 className="text-2xl font-display font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
                   Essay Dashboard
                 </h1>
-                <Button 
-                  variant="outline"
-                  className="mt-4 w-full"
-                  onClick={handleOpenGuestEssaysModal}
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Retrieve My Essays
-                </Button>
+                {hasAvailableGuestEssays && (
+                  <Button 
+                    variant="outline"
+                    className="mt-4 w-full"
+                    onClick={handleOpenGuestEssaysModal}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Retrieve My Essays
+                  </Button>
+                )}
               </div>
 
               {schools.length === 0 ? (
@@ -2164,14 +2188,16 @@ const Essays = () => {
                   <Plus className="h-4 w-4 mr-2" />
                   {creatingEssay ? 'Creating...' : 'New Essay'}
                 </Button>
-                <Button 
-                  variant="outline"
-                  className="shadow-sm"
-                  onClick={handleOpenGuestEssaysModal}
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Retrieve My Essays
-                </Button>
+                {hasAvailableGuestEssays && (
+                  <Button 
+                    variant="outline"
+                    className="shadow-sm"
+                    onClick={handleOpenGuestEssaysModal}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Retrieve My Essays
+                  </Button>
+                )}
               </div>
             </div>
           </div>
