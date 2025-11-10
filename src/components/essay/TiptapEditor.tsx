@@ -22,12 +22,14 @@ export interface TiptapEditorRef {
   getSelectionEnd: () => number;
   setCursorAtPosition: (position: number) => void; // New method for precise positioning
   getContentLength: () => number; // Get the actual text content length
-  setContent: (text: string) => void; // Programmatically set content
+  setContent: (text: string, emitUpdate?: boolean) => void; // Programmatically set content
+  setContentSafe?: (text: string) => void;
 }
 
 const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
   ({ content, placeholder, onUpdate, onBlur, onKeyDown, onPaste, className, style }, ref) => {
     const editorRef = useRef<HTMLDivElement>(null);
+    const internalSetRef = React.useRef(0);
 
     const editor = useEditor({
       extensions: [
@@ -51,6 +53,9 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
       ],
       content,
       onUpdate: ({ editor }) => {
+        if (internalSetRef.current > 0) {
+          return;
+        }
         onUpdate?.(editor.getText());
       },
       onBlur: () => {
@@ -92,14 +97,44 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
       },
     });
 
+    const setEditorContent = React.useCallback(
+      (value: string, emitUpdate = false) => {
+        if (!editor) return;
+
+        const shouldSuppress = !emitUpdate;
+
+        if (shouldSuppress) {
+          internalSetRef.current += 1;
+        }
+
+        try {
+          editor.commands.setContent(value, emitUpdate);
+        } finally {
+          if (shouldSuppress) {
+            const schedule =
+              typeof queueMicrotask === 'function'
+                ? queueMicrotask
+                : (cb: () => void) => Promise.resolve().then(cb);
+            schedule(() => {
+              if (internalSetRef.current > 0) {
+                internalSetRef.current -= 1;
+              }
+            });
+          }
+        }
+      },
+      [editor]
+    );
+
     useImperativeHandle(ref, () => ({
       focus: () => {
         editor?.commands.focus();
       },
-      setContent: (text: string) => {
-        if (editor) {
-          editor.commands.setContent(text);
-        }
+      setContent: (text: string, emitUpdate = false) => {
+        setEditorContent(text, emitUpdate);
+      },
+      setContentSafe: (text: string) => {
+        setEditorContent(text);
       },
       setSelectionRange: (start: number, end: number) => {
         if (editor) {
@@ -126,14 +161,14 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
       getContentLength: () => {
         return editor?.state.doc.content.size || 0;
       },
-    }), [editor]);
+    }), [editor, setEditorContent]);
 
     // Update content when prop changes
     React.useEffect(() => {
       if (editor && editor.getText() !== content) {
-        editor.commands.setContent(content);
+        setEditorContent(content);
       }
-    }, [content, editor]);
+    }, [content, editor, setEditorContent]);
 
     if (!editor) {
       return null;

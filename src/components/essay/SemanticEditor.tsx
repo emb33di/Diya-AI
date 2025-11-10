@@ -1200,7 +1200,11 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
         // Update current block with text before cursor and force the live editor to reflect it immediately
         updateBlockContent(blockId, textBeforeCursor);
         try {
-          tiptapEditor.setContent(textBeforeCursor);
+          if (tiptapEditor.setContentSafe) {
+            tiptapEditor.setContentSafe(textBeforeCursor);
+          } else {
+            tiptapEditor.setContent(textBeforeCursor);
+          }
         } catch (_e) {
           // If imperative update fails, prop-driven update will still sync shortly
         }
