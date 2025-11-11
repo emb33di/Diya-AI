@@ -106,7 +106,7 @@ const Header = () => {
         isAuthenticated ? 'justify-between md:justify-between' : 'justify-between'
       }`}>
         {/* Logo */}
-        <Link to={loading ? "/" : (isAuthenticated ? "/dashboard" : "/")} className="flex items-center space-x-2 flex-shrink-0">
+        <Link to={loading ? "/" : (isAuthenticated ? "/schools" : "/")} className="flex items-center space-x-2 flex-shrink-0">
           <img 
             src={
               isIvySummitPortal 

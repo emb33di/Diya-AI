@@ -20,7 +20,8 @@ import {
   CheckCircle,
   Send,
   Eye,
-  Trash2
+  Trash2,
+  GraduationCap
 } from 'lucide-react';
 import { EscalatedEssaysService, EscalatedEssayStatus, EscalatedEssayListItem } from '@/services/escalatedEssaysService';
 import { useToast } from '@/hooks/use-toast';
@@ -240,6 +241,11 @@ const IvySummitPortal: React.FC = () => {
                             <Mail className="h-4 w-4" />
                             <span className="font-medium">Email:</span>
                             <span>{essay.student_email || 'N/A'}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <GraduationCap className="h-4 w-4" />
+                            <span className="font-medium">School:</span>
+                            <span>{essay.school_name || 'N/A'}</span>
                           </div>
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <FileText className="h-4 w-4" />

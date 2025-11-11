@@ -82,6 +82,7 @@ export interface EscalatedEssayListItem {
   student_name: string | null;
   student_email: string | null;
   essay_title: string;
+  school_name: string | null;
   status: EscalatedEssayStatus;
   escalated_at: string;
   word_count: number;
@@ -252,8 +253,9 @@ export class EscalatedEssaysService {
         return [];
       }
 
-      // Get unique user IDs
+      // Get unique user IDs and essay IDs
       const userIds = [...new Set(essaysData.map((item: any) => item.user_id))];
+      const essayIds = [...new Set(essaysData.map((item: any) => item.essay_id))];
 
       // Fetch user profiles for these users
       const { data: profilesData, error: profilesError } = await supabase
@@ -266,15 +268,32 @@ export class EscalatedEssaysService {
         // Continue without profile data rather than failing completely
       }
 
+      // Fetch essays to get school names
+      const { data: essaysDataWithSchools, error: essaysError } = await supabase
+        .from('essays')
+        .select('id, school_name')
+        .in('id', essayIds);
+
+      if (essaysError) {
+        console.error('Error fetching essays:', essaysError);
+      }
+
       // Create a map of user_id to profile data
       const profilesMap = new Map();
       (profilesData || []).forEach((profile: any) => {
         profilesMap.set(profile.user_id, profile);
       });
 
-      // Transform data to combine essays with profile data
+      // Create a map of essay_id to school_name
+      const schoolsMap = new Map();
+      (essaysDataWithSchools || []).forEach((essay: any) => {
+        schoolsMap.set(essay.id, essay.school_name);
+      });
+
+      // Transform data to combine essays with profile data and school names
       const essays: EscalatedEssayListItem[] = essaysData.map((item: any) => {
         const profile = profilesMap.get(item.user_id);
+        const schoolName = schoolsMap.get(item.essay_id);
         return {
           id: item.id,
           essay_id: item.essay_id,
@@ -282,6 +301,7 @@ export class EscalatedEssaysService {
           student_name: profile?.full_name || null,
           student_email: profile?.email_address || null,
           essay_title: item.essay_title,
+          school_name: schoolName || null,
           status: item.status as EscalatedEssayStatus,
           escalated_at: item.escalated_at,
           word_count: item.word_count || 0,
@@ -1445,6 +1465,26 @@ export class EscalatedEssaysService {
         throw new Error('Expert review is only available for Pro users. Please upgrade to Pro to access this feature.');
       }
 
+      // 2. Check user profile for assigned_counselor_slug (takes precedence over partnerSlug parameter)
+      // This allows per-user designation of which counselor their essays should go to
+      let finalPartnerSlug: string | null = null;
+      
+      // First, check user profile for assigned counselor (per-user designation)
+      const { data: profileData, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('assigned_counselor_slug')
+        .eq('user_id', user.id as any)
+        .maybeSingle();
+
+      if (!profileError && profileData && 'assigned_counselor_slug' in profileData && profileData.assigned_counselor_slug) {
+        // User has an assigned counselor - use that (overrides URL parameter)
+        finalPartnerSlug = String(profileData.assigned_counselor_slug).toLowerCase();
+      } else if (partnerSlug) {
+        // No assigned counselor, but partnerSlug provided (e.g., from URL parameter)
+        finalPartnerSlug = partnerSlug.toLowerCase();
+      }
+      // If neither is set, finalPartnerSlug remains null (essays go to founder)
+
       let reservation: EscalationSlotReservation | null = null;
 
       try {
@@ -1511,7 +1551,7 @@ export class EscalatedEssaysService {
             ai_comments_snapshot: aiCommentsSnapshot as any, // JSONB field (for reference only, not displayed)
             semantic_document_id: semanticDocumentId,
             status: 'pending',
-            partner_slug: partnerSlug ? partnerSlug.toLowerCase() : null // Tag escalation with partner if provided (normalized to lowercase)
+            partner_slug: finalPartnerSlug // Use finalPartnerSlug (from user profile or parameter, normalized to lowercase)
           })
           .select('id')
           .single();
@@ -1626,8 +1666,9 @@ export class EscalatedEssaysService {
         return [];
       }
 
-      // Get unique user IDs
+      // Get unique user IDs and essay IDs
       const userIds = [...new Set(essaysData.map((item: any) => item.user_id))];
+      const essayIds = [...new Set(essaysData.map((item: any) => item.essay_id))];
 
       // Fetch user profiles for these users
       const { data: profilesData, error: profilesError } = await supabase
@@ -1639,15 +1680,32 @@ export class EscalatedEssaysService {
         console.error('Error fetching user profiles:', profilesError);
       }
 
+      // Fetch essays to get school names
+      const { data: essaysDataWithSchools, error: essaysError } = await supabase
+        .from('essays')
+        .select('id, school_name')
+        .in('id', essayIds);
+
+      if (essaysError) {
+        console.error('Error fetching essays:', essaysError);
+      }
+
       // Create a map of user_id to profile data
       const profilesMap = new Map();
       (profilesData || []).forEach((profile: any) => {
         profilesMap.set(profile.user_id, profile);
       });
 
-      // Transform data to combine essays with profile data
+      // Create a map of essay_id to school_name
+      const schoolsMap = new Map();
+      (essaysDataWithSchools || []).forEach((essay: any) => {
+        schoolsMap.set(essay.id, essay.school_name);
+      });
+
+      // Transform data to combine essays with profile data and school names
       const essays: EscalatedEssayListItem[] = essaysData.map((item: any) => {
         const profile = profilesMap.get(item.user_id);
+        const schoolName = schoolsMap.get(item.essay_id);
         return {
           id: item.id,
           essay_id: item.essay_id,
@@ -1655,6 +1713,7 @@ export class EscalatedEssaysService {
           student_name: profile?.full_name || null,
           student_email: profile?.email_address || null,
           essay_title: item.essay_title,
+          school_name: schoolName || null,
           status: item.status as EscalatedEssayStatus,
           escalated_at: item.escalated_at,
           word_count: item.word_count || 0,

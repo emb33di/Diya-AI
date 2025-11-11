@@ -138,6 +138,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
   const [feedbackSessions, setFeedbackSessions] = useState<FeedbackSession[]>([]);
   const [selectedFeedbackSession, setSelectedFeedbackSession] = useState<FeedbackSession | null>(null);
   const [filteredDocument, setFilteredDocument] = useState<SemanticDocument | null>(null);
+  const [assignedCounselorSlug, setAssignedCounselorSlug] = useState<string | null>(null);
   
   // Track if document has been initially loaded to prevent false positives in safety check
   const isDocumentInitializedRef = useRef(false);
@@ -157,6 +158,19 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
+      
+      // Fetch assigned counselor slug from user profile
+      if (user) {
+        const { data: profileData } = await supabase
+          .from('user_profiles')
+          .select('assigned_counselor_slug')
+          .eq('user_id', user.id as any)
+          .maybeSingle();
+        
+        if (profileData && 'assigned_counselor_slug' in profileData && profileData.assigned_counselor_slug) {
+          setAssignedCounselorSlug(String(profileData.assigned_counselor_slug).toLowerCase());
+        }
+      }
     };
     getUser();
   }, []);
@@ -1328,11 +1342,15 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
         const status = await EscalatedEssaysService.getUserEscalationStatus();
         setEscalationStatus(status);
 
+        // Determine which counselor the essay was escalated to
+        // Priority: assigned_counselor_slug from profile > partnerSlug from URL > founder (null)
+        const escalatedTo = assignedCounselorSlug || partnerSlug;
+        
         toast({
           title: "Essay Escalated",
-          description: partnerSlug === 'ivysummit' 
+          description: escalatedTo === 'ivysummit' 
             ? "Your essay has been successfully escalated to IvySummit for review. You'll be notified when feedback is available."
-            : "Your essay has been successfully escalated to the founder for review. You'll be notified when feedback is available.",
+            : "Your essay has been successfully escalated to your counselor for review. You'll be notified when feedback is available.",
         });
       } else {
         throw new Error('Escalation failed');
@@ -1542,7 +1560,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                           title="Pro users only"
                         >
                           <ArrowUp className="h-4 w-4 mr-2" />
-                          Founder Review
+                          Send to my Counselor
                           <Lock className="h-3 w-3 ml-2 text-primary" />
                         </Button>
                       }
@@ -1560,20 +1578,11 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                         title={
                           escalationStatus && !escalationStatus.canEscalate
                             ? `You have reached your escalation limit of ${escalationStatus.max}`
-                            : "Escalate this essay to the founder for review"
+                            : "Send this essay to your counselor for review"
                         }
                       >
                         <ArrowUp className="h-4 w-4 mr-2" />
-                        {isEscalating ? 'Escalating...' : (
-                          <>
-                            Founder Review
-                            {escalationStatus && (
-                              <span className="ml-1">
-                                ({escalationStatus.remaining} remaining)
-                              </span>
-                            )}
-                          </>
-                        )}
+                        {isEscalating ? 'Escalating...' : 'Send to my Counselor'}
                         <Crown className="h-3 w-3 ml-2 text-primary" />
                       </Button>
                     </PaywallGuard>
@@ -2024,17 +2033,9 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
               Escalate Essay for Review
             </DialogTitle>
             <DialogDescription>
-              Are you sure you want to escalate this essay to Mihir for review?
+              Are you sure you want to escalate this essay to your counsellor for review?
               <br /><br />
-              Click continue to send the current version of your essay to Mihir.
-              {escalationStatus && (
-                <>
-                  <br /><br />
-                  <span className="font-medium">
-                    There {escalationStatus.remaining === 1 ? 'is' : 'are'} {escalationStatus.remaining} review{escalationStatus.remaining === 1 ? '' : 's'} remaining.
-                  </span>
-                </>
-              )}
+              Click continue to send the current version of your essay to your counsellor.
             </DialogDescription>
           </DialogHeader>
 
