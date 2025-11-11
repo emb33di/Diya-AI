@@ -50,7 +50,6 @@ import RouteTracker from "./lib/ga/RouteTracker";
 import LogRocketRouteTracker from "./lib/logrocket/LogRocketRouteTracker";
 import LogRocketUserTracker from "./lib/logrocket/LogRocketUserTracker";
 import { SpeedInsights } from "@vercel/speed-insights/react";
-import LOR_Debug from "./pages/LOR_Debug";
 
 
 const queryClient = new QueryClient();
@@ -113,7 +112,7 @@ const App = () => {
               <Route path="/payments" element={<Payments />} />
               <Route path="/checkout" element={<Payments />} />
               <Route path="/resume" element={<Resume />} />
-              <Route path="/lor" element={<LOR_Debug />} />
+              <Route path="/lor" element={<LOR />} />
               <Route path="/payment-success" element={<PaymentSuccess />} />
             </Route>
 
