@@ -1641,34 +1641,20 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
         return;
       }
 
-      // Cmd/Ctrl + M: Create comment for selected text (open comment dialog)
+      // Cmd/Ctrl + M: Create comment for selected text (show in sidebar)
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'm') {
         // Use ref to get latest value
         const currentSelection = activeSelectionRef.current || activeSelection;
         
         if (currentSelection && currentSelection.text.trim().length > 0) {
           e.preventDefault();
-          // Open comment dialog (same as clicking "Add Comment" button)
-          setCommentDialogText('');
-          setShowCommentDialog(true);
+          // Set selected text and trigger focus in sidebar
+          setNewCommentSelectedText(currentSelection.text);
+          setFocusNewComment(true);
+          // Ensure sidebar is visible - note: if sidebar is controlled by parent, 
+          // we'll need to rely on parent showing it or add a callback
         }
         return;
-      }
-
-      // Cmd/Ctrl + Enter: Submit comment (in dialog only - sidebar handles its own)
-      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-        const target = e.target as HTMLElement;
-        
-        // Only handle if in comment dialog textarea (not in sidebar - sidebar has its own handler)
-        if (showCommentDialog && target.tagName === 'TEXTAREA' && !target.closest('.founder-comment-sidebar') && commentDialogText.trim()) {
-          e.preventDefault();
-          const currentSelection = activeSelectionRef.current;
-          if (currentSelection) {
-            handleCreateComment(currentSelection, commentDialogText.trim());
-            setCommentDialogText('');
-          }
-          return;
-        }
       }
 
       // Escape: Close comment dialog, clear selection
