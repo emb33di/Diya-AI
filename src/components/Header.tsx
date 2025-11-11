@@ -25,30 +25,11 @@ import MobileNavigation from "@/components/MobileNavigation";
 const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, profile, loading: authLoading, onboardingCompleted, signOut, isFounder, isCounselor } = useAuth();
+  const { user, profile, loading, signOut, isFounder, isCounselor } = useAuth();
   const { userTier, isPro } = usePaywall();
   
-  // Derive state from useAuth hook instead of maintaining separate state
-  const isAuthenticated = !!user;
-  const loading = authLoading;
-  
-  // Get first name from profile
   const userFirstName = profile?.full_name?.split(' ')[0] || user?.user_metadata?.first_name || '';
-  
-  // Counselors and founders should not see regular navigation links
-  const showRegularNavigation = isAuthenticated && !isFounder && !isCounselor;
-
-  // Debug logging for auth state
-  useEffect(() => {
-    console.log('[HEADER] Auth state:', {
-      hasUser: Boolean(user),
-      userId: user?.id,
-      hasProfile: Boolean(profile),
-      loading: authLoading,
-      isAuthenticated,
-      path: location.pathname
-    });
-  }, [user, profile, authLoading, isAuthenticated, location.pathname]);
+  const showRegularNavigation = !!user && !isFounder && !isCounselor;
 
   // Handle hash scrolling when navigating from other pages
   useEffect(() => {
@@ -65,16 +46,12 @@ const Header = () => {
   }, [location.pathname, location.hash]);
   
   const isActive = (path: string) => location.pathname === path;
-  const isLandingPage = location.pathname === '/';
-  const isPublicInfoPage = location.pathname === '/pricing' || location.pathname === '/about';
   const isBlogPage = location.pathname === '/blog' || location.pathname.startsWith('/blog/');
-  const isCounselorsPage = location.pathname === '/counselors';
   const isIvyReadinessPage = location.pathname === '/ivyreadiness' || location.pathname.startsWith('/ivyreadiness');
   const isEarlyAccessPage = location.pathname === '/earlyaccess';
   const isPasswordResetPage = location.pathname === '/password-reset';
   const isIvySummitPortal = location.pathname.startsWith('/ivysummit-portal');
-  const isLoggedIn = !isLandingPage && !isPublicInfoPage && !isBlogPage && !isIvyReadinessPage && location.pathname !== '/auth';
-  const showUnauthenticatedNav = isLandingPage || isBlogPage || isCounselorsPage;
+  const showUnauthenticatedNav = location.pathname === '/' || isBlogPage || location.pathname === '/counselors';
 
   // Create a simple name initials circle with blue-to-orange gradient
   const getInitialsAvatar = (firstName: string) => {
@@ -102,11 +79,9 @@ const Header = () => {
   
   return (
     <header className="sticky top-0 z-50 w-full backdrop-blur-md bg-transparent">
-      <div className={`container mx-auto flex h-20 items-center px-6 relative ${
-        isAuthenticated ? 'justify-between md:justify-between' : 'justify-between'
-      }`}>
+      <div className="container mx-auto flex h-20 items-center px-6 relative justify-between">
         {/* Logo */}
-        <Link to={loading ? "/" : (isAuthenticated ? "/dashboard" : "/")} className="flex items-center space-x-2 flex-shrink-0">
+        <Link to={loading ? "/" : (user ? "/schools" : "/")} className="flex items-center space-x-2 flex-shrink-0">
           <img 
             src={
               isIvySummitPortal 
@@ -234,7 +209,7 @@ const Header = () => {
         )}
         
         {/* Unauthenticated Navigation - Centered */}
-        {!isAuthenticated && showUnauthenticatedNav && (
+        {!user && showUnauthenticatedNav && (
           <div className="hidden md:flex items-center space-x-6">
             <button 
               onClick={() => {
@@ -254,7 +229,7 @@ const Header = () => {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="h-12 px-4 text-base font-medium text-white hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/10 flex items-center gap-1">
-                  {isCounselorsPage ? 'For Counselors' : 'For Students'}
+                  {location.pathname === '/counselors' ? 'For Counselors' : 'For Students'}
                   <ChevronDown className="h-4 w-4" />
                 </button>
               </DropdownMenuTrigger>
@@ -337,7 +312,7 @@ const Header = () => {
         
         {/* Auth Buttons */}
         <div className="flex items-center space-x-6 flex-shrink-0">
-          {!isAuthenticated ? (
+          {!user ? (
             <>
               <Link 
                 to="/auth?mode=signin" 
