@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useMemo, useState, useCall
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { analytics } from '@/utils/analytics';
+import { _setAuthUser } from '@/utils/authHelper';
 
 export interface UserProfile {
   id: string;
@@ -29,6 +30,9 @@ export interface AuthState {
   markOnboardingCompleted: (skipped?: boolean) => Promise<boolean>;
   signOut: () => Promise<void>;
   refreshProfile: (options?: { force?: boolean; invalidateCache?: boolean }) => Promise<void>;
+  // Helper methods to get current auth state without triggering re-renders
+  getCurrentUser: () => User | null;
+  getSession: () => Promise<{ user: User | null; session: any } | null>;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -875,6 +879,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   }, [state.loading, state.user?.id, state.profile?.id, state.profile?.onboarding_complete, state.profile?.profile_saved, state.error]);
 
+  // Sync user state with authHelper for service access
+  useEffect(() => {
+    _setAuthUser(state.user);
+  }, [state.user]);
+
   // Clear invalid cached profile on mount
   useEffect(() => {
     const cachedProfile = localStorage.getItem('user_profile');
@@ -985,6 +994,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('Error refreshing user profile:', error);
       } finally {
         mountedRef.current = false;
+      }
+    },
+    // Synchronous method to get current user without triggering re-auth
+    getCurrentUser: () => {
+      return state.user;
+    },
+    // Get session data - uses Supabase's cached session, doesn't trigger network call
+    getSession: async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error('[AuthContext] Error getting session:', error);
+          return null;
+        }
+        return { user: session?.user || null, session };
+      } catch (error) {
+        console.error('[AuthContext] Failed to get session:', error);
+        return null;
       }
     },
   }), [state.user?.id, state.profile?.id, state.profile?.onboarding_complete]);

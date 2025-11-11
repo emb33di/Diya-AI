@@ -18,7 +18,7 @@ const PaymentSuccess = () => {
   const [verificationStatus, setVerificationStatus] = useState<'success' | 'error' | 'pending'>('pending');
   const [verificationMessage, setVerificationMessage] = useState('');
   const { toast } = useToast();
-  const { refreshProfile } = useAuthContext();
+  const { user, refreshProfile } = useAuthContext();
 
   const sessionId = searchParams.get('session_id');
 
@@ -49,7 +49,6 @@ const PaymentSuccess = () => {
           
           // Migrate all guest essays for this user after payment succeeds
           try {
-            const { data: { user } } = await supabase.auth.getUser();
             if (user) {
               console.log('Migrating guest essays for user:', user.id);
               const migrationResult = await GuestEssayMigrationService.migrateAllGuestEssaysForUser(user.id);

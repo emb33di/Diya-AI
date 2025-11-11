@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { getAuthenticatedUser, requireAuth } from '@/utils/authHelper';
 
 export interface ResumeVersion {
   id: string;
@@ -79,9 +80,9 @@ class ResumeService {
   async uploadResume(file: File): Promise<UploadResumeResponse> {
     try {
       // Get current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        console.error('User authentication error:', userError);
+      const user = await getAuthenticatedUser();
+      if (!user) {
+        console.error('User authentication error: No user found');
         return { success: false, error: 'User not authenticated' };
       }
 
@@ -169,10 +170,7 @@ class ResumeService {
    */
   async getResumeVersions(): Promise<ResumeVersion[]> {
     try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        throw new Error('User not authenticated');
-      }
+      const user = requireAuth();
 
       const { data, error } = await supabase
         .from('resume_versions' as any)
@@ -196,10 +194,7 @@ class ResumeService {
    */
   async getResumeVersion(versionId: string): Promise<ResumeVersion | null> {
     try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        throw new Error('User not authenticated');
-      }
+      const user = requireAuth();
 
       const { data, error } = await supabase
         .from('resume_versions' as any)
@@ -227,10 +222,7 @@ class ResumeService {
    */
   async deleteResumeVersion(versionId: string): Promise<boolean> {
     try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        throw new Error('User not authenticated');
-      }
+      const user = requireAuth();
 
       // Get the resume version to get file path
       const resumeVersion = await this.getResumeVersion(versionId);
@@ -297,10 +289,7 @@ class ResumeService {
   async generateFeedback(versionId: string): Promise<ResumeFeedbackResponse> {
     try {
       // Get current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        return { success: false, error: 'User not authenticated' };
-      }
+      const user = requireAuth();
 
       console.log('Invoking edge function with:', { version_id: versionId, userId: user.id });
       
@@ -330,10 +319,7 @@ class ResumeService {
    */
   async updateResumeStatus(versionId: string, status: ResumeVersion['status'], feedback?: any): Promise<boolean> {
     try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        throw new Error('User not authenticated');
-      }
+      const user = requireAuth();
 
       const updateData: any = { 
         status,

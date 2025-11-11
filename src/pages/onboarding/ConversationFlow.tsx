@@ -6,6 +6,7 @@ import { OutspeedAPI } from '@/utils/outspeedAPI';
 import { OnboardingApiService } from '@/services/onboarding.api';
 import { Button } from '@/components/ui/button';
 import { Mic } from 'lucide-react';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 interface ConversationFlowProps {
   // State setters
@@ -74,6 +75,7 @@ export const useConversationFlow = ({
 }: ConversationFlowProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { user } = useAuthContext();
   const [micPermissionDenied, setMicPermissionDenied] = useState(false);
 
   // Start conversation using agent-based approach
@@ -115,7 +117,6 @@ export const useConversationFlow = ({
       
     } catch (error) {
       // Get user context for debugging
-      const { data: { user } } = await supabase.auth.getUser();
       const userId = user?.id || 'unknown';
       const userEmail = user?.email || 'unknown';
       
@@ -462,7 +463,6 @@ export const useConversationFlow = ({
       }
       setConversationCompleted(true);
     } catch (error) {
-      const { data: { user } } = await supabase.auth.getUser();
       const userId = user?.id || 'unknown';
       const userEmail = user?.email || 'unknown';
       
@@ -515,7 +515,6 @@ export const useConversationFlow = ({
       setShowCompletionPopup(true);
       
     } catch (error) {
-      const { data: { user } } = await supabase.auth.getUser();
       const userId = user?.id || 'unknown';
       const userEmail = user?.email || 'unknown';
       

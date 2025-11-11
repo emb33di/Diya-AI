@@ -13,6 +13,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useResumeEditor } from "@/hooks/useResumeEditor";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuthContext } from "@/contexts/AuthContext";
 
 
 const Resume = () => {
@@ -23,6 +24,7 @@ const Resume = () => {
     phone_number?: string;
   } | null>(null);
   const { toast } = useToast();
+  const { user } = useAuthContext();
 
   // Use the simplified resume editor hook
   const {
@@ -53,14 +55,15 @@ const Resume = () => {
 
   // Load user profile on component mount
   useEffect(() => {
-    loadUserProfile();
-  }, []);
+    if (user) {
+      loadUserProfile();
+    }
+  }, [user?.id]);
 
 
   // Load user profile data
   const loadUserProfile = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
       const { data: profileData, error } = await supabase
@@ -84,7 +87,6 @@ const Resume = () => {
         setUserProfile(profileData as any);
       }
     } catch (error) {
-      const { data: { user } } = await supabase.auth.getUser();
       console.error('[RESUME_ERROR] Failed to load user profile:', {
         userId: user?.id || 'unknown',
         userEmail: user?.email || 'unknown',

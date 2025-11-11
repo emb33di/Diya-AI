@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { OnboardingApiService } from '@/services/onboarding.api';
 
@@ -60,6 +61,7 @@ export const useAIIntegration = () => {
   const [aiPopulatedFields, setAIPopulatedFields] = useState<Set<string>>(new Set());
   const [isTestingExtraction, setIsTestingExtraction] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuthContext();
 
   const isAIPopulated = useCallback((fieldName: string) => {
     return aiPopulatedFields.has(fieldName);
@@ -80,7 +82,6 @@ export const useAIIntegration = () => {
       setIsTestingExtraction(true);
       
       console.log('👤 Step 1: Getting authenticated user...');
-      const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
         console.log('❌ Step 1 Failed: No user found');

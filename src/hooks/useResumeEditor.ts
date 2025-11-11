@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { resumeActivitiesService } from '@/services/resumeActivitiesService';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 // Define the activity data structure
 interface ActivityData {
@@ -53,6 +54,7 @@ export const useResumeEditor = () => {
   const hasLoadedRef = useRef(false);
   
   const { toast } = useToast();
+  const { user } = useAuthContext();
 
   // Convert backend data to frontend format
   const convertBackendToFrontend = (backendActivity: any): ActivityData => ({
@@ -116,7 +118,6 @@ export const useResumeEditor = () => {
       
       console.log('[RESUME_DEBUG] Resume data loaded and set in state');
     } catch (error) {
-      const { data: { user } } = await supabase.auth.getUser();
       console.error('[RESUME_ERROR] Failed to load resume data:', {
         userId: user?.id || 'unknown',
         userEmail: user?.email || 'unknown',
@@ -253,7 +254,6 @@ export const useResumeEditor = () => {
         }, 100);
       }
     } catch (error) {
-      const { data: { user } } = await supabase.auth.getUser();
       console.error('[RESUME_ERROR] Failed to save resume data:', {
         userId: user?.id || 'unknown',
         userEmail: user?.email || 'unknown',

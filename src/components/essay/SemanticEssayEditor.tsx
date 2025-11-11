@@ -14,6 +14,7 @@ import { EssayVersionService, EssayVersion } from '@/services/essayVersionServic
 import { supabase } from '@/integrations/supabase/client';
 import { usePageVisibility } from '@/hooks/usePageVisibility';
 import { useToast } from '@/hooks/use-toast';
+import { useAuthContext } from '@/contexts/AuthContext';
 import SemanticEditor from './SemanticEditor';
 import AICommentsLoadingPane, { AI_COMMENTS_LOADING_STEPS } from './AICommentsLoadingPane';
 import GrammarLoadingPane, { GRAMMAR_LOADING_STEPS } from './GrammarLoadingPane';
@@ -152,28 +153,25 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
   const navigate = useNavigate();
 
   // Get current user
-  const [user, setUser] = useState<any>(null);
+  const { user } = useAuthContext();
 
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
+    const fetchAssignedCounselor = async () => {
+      if (!user) return;
       
       // Fetch assigned counselor slug from user profile
-      if (user) {
-        const { data: profileData } = await supabase
-          .from('user_profiles')
-          .select('assigned_counselor_slug')
-          .eq('user_id', user.id as any)
-          .maybeSingle();
-        
-        if (profileData && 'assigned_counselor_slug' in profileData && profileData.assigned_counselor_slug) {
-          setAssignedCounselorSlug(String(profileData.assigned_counselor_slug).toLowerCase());
-        }
+      const { data: profileData } = await supabase
+        .from('user_profiles')
+        .select('assigned_counselor_slug')
+        .eq('user_id', user.id as any)
+        .maybeSingle();
+      
+      if (profileData && 'assigned_counselor_slug' in profileData && profileData.assigned_counselor_slug) {
+        setAssignedCounselorSlug(String(profileData.assigned_counselor_slug).toLowerCase());
       }
     };
-    getUser();
-  }, []);
+    fetchAssignedCounselor();
+  }, [user?.id]);
 
   // Check if founder feedback is available for this essay
   useEffect(() => {

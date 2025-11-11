@@ -1,11 +1,12 @@
 import { supabase } from '@/integrations/supabase/client';
+import { getAuthenticatedUser } from '@/utils/authHelper';
 
 export class ResumeActivitiesService {
   /**
    * Get all resume activities for the current user, organized by category
    */
   async getResumeData(): Promise<any> {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthenticatedUser();
     console.log('[RESUME_DEBUG] getResumeData called - fetching from database:', {
       userId: user?.id || 'unknown',
       timestamp: new Date().toISOString()
@@ -211,7 +212,7 @@ export class ResumeActivitiesService {
    */
   async saveResumeData(resumeData: any): Promise<void> {
     // Get current user
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthenticatedUser();
     if (!user) {
       throw new Error('User not authenticated');
     }

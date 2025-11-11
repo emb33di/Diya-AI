@@ -12,6 +12,7 @@ import { InlineDatePicker } from "@/components/ui/inline-date-picker";
 import { Calendar, Clock, CheckCircle2, AlertCircle, Star, Target, Shield, Filter, RefreshCw, Loader2, Plus, Edit, Trash2, Mail, Phone, User, FileText, ExternalLink } from "lucide-react";
 import GradientBackground from "@/components/GradientBackground";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuthContext } from "@/contexts/AuthContext";
 import { 
   LORService,
   type LORRecommender,
@@ -24,6 +25,7 @@ import { LORTrackingButtons } from "@/components/LORTrackingButtons";
 import { loadAllTemplates, type TemplateDocument } from "@/services/templateService";
 
 const LOR = () => {
+  const { user } = useAuthContext();
   const [recommenders, setRecommenders] = useState<LORRecommender[]>([]);
   const [deadlines, setDeadlines] = useState<LORDeadlineInfo[]>([]);
   const [stats, setStats] = useState<LORStats | null>(null);
@@ -122,7 +124,6 @@ const LOR = () => {
         setLoading(true);
         setError(null);
         
-        const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
           setError("User not authenticated");
           setLoading(false);
@@ -177,7 +178,6 @@ const LOR = () => {
     try {
       setError(null);
       
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setError("User not authenticated");
         return;
@@ -195,7 +195,6 @@ const LOR = () => {
       setStats(statsData);
       setSchoolOptions(schoolOptionsData);
     } catch (err) {
-      const { data: { user } } = await supabase.auth.getUser();
       console.error('[LOR_ERROR] Failed to load LOR data:', {
         userId: user?.id || 'unknown',
         userEmail: user?.email || 'unknown',
@@ -209,7 +208,6 @@ const LOR = () => {
 
   const handleAddRecommender = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setError("User not authenticated");
         return;
@@ -242,7 +240,6 @@ const LOR = () => {
       resetForm();
       await fetchData();
     } catch (err) {
-      const { data: { user } } = await supabase.auth.getUser();
       console.error('[LOR_ERROR] Failed to add recommender:', {
         userId: user?.id || 'unknown',
         userEmail: user?.email || 'unknown',
@@ -277,7 +274,6 @@ const LOR = () => {
       resetForm();
       await fetchData();
     } catch (err) {
-      const { data: { user } } = await supabase.auth.getUser();
       console.error('[LOR_ERROR] Failed to update recommender:', {
         userId: user?.id || 'unknown',
         userEmail: user?.email || 'unknown',
@@ -296,7 +292,6 @@ const LOR = () => {
       await LORService.deleteRecommender(id);
       await fetchData();
     } catch (err) {
-      const { data: { user } } = await supabase.auth.getUser();
       console.error('[LOR_ERROR] Failed to delete recommender:', {
         userId: user?.id || 'unknown',
         userEmail: user?.email || 'unknown',
@@ -353,7 +348,6 @@ const LOR = () => {
       setAllocationNotes('');
       await fetchData();
     } catch (err) {
-      const { data: { user } } = await supabase.auth.getUser();
       console.error('[LOR_ERROR] Failed to add school allocation:', {
         userId: user?.id || 'unknown',
         userEmail: user?.email || 'unknown',
@@ -373,7 +367,6 @@ const LOR = () => {
       await LORService.updateSchoolAllocation(allocationId, { allocationStatus: newStatus as any });
       await fetchData();
     } catch (err) {
-      const { data: { user } } = await supabase.auth.getUser();
       console.error('[LOR_ERROR] Failed to update allocation status:', {
         userId: user?.id || 'unknown',
         userEmail: user?.email || 'unknown',
@@ -392,7 +385,6 @@ const LOR = () => {
       await LORService.removeSchoolAllocation(allocationId);
       await fetchData();
     } catch (err) {
-      const { data: { user } } = await supabase.auth.getUser();
       console.error('[LOR_ERROR] Failed to remove school allocation:', {
         userId: user?.id || 'unknown',
         userEmail: user?.email || 'unknown',

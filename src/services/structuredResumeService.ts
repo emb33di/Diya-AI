@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { getAuthenticatedUser, requireAuth } from '@/utils/authHelper';
 import { 
   StructuredResumeData, 
   StructuredResumeRecord, 
@@ -16,9 +17,9 @@ class StructuredResumeService {
   async uploadResume(file: File): Promise<UploadResumeResponse> {
     try {
       // Get current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        console.error('User authentication error:', userError);
+      const user = await getAuthenticatedUser();
+      if (!user) {
+        console.error('User authentication error: No user found');
         return { success: false, error: 'User not authenticated' };
       }
 
@@ -135,10 +136,7 @@ class StructuredResumeService {
    */
   async getResumeRecords(): Promise<StructuredResumeRecord[]> {
     try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        throw new Error('User not authenticated');
-      }
+      const user = requireAuth();
 
       const { data, error } = await supabase
         .from('structured_resume_data')
@@ -165,10 +163,7 @@ class StructuredResumeService {
     feedback: ResumeFeedbackRecord | null;
   } | null> {
     try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        throw new Error('User not authenticated');
-      }
+      const user = requireAuth();
 
       // Get resume record
       const { data: resumeData, error: resumeError } = await supabase
@@ -212,10 +207,7 @@ class StructuredResumeService {
    */
   async deleteResumeRecord(resumeDataId: string): Promise<boolean> {
     try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        throw new Error('User not authenticated');
-      }
+      const user = requireAuth();
 
       // Delete all associated records (feedback and generated files)
       await supabase

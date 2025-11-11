@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
 export interface TestScore {
@@ -12,12 +13,12 @@ export const useTestScores = (testType: 'SAT' | 'ACT') => {
   const [scores, setScores] = useState<TestScore[]>([]);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuthContext();
 
   const tableName = testType === 'SAT' ? 'sat_scores' : 'act_scores';
 
   const loadScores = useCallback(async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
       const { data: scoresData, error } = await supabase
@@ -50,7 +51,6 @@ export const useTestScores = (testType: 'SAT' | 'ACT') => {
     }
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
       const { error } = await supabase

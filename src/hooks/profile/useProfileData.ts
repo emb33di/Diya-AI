@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 
@@ -62,14 +63,10 @@ export const useProfileData = () => {
   const [isCreatingProfile, setIsCreatingProfile] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { user } = useAuthContext();
 
   const loadProfile = useCallback(async () => {
     try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError) {
-        console.error('❌ Auth error in loadProfile:', userError);
-        return;
-      }
       if (!user) {
         console.warn('⚠️ No user found in loadProfile - user might not be authenticated');
         // Redirect to auth page if not authenticated
@@ -228,7 +225,6 @@ export const useProfileData = () => {
   const saveProfile = useCallback(async (data: ProfileFormData) => {
     try {
       setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
         toast({

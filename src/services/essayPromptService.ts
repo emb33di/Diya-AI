@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { getAuthenticatedUser } from '@/utils/authHelper';
 import { SchoolProgramType, getUserProgramType } from '@/utils/userProfileUtils';
 
 export interface EssayPrompt {
@@ -82,7 +83,7 @@ export class EssayPromptService {
    */
   static async getUserSelectionsForSchool(schoolName: string): Promise<EssayPromptSelection[]> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getAuthenticatedUser();
       if (!user) throw new Error('User not authenticated');
 
 
@@ -126,7 +127,7 @@ export class EssayPromptService {
     schoolProgramType?: SchoolProgramType
   ): Promise<void> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getAuthenticatedUser();
       if (!user) throw new Error('User not authenticated');
 
       // Get user's program type if not provided
@@ -200,7 +201,7 @@ export class EssayPromptService {
    */
   static async getAllUserSelections(): Promise<EssayPromptSelection[]> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getAuthenticatedUser();
       if (!user) throw new Error('User not authenticated');
 
       const { data, error } = await (supabase as any)

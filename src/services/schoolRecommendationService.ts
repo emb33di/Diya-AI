@@ -1,4 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getUserProgramType } from '@/utils/userProfileUtils';
+import { getAuthenticatedUser } from '@/utils/authHelper';
 
 export interface SchoolRecommendation {
   school: string;
@@ -154,8 +156,8 @@ export class SchoolRecommendationService {
   static async testConnection(): Promise<boolean> {
     try {
       // Test by trying to get the current user
-      const { data: { user }, error } = await supabase.auth.getUser();
-      return !error && !!user;
+      const user = await getAuthenticatedUser();
+      return !!user;
     } catch (error) {
       console.error('Connection test failed:', error);
       return false;

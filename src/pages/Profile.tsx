@@ -168,7 +168,7 @@ const countryCodes = [
 export default function Profile() {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { markOnboardingCompleted, onboardingCompleted } = useAuth();
+  const { user, markOnboardingCompleted, onboardingCompleted } = useAuth();
   
   // Use extracted hooks
   const { profileData, loading, isCreatingProfile, loadProfile, saveProfile, setProfileData } = useProfileData();
@@ -326,11 +326,8 @@ export default function Profile() {
 
 
   const onSubmit = async (data: ProfileFormData) => {
-    let user: any = null;
     try {
       // Loading state is managed by the hook
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      user = authUser;
       if (!user) {
         console.error(`[AUTH_ERROR] ${new Date().toISOString()} - No user found when trying to save profile`);
         return;

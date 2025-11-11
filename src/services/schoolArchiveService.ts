@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getAuthenticatedUser } from '@/utils/authHelper';
 
 export interface ArchivedSchool {
   id: string;
@@ -42,7 +43,7 @@ export class SchoolArchiveService {
   static async archiveSchool(schoolId: string): Promise<{ success: boolean; message: string }> {
     try {
       // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getAuthenticatedUser();
       if (!user) {
         throw new Error('User not authenticated');
       }
@@ -111,7 +112,7 @@ export class SchoolArchiveService {
    */
   static async getArchivedSchools(): Promise<{ success: boolean; schools: ArchivedSchool[]; error?: string }> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getAuthenticatedUser();
       if (!user) {
         throw new Error('User not authenticated');
       }
@@ -145,7 +146,7 @@ export class SchoolArchiveService {
    */
   static async restoreSchool(archivedSchoolId: string, newCategory: 'reach' | 'target' | 'safety'): Promise<{ success: boolean; message: string }> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getAuthenticatedUser();
       if (!user) {
         throw new Error('User not authenticated');
       }
@@ -214,7 +215,7 @@ export class SchoolArchiveService {
    */
   static async permanentlyDeleteSchool(archivedSchoolId: string): Promise<{ success: boolean; message: string }> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getAuthenticatedUser();
       if (!user) {
         throw new Error('User not authenticated');
       }

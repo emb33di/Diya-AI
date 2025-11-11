@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { requireAuth } from '@/utils/authHelper';
 
 interface VerifyPaymentResult {
   success: boolean;

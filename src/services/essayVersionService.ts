@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { getAuthenticatedUser } from '@/utils/authHelper';
 import { semanticDocumentService } from './semanticDocumentService';
 import { SemanticDocument } from '@/types/semanticDocument';
 
@@ -30,7 +31,7 @@ export class EssayVersionService {
     versionName?: string,
     versionDescription?: string
   ): Promise<string> {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthenticatedUser();
     if (!user) throw new Error('User not authenticated');
 
     // Create a new semantic document for this version (without unresolved comments)
@@ -89,7 +90,7 @@ export class EssayVersionService {
     versionName?: string,
     versionDescription?: string
   ): Promise<string> {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthenticatedUser();
     if (!user) throw new Error('User not authenticated');
 
     // Create a new semantic document for this version (preserve annotations)
@@ -193,7 +194,7 @@ export class EssayVersionService {
     versionName?: string,
     versionDescription?: string
   ): Promise<string> {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthenticatedUser();
     if (!user) throw new Error('User not authenticated');
 
     // Create a new semantic document for this version (remove all annotations)
@@ -263,7 +264,7 @@ export class EssayVersionService {
     averageConfidenceScore?: number,
     averageQualityScore?: number
   ): Promise<string> {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthenticatedUser();
     if (!user) throw new Error('User not authenticated');
 
     // Create a semantic document for this version

@@ -18,6 +18,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { CommentEditService } from '@/services/commentEditService';
 import { EssayVersionService } from '@/services/essayVersionService';
+import { getCurrentUserId, getAuthenticatedUser, requireAuth } from '@/utils/authHelper';
 
 /**
  * Feedback session interface
@@ -468,7 +469,7 @@ export class SemanticDocumentService {
             id: essayId,
             title: title,
             content: { blocks: [] }, // Empty content initially
-            user_id: (await supabase.auth.getUser()).data.user?.id,
+            user_id: getCurrentUserId(),
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           });
@@ -761,7 +762,7 @@ export class SemanticDocumentService {
    */
   async persistAnnotationResolution(annotationId: string): Promise<void> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getAuthenticatedUser();
       const resolvedAtIso = new Date().toISOString();
 
       const { error } = await (supabase.from as any)('semantic_annotations')
@@ -785,11 +786,7 @@ export class SemanticDocumentService {
    */
   async persistAnnotationDeletion(annotationId: string): Promise<void> {
     try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
-      if (userError || !user) {
-        throw new Error('User not authenticated');
-      }
+      const user = requireAuth();
 
       const { error } = await (supabase.from as any)('semantic_annotations')
         .delete()
@@ -1616,7 +1613,7 @@ export class SemanticDocumentService {
       }
 
       // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getAuthenticatedUser();
       if (!user) {
         console.error('SemanticDocumentService: No authenticated user, cannot create version');
         return;

@@ -10,10 +10,12 @@ import { RazorpayService, RazorpayPaymentResponse } from '@/services/razorpaySer
 import { GuestEssayMigrationService } from '@/services/guestEssayMigrationService';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 const Payments = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuthContext();
   const [loading, setLoading] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<{
     hasCustomerId: boolean;
@@ -132,7 +134,6 @@ const Payments = () => {
 
         // Migrate all guest essays for this user after payment succeeds
         try {
-          const { data: { user } } = await supabase.auth.getUser();
           if (user) {
             console.log('Migrating guest essays for user:', user.id);
             const migrationResult = await GuestEssayMigrationService.migrateAllGuestEssaysForUser(user.id);

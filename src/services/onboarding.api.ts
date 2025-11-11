@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { getAuthenticatedUser } from '@/utils/authHelper';
 import { OutspeedAPI } from '@/utils/outspeedAPI';
 import { ConversationStorage } from '@/utils/conversationStorage';
 import { SchoolRecommendationService } from '@/services/schoolRecommendationService';
@@ -32,7 +33,7 @@ export class OnboardingApiService {
    */
   static async fetchUserProfile(): Promise<OnboardingApiResponse<UserProfile>> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getAuthenticatedUser();
       if (!user) {
         return { success: false, error: 'No authenticated user' };
       }
@@ -65,7 +66,7 @@ export class OnboardingApiService {
    */
   static async getPreviousSessionContext(): Promise<OnboardingApiResponse<any[]>> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getAuthenticatedUser();
       if (!user) {
         return { success: false, error: 'No authenticated user' };
       }
@@ -109,7 +110,7 @@ export class OnboardingApiService {
    */
   static async getPausedConversations(): Promise<OnboardingApiResponse<any[]>> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getAuthenticatedUser();
       if (!user) {
         return { success: false, error: 'No authenticated user' };
       }

@@ -7,6 +7,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { SemanticDocument } from '@/types/semanticDocument';
+import { requireAuth } from '@/utils/authHelper';
 
 export type EscalatedEssayStatus = 'pending' | 'in_review' | 'reviewed' | 'sent_back';
 
@@ -125,10 +126,7 @@ export class EscalatedEssaysService {
    */
   private static async verifyEscalationAccess(escalationId: string): Promise<void> {
     // Verify user is authenticated
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      throw new Error('User not authenticated');
-    }
+    const user = requireAuth();
 
     // Get user profile
     const { data: profileData, error: profileError } = await supabase
@@ -195,10 +193,7 @@ export class EscalatedEssaysService {
   ): Promise<EscalatedEssayListItem[]> {
     try {
       // Verify user is authenticated
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        throw new Error('User not authenticated');
-      }
+      const user = requireAuth();
 
       // Verify user is a founder (check profile)
       const { data: profile } = await supabase
@@ -591,10 +586,7 @@ export class EscalatedEssaysService {
   static async getEscalationByEssayId(essayId: string): Promise<EscalatedEssay | null> {
     try {
       // Verify user is authenticated
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        throw new Error('User not authenticated');
-      }
+      const user = requireAuth();
 
       // Verify the essay belongs to the user
       const { data: essayData } = await supabase
@@ -669,10 +661,7 @@ export class EscalatedEssaysService {
   static async getEscalatedEssayByIdForUser(escalationId: string): Promise<EscalatedEssay | null> {
     try {
       // Verify user is authenticated
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        throw new Error('User not authenticated');
-      }
+      const user = requireAuth();
 
       // Fetch escalated essay
       const { data: essayData, error: essayError } = await supabase
@@ -738,10 +727,7 @@ export class EscalatedEssaysService {
   static async getAllEscalationsByEssayId(essayId: string): Promise<EscalatedEssay[]> {
     try {
       // Verify user is authenticated
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        throw new Error('User not authenticated');
-      }
+      const user = requireAuth();
 
       // Verify the essay belongs to the user
       const { data: essayData } = await supabase
@@ -813,10 +799,7 @@ export class EscalatedEssaysService {
   static async getFounderCommentsByEscalationIdForUser(escalationId: string): Promise<FounderComment[]> {
     try {
       // Verify user is authenticated
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        throw new Error('User not authenticated');
-      }
+      const user = requireAuth();
 
       // Verify the escalation belongs to the user
       const { data: escalationData } = await supabase
@@ -1257,10 +1240,7 @@ export class EscalatedEssaysService {
   }> {
     try {
       // Verify user is authenticated
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        throw new Error('User not authenticated');
-      }
+      const user = requireAuth();
 
       // Check if user is Pro
       const isPro = await this.checkProUserStatus(user.id);
@@ -1454,10 +1434,7 @@ export class EscalatedEssaysService {
   ): Promise<{ id: string; success: boolean }> {
     try {
       // Verify user is authenticated
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        throw new Error('User not authenticated');
-      }
+      const user = requireAuth();
 
       // 1. Check if user is Pro user
       const isPro = await this.checkProUserStatus(user.id);
@@ -1601,10 +1578,7 @@ export class EscalatedEssaysService {
   ): Promise<EscalatedEssayListItem[]> {
     try {
       // Verify user is authenticated
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        throw new Error('User not authenticated');
-      }
+      const user = requireAuth();
 
       // Verify user is a counselor for this partner
       const { data: profileData, error: profileError } = await supabase
@@ -1739,10 +1713,7 @@ export class EscalatedEssaysService {
   }> {
     try {
       // Verify user is authenticated
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        throw new Error('User not authenticated');
-      }
+      const user = requireAuth();
 
       // Verify user is a counselor for this partner
       const { data: profileData, error: profileError } = await supabase

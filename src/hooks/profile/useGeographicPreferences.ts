@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
 export interface GeographicPreference {
@@ -11,10 +12,10 @@ export const useGeographicPreferences = () => {
   const [preferences, setPreferences] = useState<GeographicPreference[]>([]);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuthContext();
 
   const loadPreferences = useCallback(async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
       const { data: preferencesData, error } = await supabase
@@ -47,7 +48,6 @@ export const useGeographicPreferences = () => {
     }
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
       const { error } = await supabase

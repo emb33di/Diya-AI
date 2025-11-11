@@ -5,6 +5,7 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 export interface TranscriptMessage {
   source: 'ai' | 'user';
@@ -27,6 +28,7 @@ export const useTranscriptSaver = (
   sessionType: 'onboarding' | 'brainstorming' = 'onboarding',
   debounceMs: number = 500
 ) => {
+  const { user } = useAuthContext();
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedMessagesRef = useRef<TranscriptMessage[]>([]);
   const messagesRef = useRef<TranscriptMessage[]>(messages);
@@ -169,7 +171,6 @@ export const useTranscriptSaver = (
       }
 
       try {
-        const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
           console.warn('⚠️ No authenticated user - skipping transcript save');
           return;

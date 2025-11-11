@@ -7,6 +7,7 @@ import { OnboardingApiService } from '@/services/onboarding.api';
 import { useToast } from '@/components/ui/use-toast';
 import { useOnboardingStore, TranscriptMessage } from '@/stores';
 import { analytics } from '@/utils/analytics';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 
 interface ConversationEngineProps {
@@ -39,6 +40,7 @@ const ConversationEngine = ({
   onEndSession,
 }: ConversationEngineProps) => {
   const { toast } = useToast();
+  const { user } = useAuthContext();
   
   // Zustand store state and actions
   const sessionState = useOnboardingStore(state => state.sessionState);
@@ -93,7 +95,7 @@ const ConversationEngine = ({
       });
       
       // Save conversation tracking using API service
-      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id || 'unknown';
       if (user) {
         const response = await OnboardingApiService.saveConversationTracking({
           conversation_id: conversationId,
@@ -124,7 +126,7 @@ const ConversationEngine = ({
       
       // Connection successful - no toast needed, UI provides visual feedback
     } catch (error) {
-      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id || 'unknown';
       console.error('❌ CONVERSATION_CONNECT_ERROR:', {
         error: error.message,
         userId: user?.id || 'unknown',
@@ -156,7 +158,7 @@ const ConversationEngine = ({
       // Use the message exactly as parsed by parseOutspeedMessage
       // This ensures consistent ID generation and prevents double processing
       if (!message || !message.id || !message.text || !message.source) {
-        const { data: { user } } = await supabase.auth.getUser();
+        const userId = user?.id || 'unknown';
         console.warn('⚠️ MESSAGE_VALIDATION_FAILED:', {
           userId: user?.id || 'unknown',
           messageId: message?.id || 'missing',
@@ -213,7 +215,7 @@ const ConversationEngine = ({
         // TODO: Add topics to Zustand store if needed
       }
     } catch (error) {
-      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id || 'unknown';
       console.error('❌ MESSAGE_PROCESSING_ERROR:', {
         error: error.message,
         userId: user?.id || 'unknown',
@@ -248,7 +250,7 @@ const ConversationEngine = ({
 
       // Store cumulative time in database using API service
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const userId = user?.id || 'unknown';
         if (user) {
           const response = await OnboardingApiService.updateCumulativeOnboardingTime(user.id, newCumulativeTimeLocal);
           if (response.success) {
@@ -272,7 +274,7 @@ const ConversationEngine = ({
           }
         }
       } catch (error) {
-        const { data: { user } } = await supabase.auth.getUser();
+        const userId = user?.id || 'unknown';
         console.error('❌ CUMULATIVE_TIME_SAVE_ERROR:', {
           error: error.message,
           userId: user?.id || 'unknown',
@@ -318,7 +320,7 @@ const ConversationEngine = ({
 
   const handleError = useCallback((error: any) => {
     const getUserForError = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id || 'unknown';
       console.error('❌ VOICE_AGENT_ERROR:', {
         error: error.message,
         errorType: typeof error,
@@ -368,7 +370,7 @@ const ConversationEngine = ({
     onConnect: async () => {
       try {
         console.log('🔗 Outspeed onConnect callback triggered');
-        const { data: { user } } = await supabase.auth.getUser();
+        const userId = user?.id || 'unknown';
         if (user) {
           const conversationId = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
           console.log('📝 Generated conversation ID:', conversationId);
@@ -391,7 +393,7 @@ const ConversationEngine = ({
                     (conversation as any)._cleanupEventListeners();
                     console.log('🧹 Event listeners cleaned up before session end');
                   } catch (cleanupError) {
-                    const { data: { user } } = await supabase.auth.getUser();
+                    const userId = user?.id || 'unknown';
                     console.error('❌ EVENT_CLEANUP_ERROR:', {
                       error: cleanupError.message,
                       userId: user?.id || 'unknown',
@@ -404,7 +406,7 @@ const ConversationEngine = ({
                 await conversation.endSession();
                 console.log('✅ Outspeed session ended successfully');
               } catch (error) {
-                const { data: { user } } = await supabase.auth.getUser();
+                const userId = user?.id || 'unknown';
                 console.error('❌ SESSION_END_ERROR:', {
                   error: error.message,
                   userId: user?.id || 'unknown',
@@ -424,7 +426,7 @@ const ConversationEngine = ({
           }
         }
       } catch (error) {
-        const { data: { user } } = await supabase.auth.getUser();
+        const userId = user?.id || 'unknown';
         console.error('❌ CONVERSATION_CREATION_ERROR:', {
           error: error.message,
           userId: user?.id || 'unknown',
@@ -478,7 +480,7 @@ const ConversationEngine = ({
         console.log('✅ Session start call completed with transcription enabled');
       } catch (error) {
         const getUserForError = async () => {
-          const { data: { user } } = await supabase.auth.getUser();
+          const userId = user?.id || 'unknown';
           console.error('❌ SESSION_START_ERROR:', {
             error: error.message,
             userId: user?.id || 'unknown',
@@ -520,7 +522,7 @@ const ConversationEngine = ({
         }
       } catch (error) {
         const getUserForError = async () => {
-          const { data: { user } } = await supabase.auth.getUser();
+          const userId = user?.id || 'unknown';
           console.error('❌ EVENT_LISTENER_CLEANUP_ERROR:', {
             error: error.message,
             userId: user?.id || 'unknown',
@@ -587,7 +589,7 @@ const ConversationEngine = ({
             handleMessage(parsedMessage);
           } catch (messageError) {
             const getUserForError = async () => {
-              const { data: { user } } = await supabase.auth.getUser();
+              const userId = user?.id || 'unknown';
               console.error('❌ MESSAGE_CALLBACK_ERROR:', {
                 error: messageError.message,
                 userId: user?.id || 'unknown',
@@ -604,7 +606,7 @@ const ConversationEngine = ({
         }
       } catch (error) {
         const getUserForError = async () => {
-          const { data: { user } } = await supabase.auth.getUser();
+          const userId = user?.id || 'unknown';
           console.error('❌ ITEM_PROCESSING_ERROR:', {
             error: error.message,
             userId: user?.id || 'unknown',
@@ -718,7 +720,7 @@ const ConversationEngine = ({
         }
       } catch (error) {
         const getUserForError = async () => {
-          const { data: { user } } = await supabase.auth.getUser();
+          const userId = user?.id || 'unknown';
           console.error('❌ EVENT_LISTENER_CLEANUP_ERROR:', {
             error: error.message,
             userId: user?.id || 'unknown',

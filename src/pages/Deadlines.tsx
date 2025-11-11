@@ -10,6 +10,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Calendar, CheckCircle2, AlertCircle, Star, Target, Shield, Filter, Loader2, Edit3 } from "lucide-react";
 import GradientBackground from "@/components/GradientBackground";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuthContext } from "@/contexts/AuthContext";
 import { 
   DeadlineService,
   type UserDeadline 
@@ -18,6 +19,7 @@ import { getUserProgramType } from "@/utils/userProfileUtils";
 
 const Deadlines = () => {
   const navigate = useNavigate();
+  const { user } = useAuthContext();
   const [deadlines, setDeadlines] = useState<UserDeadline[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,13 +29,14 @@ const Deadlines = () => {
 
   // Single useEffect to fetch everything on initial load
   useEffect(() => {
+    if (!user) return;
+    
     const initializeDeadlines = async () => {
       try {
         setLoading(true);
         setError(null);
         
         // Get current user
-        const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
           setError("User not authenticated");
           setLoading(false);
@@ -95,7 +98,7 @@ const Deadlines = () => {
     };
 
     initializeDeadlines();
-  }, []); // Only run once on mount
+  }, [user?.id]); // Only run once on mount
 
 
 
