@@ -126,9 +126,16 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
   const [commentDialogText, setCommentDialogText] = useState('');
   const [focusNewComment, setFocusNewComment] = useState(false);
   const [newCommentSelectedText, setNewCommentSelectedText] = useState('');
+  const [isMac, setIsMac] = useState(false);
 
   // Toast for user feedback
   const { toast } = useToast();
+
+  // Detect platform for keyboard shortcut display
+  useEffect(() => {
+    setIsMac(navigator.platform.toUpperCase().indexOf('MAC') >= 0 || 
+             navigator.userAgent.toUpperCase().indexOf('MAC') >= 0);
+  }, []);
 
   // Refs for Tiptap editor management
   const tiptapRefs = useRef<Record<string, TiptapEditorRef | null>>({});
@@ -1627,27 +1634,41 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
         return;
       }
 
-      // Cmd/Ctrl + K: Toggle edit mode
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+      // Cmd/Ctrl + E: Toggle edit mode
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'e') {
         e.preventDefault();
         setFounderMode(founderMode === 'edit' ? 'comment' : 'edit');
         return;
       }
 
-      // Cmd/Ctrl + M: Create comment for selected text (show in sidebar)
+      // Cmd/Ctrl + M: Create comment for selected text (open comment dialog)
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'm') {
         // Use ref to get latest value
         const currentSelection = activeSelectionRef.current || activeSelection;
         
         if (currentSelection && currentSelection.text.trim().length > 0) {
           e.preventDefault();
-          // Set selected text and trigger focus in sidebar
-          setNewCommentSelectedText(currentSelection.text);
-          setFocusNewComment(true);
-          // Ensure sidebar is visible - note: if sidebar is controlled by parent, 
-          // we'll need to rely on parent showing it or add a callback
+          // Open comment dialog (same as clicking "Add Comment" button)
+          setCommentDialogText('');
+          setShowCommentDialog(true);
         }
         return;
+      }
+
+      // Cmd/Ctrl + Enter: Submit comment (in dialog only - sidebar handles its own)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        const target = e.target as HTMLElement;
+        
+        // Only handle if in comment dialog textarea (not in sidebar - sidebar has its own handler)
+        if (showCommentDialog && target.tagName === 'TEXTAREA' && !target.closest('.founder-comment-sidebar') && commentDialogText.trim()) {
+          e.preventDefault();
+          const currentSelection = activeSelectionRef.current;
+          if (currentSelection) {
+            handleCreateComment(currentSelection, commentDialogText.trim());
+            setCommentDialogText('');
+          }
+          return;
+        }
       }
 
       // Escape: Close comment dialog, clear selection
@@ -2871,6 +2892,29 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
     <div className={`clean-semantic-editor ${className} ${showCommentSidebar ? 'flex h-full w-full' : 'h-full w-full'} overflow-hidden`}>
       {/* Main Editor Area */}
       <div className={`${showCommentSidebar ? 'flex-1 min-w-0 pr-4 lg:pr-4 pr-0' : 'w-full'} h-full overflow-y-auto`}> 
+        {/* Keyboard Shortcuts Info */}
+        <div className="border-b bg-gray-50 px-4 py-2 flex justify-end">
+          <div className="flex items-center gap-4 text-xs text-gray-600">
+            <div className="flex items-center gap-1">
+              <kbd className="px-2 py-1 bg-white border border-gray-300 rounded text-xs font-mono shadow-sm">
+                {isMac ? '⌘' : 'Ctrl'}+M
+              </kbd>
+              <span className="text-gray-500">New comment</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <kbd className="px-2 py-1 bg-white border border-gray-300 rounded text-xs font-mono shadow-sm">
+                {isMac ? '⌘' : 'Ctrl'}+E
+              </kbd>
+              <span className="text-gray-500">Toggle mode</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <kbd className="px-2 py-1 bg-white border border-gray-300 rounded text-xs font-mono shadow-sm">
+                {isMac ? '⌘' : 'Ctrl'}+↵
+              </kbd>
+              <span className="text-gray-500">Submit comment</span>
+            </div>
+          </div>
+        </div>
         {/* Mode Toolbar */}
         <div className="border-b bg-gray-50 px-4 py-2 flex items-center gap-4">
           <div className="flex items-center gap-2">
