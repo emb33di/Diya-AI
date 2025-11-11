@@ -607,7 +607,7 @@ const FounderEssayReview: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
                     <Sparkles className="h-5 w-5 text-blue-600" />
-                    AI Essay Analysis
+                    AI Insights
                   </CardTitle>
                   {!essay.ai_summary && (
                     <Button
@@ -623,7 +623,7 @@ const FounderEssayReview: React.FC = () => {
                       ) : (
                         <>
                           <Sparkles className="h-4 w-4 mr-2" />
-                          Generate AI Summary
+                          Quick AI insights
                         </>
                       )}
                     </Button>
@@ -668,7 +668,7 @@ const FounderEssayReview: React.FC = () => {
                   <div className="text-center py-8 text-muted-foreground">
                     <Sparkles className="h-12 w-12 mx-auto mb-4 text-blue-300" />
                     <p className="mb-2">No AI analysis available yet.</p>
-                    <p className="text-sm">Click "Generate AI Summary" to analyze the essay.</p>
+                    <p className="text-sm">Click "Quick AI insights" to analyze the essay.</p>
                   </div>
                 </CardContent>
               )}
