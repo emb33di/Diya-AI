@@ -100,7 +100,7 @@ const HeroSection = () => {
             {/* Hero Headline */}
             <div ref={contentRef} className={`scroll-fade-in ${contentVisible ? 'animate' : ''}`}>
               <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-foreground leading-tight tracking-tight font-inter">
-                Fix your application in minutes
+                Your Application Management Platform.
               </h1>
             </div>
 

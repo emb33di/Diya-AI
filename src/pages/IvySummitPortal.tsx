@@ -170,7 +170,7 @@ const IvySummitPortal: React.FC = () => {
         <div className="container mx-auto px-4 py-8 max-w-7xl">
           <div className="mb-8">
             <h1 className="text-3xl font-bold mb-2">IvySummit Counselor Portal</h1>
-            <p className="text-muted-foreground">Review and provide feedback on escalated essays</p>
+            <p className="text-muted-foreground">Hi Brian, this is your centralized counselor portal to access all your students' applications!</p>
           </div>
 
           {/* Status Tabs */}
