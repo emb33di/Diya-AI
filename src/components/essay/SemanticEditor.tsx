@@ -109,6 +109,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
   // Refs for Tiptap editor management
   const tiptapRefs = useRef<Record<string, TiptapEditorRef | null>>({});
   const contentContainerRef = useRef<HTMLDivElement | null>(null);
+  const blocksContainerRef = useRef<HTMLDivElement | null>(null);
   const undoStackRef = useRef<SemanticDocument[]>([]);
   const redoStackRef = useRef<SemanticDocument[]>([]);
   const lastInputAtRef = useRef<number>(0);
@@ -419,7 +420,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
 
     // Next tick: select the full contents of the content container
     setTimeout(() => {
-      const container = contentContainerRef.current;
+      const container = blocksContainerRef.current;
       if (!container) return;
 
       const selection = window.getSelection();
@@ -1534,6 +1535,31 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
     }, 50);
   }, [saveToUndoStack]);
 
+  const isEntireEssaySelected = useCallback(() => {
+    const selection = window.getSelection();
+    const container = blocksContainerRef.current;
+    if (!selection || !container || selection.rangeCount === 0) {
+      return false;
+    }
+
+    const range = selection.getRangeAt(0);
+    if (!container.contains(range.startContainer) || !container.contains(range.endContainer)) {
+      return false;
+    }
+
+    const selectedText = normalizeText(selection.toString());
+    const essayText = normalizeText(getDocumentPlainText());
+    if (essayText.length > 0 && selectedText === essayText) {
+      return true;
+    }
+
+    const fullRange = document.createRange();
+    fullRange.selectNodeContents(container);
+    const coversStart = range.compareBoundaryPoints(Range.START_TO_START, fullRange) <= 0;
+    const coversEnd = range.compareBoundaryPoints(Range.END_TO_END, fullRange) >= 0;
+    return coversStart && coversEnd;
+  }, [getDocumentPlainText, normalizeText]);
+
   // Global key handling for undo/redo, full-essay cut, paste, and delete
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -1560,10 +1586,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
       }
 
       // Check if all text is selected
-      const selection = window.getSelection();
-      const container = contentContainerRef.current;
-      const isAllTextSelected = selection && container && selection.toString().trim().length > 0 && 
-        normalizeText(selection.toString()) === normalizeText(getDocumentPlainText());
+      const isAllTextSelected = isEntireEssaySelected();
 
       // Cut entire essay after select-all
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'x') {
@@ -1598,7 +1621,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [undo, redo, getDocumentPlainText, handleFullEssayCut, handleFullEssayPaste, handleFullEssayDelete, editingBlockId, saveToUndoStack]);
+  }, [undo, redo, handleFullEssayCut, handleFullEssayPaste, handleFullEssayDelete, editingBlockId, saveToUndoStack, isEntireEssaySelected]);
 
   // Handle "See AI Comments" button click
   const handleSeeAIComments = () => {
@@ -2076,10 +2099,12 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
           </div>
 
           {/* Render all blocks */}
-          {useMemo(() => {
-            const sortedBlocks = [...state.document.blocks].sort((a, b) => a.position - b.position);
-            return sortedBlocks.map(renderBlock);
-          }, [state.document.blocks, editingBlockId, showCommentSidebar])}
+          <div ref={blocksContainerRef}>
+            {useMemo(() => {
+              const sortedBlocks = [...state.document.blocks].sort((a, b) => a.position - b.position);
+              return sortedBlocks.map(renderBlock);
+            }, [state.document.blocks, editingBlockId, showCommentSidebar])}
+          </div>
 
         </div>
       </div>
