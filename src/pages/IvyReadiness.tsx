@@ -298,17 +298,18 @@ const IvyReadiness = () => {
       <div className="container mx-auto px-4 sm:px-6 py-8 sm:py-12">
         <div className="max-w-7xl mx-auto space-y-6">
           {/* Header with Action Buttons */}
-          <div className="flex items-center justify-between">
-            <Badge variant="outline" className="text-sm">
-              Essay saved temporarily • Expires in 7 days
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+            <Badge variant="outline" className="text-xs sm:text-sm w-full sm:w-auto text-center sm:text-left">
+              <span className="hidden sm:inline">Essay saved temporarily • </span>
+              <span>Expires in 7 days</span>
             </Badge>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
               <Button
                 variant="default"
                 size="sm"
                 onClick={handleSignUp}
                 data-signup-action="true"
-                className="text-white"
+                className="text-white w-full sm:w-auto text-sm"
                 style={{ backgroundColor: '#D07D00' }}
               >
                 <Lock className="h-4 w-4 mr-2" />
@@ -318,7 +319,7 @@ const IvyReadiness = () => {
                 variant="outline"
                 size="sm"
                 onClick={() => setShowDiscardDialog(true)}
-                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                className="text-red-600 hover:text-red-700 hover:bg-red-50 w-full sm:w-auto text-sm"
               >
                 <Trash2 className="h-4 w-4 mr-2" />
                 Discard Essay

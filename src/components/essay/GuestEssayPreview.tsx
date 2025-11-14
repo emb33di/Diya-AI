@@ -35,8 +35,8 @@ const GuestEssayPreview: React.FC<GuestEssayPreviewProps> = ({
 
   return (
     <div className={`flex h-full overflow-hidden ${className}`}>
-      {/* Essay Content Area */}
-      <div className="flex-1 overflow-y-auto p-6 bg-white min-w-0">
+      {/* Essay Content Area - Hidden on mobile, visible on md and up */}
+      <div className="hidden md:flex flex-1 overflow-y-auto p-6 bg-white min-w-0">
         <div className="max-w-4xl mx-auto space-y-6">
           <div className="prose prose-lg max-w-none">
             {sortedBlocks.map((block, index) => (
@@ -63,7 +63,7 @@ const GuestEssayPreview: React.FC<GuestEssayPreviewProps> = ({
         </div>
       </div>
 
-      {/* Comment Sidebar */}
+      {/* Comment Sidebar - Full width on mobile, normal width on md and up */}
       {showCommentSidebar && (
         <BlurredCommentSidebar
           blocks={sortedBlocks}

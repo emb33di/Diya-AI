@@ -552,15 +552,16 @@ const IvyReadinessReport: React.FC<IvyReadinessReportProps> = ({ open, onOpenCha
           {hasAnalyzed && document && (
             <div className="space-y-6">
               {/* Header with Discard Button */}
-              <div className="flex items-center justify-between">
-                <Badge variant="outline" className="text-sm">
-                  Essay saved temporarily • Expires in 7 days
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+                <Badge variant="outline" className="text-xs sm:text-sm w-full sm:w-auto text-center sm:text-left">
+                  <span className="hidden sm:inline">Essay saved temporarily • </span>
+                  <span>Expires in 7 days</span>
                 </Badge>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setShowDiscardDialog(true)}
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50 w-full sm:w-auto text-sm"
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
                   Discard Essay

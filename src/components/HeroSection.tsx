@@ -137,7 +137,8 @@ const HeroSection = () => {
               className="text-base sm:text-lg md:text-xl font-semibold text-white px-6 sm:px-8 py-3 sm:py-4 rounded-lg hover:opacity-90 transition-opacity shadow-lg"
               style={{ backgroundColor: '#D07D00' }}
             >
-              Upload your essay and get Harvard-grade feedback for free
+              <span className="block sm:hidden">Score Your Essay for Free</span>
+              <span className="hidden sm:block">Upload your essay and get Harvard-grade feedback for free</span>
             </Button>
           </div>
         </div>
