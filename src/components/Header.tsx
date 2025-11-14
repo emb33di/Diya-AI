@@ -126,7 +126,7 @@ const Header = () => {
             {/* Desktop Navigation */}
             <nav className={`hidden md:flex items-center space-x-4 lg:space-x-6 xl:space-x-8 px-2 py-1.5 lg:px-3 xl:px-4 lg:py-2 rounded-full border transition-all duration-200 flex-shrink min-w-0 ${
               location.pathname === '/schools' || location.pathname === '/resume' || 
-              location.pathname === '/essays' || location.pathname === '/lor'
+              location.pathname === '/essays' || location.pathname === '/lor' || location.pathname === '/deadlines'
                 ? 'border-primary/50' 
                 : 'border-gray-300/30'
             }`}>
@@ -190,6 +190,22 @@ const Header = () => {
                       }`}
                     >
                       LOR
+                    </Link>
+                  </TooltipTrigger>
+                </Tooltip>
+              </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link 
+                      to="/deadlines" 
+                      className={`text-xs lg:text-sm font-medium transition-colors px-2 py-0.5 lg:px-3 lg:py-1 ${
+                        isActive('/deadlines') 
+                          ? 'text-black border border-primary/50 bg-primary/10 rounded-full' 
+                          : 'text-black hover:text-black'
+                      }`}
+                    >
+                      Deadlines
                     </Link>
                   </TooltipTrigger>
                 </Tooltip>

@@ -48,6 +48,12 @@ const MobileNavigation = () => {
       icon: <Users className="h-5 w-5" />,
       disabled: false,
     },
+    {
+      path: "/deadlines",
+      label: "Deadlines",
+      icon: <Calendar className="h-5 w-5" />,
+      disabled: false,
+    },
   ];
 
   const resourcesItems = [

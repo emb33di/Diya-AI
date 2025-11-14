@@ -100,10 +100,10 @@ const App = () => {
             {/* Protected routes - require authentication */}
             {/* Using layout route pattern: single guard instance persists across all protected routes */}
             <Route element={<ProtectedLayout />}>
-              {/* Temporarily disabled routes - keeping code but removing from navigation */}
-              {/* <Route path="/dashboard" element={<Dashboard />} /> */}
-              {/* <Route path="/onboarding" element={<Onboarding />} /> */}
-              {/* <Route path="/deadlines" element={<Deadlines />} /> */}
+            {/* Temporarily disabled routes - keeping code but removing from navigation */}
+            {/* <Route path="/dashboard" element={<Dashboard />} /> */}
+            {/* <Route path="/onboarding" element={<Onboarding />} /> */}
+            <Route path="/deadlines" element={<Deadlines />} />
               <Route path="/essays" element={<Essays />} />
               <Route path="/essays/:essayId/expert-reviews" element={<FounderFeedbackPage />} />
               <Route path="/schools" element={<SchoolList />} />
