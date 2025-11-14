@@ -2056,9 +2056,9 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
   };
 
   return (
-    <div className={`clean-semantic-editor ${className} ${showCommentSidebar ? 'flex h-full w-full' : 'h-full w-full'} overflow-hidden`}>
+    <div className={`clean-semantic-editor ${className} ${showCommentSidebar ? 'flex min-h-full w-full' : 'min-h-full w-full'} overflow-hidden`}>
       {/* Main Editor Area */}
-      <div className={`${showCommentSidebar ? 'flex-1 min-w-0 pr-4 lg:pr-4 pr-0' : 'w-full'} h-full overflow-y-auto`}> 
+      <div className={`${showCommentSidebar ? 'flex-1 min-w-0 pr-4 lg:pr-4 pr-0' : 'w-full'} min-h-full overflow-y-auto`}> 
         {/* Editor Content */}
         <div className="relative pl-4 lg:pl-12 pr-4 lg:pr-12 w-full pt-10" ref={contentContainerRef}>
           {/* Copy Button - Floating in top-right */}
@@ -2085,7 +2085,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
       </div>
 
       {/* Comment Sidebar */}
-      <div className={showCommentSidebar ? 'hidden lg:block w-96 shrink-0 border-l overflow-y-auto h-full' : 'hidden lg:hidden'}>
+      <div className={showCommentSidebar ? 'hidden lg:block w-96 shrink-0 border-l overflow-y-auto min-h-full' : 'hidden lg:hidden'}>
         {blurComments ? (
           <BlurredCommentSidebar
             key={state.document.id}

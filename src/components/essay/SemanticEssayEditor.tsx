@@ -1927,7 +1927,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
 
 
               {/* Editor */}
-              <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-4 lg:p-8 mx-4 lg:mx-0 w-full overflow-hidden h-[calc(100vh-260px)] max-h-[calc(100vh-260px)]">
+              <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-4 lg:p-8 mx-4 lg:mx-0 w-full overflow-hidden min-h-[600px]">
                 <SemanticEditor
                   documentId={document.id}
                   essayId={essayId}
