@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { 
   Annotation, 
   DocumentBlock, 
@@ -26,7 +26,9 @@ import {
   Target,
   SidebarClose,
   XCircle,
-  Loader2
+  Loader2,
+  Copy,
+  Check
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CommentEditService } from '@/services/commentEditService';
@@ -43,6 +45,7 @@ interface CommentSidebarProps {
   onDocumentReload?: () => Promise<void>;
   className?: string;
   hasGrammarCheckRun?: boolean;
+  enableCopyComments?: boolean;
 }
 
 interface GroupedComment {
@@ -61,7 +64,8 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
   onHideSidebar,
   onDocumentReload,
   className,
-  hasGrammarCheckRun = false
+  hasGrammarCheckRun = false,
+  enableCopyComments = false
 }) => {
   const [expandedCategories, setExpandedCategories] = useState<Set<CommentCategory>>(
     new Set(['overall-analysis', 'tone', 'clarity', 'strengths', 'areas-for-improvement', 'paragraph-quality', 'grammar'])
@@ -69,10 +73,13 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
   const [activeTab, setActiveTab] = useState<'all' | 'unresolved'>('unresolved');
   const [editingAnnotations, setEditingAnnotations] = useState<Set<string>>(new Set());
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const copyResetTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
+  const [isCopying, setIsCopying] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
 
   // Determine comment category based on annotation metadata and type
-  const determineCommentCategory = (annotation: Annotation): CommentCategory => {
+  const determineCommentCategory = useCallback((annotation: Annotation): CommentCategory => {
     // Use explicit category if set
     if (annotation.metadata?.commentCategory) {
       return annotation.metadata.commentCategory;
@@ -111,44 +118,165 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
       default:
         return 'clarity'; // Default fallback
     }
-  };
+  }, []);
 
-  // Group comments by category
-  const groupedComments = useMemo(() => {
-    const allComments: GroupedComment[] = [];
-    
+  const initializeGroupedComments = useCallback((): Record<CommentCategory, GroupedComment[]> => ({
+    'overall-analysis': [],
+    'tone': [],
+    'clarity': [],
+    'strengths': [],
+    'areas-for-improvement': [],
+    'paragraph-quality': [],
+    'grammar': []
+  }), []);
+
+  const groupedAllComments = useMemo(() => {
+    const grouped = initializeGroupedComments();
+
     blocks.forEach((block, blockIndex) => {
       block.annotations?.forEach(annotation => {
-        // Skip resolved comments if we're only showing unresolved
-        if (activeTab === 'unresolved' && annotation.resolved) return;
-        
-        allComments.push({
+        const category = determineCommentCategory(annotation);
+        grouped[category].push({
           annotation,
           blockIndex,
           blockContent: block.content
         });
       });
     });
-    
 
-    // Group by category
-    const grouped: Record<CommentCategory, GroupedComment[]> = {
-      'overall-analysis': [],
-      'tone': [],
-      'clarity': [],
-      'strengths': [],
-      'areas-for-improvement': [],
-      'paragraph-quality': [],
-      'grammar': []
-    };
+    return grouped;
+  }, [blocks, determineCommentCategory, initializeGroupedComments]);
 
-    allComments.forEach(comment => {
-      const category = determineCommentCategory(comment.annotation);
-      grouped[category].push(comment);
+  const groupedComments = useMemo(() => {
+    if (activeTab !== 'unresolved') {
+      return groupedAllComments;
+    }
+
+    const grouped = initializeGroupedComments();
+
+    blocks.forEach((block, blockIndex) => {
+      block.annotations?.forEach(annotation => {
+        if (annotation.resolved) return;
+        const category = determineCommentCategory(annotation);
+        grouped[category].push({
+          annotation,
+          blockIndex,
+          blockContent: block.content
+        });
+      });
     });
 
     return grouped;
-  }, [blocks, activeTab]);
+  }, [activeTab, blocks, determineCommentCategory, groupedAllComments, initializeGroupedComments]);
+
+  const totalComments = useMemo(() => {
+    return blocks.reduce((sum, block) => sum + (block.annotations?.length || 0), 0);
+  }, [blocks]);
+
+  const totalUnresolvedComments = useMemo(() => {
+    return blocks.reduce((sum, block) => sum + (block.annotations?.filter(annotation => !annotation.resolved).length || 0), 0);
+  }, [blocks]);
+
+  const copyButtonVisible = enableCopyComments && totalComments > 0;
+
+  const formatCommentsForClipboard = useCallback(() => {
+    const lines: string[] = [];
+    const categories: CommentCategory[] = [
+      'overall-analysis',
+      'tone',
+      'clarity',
+      'strengths',
+      'areas-for-improvement',
+      'paragraph-quality',
+      'grammar'
+    ];
+
+    categories.forEach(category => {
+      const comments = groupedAllComments[category];
+      if (!comments || comments.length === 0) return;
+
+      lines.push(`${getCategoryTitle(category)} (${comments.length})`);
+
+      comments.forEach((comment, index) => {
+        const typeLabel = comment.annotation.type
+          ? `${comment.annotation.type.charAt(0).toUpperCase()}${comment.annotation.type.slice(1)}`
+          : 'Comment';
+        const statusLabel = comment.annotation.resolved ? 'Resolved' : 'Unresolved';
+        const blockLabel = category === 'overall-analysis' ? 'Overall' : `Paragraph ${comment.blockIndex + 1}`;
+        lines.push(`${index + 1}. [${blockLabel}] (${typeLabel}) ${comment.annotation.content.trim()}`);
+
+        if (comment.annotation.targetText) {
+          lines.push(`   Context: "${comment.annotation.targetText}"`);
+        }
+
+        if (comment.annotation.metadata?.suggestedReplacement) {
+          lines.push(`   Suggested: "${comment.annotation.metadata.suggestedReplacement}"`);
+        }
+
+        lines.push(`   Status: ${statusLabel}`);
+      });
+
+      lines.push('');
+    });
+
+    return lines.join('\n').trim();
+  }, [groupedAllComments]);
+
+  const handleCopyAllComments = useCallback(async () => {
+    if (!copyButtonVisible || isCopying) return;
+
+    const formattedComments = formatCommentsForClipboard();
+
+    if (!formattedComments) {
+      toast({
+        title: 'No comments to copy',
+        description: 'There are no comments available to copy right now.',
+      });
+      return;
+    }
+
+    if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
+      toast({
+        title: 'Clipboard unavailable',
+        description: 'Your browser does not support copying to clipboard automatically.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    try {
+      setIsCopying(true);
+      await navigator.clipboard.writeText(formattedComments);
+      setCopySuccess(true);
+      toast({
+        title: 'Comments copied',
+        description: 'All comments have been copied to your clipboard.'
+      });
+
+      if (copyResetTimeoutRef.current) {
+        clearTimeout(copyResetTimeoutRef.current);
+      }
+
+      copyResetTimeoutRef.current = setTimeout(() => setCopySuccess(false), 2000);
+    } catch (error) {
+      console.error('Failed to copy comments:', error);
+      toast({
+        title: 'Failed to copy',
+        description: 'Something went wrong while copying the comments.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsCopying(false);
+    }
+  }, [copyButtonVisible, formatCommentsForClipboard, isCopying, toast]);
+
+  useEffect(() => {
+    return () => {
+      if (copyResetTimeoutRef.current) {
+        clearTimeout(copyResetTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Scroll to selected comment when selectedAnnotationId changes
   useEffect(() => {
@@ -384,8 +512,6 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
     }
   };
 
-  const totalUnresolvedComments = Object.values(groupedComments).flat().length;
-
   return (
     <div className={cn("flex-1 min-w-64 max-w-96 h-full max-h-screen border border-gray-300 bg-white flex-shrink-0 flex flex-col comment-sidebar", className)}>
       <div className="p-3 border-b border-gray-200 flex-shrink-0">
@@ -399,17 +525,36 @@ const CommentSidebar: React.FC<CommentSidebarProps> = ({
               </Badge>
             )}
           </h3>
-          {onHideSidebar && (
-            <Button
-              onClick={onHideSidebar}
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-              title="Hide comments"
-            >
-              <SidebarClose className="h-4 w-4" />
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {copyButtonVisible && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="bg-white shadow-sm hover:bg-gray-50 text-xs h-8"
+                onClick={handleCopyAllComments}
+                disabled={isCopying}
+                title="Copy all comments"
+              >
+                {copySuccess ? (
+                  <Check className="h-4 w-4 mr-1 text-green-600" />
+                ) : (
+                  <Copy className="h-4 w-4 mr-1" />
+                )}
+                {copySuccess ? 'Copied' : 'Copy'}
+              </Button>
+            )}
+            {onHideSidebar && (
+              <Button
+                onClick={onHideSidebar}
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                title="Hide comments"
+              >
+                <SidebarClose className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
         
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'all' | 'unresolved')}>

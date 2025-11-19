@@ -1075,11 +1075,48 @@ function extractTargetTextFromComment(agentComment: any, blockContent: string): 
 
 /**
  * Map agent comment type to semantic comment type
- * Always returns 'comment' as we no longer use different comment types
+ * Maps based on agent type and comment nature to return appropriate annotation types
  */
-function mapAgentCommentType(agentComment: any, agentType: string): 'comment' {
-  // Always return 'comment' - comment type is no longer used
-  return 'comment';
+function mapAgentCommentType(agentComment: any, agentType: string): 'suggestion' | 'critique' | 'praise' | 'comment' {
+  // Check if comment has explicit type
+  const explicitType = agentComment.comment_type || agentComment.commentType;
+  if (explicitType) {
+    switch (explicitType.toLowerCase()) {
+      case 'praise': return 'praise';
+      case 'critique': return 'critique';
+      case 'suggestion': return 'suggestion';
+      case 'comment': return 'comment';
+      default: break;
+    }
+  }
+
+  // Get comment nature to help determine type
+  const commentNature = agentComment.comment_nature || agentComment.commentNature;
+
+  // Map based on agent type and comment nature
+  switch (agentType) {
+    case 'strengths':
+      // Strengths agent typically generates praise
+      return commentNature === 'weakness' ? 'suggestion' : 'praise';
+    
+    case 'weaknesses':
+      // Weaknesses agent typically generates critique
+      return commentNature === 'strength' ? 'suggestion' : 'critique';
+    
+    case 'tone':
+    case 'clarity':
+    case 'big-picture':
+    case 'paragraph':
+    case 'grammar':
+      // These agents typically generate suggestions
+      return 'suggestion';
+    
+    default:
+      // Fallback based on comment nature
+      if (commentNature === 'strength') return 'praise';
+      if (commentNature === 'weakness') return 'critique';
+      return 'suggestion';
+  }
 }
 
 /**

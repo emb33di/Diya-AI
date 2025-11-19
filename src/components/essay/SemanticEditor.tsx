@@ -29,7 +29,8 @@ import {
   User,
   Bot,
   Copy,
-  CheckSquare
+  CheckSquare,
+  Maximize2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import AICommentsLoadingPane, { AI_COMMENTS_LOADING_STEPS } from './AICommentsLoadingPane';
@@ -55,6 +56,8 @@ interface CleanSemanticEditorProps {
   hasGrammarCheckRun?: boolean;
   blurComments?: boolean; // Use blurred comments for anonymous users
   onSignUp?: () => void; // Callback for sign-up CTA
+  enableCopyComments?: boolean;
+  onOpenFullScreen?: () => void;
 }
 
 const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
@@ -73,7 +76,9 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
   onHideSidebar,
   className = '',
   readOnly = false,
-  hasGrammarCheckRun = false
+  hasGrammarCheckRun = false,
+  enableCopyComments = false,
+  onOpenFullScreen
 }) => {
   // Simple, clean state management
   const [state, setState] = useState<SemanticEditorState>({
@@ -2085,7 +2090,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
         {/* Editor Content */}
         <div className="relative pl-4 lg:pl-12 pr-4 lg:pr-12 w-full pt-10" ref={contentContainerRef}>
           {/* Copy Button - Floating in top-right */}
-          <div className="absolute top-1 right-4 z-10">
+          <div className="absolute top-1 right-4 z-10 flex gap-2">
             <Button
               size="sm"
               variant="outline"
@@ -2096,6 +2101,18 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
               <Copy className="h-4 w-4 mr-1" />
               Copy
             </Button>
+            {onOpenFullScreen && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onOpenFullScreen}
+                title="Open full-screen editor"
+                className="bg-white shadow-sm hover:bg-gray-50"
+              >
+                <Maximize2 className="h-4 w-4 mr-1" />
+                Full Screen
+              </Button>
+            )}
           </div>
 
           {/* Render all blocks */}
@@ -2134,6 +2151,7 @@ const CleanSemanticEditor: React.FC<CleanSemanticEditorProps> = ({
             selectedAnnotationId={selectedAnnotationId}
             onHideSidebar={onHideSidebar}
             className="h-full"
+            enableCopyComments={enableCopyComments}
           />
         )}
       </div>

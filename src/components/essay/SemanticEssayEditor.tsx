@@ -42,11 +42,13 @@ import {
   Lock,
   ArrowUp,
   Star,
+  X
 } from 'lucide-react';
 import PaywallGuard from '@/components/PaywallGuard';
 import UpgradeModal from '@/components/UpgradeModal';
 import { usePaywall } from '@/hooks/usePaywall';
 import { EscalatedEssaysService } from '@/services/escalatedEssaysService';
+import { cn } from '@/lib/utils';
 
 interface EssayPrompt {
   id: string;
@@ -140,6 +142,9 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
   const [selectedFeedbackSession, setSelectedFeedbackSession] = useState<FeedbackSession | null>(null);
   const [filteredDocument, setFilteredDocument] = useState<SemanticDocument | null>(null);
   const [assignedCounselorSlug, setAssignedCounselorSlug] = useState<string | null>(null);
+  const [isFullScreenView, setIsFullScreenView] = useState(false);
+  const [editorContainerHeight, setEditorContainerHeight] = useState(0);
+  const editorWrapperRef = useRef<HTMLDivElement | null>(null);
   
   // Track if document has been initially loaded to prevent false positives in safety check
   const isDocumentInitializedRef = useRef(false);
@@ -172,6 +177,18 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
     };
     fetchAssignedCounselor();
   }, [user?.id]);
+
+  useEffect(() => {
+    if (isFullScreenView && typeof document !== 'undefined' && document.body) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        if (document.body) {
+          document.body.style.overflow = originalOverflow;
+        }
+      };
+    }
+  }, [isFullScreenView]);
 
   // Check if founder feedback is available for this essay
   useEffect(() => {
@@ -599,6 +616,18 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
         variant: "destructive"
       });
     }
+  };
+
+  const openFullScreenView = () => {
+    if (editorWrapperRef.current) {
+      setEditorContainerHeight(editorWrapperRef.current.offsetHeight || 0);
+    }
+    setShowCommentSidebar(true);
+    setIsFullScreenView(true);
+  };
+
+  const closeFullScreenView = () => {
+    setIsFullScreenView(false);
   };
 
   // Handle save status changes
@@ -1927,21 +1956,48 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
 
 
               {/* Editor */}
-              <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-4 lg:p-8 mx-4 lg:mx-0 w-full overflow-hidden min-h-[600px]">
-                <SemanticEditor
-                  documentId={document.id}
-                  essayId={essayId}
-                  title={document.title}
-                  wordLimit={wordLimit}
-                  onDocumentChange={handleDocumentChange}
-                  onAnnotationSelect={handleAnnotationSelect}
-                  onSaveStatusChange={handleSaveStatusChange}
-                  showCommentSidebar={showCommentSidebar}
-                  selectedAnnotationId={selectedAnnotation?.id}
-                  onHideSidebar={() => setShowCommentSidebar(false)}
-                  readOnly={Boolean(currentVersion?.has_ai_feedback)}
-                  hasGrammarCheckRun={hasGrammarCheckRun}
-                />
+              <div
+                ref={editorWrapperRef}
+                style={isFullScreenView ? { minHeight: editorContainerHeight || 600 } : undefined}
+                className={cn(isFullScreenView && 'pointer-events-none')}
+              >
+                <div
+                  className={cn(
+                    "bg-white rounded-lg shadow-lg border border-gray-200 p-4 lg:p-8 mx-4 lg:mx-0 w-full overflow-hidden min-h-[600px] transition-all duration-200",
+                    isFullScreenView &&
+                      "fixed inset-2 sm:inset-6 lg:inset-10 z-50 mx-auto lg:mx-auto w-[calc(100vw-1rem)] sm:w-[calc(100vw-3rem)] lg:w-[calc(100vw-5rem)] max-w-[1600px] h-[calc(100vh-1rem)] sm:h-[calc(100vh-3rem)] lg:h-[calc(100vh-5rem)] overflow-hidden pointer-events-auto flex flex-col"
+                  )}
+                >
+                  {isFullScreenView && (
+                    <div className="absolute top-4 right-4 z-50">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={closeFullScreenView}
+                        className="bg-white hover:bg-gray-50"
+                      >
+                        <X className="h-4 w-4 mr-1" />
+                        Exit
+                      </Button>
+                    </div>
+                  )}
+                  <SemanticEditor
+                    documentId={document.id}
+                    essayId={essayId}
+                    title={document.title}
+                    wordLimit={wordLimit}
+                    onDocumentChange={handleDocumentChange}
+                    onAnnotationSelect={handleAnnotationSelect}
+                    onSaveStatusChange={handleSaveStatusChange}
+                    showCommentSidebar={showCommentSidebar}
+                    selectedAnnotationId={selectedAnnotation?.id}
+                    onHideSidebar={isFullScreenView ? undefined : () => setShowCommentSidebar(false)}
+                    readOnly={Boolean(currentVersion?.has_ai_feedback)}
+                    hasGrammarCheckRun={hasGrammarCheckRun}
+                    enableCopyComments
+                    onOpenFullScreen={!isFullScreenView ? openFullScreenView : undefined}
+                  />
+                </div>
               </div>
             </div>
 
@@ -1959,6 +2015,7 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
                   onDocumentReload={handleDocumentReload}
                   className="h-full border-0 rounded-lg"
                   hasGrammarCheckRun={hasGrammarCheckRun}
+                  enableCopyComments
                 />
               </div>
             </div>
@@ -2077,6 +2134,13 @@ const SemanticEssayEditor: React.FC<SemanticEssayEditorProps> = ({
         title={upgradeModalTitle}
         description={upgradeModalDescription}
       />
+
+      {isFullScreenView && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity"
+          onClick={closeFullScreenView}
+        />
+      )}
 
     </div>
   );
