@@ -48,6 +48,15 @@ const FounderEssayReview: React.FC = () => {
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastActualSaveTimeRef = useRef<Date | null>(null);
 
+  // Helper function to calculate word count from document blocks
+  const getCurrentWordCount = useCallback((doc: SemanticDocument | null): number => {
+    if (!doc || !doc.blocks) return 0;
+    return doc.blocks.reduce((total, block) => {
+      const words = block.content.split(' ').filter(word => word.trim().length > 0);
+      return total + words.length;
+    }, 0);
+  }, []);
+
   useEffect(() => {
     if (escalationId) {
       loadEssay();
@@ -551,7 +560,7 @@ const FounderEssayReview: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <FileText className="h-4 w-4" />
-                    <span>{essay.word_count} words</span>
+                    <span>{getCurrentWordCount(document)} words</span>
                   </div>
                 </div>
               </div>
@@ -591,9 +600,28 @@ const FounderEssayReview: React.FC = () => {
                   <div className="mt-4 md:mt-6 pt-4 border-t border-gray-100">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-600">
-                          Word Limit: {essay.word_count || 0}/{essay.word_limit || 'Not specified'}
+                        <span className={`text-sm ${(() => {
+                          const currentCount = getCurrentWordCount(document);
+                          const limit = essay.word_limit;
+                          if (!limit || (typeof limit === 'string' && (limit === 'Not specified' || limit === 'No limit'))) return 'text-gray-600';
+                          const limitNum = typeof limit === 'number' ? limit : parseInt(limit as any);
+                          if (isNaN(limitNum)) return 'text-gray-600';
+                          return currentCount > limitNum ? 'text-red-600 font-medium' : 'text-gray-600';
+                        })()}`}>
+                          Word Limit: {getCurrentWordCount(document)}/{essay.word_limit || 'Not specified'}
                         </span>
+                        {(() => {
+                          const currentCount = getCurrentWordCount(document);
+                          const limit = essay.word_limit;
+                          if (!limit || (typeof limit === 'string' && (limit === 'Not specified' || limit === 'No limit'))) return null;
+                          const limitNum = typeof limit === 'number' ? limit : parseInt(limit as any);
+                          if (isNaN(limitNum)) return null;
+                          return currentCount > limitNum;
+                        })() && (
+                          <span className="text-xs text-red-500 font-medium bg-red-50 px-2 py-1 rounded">
+                            Needs cutting!
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
