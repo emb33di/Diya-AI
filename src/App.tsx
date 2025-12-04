@@ -26,6 +26,7 @@ import Resume from "./pages/Resume";
 import EarlyAccessSignup from "./pages/EarlyAccessSignup";
 import LOR from "./pages/LOR";
 import FounderPortal from "./pages/FounderPortal";
+import FounderStudentEssays from "./pages/FounderStudentEssays";
 import FounderEssayReview from "./pages/FounderEssayReview";
 import FounderFeedbackPage from "./pages/FounderFeedbackPage";
 import IvySummitPortal from "./pages/IvySummitPortal";
@@ -119,6 +120,7 @@ const App = () => {
 
             {/* Founder Portal Routes */}
             <Route path="/founder-portal" element={<FounderGuard><FounderPortal /></FounderGuard>} />
+            <Route path="/founder-portal/student/:userId" element={<FounderGuard><FounderStudentEssays /></FounderGuard>} />
             <Route path="/founder-portal/:escalationId" element={<FounderGuard><FounderEssayReview /></FounderGuard>} />
 
             {/* IvySummit Portal Routes */}

@@ -89,6 +89,18 @@ export interface EscalatedEssayListItem {
   word_count: number;
 }
 
+export interface StudentWithEscalations {
+  user_id: string;
+  student_name: string | null;
+  student_email: string | null;
+  latest_escalation_date: string;
+  total_essays: number;
+  pending_count: number;
+  in_review_count: number;
+  reviewed_count: number;
+  sent_back_count: number;
+}
+
 export interface UpdateEscalatedEssayData {
   status?: EscalatedEssayStatus;
   founder_feedback?: string | null;
@@ -306,6 +318,240 @@ export class EscalatedEssaysService {
       return essays;
     } catch (error) {
       console.error('EscalatedEssaysService: Error fetching escalated essays', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch unique students that have escalated essays (founder view)
+   * Returns counts per status for quick overview
+   */
+  static async fetchStudentsWithEscalations(partnerSlug?: string): Promise<StudentWithEscalations[]> {
+    try {
+      const user = requireAuth();
+      const normalizedPartnerSlug = partnerSlug?.toLowerCase() || null;
+
+      // Verify access: founders can see all, counselors only their partner slug
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('is_founder, is_counselor, counselor_name')
+        .eq('user_id' as any, user.id)
+        .maybeSingle();
+
+      const profileData = profile as any;
+      if (normalizedPartnerSlug) {
+        const counselorMatches =
+          profileData?.is_counselor &&
+          profileData?.counselor_name?.toLowerCase() === normalizedPartnerSlug;
+        if (!profileData?.is_founder && !counselorMatches) {
+          throw new Error('Access denied: Counselor access required');
+        }
+      } else if (!profileData?.is_founder) {
+        throw new Error('Access denied: Founder access required');
+      }
+
+      let query = supabase
+        .from('escalated_essays' as any)
+        .select('user_id, status, escalated_at')
+        .order('escalated_at' as any, { ascending: false });
+
+      if (normalizedPartnerSlug) {
+        query = query.eq('partner_slug' as any, normalizedPartnerSlug);
+      } else {
+        query = query.is('partner_slug' as any, null);
+      }
+
+      const { data: escalations, error } = await query;
+      if (error) {
+        console.error('Error fetching escalated students:', error);
+        throw error;
+      }
+
+      if (!escalations || escalations.length === 0) {
+        return [];
+      }
+
+      const studentMap = new Map<string, StudentWithEscalations>();
+
+      escalations.forEach((item: any) => {
+        const key = item.user_id;
+        if (!studentMap.has(key)) {
+          studentMap.set(key, {
+            user_id: key,
+            student_name: null,
+            student_email: null,
+            latest_escalation_date: item.escalated_at,
+            total_essays: 0,
+            pending_count: 0,
+            in_review_count: 0,
+            reviewed_count: 0,
+            sent_back_count: 0,
+          });
+        }
+
+        const student = studentMap.get(key)!;
+        student.total_essays += 1;
+
+        const status = (item.status as EscalatedEssayStatus) || 'pending';
+        switch (status) {
+          case 'pending':
+            student.pending_count += 1;
+            break;
+          case 'in_review':
+            student.in_review_count += 1;
+            break;
+          case 'reviewed':
+            student.reviewed_count += 1;
+            break;
+          case 'sent_back':
+            student.sent_back_count += 1;
+            break;
+          default:
+            break;
+        }
+
+        // Track latest escalation date
+        const currentLatest = new Date(student.latest_escalation_date).getTime();
+        const candidate = new Date(item.escalated_at).getTime();
+        if (candidate > currentLatest) {
+          student.latest_escalation_date = item.escalated_at;
+        }
+      });
+
+      const userIds = Array.from(studentMap.keys());
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('user_profiles')
+        .select('user_id, full_name, email_address')
+        .in('user_id', userIds);
+
+      if (profilesError) {
+        console.error('Error fetching student profiles:', profilesError);
+      }
+
+      (profilesData || []).forEach((profile: any) => {
+        const student = studentMap.get(profile.user_id);
+        if (student) {
+          student.student_name = profile.full_name || null;
+          student.student_email = profile.email_address || null;
+        }
+      });
+
+      // Sort by latest escalation date desc
+      return Array.from(studentMap.values()).sort(
+        (a, b) =>
+          new Date(b.latest_escalation_date).getTime() -
+          new Date(a.latest_escalation_date).getTime()
+      );
+    } catch (error) {
+      console.error('EscalatedEssaysService: Error fetching students with escalations', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch escalated essays for a specific student
+   */
+  static async fetchEscalatedEssaysForStudent(
+    userId: string,
+    options?: {
+      status?: EscalatedEssayStatus;
+      partnerSlug?: string;
+    }
+  ): Promise<EscalatedEssayListItem[]> {
+    try {
+      const user = requireAuth();
+      const normalizedPartnerSlug = options?.partnerSlug?.toLowerCase() || null;
+
+      // Verify access
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('is_founder, is_counselor, counselor_name')
+        .eq('user_id' as any, user.id)
+        .maybeSingle();
+
+      const profileData = profile as any;
+      if (normalizedPartnerSlug) {
+        const counselorMatches =
+          profileData?.is_counselor &&
+          profileData?.counselor_name?.toLowerCase() === normalizedPartnerSlug;
+        if (!profileData?.is_founder && !counselorMatches) {
+          throw new Error('Access denied: Counselor access required');
+        }
+      } else if (!profileData?.is_founder) {
+        throw new Error('Access denied: Founder access required');
+      }
+
+      let query = supabase
+        .from('escalated_essays' as any)
+        .select(`
+          id,
+          essay_id,
+          user_id,
+          essay_title,
+          status,
+          escalated_at,
+          word_count
+        `)
+        .eq('user_id' as any, userId)
+        .order('escalated_at' as any, { ascending: false });
+
+      if (normalizedPartnerSlug) {
+        query = query.eq('partner_slug' as any, normalizedPartnerSlug);
+      } else {
+        query = query.is('partner_slug' as any, null);
+      }
+
+      if (options?.status) {
+        query = query.eq('status' as any, options.status);
+      }
+
+      const { data: essaysData, error } = await query;
+      if (error) {
+        console.error('Error fetching student escalated essays:', error);
+        throw error;
+      }
+
+      if (!essaysData || essaysData.length === 0) {
+        return [];
+      }
+
+      // Fetch student profile
+      const { data: studentProfileData } = await supabase
+        .from('user_profiles')
+        .select('user_id, full_name, email_address')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      // Fetch essays to get school names
+      const essayIds = [...new Set(essaysData.map((item: any) => item.essay_id))];
+      const { data: essaysDataWithSchools, error: essaysError } = await supabase
+        .from('essays')
+        .select('id, school_name')
+        .in('id', essayIds);
+
+      if (essaysError) {
+        console.error('Error fetching essays for school names:', essaysError);
+      }
+
+      const schoolsMap = new Map();
+      (essaysDataWithSchools || []).forEach((essay: any) => {
+        schoolsMap.set(essay.id, essay.school_name);
+      });
+
+      return essaysData.map((item: any) => ({
+        id: item.id,
+        essay_id: item.essay_id,
+        user_id: item.user_id,
+        student_name: (studentProfileData as any)?.full_name || null,
+        student_email: (studentProfileData as any)?.email_address || null,
+        essay_title: item.essay_title,
+        school_name: schoolsMap.get(item.essay_id) || null,
+        status: item.status as EscalatedEssayStatus,
+        escalated_at: item.escalated_at,
+        word_count: item.word_count || 0,
+      }));
+    } catch (error) {
+      console.error('EscalatedEssaysService: Error fetching escalated essays for student', error);
       throw error;
     }
   }
