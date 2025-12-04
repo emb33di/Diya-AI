@@ -41,7 +41,8 @@ import {
   Bot,
   Copy,
   CheckSquare,
-  FileEdit
+  FileEdit,
+  Save
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import AICommentsLoadingPane, { AI_COMMENTS_LOADING_STEPS } from './AICommentsLoadingPane';
@@ -65,6 +66,11 @@ interface FounderSemanticEditorProps {
   className?: string;
   readOnly?: boolean;
   disableAutoSave?: boolean; // When true, don't auto-save to semantic_documents (parent handles saving)
+  onSave?: () => void;
+  saveDisabled?: boolean;
+  saveLabel?: string;
+  onMarkReviewed?: () => void;
+  markReviewedDisabled?: boolean;
 }
 
 const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
@@ -83,7 +89,12 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
   onHideSidebar,
   className = '',
   readOnly = false,
-  disableAutoSave = false
+  disableAutoSave = false,
+  onSave,
+  saveDisabled = false,
+  saveLabel = 'Save',
+  onMarkReviewed,
+  markReviewedDisabled = false
 }) => {
   // Simple, clean state management
   const [state, setState] = useState<SemanticEditorState>({
@@ -2927,34 +2938,32 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
             </Button>
           </div>
 
-          {/* Add Comment Button - Fixed */}
-          <div className="flex items-center gap-2 ml-4 border-l pl-4">
-            <Button
-              size="sm"
-              onClick={() => {
-                // Use ref to get latest value
-                const currentSelection = activeSelectionRef.current || activeSelection;
-                
-                if (currentSelection) {
-                  setCommentDialogText('');
-                  setShowCommentDialog(true);
-                }
-              }}
-              disabled={!activeSelection || activeSelection.text.trim().length === 0}
-              variant={activeSelection ? 'default' : 'outline'}
-            >
-              <MessageSquare className="h-4 w-4 mr-1" />
-              Add Comment
-            </Button>
-            {activeSelection && (
-              <span className="text-xs text-gray-500">
-                ({activeSelection.text.length} chars selected)
-              </span>
-            )}
-          </div>
-
-          {/* Copy Button */}
+          {/* Save / Copy */}
           <div className="flex items-center gap-2 ml-auto border-l pl-4">
+            {onSave && (
+              <Button
+                size="sm"
+                variant="default"
+                onClick={onSave}
+                disabled={saveDisabled}
+                title="Save feedback"
+              >
+                <Save className="h-4 w-4 mr-1" />
+                {saveLabel}
+              </Button>
+            )}
+            {onMarkReviewed && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onMarkReviewed}
+                disabled={markReviewedDisabled}
+                title="Mark as reviewed"
+              >
+                <CheckCircle className="h-4 w-4 mr-1" />
+                Mark as Reviewed
+              </Button>
+            )}
             <Button
               size="sm"
               variant="outline"
