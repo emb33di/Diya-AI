@@ -66,7 +66,7 @@ const FounderPortal: React.FC = () => {
       <div className="min-h-screen" style={{ backgroundColor: '#F4EDE2' }}>
         <div className="container mx-auto px-4 py-8 max-w-7xl">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2">Founder Portal</h1>
+            <h1 className="text-3xl font-bold mb-2">Counselor Portal</h1>
             <p className="text-muted-foreground">Review students with escalated essays</p>
           </div>
 

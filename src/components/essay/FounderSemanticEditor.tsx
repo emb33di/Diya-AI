@@ -148,6 +148,24 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
              navigator.userAgent.toUpperCase().indexOf('MAC') >= 0);
   }, []);
 
+  // Keyboard shortcut: Cmd/Ctrl + S to trigger save
+  useEffect(() => {
+    if (!onSave || readOnly) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const isSaveShortcut = (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's';
+      if (isSaveShortcut) {
+        event.preventDefault();
+        if (!saveDisabled) {
+          onSave();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onSave, saveDisabled, readOnly]);
+
   // Refs for Tiptap editor management
   const tiptapRefs = useRef<Record<string, TiptapEditorRef | null>>({});
   const contentContainerRef = useRef<HTMLDivElement | null>(null);
@@ -2909,6 +2927,12 @@ const FounderSemanticEditor: React.FC<FounderSemanticEditorProps> = ({
                 {isMac ? '⌘' : 'Ctrl'}+↵
               </kbd>
               <span className="text-gray-500">Submit comment</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <kbd className="px-2 py-1 bg-white border border-gray-300 rounded text-xs font-mono shadow-sm">
+                {isMac ? '⌘' : 'Ctrl'}+S
+              </kbd>
+              <span className="text-gray-500">Save</span>
             </div>
           </div>
         </div>
