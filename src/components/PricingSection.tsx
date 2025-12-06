@@ -65,7 +65,7 @@ const PricingSection = () => {
                 <div className="mb-4">
                   <div className="mb-3">
                     <span className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-primary">
-                      {currency === "USD" ? "$90 USD" : "₹7,999"}
+                      {currency === "USD" ? "$110 USD" : "Rs. 9,999"}
                     </span>
                   </div>
                   <p className="text-lg sm:text-xl text-white mb-3">Everything you need for your college application journey</p>
