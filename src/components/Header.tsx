@@ -38,18 +38,6 @@ const Header = () => {
   // Counselors and founders should not see regular navigation links
   const showRegularNavigation = isAuthenticated && !isFounder && !isCounselor;
 
-  // Debug logging for auth state
-  useEffect(() => {
-    console.log('[HEADER] Auth state:', {
-      hasUser: Boolean(user),
-      userId: user?.id,
-      hasProfile: Boolean(profile),
-      loading: authLoading,
-      isAuthenticated,
-      path: location.pathname
-    });
-  }, [user, profile, authLoading, isAuthenticated, location.pathname]);
-
   // Handle hash scrolling when navigating from other pages
   useEffect(() => {
     if (location.pathname === '/' && location.hash) {
@@ -110,7 +98,7 @@ const Header = () => {
           <img 
             src={
               isIvySummitPortal 
-                ? "/DiyaLogo.svg" // TODO: Add IvySummit logo file at /IvySummitLogo.svg
+                ? "/DiyaLogo.svg"
                 : location.pathname === "/" || location.pathname === "/auth" || location.pathname === "/counselors" 
                   ? "/DiyaLogo White.svg" 
                   : "/DiyaLogo.svg"

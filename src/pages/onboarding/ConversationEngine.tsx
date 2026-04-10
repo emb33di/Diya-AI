@@ -212,7 +212,6 @@ const ConversationEngine = ({
       if (message.source === 'ai') {
         const currentProgress = Math.min(calculateProgressPercentageRef.current() + 2, 100);
         const completedCount = Math.floor(currentProgress / 16.67);
-        // TODO: Add topics to Zustand store if needed
       }
     } catch (error) {
       const userId = user?.id || 'unknown';

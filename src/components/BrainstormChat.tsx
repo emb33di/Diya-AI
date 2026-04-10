@@ -43,7 +43,6 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
   const [onboardingTranscript, setOnboardingTranscript] = useState<string>('');
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [micPermissionDenied, setMicPermissionDenied] = useState(false);
-  // NOTE: messageOrder state removed - no longer needed with Outspeed API approach
   const [audioLevel, setAudioLevel] = useState(0);
   const [showFullScreenChat, setShowFullScreenChat] = useState(false);
   const [messages, setMessages] = useState<Array<{
@@ -118,8 +117,6 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
   // Outspeed React SDK integration - use agent-based approach
   const conversation = useConversation({
     onConnect: async () => {
-      console.log('🔗 Connected to Outspeed voice agent');
-      console.log('📊 Current state before connect:', { sessionStarted: sessionStartedRef.current, showFullScreenChat: showFullScreenChatRef.current, messagesCount: messagesRef.current.length });
       
       // Track brainstorming session start
       analytics.trackVoiceEvent('started', 'brainstorming', {
@@ -134,13 +131,8 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
       startAudioAnalysis();
       // Clear previous messages
       setMessages([]);
-      console.log('✅ States updated after connect');
     },
     onDisconnect: async () => {
-      console.log('🔌 Disconnected from voice agent');
-      console.log('📊 State at disconnect:', { sessionStarted: sessionStartedRef.current, showFullScreenChat: showFullScreenChatRef.current, conversationId: conversationIdRef.current, messagesCount: messagesRef.current.length });
-      console.log('🔍 Disconnect reason - checking if this was intentional...');
-      console.log('⏱️ Session duration:', Date.now() - (sessionStartTimeRef.current?.getTime() || Date.now()), 'ms');
       
       // Track brainstorming session end
       const sessionDuration = sessionStartTimeRef.current ? 
@@ -159,7 +151,6 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
       
       // Force save transcript before clearing conversation ID
       if (messagesRef.current.length > 0) {
-        console.log('💾 Force saving transcript on disconnect...');
         await forceSaveTranscript();
         
         // Track transcript save
@@ -177,10 +168,8 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
       
       // Note: conversationId might be null here if manually ended
       if (conversationIdRef.current) {
-        console.log('📝 Generating summary for conversation:', conversationIdRef.current);
         generateSummaryFromConversation(conversationIdRef.current);
       } else {
-        console.log('⚠️ No conversation ID available for summary generation');
       }
     },
     onError: (error) => {
@@ -198,24 +187,20 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
 
     const handleNewItem = (event: OutspeedEvent) => {
       try {
-        console.log('📝 Conversation item created:', event);
         
         // Add debugging for AI messages to inspect raw structure
         if (event.item.role === 'assistant') {
-          console.log('--- RAW AI EVENT FOR DEBUGGING ---');
           console.log(JSON.stringify(event.item, null, 2));
           
           // Mark conversation as ready after first AI message is completed
           if (!firstAIMessageCompletedRef.current) {
             setConversationReady(true);
             firstAIMessageCompletedRef.current = true;
-            console.log('🎯 Brainstorming conversation is now ready - first AI message completed');
           }
         }
         
         // Validate that this is a message item we should process
         if (!isValidMessageItem(event.item)) {
-          console.log('⏭️ Skipping non-message item:', event.item.type);
           return;
         }
         
@@ -224,12 +209,10 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
         
         // Only process the message if it's not null (i.e., not empty)
         if (parsedMessage) {
-          console.log('📝 Parsed message:', parsedMessage);
           
           // Update local state
           setMessages(prev => {
             const newMessages = [...prev, parsedMessage];
-            console.log('📝 Updated messages array:', newMessages.length, 'messages');
             return newMessages;
           });
         }
@@ -256,9 +239,7 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
       try {
         if (conversation && typeof conversation.off === 'function') {
           conversation.off('conversation.item.created', handleNewItem);
-          console.log('🧹 Event listener cleaned up successfully');
         } else {
-          console.warn('⚠️ Conversation cleanup method not available');
         }
         listenerSetupRef.current = false; // Reset on unmount
       } catch (error) {
@@ -378,17 +359,12 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
       await navigator.mediaDevices.getUserMedia({
         audio: true
       });
-      console.log('Microphone access granted, starting Outspeed conversation');
 
-      // TODO: Implement brainstorming agent - for now, use a placeholder
-      // This will be implemented when we add the brainstorming agent
-      const brainstormingAgentId = 'agent_brainstorming_placeholder'; // Replace with actual brainstorming agent ID
+      const brainstormingAgentId = import.meta.env.VITE_ELEVENLABS_AGENT_ID_BRAINSTORMING || '';
       
-      console.log('🚀 Starting Outspeed brainstorming conversation with agent:', brainstormingAgentId);
       
       // Set the agent ID to trigger the conversation connection
       setAgentId(brainstormingAgentId);
-      console.log('✅ Agent ID set:', brainstormingAgentId);
 
       // Create a temporary conversation ID for tracking
       const tempConversationId = `temp_${Date.now()}`;
@@ -478,7 +454,6 @@ const BrainstormChat = ({ essayTitle, essayPrompt, targetCollege, onBack, onSumm
         if (error) {
           console.error('Error creating conversation record:', error);
         } else {
-          console.log('✅ Created essay brainstorming conversation record');
         }
       }
     } catch (error) {

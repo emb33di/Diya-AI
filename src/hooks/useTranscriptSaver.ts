@@ -35,8 +35,6 @@ export const useTranscriptSaver = (
 
   /**
    * Save transcript to backend API with retry mechanism
-   * TODO: Replace '/api/transcripts/save' with actual API endpoint
-   * The endpoint should accept POST requests with TranscriptSaveData in the body
    */
   const saveTranscript = useCallback(async (transcriptData: TranscriptSaveData, retryCount = 0): Promise<boolean> => {
     const maxRetries = 2;

@@ -21,9 +21,9 @@ dotenv.config({ path: '.env.local' });
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const testEmail = 'modernbk@test.com';
-const testPassword = '123456';
-const testName = 'Test User';
+const testEmail = process.env.TEST_EMAIL || 'user@example.com';
+const testPassword = process.env.TEST_PASSWORD || 'change-me';
+const testName = process.env.TEST_NAME || 'Test User';
 
 if (!supabaseUrl || !supabaseServiceKey) {
   console.error('❌ Error: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set');

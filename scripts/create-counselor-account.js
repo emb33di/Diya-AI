@@ -22,8 +22,8 @@ dotenv.config();
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const counselorEmail = process.env.COUNSELOR_EMAIL || 'test@ten.com';
-const counselorPassword = process.env.COUNSELOR_PASSWORD || '123456';
+const counselorEmail = process.env.COUNSELOR_EMAIL || 'counselor@example.com';
+const counselorPassword = process.env.COUNSELOR_PASSWORD || 'change-me';
 const counselorName = process.env.COUNSELOR_NAME || 'IvySummit Counselor';
 const partnerSlug = process.env.PARTNER_SLUG || 'ivysummit';
 
