@@ -20,8 +20,8 @@ import dotenv from 'dotenv';
 // Load environment variables
 dotenv.config();
 
-const supabaseUrl = process.env.SUPABASE_URL || 'https://oliclbcxukqddxlfxuuc.supabase.co';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9saWNsYmN4dWtxZGR4bGZ4dXVjIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTA2MTc0MCwiZXhwIjoyMDcwNjM3NzQwfQ.1IoVMJ7uvfliuQPU1b8VywgZPiDgH3WWoTPPFVb6MXA';
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const counselorEmail = process.env.COUNSELOR_EMAIL || 'test@ten.com';
 const counselorPassword = process.env.COUNSELOR_PASSWORD || '123456';
 const counselorName = process.env.COUNSELOR_NAME || 'IvySummit Counselor';

@@ -574,7 +574,9 @@ const IvySummitEssayReview: React.FC = () => {
             <div className="flex items-start justify-between mb-4">
               <div>
                 <div className="flex items-center gap-3 mb-2">
-                  <h1 className="text-3xl font-bold">{essay.essay_title}</h1>
+                  <h1 className="text-3xl font-bold">
+                    {essay.school_name ? `${essay.school_name}: ` : ''}{essay.essay_title}
+                  </h1>
                   {getStatusBadge(essay.status)}
                 </div>
                 <div className="flex items-center gap-6 text-sm text-muted-foreground">
@@ -586,10 +588,12 @@ const IvySummitEssayReview: React.FC = () => {
                     <Mail className="h-4 w-4" />
                     <span>{essay.student_email || 'N/A'}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <GraduationCap className="h-4 w-4" />
-                    <span>{formatSchoolType(essay.applying_to)}</span>
-                  </div>
+                  {essay.school_name && (
+                    <div className="flex items-center gap-2">
+                      <GraduationCap className="h-4 w-4" />
+                      <span>{essay.school_name}</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2">
                     <FileText className="h-4 w-4" />
                     <span>{getCurrentWordCount(document)} words</span>

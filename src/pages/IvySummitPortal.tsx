@@ -227,7 +227,9 @@ const IvySummitPortal: React.FC = () => {
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-3">
                           <FileText className="h-5 w-5 text-primary" />
-                          <h3 className="text-xl font-semibold">{essay.essay_title}</h3>
+                          <h3 className="text-xl font-semibold">
+                            {essay.school_name ? `${essay.school_name}: ` : ''}{essay.essay_title}
+                          </h3>
                           {getStatusBadge(essay.status)}
                         </div>
 

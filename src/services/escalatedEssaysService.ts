@@ -45,6 +45,7 @@ export interface EscalatedEssay {
   
   // Essay snapshot data
   essay_title: string;
+  school_name: string | null; // University name from essays table
   essay_content: SemanticDocument; // JSONB - full semantic document
   essay_prompt: string | null;
   word_limit: string | null;
@@ -275,10 +276,10 @@ export class EscalatedEssaysService {
         // Continue without profile data rather than failing completely
       }
 
-      // Fetch essays to get school names
+      // Fetch essays to get school names and prompt_ids
       const { data: essaysDataWithSchools, error: essaysError } = await supabase
         .from('essays')
-        .select('id, school_name')
+        .select('id, school_name, prompt_id')
         .in('id', essayIds);
 
       if (essaysError) {
@@ -291,16 +292,39 @@ export class EscalatedEssaysService {
         profilesMap.set(profile.user_id, profile);
       });
 
-      // Create a map of essay_id to school_name
-      const schoolsMap = new Map();
+      // Build map of essay_id to school_name and prompt_id
+      const essayDataMap = new Map();
       (essaysDataWithSchools || []).forEach((essay: any) => {
-        schoolsMap.set(essay.id, essay.school_name);
+        essayDataMap.set(essay.id, { school_name: essay.school_name, prompt_id: essay.prompt_id });
       });
+
+      // For essays without school_name, try to get college_name from essay_prompts
+      const promptIds = [...new Set(
+        (essaysDataWithSchools || [])
+          .filter((e: any) => !e.school_name && e.prompt_id)
+          .map((e: any) => e.prompt_id)
+      )];
+
+      let promptSchoolMap = new Map();
+      if (promptIds.length > 0) {
+        const { data: promptsData } = await supabase
+          .from('essay_prompts')
+          .select('id, college_name')
+          .in('id', promptIds);
+
+        (promptsData || []).forEach((prompt: any) => {
+          promptSchoolMap.set(prompt.id, prompt.college_name);
+        });
+      }
 
       // Transform data to combine essays with profile data and school names
       const essays: EscalatedEssayListItem[] = essaysData.map((item: any) => {
         const profile = profilesMap.get(item.user_id);
-        const schoolName = schoolsMap.get(item.essay_id);
+        const essayInfo = essayDataMap.get(item.essay_id) || {};
+        // Use school_name from essay, or fall back to college_name from prompt
+        const schoolName = essayInfo.school_name || 
+          (essayInfo.prompt_id ? promptSchoolMap.get(essayInfo.prompt_id) : null);
+        
         return {
           id: item.id,
           essay_id: item.essay_id,
@@ -522,34 +546,61 @@ export class EscalatedEssaysService {
         .eq('user_id', userId)
         .maybeSingle();
 
-      // Fetch essays to get school names
+      // Fetch essays to get school names and prompt_ids
       const essayIds = [...new Set(essaysData.map((item: any) => item.essay_id))];
       const { data: essaysDataWithSchools, error: essaysError } = await supabase
         .from('essays')
-        .select('id, school_name')
+        .select('id, school_name, prompt_id')
         .in('id', essayIds);
 
       if (essaysError) {
         console.error('Error fetching essays for school names:', essaysError);
       }
 
-      const schoolsMap = new Map();
+      // Build map of essay_id to school_name and prompt_id
+      const essayDataMap = new Map();
       (essaysDataWithSchools || []).forEach((essay: any) => {
-        schoolsMap.set(essay.id, essay.school_name);
+        essayDataMap.set(essay.id, { school_name: essay.school_name, prompt_id: essay.prompt_id });
       });
 
-      return essaysData.map((item: any) => ({
-        id: item.id,
-        essay_id: item.essay_id,
-        user_id: item.user_id,
-        student_name: (studentProfileData as any)?.full_name || null,
-        student_email: (studentProfileData as any)?.email_address || null,
-        essay_title: item.essay_title,
-        school_name: schoolsMap.get(item.essay_id) || null,
-        status: item.status as EscalatedEssayStatus,
-        escalated_at: item.escalated_at,
-        word_count: item.word_count || 0,
-      }));
+      // For essays without school_name, try to get college_name from essay_prompts
+      const promptIds = [...new Set(
+        (essaysDataWithSchools || [])
+          .filter((e: any) => !e.school_name && e.prompt_id)
+          .map((e: any) => e.prompt_id)
+      )];
+
+      let promptSchoolMap = new Map();
+      if (promptIds.length > 0) {
+        const { data: promptsData } = await supabase
+          .from('essay_prompts')
+          .select('id, college_name')
+          .in('id', promptIds);
+
+        (promptsData || []).forEach((prompt: any) => {
+          promptSchoolMap.set(prompt.id, prompt.college_name);
+        });
+      }
+
+      return essaysData.map((item: any) => {
+        const essayInfo = essayDataMap.get(item.essay_id) || {};
+        // Use school_name from essay, or fall back to college_name from prompt
+        const schoolName = essayInfo.school_name || 
+          (essayInfo.prompt_id ? promptSchoolMap.get(essayInfo.prompt_id) : null);
+        
+        return {
+          id: item.id,
+          essay_id: item.essay_id,
+          user_id: item.user_id,
+          student_name: (studentProfileData as any)?.full_name || null,
+          student_email: (studentProfileData as any)?.email_address || null,
+          essay_title: item.essay_title,
+          school_name: schoolName || null,
+          status: item.status as EscalatedEssayStatus,
+          escalated_at: item.escalated_at,
+          word_count: item.word_count || 0,
+        };
+      });
     } catch (error) {
       console.error('EscalatedEssaysService: Error fetching escalated essays for student', error);
       throw error;
@@ -588,6 +639,24 @@ export class EscalatedEssaysService {
         .eq('user_id', (essayData as any).user_id)
         .maybeSingle();
 
+      // Fetch school name and prompt_id from essays table
+      const { data: essaySchoolData } = await supabase
+        .from('essays')
+        .select('school_name, prompt_id')
+        .eq('id', (essayData as any).essay_id)
+        .maybeSingle();
+
+      // If school_name is null, try to get college_name from essay_prompts
+      let schoolName = (essaySchoolData as any)?.school_name || null;
+      if (!schoolName && (essaySchoolData as any)?.prompt_id) {
+        const { data: promptData } = await supabase
+          .from('essay_prompts')
+          .select('college_name')
+          .eq('id', (essaySchoolData as any).prompt_id)
+          .maybeSingle();
+        schoolName = (promptData as any)?.college_name || null;
+      }
+
       // Parse JSONB fields and transform to EscalatedEssay type
       const essayItem = essayData as any;
       const studentProfile = userProfileData as any;
@@ -599,6 +668,7 @@ export class EscalatedEssaysService {
         student_email: studentProfile?.email_address || null,
         applying_to: studentProfile?.applying_to || null,
         essay_title: essayItem.essay_title,
+        school_name: schoolName,
         essay_content: essayItem.essay_content as SemanticDocument,
         essay_prompt: essayItem.essay_prompt,
         word_limit: essayItem.word_limit,
@@ -1900,10 +1970,10 @@ export class EscalatedEssaysService {
         console.error('Error fetching user profiles:', profilesError);
       }
 
-      // Fetch essays to get school names
+      // Fetch essays to get school names and prompt_ids
       const { data: essaysDataWithSchools, error: essaysError } = await supabase
         .from('essays')
-        .select('id, school_name')
+        .select('id, school_name, prompt_id')
         .in('id', essayIds);
 
       if (essaysError) {
@@ -1916,16 +1986,39 @@ export class EscalatedEssaysService {
         profilesMap.set(profile.user_id, profile);
       });
 
-      // Create a map of essay_id to school_name
-      const schoolsMap = new Map();
+      // Build map of essay_id to school_name and prompt_id
+      const essayDataMap = new Map();
       (essaysDataWithSchools || []).forEach((essay: any) => {
-        schoolsMap.set(essay.id, essay.school_name);
+        essayDataMap.set(essay.id, { school_name: essay.school_name, prompt_id: essay.prompt_id });
       });
+
+      // For essays without school_name, try to get college_name from essay_prompts
+      const promptIds = [...new Set(
+        (essaysDataWithSchools || [])
+          .filter((e: any) => !e.school_name && e.prompt_id)
+          .map((e: any) => e.prompt_id)
+      )];
+
+      let promptSchoolMap = new Map();
+      if (promptIds.length > 0) {
+        const { data: promptsData } = await supabase
+          .from('essay_prompts')
+          .select('id, college_name')
+          .in('id', promptIds);
+
+        (promptsData || []).forEach((prompt: any) => {
+          promptSchoolMap.set(prompt.id, prompt.college_name);
+        });
+      }
 
       // Transform data to combine essays with profile data and school names
       const essays: EscalatedEssayListItem[] = essaysData.map((item: any) => {
         const profile = profilesMap.get(item.user_id);
-        const schoolName = schoolsMap.get(item.essay_id);
+        const essayInfo = essayDataMap.get(item.essay_id) || {};
+        // Use school_name from essay, or fall back to college_name from prompt
+        const schoolName = essayInfo.school_name || 
+          (essayInfo.prompt_id ? promptSchoolMap.get(essayInfo.prompt_id) : null);
+        
         return {
           id: item.id,
           essay_id: item.essay_id,

@@ -12,7 +12,8 @@ import {
   CheckCircle,
   Send,
   Eye,
-  User
+  User,
+  GraduationCap
 } from 'lucide-react';
 import FounderGuard from '@/components/FounderGuard';
 import { EscalatedEssaysService, EscalatedEssayListItem, EscalatedEssayStatus } from '@/services/escalatedEssaysService';
@@ -183,7 +184,9 @@ const FounderStudentEssays: React.FC = () => {
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-3">
                           <FileText className="h-5 w-5 text-primary" />
-                          <h3 className="text-xl font-semibold">{essay.essay_title}</h3>
+                          <h3 className="text-xl font-semibold">
+                            {essay.school_name ? `${essay.school_name}: ` : ''}{essay.essay_title}
+                          </h3>
                           <Badge variant="secondary" className="flex items-center gap-1">
                             {essay.status === 'pending' && <Clock className="h-3 w-3" />}
                             {essay.status === 'in_review' && <Eye className="h-3 w-3" />}
@@ -194,6 +197,13 @@ const FounderStudentEssays: React.FC = () => {
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                          {essay.school_name && (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <GraduationCap className="h-4 w-4" />
+                              <span className="font-medium">University:</span>
+                              <span>{essay.school_name}</span>
+                            </div>
+                          )}
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Mail className="h-4 w-4" />
                             <span className="font-medium">Email:</span>
